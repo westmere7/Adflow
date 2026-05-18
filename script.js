@@ -118,12 +118,14 @@
       isolatedGroupId: null,
       assets: { 'rmit_logo': 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMiIgZGF0YS1uYW1lPSJMYXllciAyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMTkuNjcgNzYuMjMiPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuY2xzLTEgewogICAgICAgIGZpbGw6ICNmZmY7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxnIGlkPSJMYXllcl8xLTIiIGRhdGEtbmFtZT0iTGF5ZXIgMSI+CiAgICA8ZyBpZD0iUk1JVF93aGl0ZSI+CiAgICAgIDxnPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTI2LjIxLDBoLTYuNjh2NS40M2gtMTEuMTV2MTEuMzRIMHYxNi42NWg4LjM3djExLjM0aDExLjEzdjUuNDNoNS45MWMxMy43OCwwLDI1LjkzLTExLjEzLDI1LjkzLTI1LjAyUzQwLjAzLDAsMjYuMjEsMCIvPgogICAgICAgIDxwb2x5Z29uIGNsYXNzPSJjbHMtMSIgcG9pbnRzPSIxNjAuNDEgNC43OSAxNjYuMjMgNC43OSAxNjYuMjMgNDUuMzcgMTYwLjQxIDQ1LjM3IDE2MC40MSA0Ny40NiAxODAuNTggNDcuNDYgMTgwLjU4IDQ1LjM3IDE3NC43OCA0NS4zNyAxNzQuNzggNC43OSAxODAuNTggNC43OSAxODAuNTggMi42NyAxNjAuNDEgMi42NyAxNjAuNDEgNC43OSIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTIxOC45NCwyLjY1aC0zNS44OGwtLjczLDExLjgxaDIuMTJjMS4yMy04LjU4LDIuODEtMTAuNjEsMTIuMjctMTAuMTN2NDEuMDNoLTYuMTh2Mi4xaDIwLjk2di0yLjFoLTYuMThWNC4zM2M5LjQ0LS40OCwxMS4wNiwxLjU1LDEyLjI3LDEwLjEzaDIuMDhsLS43My0xMS44MVoiLz4KICAgICAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xNDIuMjMsNS40N3YzOS44OWgtNS43N3YyLjFoMjAuMTR2LTIuMWgtNS43N1Y0Ljc3aDUuNzV2LTIuMTRoLTE2LjU0bC05LjcyLDMwLjY1LTkuMzctMzAuNjVoLTE2LjQ3djIuMTJoNS43OXY0MC42aC02LjI1Yy01LjgyLjE0LTUuOTEtNC44MS01Ljg4LTUuODQuMDktMTAuOTMtMi4zNy0xNC44OS0xMi44NC0xNi41MXYtLjE0YzYuMjUtLjY2LDE0LjIzLTIuNDQsMTQuMjMtMTAuMDEsMC05LjMzLTguNjktMTAuMi0xNi4wMy0xMC4yaC0yMS42djIuMTJoNS43OXY0MC42aC01Ljc5djIuMTJoMjAuMTZ2LTIuMTJoLTUuNzl2LTIxLjM5YzMuNzItLjE0LDcuOTEuOCw5Ljc4LDIuNDIsMS43NiwxLjQ4LDIuNjksNi4wOSwyLjY5LDExLjYzLDAsNi44NCwzLjU0LDkuNDQsMTAuMzMsOS40NGgxOS40M3YtMi4xaC01LjY2VjUuNDdoLjE0bDEzLjM0LDQyLjAxaDIuMjZsMTMuNDMtNDIuMDFoLjIxWk03Ni4yNywyMS44NWwtLjAyLjAyVjQuNzdoNS44NGM1Ljk4LDAsOC4xOSwxLjUxLDguMTksOS4wMywwLDYtMi40OSw4LjA1LTguNTEsOC4wNWgtNS41WiIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTc4LjU1LDU5Ljk0djkuNjljMCwyLjY3LTEuNjcsNC4yNC00LjIsNC4yNHMtNC4yLTEuNTUtNC4yLTQuMnYtOS43NGMwLTEuMTItLjQ4LTEuNi0xLjYtMS42aC0yLjUxdjIuMTRoMS4wN2MuMzQsMCwuNTUuMTguNTUuNTVoLS4wMnMwLDguNzQsMCw4Ljc0YzAsMy44MywyLjc0LDYuNDUsNi43Myw2LjQ1czYuNjYtMi42Miw2LjY2LTYuNDV2LTguNzRjMC0uMzYuMjEtLjU1LjU1LS41NWgxLjA3di0yLjE0aC0yLjQ5Yy0xLjEyLDAtMS42Mi40OC0xLjYyLDEuNiIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTk3LjM5LDU5Ljk0djkuNTNjMCwxLC4xOCwyLjM5LjE4LDIuMzloLS4wNXMtLjgyLTEuNDYtMS40Ni0yLjM5bC03LjgyLTExLjEzaC0yLjI2djE0Ljg3YzAsLjM0LS4yMS41NS0uNTUuNTVoLTEuMDd2Mi4xNGgyLjUxYzEuMTIsMCwxLjYtLjQ4LDEuNi0xLjZ2LTkuNTNjMC0uOTgtLjE2LTIuMzktLjE2LTIuMzloLjA1cy44LDEuNDYsMS40NCwyLjM5bDcuODUsMTEuMTNoMi4yNHYtMTQuODdjMC0uMzYuMjEtLjU1LjU1LS41NWgxLjA3di0yLjE0aC0yLjQ5Yy0xLjE0LDAtMS42Mi40OC0xLjYyLDEuNiIvPgogICAgICAgIDxwb2x5Z29uIGNsYXNzPSJjbHMtMSIgcG9pbnRzPSIxMDQuMjEgNjAuNDkgMTA1LjkyIDYwLjQ5IDEwNS45MiA3My43NiAxMDQuMjEgNzMuNzYgMTA0LjIxIDc1LjkxIDExMC4wMSA3NS45MSAxMTAuMDEgNzMuNzYgMTA4LjMgNzMuNzYgMTA4LjMgNjAuNDkgMTEwLjAxIDYwLjQ5IDExMC4wMSA1OC4zNCAxMDQuMjEgNTguMzQgMTA0LjIxIDYwLjQ5Ii8+CiAgICAgICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMTI0LjEsNTkuNzhsLTMuODUsMTAuODNjLS4zNC45Ni0uNjYsMi40Mi0uNjYsMi40MmgtLjA1cy0uMzQtMS40OC0uNjYtMi40MmwtMy44NS0xMC44M2MtLjQxLTEuMTYtLjg0LTEuNDQtMi4wOC0xLjQ0aC0xLjM5djIuMTRoLjM0Yy40MywwLC42Ni4wOS44Mi41NWgtLjAybDUuNTIsMTQuODdoMi42NWw1LjUyLTE0Ljg3Yy4xNi0uNDYuMzYtLjU1LjgyLS41NWguMzR2LTIuMTRoLTEuMzljLTEuMjMsMC0xLjY0LjI3LTIuMDUsMS40NCIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTEzOS4zNiw3My4yNGMwLC4zNC0uMjEuNTUtLjU1LjU1aC01LjEzYy0uMzQsMC0uNTUtLjIxLS41NS0uNTV2LTUuMTFoNi4xNHYtMi4xNGgtNi4xNHYtNS41aDVjLjM0LDAsLjU1LjE4LjU1LjU1djEuMTJoMi4yNnYtMi4yMWMwLTEuMTItLjQ4LTEuNi0xLjYtMS42aC0xMC4zM3YyLjE0aDEuNjJ2MTMuODRjMCwxLjEyLjQ4LDEuNiwxLjYsMS42aDcuODJjMS4xMiwwLDEuNi0uNDgsMS42LTEuNnYtMi4yMWgtMi4yOHYxLjEyWiIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTE1Ni4xMyw3My4xOWwtMi4xMi00LjJjLS4zLS41Ny0uNzUtLjgtLjc1LS44di0uMDVjMS4yNS0uMjcsMy4xNy0xLjcxLDMuMTctNC42NSwwLTMuMjItMi4xNy01LjE1LTUuMjUtNS4xNWgtNy42NnYyLjE0aDEuNjJ2MTUuNDJoMi40OXYtN2gyLjI4Yy45NiwwLDEuMjguMTQsMS43My45NmwyLjM5LDQuNzJjLjU3LDEuMTQsMS4wNywxLjMyLDIuNDQsMS4zMmgxLjIzdi0yLjE0aC0uMzJjLS42MiwwLTEtLjA1LTEuMjUtLjU3TTE1MC44Niw2Ni43OGgtMy4yNHYtNi4zaDMuMjhjMS44NSwwLDIuOTcsMS4xNCwyLjk3LDMuMXMtMS4xMiwzLjE5LTMuMDEsMy4xOSIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTE2Mi4zNSw2Mi42OGMwLTEuMzIsMS4xOS0yLjM3LDMuMDgtMi4zNywxLjM5LDAsMi43MS42OCwyLjcxLDEuNnYuODJoMi4yOHYtMS40NGMwLTIuMzktMy4xMi0zLjI0LTUtMy4yNC0zLjMzLDAtNS42MywyLjA1LTUuNjMsNC43LDAsNS40Nyw4LjQ4LDQuOSw4LjQ4LDguNTgsMCwxLjYyLTEuMzcsMi42Mi0zLjAxLDIuNjItMi41MSwwLTQuMjctMS45Ny00LjM5LTIuMTFsLTEuNDUsMS43NHMyLjA4LDIuNjIsNS44MiwyLjYyYzMuNDcsMCw1LjU3LTIuMyw1LjU3LTUsMC01Ljc3LTguNDYtNC45Ny04LjQ2LTguNTMiLz4KICAgICAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xNjAuODcsNzEuODJzMCwwLC4wMS4wMWguMDFzLS4wMi0uMDEtLjAyLS4wMVoiLz4KICAgICAgICA8cG9seWdvbiBjbGFzcz0iY2xzLTEiIHBvaW50cz0iMTczLjQxIDYwLjQ5IDE3NS4xMiA2MC40OSAxNzUuMTIgNzMuNzYgMTczLjQxIDczLjc2IDE3My40MSA3NS45MSAxNzkuMjEgNzUuOTEgMTc5LjIxIDczLjc2IDE3Ny41IDczLjc2IDE3Ny41IDYwLjQ5IDE3OS4yMSA2MC40OSAxNzkuMjEgNTguMzQgMTczLjQxIDU4LjM0IDE3My40MSA2MC40OSIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTE5NC40LDU4LjM3aC0xMi4wOWMtMS4xMiwwLTEuNDguMzctMS40OCwxLjQ4djIuM2gyLjIxdi0xLjEyYzAtLjM3LjIxLS41NS41NS0uNTVoMy41MXYxNS40MmgyLjQ5di0xNS40MmgzLjU0Yy4zNCwwLC41NS4xOC41NS41NXYxLjEyaDIuMjF2LTIuM2MwLTEuMTItLjM2LTEuNDgtMS40OC0xLjQ4Ii8+CiAgICAgICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMjA4LjAxLDU5LjY5bC0yLjY1LDQuNDJjLS41OS45Ni0xLjA3LDEuOTYtMS4wNywxLjk2aC0uMDVzLS41LS45OC0xLjA3LTEuOTZsLTIuNjctNC40MmMtLjcxLTEuMTYtMS4xOS0xLjM1LTIuMzctMS4zNWgtMS4xNHYyLjE0aC41Yy41MiwwLC43NS4wOSwxLjA3LjYybDQuNDUsNy4xNGguMDJ2Ny42NmgyLjQ5di03LjY2bDQuNDItNy4xNGMuMzItLjUyLjU3LS42MiwxLjA5LS42MmguNDh2LTIuMTRoLTEuMTRjLTEuMTksMC0xLjY5LjE4LTIuMzcsMS4zNSIvPgogICAgICA8L2c+CiAgICA8L2c+CiAgPC9nPgo8L3N2Zz4=' },
       showRulers: true,
+      snapEnabled: true,
       snapToElements: true,
       snapToCanvas: true,
       snapToGuides: true,
       loopAd: false,
       guides: [],
       activeSmartGuides: null,
+      showSafezones: false,
       clipboard: null
     };
     state.activeCanvasId = state.canvases[0].id;
@@ -256,6 +258,9 @@
       renderCanvasesList();
       renderLayers();
       renderFrameControls();
+      updatePreviewZoomNotice();
+      const szBtn = document.getElementById('btn-toggle-safezones');
+      if (szBtn) szBtn.classList.toggle('active', !!state.showSafezones);
       if (!skipProps) renderProps();
 
       if (state.isPreviewMode) {
@@ -297,6 +302,7 @@
       // Update checkmarks in view menu
       const tick = (val) => val ? '✓ ' : '&nbsp;&nbsp;&nbsp;';
       const setTick = (id, label, val) => { const e = document.getElementById(id); if (e) e.innerHTML = tick(val) + label; };
+      setTick('menu-view-snap-enabled', 'Snapping', state.snapEnabled !== false);
       setTick('menu-view-snap-elements', 'Snap to Elements', state.snapToElements !== false);
       setTick('menu-view-snap-canvas', 'Snap to Canvas Bounds', state.snapToCanvas !== false);
       setTick('menu-view-snap-guides', 'Snap to Guides', state.snapToGuides !== false);
@@ -333,6 +339,43 @@
       const targetScrollTop = centerY * z - area.clientHeight / 2;
 
       area.scrollTo({ left: Math.max(0, targetScrollLeft), top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+    }
+
+    // Smooth view transition: animate zoom + scroll together with rAF, no intermediate
+    // render() calls. The existing DOM scales via workspaceEl.style.zoom and --z, which is
+    // cheap; a single render() at the end converges state.zoom and rebuilds (mostly a no-op
+    // visually since we already arrived there). Use this instead of `state.zoom = x; render();
+    // setTimeout(scrollTo({behavior:'smooth'}))` — that pattern shows a blackout because the
+    // DOM jumps to the new zoom *before* the scroll catches up.
+    let _viewAnimToken = 0;
+    function animateViewTo(targetZoom, focusX, focusY, duration = 350, onComplete) {
+      const area = document.getElementById('canvas-area');
+      const startZoom = state.zoom || 1;
+      const startScrollLeft = area.scrollLeft;
+      const startScrollTop = area.scrollTop;
+      const targetScrollLeft = Math.max(0, focusX * targetZoom - area.clientWidth / 2);
+      const targetScrollTop = Math.max(0, focusY * targetZoom - area.clientHeight / 2);
+      const startTime = performance.now();
+      const ease = (t) => 1 - Math.pow(1 - t, 3); // easeOutCubic
+      const token = ++_viewAnimToken;
+
+      const step = (now) => {
+        if (token !== _viewAnimToken) return; // superseded by a later animation
+        const t = Math.min(1, (now - startTime) / duration);
+        const k = ease(t);
+        const z = startZoom + (targetZoom - startZoom) * k;
+        workspaceEl.style.zoom = z;
+        workspaceEl.style.setProperty('--z', z);
+        area.scrollLeft = startScrollLeft + (targetScrollLeft - startScrollLeft) * k;
+        area.scrollTop = startScrollTop + (targetScrollTop - startScrollTop) * k;
+        if (t < 1) requestAnimationFrame(step);
+        else {
+          state.zoom = targetZoom;
+          render();
+          if (onComplete) onComplete();
+        }
+      };
+      requestAnimationFrame(step);
     }
 
     function zoomToCanvas(c) {
@@ -401,7 +444,7 @@
 
     function previewFrameNode(c) {
       const frame = document.createElement('div');
-      frame.className = 'canvas-frame active';
+      frame.className = 'canvas-frame';
       frame.dataset.canvasId = c.id;
 
       frame.style.left = c.workspaceX + 'px';
@@ -430,6 +473,8 @@
       canvas.style.borderTopLeftRadius = '0';
       canvas.style.borderTopRightRadius = '0';
       canvas.style.overflow = 'hidden';
+      // In full preview, show the ad as it would appear in the wild — no editor outline.
+      canvas.style.boxShadow = 'none';
 
       const iframe = document.createElement('iframe'); iframe.className = 'preview-iframe';
       iframe.style.width = '100%';
@@ -437,6 +482,7 @@
       iframe.style.border = 'none';
       iframe.style.position = 'absolute';
       iframe.style.inset = '0';
+      iframe.style.background = c.bgColor;
       iframe.scrolling = 'no';
       iframe.srcdoc = html;
 
@@ -590,10 +636,49 @@
       const guide = state.guides.find(g => g.id === guideId);
       const z = state.zoom || 1;
 
+      // Build snap targets in WORKSPACE coords (guides live in workspace space, not
+      // canvas-local). Vertical guides snap along x, horizontal along y.
+      const snapTargets = [];
+      const snapMaster = state.snapEnabled !== false;
+      if (snapMaster) {
+        state.canvases.forEach(c => {
+          if (state.snapToCanvas !== false) {
+            if (type === 'v') {
+              snapTargets.push(c.workspaceX, c.workspaceX + c.width / 2, c.workspaceX + c.width);
+            } else {
+              snapTargets.push(c.workspaceY, c.workspaceY + c.height / 2, c.workspaceY + c.height);
+            }
+          }
+          if (state.snapToElements !== false) {
+            c.elements.forEach(el => {
+              if (type === 'v') {
+                snapTargets.push(c.workspaceX + el.x, c.workspaceX + el.x + el.width / 2, c.workspaceX + el.x + el.width);
+              } else {
+                snapTargets.push(c.workspaceY + el.y, c.workspaceY + el.y + el.height / 2, c.workspaceY + el.y + el.height);
+              }
+            });
+          }
+        });
+        if (state.snapToGuides !== false) {
+          (state.guides || []).forEach(g => {
+            if (g.id === guideId) return;
+            if (g.type === type) snapTargets.push(g.pos);
+          });
+        }
+      }
+
       const onMove = (ev) => {
         const rect = workspaceEl.getBoundingClientRect();
-        if (type === 'h') guide.pos = (ev.clientY - rect.top) / z;
-        else guide.pos = (ev.clientX - rect.left) / z;
+        let pos = (type === 'h' ? (ev.clientY - rect.top) : (ev.clientX - rect.left)) / z;
+        if (!ev.ctrlKey && !ev.metaKey && snapTargets.length) {
+          let bestDelta = 5 / z, snapPos = null;
+          snapTargets.forEach(t => {
+            const d = Math.abs(pos - t);
+            if (d < bestDelta) { bestDelta = d; snapPos = t; }
+          });
+          if (snapPos !== null) pos = snapPos;
+        }
+        guide.pos = pos;
         render(true);
       };
       const onUp = (ev) => {
@@ -651,7 +736,9 @@
         iframe.style.height = '100%';
         iframe.style.border = 'none';
         iframe.style.display = 'block';
+        iframe.style.background = c.bgColor;
         canvas.appendChild(iframe);
+        if (state.showSafezones) canvas.appendChild(safezoneOverlay(c));
       } else {
         const canvasInner = document.createElement('div');
         canvasInner.className = 'canvas-inner';
@@ -676,6 +763,8 @@
           else if (el.frameId === state.activeFrameId) layerMid.appendChild(elementNode(el, c));
         });
         canvas.appendChild(canvasInner);
+
+        if (state.showSafezones) canvas.appendChild(safezoneOverlay(c));
 
         // selection overlay (only if this canvas is active and an element is selected)
         if (c.id === state.activeCanvasId) {
@@ -918,6 +1007,37 @@
       return frame;
     }
 
+    // Global zoom-accuracy notice for single preview mode. Re-evaluated on every render,
+    // so it appears whenever single preview is active and zoom !== 1, and disappears as
+    // soon as zoom returns to 100% (or the user exits single preview).
+    function updatePreviewZoomNotice() {
+      let notice = document.getElementById('preview-zoom-notice');
+      const show = !!state.singlePreviewId && (state.zoom || 1) !== 1;
+      if (!show) { if (notice) notice.remove(); return; }
+      if (notice) return; // already shown
+
+      notice = document.createElement('div');
+      notice.id = 'preview-zoom-notice';
+      notice.style.cssText = 'position:fixed; bottom:32px; left:50%; transform:translateX(-50%); padding:14px 22px; display:flex; align-items:center; gap:18px; font-size:14px; color:var(--accent-base); background:var(--bg-input); border:1px solid var(--accent-base); border-radius:8px; z-index:100; box-shadow:0 6px 28px rgba(0,0,0,0.45);';
+
+      const msg = document.createElement('span');
+      msg.innerText = "Preview isn't accurate unless zoom level is set to 100%";
+
+      const setBtn = document.createElement('button');
+      setBtn.innerText = 'Set';
+      setBtn.style.cssText = 'background:var(--accent-base); border:none; color:var(--text-bright); cursor:pointer; padding:6px 18px; border-radius:4px; font-size:13px; font-weight:600;';
+      setBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const c = state.canvases.find(x => x.id === state.singlePreviewId);
+        if (!c) return;
+        animateViewTo(1, c.workspaceX + c.width / 2, c.workspaceY + c.height / 2);
+      });
+
+      notice.appendChild(msg);
+      notice.appendChild(setBtn);
+      document.body.appendChild(notice);
+    }
+
     function elementNode(el, canvasCtx) {
       const d = document.createElement('div');
       d.className = 'el';
@@ -955,6 +1075,7 @@
           ed.style.letterSpacing = (el.letterSpacing || 0) + 'px';
           ed.style.textAlign = el.textAlign || 'left';
           ed.style.width = '100%';
+          ed.style.outline = 'none';
           ed.style.whiteSpace = 'pre-wrap';
           ed.style.wordBreak = 'break-word';
           ed.innerText = el.text;
@@ -998,15 +1119,19 @@
         d.style.justifyContent = alignMap[el.textAlign || 'center'];
         d.style.textAlign = el.textAlign || 'center';
         if (editing) {
-          const ed = document.createElement('div');
+          const ed = document.createElement('span');
           ed.className = 'editable';
           ed.contentEditable = 'true';
           applyColorToText(ed, el.color);
           ed.style.fontSize = el.fontSize + 'px';
           ed.style.fontFamily = el.fontFamily || 'Arial';
           ed.style.fontWeight = el.weight || '600';
-          ed.style.textAlign = el.textAlign || 'center';
-          ed.style.width = '100%';
+          ed.style.outline = 'none';
+          // override .editable defaults so we match the non-edit <span> layout —
+          // otherwise width:100% + word-break:break-word fragments the text mid-word.
+          ed.style.display = 'inline';
+          ed.style.width = 'auto';
+          ed.style.wordBreak = 'normal';
           ed.innerText = el.text;
           wireInlineEdit(ed, el, 'text');
           d.appendChild(ed);
@@ -1143,7 +1268,7 @@
         });
       }
 
-      ['nw', 'ne', 'sw', 'se'].forEach(corner => {
+      ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach(corner => {
         const h = document.createElement('div');
         h.className = 'handle ' + corner;
         h.addEventListener('mousedown', (e) => onMultiResizeMouseDown(e, elements, { x: minX, y: minY, w: maxX - minX, h: maxY - minY }, corner));
@@ -1153,6 +1278,28 @@
       rot.className = 'handle rot';
       rot.addEventListener('mousedown', (e) => onMultiRotateMouseDown(e, elements, { x: minX, y: minY, w: maxX - minX, h: maxY - minY }));
       w.appendChild(rot);
+      return w;
+    }
+
+    // Safezone overlay: a faint cyan rect inset from the canvas edges + a centerpoint
+    // crosshair. Inset is a percentage of the smaller canvas dimension. Skinny smaller
+    // banners (160×600, 728×90) get a slightly larger factor — at 5% they end up with
+    // barely-visible margins, but bumping them to 8% keeps the safezone readable without
+    // affecting larger formats like 970×250.
+    function safezoneOverlay(c) {
+      const w = document.createElement('div');
+      w.className = 'safezone-overlay';
+      const minDim = Math.min(c.width, c.height);
+      const aspect = Math.max(c.width, c.height) / minDim;
+      const factor = (minDim < 200 && aspect > 3) ? 0.08 : 0.05;
+      const inset = Math.max(4, Math.round(minDim * factor));
+      w.style.left = inset + 'px';
+      w.style.top = inset + 'px';
+      w.style.width = (c.width - inset * 2) + 'px';
+      w.style.height = (c.height - inset * 2) + 'px';
+      const cross = document.createElement('div');
+      cross.className = 'safezone-cross';
+      w.appendChild(cross);
       return w;
     }
 
@@ -1184,7 +1331,7 @@
       w.style.width = (el.width + 3) + 'px';
       w.style.height = (el.height + 3) + 'px';
       w.style.transform = `rotate(${el.rotation || 0}deg)`;
-      ['nw', 'ne', 'sw', 'se'].forEach(corner => {
+      ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach(corner => {
         const h = document.createElement('div');
         h.className = 'handle ' + corner;
         h.addEventListener('mousedown', (e) => onResizeMouseDown(e, el, corner));
@@ -1299,8 +1446,9 @@
 
       const snapTargetsX = [];
       const snapTargetsY = [];
+      const snapMaster = state.snapEnabled !== false;
 
-      if (state.snapToElements !== false) {
+      if (snapMaster && state.snapToElements !== false) {
         canvasCtx.elements.forEach(other => {
           if (targets.some(t => t.id === other.id)) return;
           snapTargetsX.push(other.x, other.x + other.width / 2, other.x + other.width);
@@ -1308,12 +1456,12 @@
         });
       }
 
-      if (state.snapToCanvas !== false) {
+      if (snapMaster && state.snapToCanvas !== false) {
         snapTargetsX.push(0, canvasCtx.width / 2, canvasCtx.width);
         snapTargetsY.push(0, canvasCtx.height / 2, canvasCtx.height);
       }
 
-      if (state.snapToGuides !== false && state.showRulers) {
+      if (snapMaster && state.snapToGuides !== false && state.showRulers) {
         (state.guides || []).forEach(g => {
           if (g.type === 'v') snapTargetsX.push(g.pos - canvasCtx.workspaceX);
           if (g.type === 'h') snapTargetsY.push(g.pos - canvasCtx.workspaceY);
@@ -1495,13 +1643,43 @@
       const onMove = (ev) => {
         const dx = (ev.clientX - startX) / z;
         const dy = (ev.clientY - startY) / z;
-        const ldx = dx * cos - dy * sin;
-        const ldy = dx * sin + dy * cos;
+        let ldx = dx * cos - dy * sin;
+        let ldy = dx * sin + dy * cos;
+
+        // Shift = lock aspect ratio. For corners, sync the smaller delta to the
+        // dominant one along the original aspect.
+        const aspect = o.h / o.w;
+        if (ev.shiftKey && ['nw', 'ne', 'sw', 'se'].includes(corner) && o.w > 0 && o.h > 0) {
+          const signSame = (corner === 'se' || corner === 'nw') ? 1 : -1;
+          if (Math.abs(ldx / o.w) > Math.abs(ldy / o.h)) {
+            ldy = signSame * ldx * aspect;
+          } else {
+            ldx = signSame * ldy / aspect;
+          }
+        }
 
         if (corner === 'se') { el.width = Math.max(10, o.w + ldx); el.height = Math.max(10, o.h + ldy); }
         if (corner === 'sw') { el.x = o.x + ldx; el.width = Math.max(10, o.w - ldx); el.height = Math.max(10, o.h + ldy); }
         if (corner === 'ne') { el.y = o.y + ldy; el.width = Math.max(10, o.w + ldx); el.height = Math.max(10, o.h - ldy); }
         if (corner === 'nw') { el.x = o.x + ldx; el.y = o.y + ldy; el.width = Math.max(10, o.w - ldx); el.height = Math.max(10, o.h - ldy); }
+        if (corner === 'n')  { el.y = o.y + ldy; el.height = Math.max(10, o.h - ldy); }
+        if (corner === 's')  { el.height = Math.max(10, o.h + ldy); }
+        if (corner === 'w')  { el.x = o.x + ldx; el.width = Math.max(10, o.w - ldx); }
+        if (corner === 'e')  { el.width = Math.max(10, o.w + ldx); }
+
+        // Shift on an edge handle: scale the perpendicular axis proportionally,
+        // anchored at the center of that axis so the box grows symmetrically.
+        if (ev.shiftKey && o.w > 0 && o.h > 0) {
+          if (corner === 'e' || corner === 'w') {
+            const newH = Math.max(10, el.width * aspect);
+            el.y = o.y + (o.h - newH) / 2;
+            el.height = newH;
+          } else if (corner === 'n' || corner === 's') {
+            const newW = Math.max(10, el.height / aspect);
+            el.x = o.x + (o.w - newW) / 2;
+            el.width = newW;
+          }
+        }
 
         if (el.type === 'button' && el.autoHug && Math.abs(ldx) > 2) {
           el.autoHug = false;
@@ -1538,14 +1716,40 @@
       const obb = { ...bb };
 
       const onMove = (ev) => {
-        const dx = (ev.clientX - startX) / z;
-        const dy = (ev.clientY - startY) / z;
+        let dx = (ev.clientX - startX) / z;
+        let dy = (ev.clientY - startY) / z;
         let nbb = { ...obb };
+
+        const aspect = obb.h / obb.w;
+        if (ev.shiftKey && ['nw', 'ne', 'sw', 'se'].includes(corner) && obb.w > 0 && obb.h > 0) {
+          const signSame = (corner === 'se' || corner === 'nw') ? 1 : -1;
+          if (Math.abs(dx / obb.w) > Math.abs(dy / obb.h)) {
+            dy = signSame * dx * aspect;
+          } else {
+            dx = signSame * dy / aspect;
+          }
+        }
 
         if (corner === 'se') { nbb.w = Math.max(10, obb.w + dx); nbb.h = Math.max(10, obb.h + dy); }
         if (corner === 'sw') { nbb.x = obb.x + dx; nbb.w = Math.max(10, obb.w - dx); nbb.h = Math.max(10, obb.h + dy); }
         if (corner === 'ne') { nbb.y = obb.y + dy; nbb.w = Math.max(10, obb.w + dx); nbb.h = Math.max(10, obb.h - dy); }
         if (corner === 'nw') { nbb.x = obb.x + dx; nbb.y = obb.y + dy; nbb.w = Math.max(10, obb.w - dx); nbb.h = Math.max(10, obb.h - dy); }
+        if (corner === 'n')  { nbb.y = obb.y + dy; nbb.h = Math.max(10, obb.h - dy); }
+        if (corner === 's')  { nbb.h = Math.max(10, obb.h + dy); }
+        if (corner === 'w')  { nbb.x = obb.x + dx; nbb.w = Math.max(10, obb.w - dx); }
+        if (corner === 'e')  { nbb.w = Math.max(10, obb.w + dx); }
+
+        if (ev.shiftKey && obb.w > 0 && obb.h > 0) {
+          if (corner === 'e' || corner === 'w') {
+            const newH = Math.max(10, nbb.w * aspect);
+            nbb.y = obb.y + (obb.h - newH) / 2;
+            nbb.h = newH;
+          } else if (corner === 'n' || corner === 's') {
+            const newW = Math.max(10, nbb.h / aspect);
+            nbb.x = obb.x + (obb.w - newW) / 2;
+            nbb.w = newW;
+          }
+        }
 
         const scaleX = nbb.w / obb.w;
         const scaleY = nbb.h / obb.h;
@@ -3413,7 +3617,7 @@ ${fontFaceRules.join('\n')}
   @keyframes eff-pan { 0% { translate: 0 0; } 100% { translate: var(--pan-x, 0px) var(--pan-y, 0px); } }
   @keyframes eff-zoom { 0% { scale: 1; } 100% { scale: var(--zoom-target, 1.5); } }
 
-  html, body { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; }
+  html, body { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; background: ${c.bgColor}; }
   #ad {
     width: ${c.width}px;
     height: ${c.height}px;
@@ -3484,10 +3688,31 @@ ${elsTop}
 </body>
 </html>`;
     }
+    function allCanvasesCenter() {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      state.canvases.forEach(c => {
+        if (c.workspaceX < minX) minX = c.workspaceX;
+        if (c.workspaceY < minY) minY = c.workspaceY;
+        if (c.workspaceX + c.width > maxX) maxX = c.workspaceX + c.width;
+        if (c.workspaceY + c.height > maxY) maxY = c.workspaceY + c.height;
+      });
+      return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+    }
+
     document.getElementById('zoom-level-display')?.addEventListener('click', () => {
-      state.zoom = 1;
+      if (state.canvases.length === 0) return;
+      const { x, y } = allCanvasesCenter();
+      animateViewTo(1, x, y);
+    });
+
+    document.getElementById('btn-toggle-safezones').addEventListener('click', (e) => {
+      state.showSafezones = !state.showSafezones;
+      e.currentTarget.classList.toggle('active', state.showSafezones);
       render();
-      setTimeout(centerWorkspace, 10);
+    });
+
+    document.getElementById('btn-ai-resize').addEventListener('click', () => {
+      openModal('Auto-resize', '<div style="padding:18px 6px; font-size:13px; line-height:1.5;">Milo and Roy are working hard to implement this highly anticipated feature.</div>', false);
     });
 
     document.getElementById('btn-preview').addEventListener('click', () => {
@@ -3495,11 +3720,19 @@ ${elsTop}
       const area = document.getElementById('canvas-area');
       state.prePreviewScrollLeft = area.scrollLeft;
       state.prePreviewScrollTop = area.scrollTop;
-      state.isPreviewMode = true;
       state.prePreviewZoom = state.zoom || 1;
-      state.zoom = 1;
-      render();
-      setTimeout(centerWorkspace, 10);
+      // Hide the side panels NOW (preview-active expands canvas-area to full viewport).
+      // animateViewTo captures area.clientWidth — if we don't expand first, it computes a
+      // target for the editor's narrower viewport and the canvases end up skewed left.
+      document.body.classList.add('preview-active');
+      const { x, y } = allCanvasesCenter();
+      // Animate the editor view first; only after we've arrived at the destination do we
+      // switch to preview mode and rebuild as iframes. This way the user sees a smooth
+      // zoom/pan instead of editor → blank → iframes-load → scroll.
+      animateViewTo(1, x, y, 350, () => {
+        state.isPreviewMode = true;
+        render();
+      });
     });
 
 // ============================================================================
@@ -3967,6 +4200,7 @@ ${elsTop}
 
     document.getElementById('menu-view-rulers').addEventListener('click', () => { state.showRulers = !state.showRulers; render(); });
     document.getElementById('menu-view-clear-guides').addEventListener('click', () => { state.guides = []; render(); });
+    document.getElementById('menu-view-snap-enabled').addEventListener('click', () => { state.snapEnabled = state.snapEnabled === false ? true : false; render(); });
 
     ['Elements', 'Canvas', 'Guides'].forEach(type => {
       const btn = document.getElementById(`menu-view-snap-${type.toLowerCase()}`);
@@ -4068,18 +4302,26 @@ ${elsTop}
 
     // Illustrator-style Ctrl+] / Ctrl+[
     // direction = +1 brings forward (toward array end / on top), -1 sends backward.
-    // Cannot cross the top/main/bottom layer-group boundary. Within the main group,
-    // non-active-frame elements are skipped (they aren't shown in the panel).
+    // NOTE: persistent:'top' and persistent:'bottom' elements can appear anywhere
+    // in the array (not necessarily at the edges), so they must be skipped
+    // transparently rather than treated as hard boundaries.
     function shiftLayerOrder(direction) {
       const c = getActiveCanvas();
       if (!c || !state.layerSelection || state.layerSelection.length === 0) return;
 
-      const isVisible = (el) =>
-        el.persistent === 'top' || el.persistent === 'bottom' || el.frameId === state.activeFrameId;
       const selSet = new Set(state.layerSelection);
 
-      // Process order: when bringing forward, start from the rightmost selected element
-      // so earlier swaps don't displace later ones (and vice versa for backward).
+      // Check whether two elements share the same "visible section" in the panel.
+      // Elements are in the same section when they have the same persistent tier
+      // AND (if that tier is false/mid) the same frameId.
+      const sameSection = (a, b) => {
+        if (a.persistent !== b.persistent) return false;
+        if (a.persistent === false && a.frameId !== b.frameId) return false;
+        return true;
+      };
+
+      // Process order: when bringing forward, start from the element highest in the
+      // array so earlier swaps don't displace later ones (and vice versa).
       const sortedIds = [...state.layerSelection].sort((a, b) => {
         const ia = c.elements.findIndex(e => e.id === a);
         const ib = c.elements.findIndex(e => e.id === b);
@@ -4092,15 +4334,28 @@ ${elsTop}
         if (idx === -1) continue;
         const el = c.elements[idx];
 
+        // Walk in `direction`, skipping:
+        //   - co-selected siblings (they move as one)
+        //   - elements from a DIFFERENT section (e.g. 'top'/'bottom' mixed in)
+        //   - elements from other frames within the same mid-tier
+        // Stop at the first element that IS in the same section (valid swap target).
         let j = idx + direction;
         let targetIdx = -1;
         while (j >= 0 && j < c.elements.length) {
           const cand = c.elements[j];
-          if (cand.persistent !== el.persistent) break; // hard boundary
-          if (selSet.has(cand.id)) { j += direction; continue; } // skip co-selected
-          if (isVisible(cand)) { targetIdx = j; break; }
-          j += direction; // skip hidden-from-panel siblings
+
+          // Skip co-selected siblings.
+          if (selSet.has(cand.id)) { j += direction; continue; }
+
+          // Skip elements that belong to a different section (e.g. 'top'/'bottom'
+          // interleaved among 'false' elements – they're invisible in this section).
+          if (!sameSection(el, cand)) { j += direction; continue; }
+
+          // Valid same-section candidate found.
+          targetIdx = j;
+          break;
         }
+
         if (targetIdx === -1) continue;
 
         const [removed] = c.elements.splice(idx, 1);
@@ -4115,6 +4370,7 @@ ${elsTop}
         render();
       }
     }
+
 
     document.addEventListener('contextmenu', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
@@ -4176,9 +4432,11 @@ ${elsTop}
         html += `<div class="ctx-item" id="ctx-add-rect">Add Rectangle</div>`;
         html += `<div class="ctx-item" id="ctx-add-btn">Add Button</div>`;
         html += `<div class="ctx-divider"></div>`;
+        html += `<div class="ctx-item" id="ctx-toggle-snap">${state.snapEnabled !== false ? '✓ ' : ''}Snapping</div>`;
         html += `<div class="ctx-item" id="ctx-toggle-rulers">${state.showRulers ? 'Hide' : 'Show'} Rulers & Guides</div>`;
         html += `<div class="ctx-item" id="ctx-clear-guides">Clear All Guides</div>`;
       } else {
+        html += `<div class="ctx-item" id="ctx-toggle-snap">${state.snapEnabled !== false ? '✓ ' : ''}Snapping</div>`;
         html += `<div class="ctx-item" id="ctx-toggle-rulers">${state.showRulers ? 'Hide' : 'Show'} Rulers & Guides</div>`;
         html += `<div class="ctx-item" id="ctx-clear-guides">Clear All Guides</div>`;
       }
@@ -4261,6 +4519,7 @@ ${elsTop}
       bind('ctx-add-text', () => addElement('text'));
       bind('ctx-add-rect', () => addElement('rect'));
       bind('ctx-add-btn', () => addElement('button'));
+      bind('ctx-toggle-snap', () => { state.snapEnabled = state.snapEnabled === false ? true : false; render(); });
       bind('ctx-toggle-rulers', () => { state.showRulers = !state.showRulers; render(); });
       bind('ctx-clear-guides', () => { state.guides = []; render(); });
     });

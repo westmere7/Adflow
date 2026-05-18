@@ -1000,8 +1000,7 @@ body.theme-hc {
 
     .canvas {
       position: relative;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-      border: 1px solid var(--bg-btn);
+      box-shadow: 0 0 0 1px var(--bg-btn), 0 4px 20px rgba(0, 0, 0, 0.4);
     }
 
     .canvas-frame.active .canvas {
@@ -1088,6 +1087,7 @@ body.theme-hc {
       position: absolute;
       border: calc(1.5px / var(--z, 1)) solid var(--accent-base);
       pointer-events: none;
+      z-index: 999999;
     }
 
     .handle {
@@ -1132,6 +1132,34 @@ body.theme-hc {
       cursor: se-resize;
     }
 
+    .handle.n {
+      top: calc(-5px / var(--z, 1));
+      left: 50%;
+      transform: translateX(-50%);
+      cursor: ns-resize;
+    }
+
+    .handle.s {
+      bottom: calc(-5px / var(--z, 1));
+      left: 50%;
+      transform: translateX(-50%);
+      cursor: ns-resize;
+    }
+
+    .handle.w {
+      top: 50%;
+      left: calc(-5px / var(--z, 1));
+      transform: translateY(-50%);
+      cursor: ew-resize;
+    }
+
+    .handle.e {
+      top: 50%;
+      right: calc(-5px / var(--z, 1));
+      transform: translateY(-50%);
+      cursor: ew-resize;
+    }
+
     .handle.rot {
       top: calc(-20px / var(--z, 1));
       left: 50%;
@@ -1143,6 +1171,13 @@ body.theme-hc {
     .handle.radius {
       border-radius: 50%;
       cursor: nwse-resize;
+    }
+
+    .handle.rot,
+    .handle.radius,
+    .selection-outline.group .handle.rot,
+    .selection-outline.group .handle.radius {
+      background: #06b6d4;
     }
 
     /* modal */
@@ -1366,13 +1401,13 @@ body.theme-hc {
     }
 
     .smart-guide.x {
-      width: 1px;
+      width: calc(1px / var(--z, 1));
       top: 0;
       bottom: 0;
     }
 
     .smart-guide.y {
-      height: 1px;
+      height: calc(1px / var(--z, 1));
       left: 0;
       right: 0;
     }
@@ -1500,3 +1535,109 @@ body.fullscreen-mode .topbar { display: none !important; }
 body.fullscreen-mode .workspace { grid-template-columns: 1fr !important; }
 body.fullscreen-mode .panel { display: none !important; }
 body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mode #ruler-corner, body.fullscreen-mode .guide-h, body.fullscreen-mode .guide-v { display: none !important; }
+
+    /* ---------- Automation panel ---------- */
+    .automation-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .automation-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--bg-input);
+      border: 1px solid #272c3a;
+      color: var(--text-main);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 500;
+      text-align: left;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .automation-btn:hover {
+      background: var(--bg-btn);
+    }
+
+    .automation-btn.active {
+      background: rgba(124, 92, 255, 0.15);
+      color: var(--accent-base);
+      border-color: var(--accent-base);
+    }
+
+    .automation-btn svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .automation-btn > span:first-of-type {
+      flex: 1;
+    }
+
+    .automation-btn.featured {
+      background: linear-gradient(135deg, rgba(124, 92, 255, 0.25), rgba(167, 139, 250, 0.12));
+      border-color: var(--accent-base);
+      color: var(--text-bright);
+      font-weight: 600;
+      box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.25), 0 4px 12px rgba(124, 92, 255, 0.18);
+    }
+
+    .automation-btn.featured:hover {
+      background: linear-gradient(135deg, rgba(124, 92, 255, 0.35), rgba(167, 139, 250, 0.2));
+    }
+
+    .automation-btn .badge-ai {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: var(--accent-base);
+      color: #fff;
+    }
+
+    /* ---------- Safezone overlay ---------- */
+    .safezone-overlay {
+      position: absolute;
+      pointer-events: none;
+      border: calc(1px / var(--z, 1)) solid #00ffff;
+      opacity: 0.45;
+      z-index: 49;
+    }
+
+    .safezone-cross {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: calc(14px / var(--z, 1));
+      height: calc(14px / var(--z, 1));
+      transform: translate(-50%, -50%);
+    }
+
+    .safezone-cross::before,
+    .safezone-cross::after {
+      content: '';
+      position: absolute;
+      background: #00ffff;
+    }
+
+    .safezone-cross::before {
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: calc(1px / var(--z, 1));
+      transform: translateY(-50%);
+    }
+
+    .safezone-cross::after {
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: calc(1px / var(--z, 1));
+      transform: translateX(-50%);
+    }
