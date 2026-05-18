@@ -713,16 +713,108 @@
           }
         }
 
-        // click empty canvas: make this canvas active, deselect element
+        // click empty canvas: make this canvas active, deselect element or start marquee selection
         canvas.addEventListener('mousedown', (e) => {
           if (isSpaceDown) return;
           if (e.target === canvas || e.target === canvasInner) {
             state.activeCanvasId = c.id;
-            state.selectedElementId = null;
-            state.editingElementId = null;
-            state.layerSelection = [];
-            if (state.isolatedGroupId) state.isolatedGroupId = null;
+            if (!e.shiftKey) {
+              state.selectedElementId = null;
+              state.editingElementId = null;
+              state.layerSelection = [];
+              if (state.isolatedGroupId) state.isolatedGroupId = null;
+            }
             render();
+
+            const newCanvasInner = document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas-inner`);
+            if (!newCanvasInner) return;
+            const newCanvas = newCanvasInner.parentElement;
+            const rect = newCanvas.getBoundingClientRect();
+            const z = state.zoom || 1;
+            const startX = (e.clientX - rect.left) / z;
+            const startY = (e.clientY - rect.top) / z;
+
+            const selBox = document.createElement('div');
+            selBox.style.position = 'absolute';
+            selBox.style.border = '1px solid #7c5cff';
+            selBox.style.backgroundColor = 'rgba(124, 92, 255, 0.1)';
+            selBox.style.pointerEvents = 'none';
+            selBox.style.zIndex = '999999';
+            selBox.style.left = startX + 'px';
+            selBox.style.top = startY + 'px';
+            selBox.style.width = '0px';
+            selBox.style.height = '0px';
+            newCanvasInner.appendChild(selBox);
+            
+            let isDraggingSelection = false;
+
+            const onMove = (ev) => {
+              isDraggingSelection = true;
+              const curX = (ev.clientX - rect.left) / z;
+              const curY = (ev.clientY - rect.top) / z;
+              
+              const x = Math.min(startX, curX);
+              const y = Math.min(startY, curY);
+              const w = Math.abs(curX - startX);
+              const h = Math.abs(curY - startY);
+              
+              selBox.style.left = x + 'px';
+              selBox.style.top = y + 'px';
+              selBox.style.width = w + 'px';
+              selBox.style.height = h + 'px';
+            };
+
+            const onUp = (ev) => {
+              window.removeEventListener('mousemove', onMove);
+              window.removeEventListener('mouseup', onUp);
+              selBox.remove();
+              
+              if (isDraggingSelection) {
+                const curX = (ev.clientX - rect.left) / z;
+                const curY = (ev.clientY - rect.top) / z;
+                
+                const rx = Math.min(startX, curX);
+                const ry = Math.min(startY, curY);
+                const rw = Math.abs(curX - startX);
+                const rh = Math.abs(curY - startY);
+                
+                const selectedIds = new Set();
+                c.elements.forEach(el => {
+                  if (el.hidden || el.locked) return;
+                  if (el.persistent === false && el.frameId !== state.activeFrameId) return;
+                  if (state.isolatedGroupId && el.groupId !== state.isolatedGroupId) return;
+                  
+                  const intersect = !(
+                    el.x > rx + rw || 
+                    el.x + el.width < rx || 
+                    el.y > ry + rh || 
+                    el.y + el.height < ry
+                  );
+                  
+                  if (intersect) {
+                    if (el.groupId && !state.isolatedGroupId) {
+                       c.elements.filter(x => x.groupId === el.groupId).forEach(x => selectedIds.add(x.id));
+                    } else {
+                       selectedIds.add(el.id);
+                    }
+                  }
+                });
+                
+                if (selectedIds.size > 0) {
+                  if (e.shiftKey) {
+                    selectedIds.forEach(id => {
+                       if (!state.layerSelection.includes(id)) state.layerSelection.push(id);
+                    });
+                  } else {
+                    state.layerSelection = Array.from(selectedIds);
+                  }
+                  state.selectedElementId = state.layerSelection[state.layerSelection.length - 1];
+                  render();
+                }
+              }
+            };
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
           }
         });
       } // <-- End of else block for normal element overlay logic
@@ -1203,6 +1295,7 @@
       if (targets.length === 0) return;
       const origPos = targets.map(t => ({ x: t.x, y: t.y }));
       let crossCanvasCtx = null;
+      let tempClones = null;
 
       const snapTargetsX = [];
       const snapTargetsY = [];
@@ -1229,6 +1322,22 @@
 
       const onMove = (ev) => {
         state.isDragging = true;
+
+        if (ev.altKey && !tempClones) {
+          tempClones = targets.map((t, i) => {
+            const copy = JSON.parse(JSON.stringify(t));
+            copy.id = uid() + '_temp';
+            copy.x = origPos[i].x;
+            copy.y = origPos[i].y;
+            copy.locked = true;
+            return copy;
+          });
+          canvasCtx.elements.push(...tempClones);
+        } else if (!ev.altKey && tempClones) {
+          canvasCtx.elements = canvasCtx.elements.filter(e => !tempClones.includes(e));
+          tempClones = null;
+        }
+
         let cvsId = null;
         const elsFromPoint = document.elementsFromPoint(ev.clientX, ev.clientY);
         const canvasNode = elsFromPoint.find(n => n.classList && n.classList.contains('canvas'));
@@ -1300,32 +1409,71 @@
         state.activeSmartGuides = { x: snapX, y: snapY };
         render(true);
       };
-      const onUp = () => {
+      const onUp = (ev) => {
         state.isDragging = false;
         window.removeEventListener('mousemove', onMove);
         window.removeEventListener('mouseup', onUp);
         state.activeSmartGuides = null;
         state.dropTargetCanvasId = null;
 
-        if (crossCanvasCtx && crossCanvasCtx.id !== canvasCtx.id) {
-          targets.forEach(t => {
-            canvasCtx.elements = canvasCtx.elements.filter(e => e.id !== t.id);
-            t.x = t.x + canvasCtx.workspaceX - crossCanvasCtx.workspaceX;
-            t.y = t.y + canvasCtx.workspaceY - crossCanvasCtx.workspaceY;
-            crossCanvasCtx.elements.push(t);
+        if (tempClones) {
+          canvasCtx.elements = canvasCtx.elements.filter(e => !tempClones.includes(e));
+          tempClones = null;
+        }
+
+        const moved = targets.some((t, i) => t.x !== origPos[i].x || t.y !== origPos[i].y);
+
+        if (ev.altKey && moved) {
+          const groupMap = {};
+          const copies = targets.map((t) => {
+            const copy = JSON.parse(JSON.stringify(t));
+            copy.id = uid();
+            if (copy.groupId) {
+              if (!groupMap[copy.groupId]) groupMap[copy.groupId] = uid();
+              copy.groupId = groupMap[copy.groupId];
+            }
+            return copy;
           });
-          state.activeCanvasId = crossCanvasCtx.id;
+
+          targets.forEach((t, i) => {
+            t.x = origPos[i].x;
+            t.y = origPos[i].y;
+          });
+
+          if (crossCanvasCtx && crossCanvasCtx.id !== canvasCtx.id) {
+            copies.forEach(c => {
+              c.x = c.x + canvasCtx.workspaceX - crossCanvasCtx.workspaceX;
+              c.y = c.y + canvasCtx.workspaceY - crossCanvasCtx.workspaceY;
+              crossCanvasCtx.elements.push(c);
+            });
+            state.activeCanvasId = crossCanvasCtx.id;
+          } else {
+            copies.forEach(c => insertAtGroupEnd(canvasCtx.elements, c));
+          }
+          state.layerSelection = copies.map(x => x.id);
+          state.selectedElementId = copies[copies.length - 1].id;
           pushHistory();
           render();
         } else {
-          const moved = targets.some((t, i) => t.x !== origPos[i].x || t.y !== origPos[i].y);
-          if (moved) {
+          if (crossCanvasCtx && crossCanvasCtx.id !== canvasCtx.id) {
+            targets.forEach(t => {
+              canvasCtx.elements = canvasCtx.elements.filter(e => e.id !== t.id);
+              t.x = t.x + canvasCtx.workspaceX - crossCanvasCtx.workspaceX;
+              t.y = t.y + canvasCtx.workspaceY - crossCanvasCtx.workspaceY;
+              crossCanvasCtx.elements.push(t);
+            });
+            state.activeCanvasId = crossCanvasCtx.id;
             pushHistory();
             render();
           } else {
-            const activeCanvas = document.querySelector(`.canvas-frame[data-canvas-id="${canvasCtx.id}"] .canvas`);
-            if (activeCanvas) {
-              activeCanvas.querySelectorAll('.smart-guide').forEach(n => n.remove());
+            if (moved) {
+              pushHistory();
+              render();
+            } else {
+              const activeCanvas = document.querySelector(`.canvas-frame[data-canvas-id="${canvasCtx.id}"] .canvas`);
+              if (activeCanvas) {
+                activeCanvas.querySelectorAll('.smart-guide').forEach(n => n.remove());
+              }
             }
           }
         }
@@ -2026,6 +2174,20 @@
       render();
     }
 
+    // Insert el at the top of its persistent group (and matching frame for mid).
+    // Preserves the array invariant that elements within a group stay contiguous,
+    // which is required for shiftLayerOrder / drag-drop / export to behave.
+    function insertAtGroupEnd(arr, el) {
+      for (let i = arr.length - 1; i >= 0; i--) {
+        const x = arr[i];
+        if (x.persistent === el.persistent && (el.persistent !== false || x.frameId === el.frameId)) {
+          arr.splice(i + 1, 0, el);
+          return;
+        }
+      }
+      arr.push(el);
+    }
+
     // ============================================================================
     // Properties panel
     // ============================================================================
@@ -2481,9 +2643,23 @@
         render(true);
       };
 
+      const clampNum = (inp, n) => {
+        if (Number.isNaN(n)) return n;
+        const min = inp.min !== '' ? Number(inp.min) : -Infinity;
+        const max = inp.max !== '' ? Number(inp.max) : Infinity;
+        return Math.min(max, Math.max(min, n));
+      };
+
       propsEl.querySelectorAll('input, select, textarea').forEach((inp) => {
         inp.addEventListener('input', () => {
           let val = inp.type === 'number' ? Number(inp.value) : (inp.type === 'checkbox' ? inp.checked : inp.value);
+          if (inp.type === 'number' && inp.value !== '') {
+            const clamped = clampNum(inp, val);
+            if (clamped !== val) {
+              val = clamped;
+              inp.value = clamped;
+            }
+          }
           if (inp.type === 'text' && (inp.dataset.k === 'color' || inp.dataset.k === 'bg')) {
             if (!val.startsWith('#') && val.length > 0 && !val.includes('gradient')) val = '#' + val;
           }
@@ -2504,7 +2680,7 @@
             e.preventDefault();
             const step = e.shiftKey ? 10 : 1;
             const delta = e.deltaY < 0 ? step : -step;
-            inp.value = Number(inp.value) + delta;
+            inp.value = clampNum(inp, Number(inp.value) + delta);
             updateProp(inp.dataset.k, Number(inp.value));
             clearTimeout(inp.wheelHistTimer);
             inp.wheelHistTimer = setTimeout(() => pushHistory(), 400);
@@ -2873,6 +3049,22 @@
         return;
       }
 
+      // Ctrl+Shift+G → ungroup ; Ctrl+G → group (hijacks browser Find Next)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.shiftKey) ungroupSelection();
+        else groupSelection();
+        return;
+      }
+
+      // Ctrl+] → bring forward, Ctrl+[ → send backward (Illustrator-style)
+      if ((e.ctrlKey || e.metaKey) && (e.key === ']' || e.key === '[')) {
+        e.preventDefault();
+        shiftLayerOrder(e.key === ']' ? 1 : -1);
+        return;
+      }
+
       const c = getActiveCanvas();
 
       // Copy
@@ -2916,7 +3108,7 @@
             newIds.push(copy.id);
             return copy;
           });
-          c.elements.push(...pasted);
+          pasted.forEach(p => insertAtGroupEnd(c.elements, p));
           state.layerSelection = newIds;
           state.selectedElementId = newIds.length === 1 ? newIds[0] : null;
           pushHistory();
@@ -3008,7 +3200,7 @@
             newIds.push(copy.id);
             return copy;
           });
-          c.elements.push(...duped);
+          duped.forEach(d => insertAtGroupEnd(c.elements, d));
           state.layerSelection = newIds;
           state.selectedElementId = newIds.length === 1 ? newIds[0] : null;
           pushHistory();
@@ -3151,10 +3343,13 @@
         frameData.push({ id: f.id, duration: f.duration || 2, transition: i === 0 ? 'none' : (f.transition || 'fade'), transitionDuration: f.transitionDuration || 0.5 });
       });
 
-      const btn = c.elements.find(e => e.type === 'button' && e.isClickArea);
-      const clickStyle = (btn && c.fullClickArea === false)
-        ? `position:absolute;left:${btn.x}px;top:${btn.y}px;width:${btn.width}px;height:${btn.height}px;`
-        : `position:absolute;inset:0;`;
+      let clickAreasHTML = '';
+      const clickBtns = c.elements.filter(e => e.type === 'button' && e.isClickArea);
+      if (c.fullClickArea === false && clickBtns.length > 0) {
+        clickAreasHTML = clickBtns.map(btn => `<a class="clickArea" href="javascript:void(0);" style="position:absolute;left:${btn.x}px;top:${btn.y}px;width:${btn.width}px;height:${btn.height}px;z-index:9999;display:block;"></a>`).join('\n    ');
+      } else {
+        clickAreasHTML = `<a class="clickArea" href="javascript:void(0);" style="position:absolute;inset:0;z-index:9999;display:block;"></a>`;
+      }
 
       // Only include @font-face rules for fonts actually used in this canvas
       const usedFonts = new Set(c.elements.map(e => e.fontFamily).filter(Boolean));
@@ -3205,7 +3400,7 @@ ${fontFaceRules.join('\n')}
     background: ${c.bgColor};
     font-family: Arial, Helvetica, sans-serif;
   }
-  #clickArea { cursor: pointer; background: transparent; }
+  .clickArea { cursor: pointer; background: transparent; }
 </style>
 </head>
 <body>
@@ -3219,7 +3414,7 @@ ${framesHTML}
     <div id="layer-top" style="position:absolute;inset:0;pointer-events:none;">
 ${elsTop}
     </div>
-    <a id="clickArea" href="javascript:void(0);" style="${clickStyle}z-index:9999;"></a>
+    ${clickAreasHTML}
   </div>
 
   <script type="text/javascript">
@@ -3257,8 +3452,10 @@ ${elsTop}
       if (frames.length > 1) {
         setTimeout(nextFrame, frames[0].duration * 1000);
       }
-      document.getElementById('clickArea').addEventListener('click', function () {
-        window.open(clickTag);
+      document.querySelectorAll('.clickArea').forEach(function(el) {
+        el.addEventListener('click', function () {
+          window.open(clickTag);
+        });
       });
     });
   <\/script>
@@ -3283,22 +3480,7 @@ ${elsTop}
       setTimeout(centerWorkspace, 10);
     });
 
-    document.getElementById('btn-summary').addEventListener('click', () => {
-      const tbody = state.canvases.map(c => {
-        const html = generateExportHTML(c);
-        const kb = (new Blob([html]).size / 1024).toFixed(2);
-        return `<tr><td style="padding:6px 0;border-bottom:1px solid #1f2330">${c.name}</td><td style="padding:6px 0;border-bottom:1px solid #1f2330">${c.width}&times;${c.height}</td><td style="padding:6px 0;border-bottom:1px solid #1f2330">${kb} KB</td></tr>`;
-      }).join('');
-      const body = `
-    <table class="shortcuts-table" style="width:100%; text-align:left; border-collapse:collapse;">
-      <thead><tr><th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Name</th><th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Size</th><th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Est. Weight</th></tr></thead>
-      <tbody>${tbody}</tbody>
-    </table>
-  `;
-      openModal('Asset Summary', body, false);
-    });
-
-    // ============================================================================
+// ============================================================================
     // Save / Load Project
     // ============================================================================
     async function saveProjectToZip() {
@@ -3722,9 +3904,12 @@ ${elsTop}
       <tr><td><b>Cut Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">X</span></td></tr>
       <tr><td><b>Paste Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">V</span></td></tr>
       <tr><td><b>Duplicate Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">D</span></td></tr>
+      <tr><td><b>Group Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">G</span></td></tr>
+      <tr><td><b>Ungroup Elements</b></td><td style="text-align: right;"><span class="kbd">⇧</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">G</span></td></tr>
       <tr><td><b>Undo</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
       <tr><td><b>Redo</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Y</span> or <span class="kbd">⇧</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
       <tr><td><b>Delete Elements</b></td><td style="text-align: right;"><span class="kbd">⌫</span> <span class="kbd">Del</span></td></tr>
+      <tr><td><b>Duplicate on Drag</b></td><td style="text-align: right;">Hold <span class="kbd">Alt</span> while dragging</td></tr>
       
       <tr><td><b>Nudge 1 Pixel</b></td><td style="text-align: right;"><span class="kbd">←</span> <span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">→</span></td></tr>
       <tr><td><b>Nudge 10 Pixels</b></td><td style="text-align: right;"><span class="kbd">⇧ Shift</span> + <span class="kbd">← ↑ ↓ →</span></td></tr>
@@ -3859,6 +4044,56 @@ ${elsTop}
       render();
     }
 
+    // Illustrator-style Ctrl+] / Ctrl+[
+    // direction = +1 brings forward (toward array end / on top), -1 sends backward.
+    // Cannot cross the top/main/bottom layer-group boundary. Within the main group,
+    // non-active-frame elements are skipped (they aren't shown in the panel).
+    function shiftLayerOrder(direction) {
+      const c = getActiveCanvas();
+      if (!c || !state.layerSelection || state.layerSelection.length === 0) return;
+
+      const isVisible = (el) =>
+        el.persistent === 'top' || el.persistent === 'bottom' || el.frameId === state.activeFrameId;
+      const selSet = new Set(state.layerSelection);
+
+      // Process order: when bringing forward, start from the rightmost selected element
+      // so earlier swaps don't displace later ones (and vice versa for backward).
+      const sortedIds = [...state.layerSelection].sort((a, b) => {
+        const ia = c.elements.findIndex(e => e.id === a);
+        const ib = c.elements.findIndex(e => e.id === b);
+        return direction > 0 ? ib - ia : ia - ib;
+      });
+
+      let moved = false;
+      for (const id of sortedIds) {
+        const idx = c.elements.findIndex(e => e.id === id);
+        if (idx === -1) continue;
+        const el = c.elements[idx];
+
+        let j = idx + direction;
+        let targetIdx = -1;
+        while (j >= 0 && j < c.elements.length) {
+          const cand = c.elements[j];
+          if (cand.persistent !== el.persistent) break; // hard boundary
+          if (selSet.has(cand.id)) { j += direction; continue; } // skip co-selected
+          if (isVisible(cand)) { targetIdx = j; break; }
+          j += direction; // skip hidden-from-panel siblings
+        }
+        if (targetIdx === -1) continue;
+
+        const [removed] = c.elements.splice(idx, 1);
+        const adj = idx < targetIdx ? targetIdx - 1 : targetIdx;
+        const insertAt = direction > 0 ? adj + 1 : adj;
+        c.elements.splice(insertAt, 0, removed);
+        moved = true;
+      }
+
+      if (moved) {
+        pushHistory();
+        render();
+      }
+    }
+
     document.addEventListener('contextmenu', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
       e.preventDefault();
@@ -3957,7 +4192,7 @@ ${elsTop}
               clones.push(clone);
             }
           });
-          c.elements.push(...clones);
+          clones.forEach(cl => insertAtGroupEnd(c.elements, cl));
           state.layerSelection = clones.map(x => x.id);
           state.selectedElementId = clones[clones.length - 1].id;
           pushHistory();

@@ -128,6 +128,9 @@ No setup needed — just visit **[adcooker.netlify.app](https://adcooker.netlify
 | `Delete` / `Backspace` | Delete selected element |
 | `Ctrl + D` | Duplicate selected element |
 | `Ctrl + G` | Group selected elements |
+| `Ctrl + Shift + G` | Ungroup selected elements |
+| `Ctrl + ]` | Bring layer forward |
+| `Ctrl + [` | Send layer backward |
 | `Escape` | Deselect / close menus |
 
 ---
