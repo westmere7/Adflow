@@ -121,17 +121,30 @@ No setup needed — just visit **[adcooker.netlify.app](https://adcooker.netlify
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl + S` | Save project |
-| `Ctrl + Z` | Undo |
-| `Ctrl + Y` | Redo |
+| `Ctrl + S` / `Cmd + S` | Save project |
+| `Ctrl + C` / `Cmd + C` | Copy selected elements |
+| `Ctrl + X` / `Cmd + X` | Cut selected elements |
+| `Ctrl + V` / `Cmd + V` | Paste copied elements |
+| `Ctrl + D` / `Cmd + D` | Duplicate selected element(s) |
+| `Ctrl + Z` / `Cmd + Z` | Undo |
+| `Ctrl + Y` / `Cmd + Shift + Z` | Redo |
 | `Space + Drag` | Pan the canvas |
-| `Delete` / `Backspace` | Delete selected element |
-| `Ctrl + D` | Duplicate selected element |
-| `Ctrl + G` | Group selected elements |
+| `Delete` / `Backspace` | Delete selected element(s) |
+| `Ctrl + G` / `Cmd + G` | Group selected elements |
 | `Ctrl + Shift + G` | Ungroup selected elements |
-| `Ctrl + ]` | Bring layer forward |
-| `Ctrl + [` | Send layer backward |
-| `Escape` | Deselect / close menus |
+| `Ctrl + ]` / `Cmd + ]` | Bring layer forward |
+| `Ctrl + [` / `Cmd + [` | Send layer backward |
+| `Alt + Resize Handle` | Scale font size proportionally (Text/Buttons) |
+| `Shift + Drag Element` | Constrain drag axis horizontally/vertically |
+| `Shift + Resize Corner` | Maintain aspect ratio while resizing |
+| `Ctrl + Resize Handle` | Snap resize dimensions to nearest 10px |
+| `Arrow Keys` | Nudge element by 1 pixel |
+| `Shift + Arrow Keys` | Nudge element by 10 pixels |
+| `Escape` | Deselect elements / exit modes / close menus |
+| `Tab` | Toggle Fullscreen Mode |
+| `Double-click Text` | Edit text inline |
+| `Double-click Group` | Isolate and select inside group |
+| `Right-click Canvas` | Open Context Menu |
 
 ---
 

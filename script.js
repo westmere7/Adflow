@@ -573,7 +573,7 @@
       document.getElementById('ruler-corner')?.remove();
       document.querySelectorAll('.guide-h, .guide-v').forEach(e => e.remove());
 
-      if (!state.showRulers) return;
+      if (!state.showRulers || state.isPreviewMode || state.singlePreviewId) return;
 
       const rh = document.createElement('canvas'); rh.id = 'ruler-h';
       const rv = document.createElement('canvas'); rv.id = 'ruler-v';
@@ -738,7 +738,6 @@
         iframe.style.display = 'block';
         iframe.style.background = c.bgColor;
         canvas.appendChild(iframe);
-        if (state.showSafezones) canvas.appendChild(safezoneOverlay(c));
       } else {
         const canvasInner = document.createElement('div');
         canvasInner.className = 'canvas-inner';
@@ -1636,7 +1635,7 @@
       e.preventDefault();
       const z = state.zoom || 1;
       const startX = e.clientX, startY = e.clientY;
-      const o = { x: el.x, y: el.y, w: el.width, h: el.height };
+      const o = { x: el.x, y: el.y, w: el.width, h: el.height, fs: el.fontSize };
       const rad = (el.rotation || 0) * Math.PI / 180;
       const cos = Math.cos(-rad), sin = Math.sin(-rad);
 
@@ -1683,6 +1682,14 @@
 
         if (el.type === 'button' && el.autoHug && Math.abs(ldx) > 2) {
           el.autoHug = false;
+        }
+
+        if (ev.altKey && (el.type === 'text' || el.type === 'button') && o.fs) {
+          const isHorizontalOnly = (corner === 'e' || corner === 'w');
+          const scale = isHorizontalOnly ? (el.width / o.w) : (el.height / o.h);
+          el.fontSize = Math.max(4, Math.round(o.fs * scale));
+        } else if ((el.type === 'text' || el.type === 'button') && o.fs) {
+          el.fontSize = o.fs;
         }
 
         if (ev.ctrlKey || ev.metaKey) {
@@ -4161,17 +4168,18 @@ ${elsTop}
       <tr><td><b>Duplicate Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">D</span></td></tr>
       <tr><td><b>Group Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">G</span></td></tr>
       <tr><td><b>Ungroup Elements</b></td><td style="text-align: right;"><span class="kbd">⇧</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">G</span></td></tr>
+      <tr><td><b>Bring Layer Forward</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">]</span></td></tr>
+      <tr><td><b>Send Layer Backward</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">[</span></td></tr>
       <tr><td><b>Undo</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
       <tr><td><b>Redo</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Y</span> or <span class="kbd">⇧</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
       <tr><td><b>Delete Elements</b></td><td style="text-align: right;"><span class="kbd">⌫</span> <span class="kbd">Del</span></td></tr>
-      <tr><td><b>Duplicate on Drag</b></td><td style="text-align: right;">Hold <span class="kbd">Alt</span> while dragging</td></tr>
-      
+      <tr><td><b>Scale Font Size</b></td><td style="text-align: right;">Hold <span class="kbd">Alt</span> + Resize handle</td></tr>
+      <tr><td><b>Constrain Drag / Aspect Ratio</b></td><td style="text-align: right;">Hold <span class="kbd">⇧ Shift</span> while dragging / resizing</td></tr>
+      <tr><td><b>Snap Resize to 10px</b></td><td style="text-align: right;">Hold <span class="kbd">⌘ / Ctrl</span> while resizing</td></tr>
       <tr><td><b>Nudge 1 Pixel</b></td><td style="text-align: right;"><span class="kbd">←</span> <span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">→</span></td></tr>
       <tr><td><b>Nudge 10 Pixels</b></td><td style="text-align: right;"><span class="kbd">⇧ Shift</span> + <span class="kbd">← ↑ ↓ →</span></td></tr>
-      <tr><td><b>Constrain Drag Axis</b></td><td style="text-align: right;">Hold <span class="kbd">⇧ Shift</span> while dragging</td></tr>
-      <tr><td><b>Snap Resize to 10px</b></td><td style="text-align: right;">Hold <span class="kbd">⌘ / Ctrl</span> while resizing</td></tr>
-      
       <tr><td><b>Pan Workspace</b></td><td style="text-align: right;">Hold <span class="kbd">Space</span> + Drag</td></tr>
+      <tr><td><b>Toggle Fullscreen</b></td><td style="text-align: right;"><span class="kbd">Tab</span></td></tr>
       <tr><td><b>Deselect / Exit Modes</b></td><td style="text-align: right;"><span class="kbd">Esc</span></td></tr>
       <tr><td><b>Context Menu</b></td><td style="text-align: right;">Right-click Canvas or Element</td></tr>
       <tr><td><b>Edit Text Inline</b></td><td style="text-align: right;">Double-click text element</td></tr>
