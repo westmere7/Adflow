@@ -96,7 +96,7 @@
       try { fId = state.activeFrameId || 1; } catch (e) { }
       const base = { id: uid(), x: 20, y: 20, width: 120, height: 40, animType: 'none', animDuration: 1.0, animDelay: 0.0, effectType: 'none', frameId: fId, persistent: false };
       switch (type) {
-        case 'text': return { ...base, type, text: 'Your headline', fontSize: 22, color: '#ffffff', weight: '700', fontFamily: 'Arial', width: 220, height: 32 };
+        case 'text': return { ...base, type, text: 'Your headline', fontSize: 22, color: '#ffffff', weight: '700', fontFamily: 'Arial', width: 220, height: 32, showBg: false, bgColor: '#7c5cff', padV: 4, bgTimeOffset: 0 };
         case 'rect': return { ...base, type, color: '#7c5cff', width: 120, height: 80, radius: 8 };
         case 'circle': return { ...base, type, color: '#22d3ee', width: 80, height: 80 };
         case 'button': return { ...base, type, text: 'Learn more', fontSize: 14, color: '#ffffff', bg: '#7c5cff', radius: 6, fontFamily: 'Arial', width: 130, height: 40, isClickArea: true };
@@ -1062,6 +1062,11 @@
         d.style.flexDirection = 'column';
         const vAlignMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
         d.style.justifyContent = vAlignMap[el.verticalAlign || 'top'];
+
+        const textWrapper = document.createElement('div');
+        textWrapper.style.width = '100%';
+        textWrapper.style.textAlign = el.textAlign || 'left';
+
         if (editing) {
           const ed = document.createElement('div');
           ed.className = 'editable';
@@ -1073,13 +1078,21 @@
           ed.style.lineHeight = el.lineHeight ? (String(el.lineHeight).includes('px') || String(el.lineHeight).includes('em') ? el.lineHeight : el.lineHeight + 'px') : '1.2';
           ed.style.letterSpacing = (el.letterSpacing || 0) + 'px';
           ed.style.textAlign = el.textAlign || 'left';
-          ed.style.width = '100%';
+          ed.style.width = 'auto';
+          ed.style.display = 'inline';
           ed.style.outline = 'none';
           ed.style.whiteSpace = 'pre-wrap';
           ed.style.wordBreak = 'break-word';
+          if (el.showBg) {
+             ed.style.backgroundColor = el.bgColor || '#000000';
+             ed.style.padding = `${el.padV || 0}px 0`;
+             ed.style.boxDecorationBreak = 'clone';
+             ed.style.webkitBoxDecorationBreak = 'clone';
+          }
           ed.innerText = el.text;
           wireInlineEdit(ed, el, 'text');
-          d.appendChild(ed);
+          textWrapper.appendChild(ed);
+          d.appendChild(textWrapper);
         } else {
           const span = document.createElement(el.htmlTag || 'span');
           span.innerText = el.text;
@@ -1090,10 +1103,18 @@
           span.style.lineHeight = el.lineHeight ? (String(el.lineHeight).includes('px') || String(el.lineHeight).includes('em') ? el.lineHeight : el.lineHeight + 'px') : '1.2';
           span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
           span.style.textAlign = el.textAlign || 'left';
-          span.style.width = '100%';
-          span.style.display = 'block';
+          span.style.width = 'auto';
+          span.style.display = 'inline';
           span.style.margin = '0';
-          d.appendChild(span);
+          span.style.wordBreak = 'break-word';
+          if (el.showBg) {
+             span.style.backgroundColor = el.bgColor || '#000000';
+             span.style.padding = `${el.padV || 0}px 0`;
+             span.style.boxDecorationBreak = 'clone';
+             span.style.webkitBoxDecorationBreak = 'clone';
+          }
+          textWrapper.appendChild(span);
+          d.appendChild(textWrapper);
         }
       } else if (el.type === 'rect') {
         d.classList.add('shape-rect');
@@ -2698,6 +2719,17 @@
             <div class="prop-row" style="margin:0"><label>Spacing</label><input type="number" data-k="letterSpacing" value="${el.letterSpacing !== undefined ? el.letterSpacing : 0}" /></div>
           </div>
         </div>`);
+
+        f.push(`<div class="prop-row" style="margin-top:12px; padding-top:12px; border-top:1px solid #272c3a;">
+          <div class="checkbox-row"><input type="checkbox" data-k="showBg" ${el.showBg ? 'checked' : ''}/><label style="font-weight:600;">Enable Text Background</label></div>
+        </div>`);
+        if (el.showBg) {
+          f.push(colOpac('bgColor', 'Background Color'));
+          f.push(`<div class="prop-row"><div class="prop-grid-2">${num('padV', 'Vertical Padding (px)', 4)}</div></div>`);
+          if (el.animType === 'typing' || el.animType === 'fade-typing') {
+            f.push(`<div class="prop-row" style="margin-top:4px;"><div class="prop-grid-2">${num('bgTimeOffset', 'BG Time Offset (s)', -0.1)}</div><div class="prop-empty" style="padding:4px 0 0;font-size:9.5px;">Negative = appears before text.</div></div>`);
+          }
+        }
       }
 
       if (el.type === 'text' || el.type === 'button') {
@@ -3513,14 +3545,28 @@
             const charDur = animType === 'fade-typing' ? 0.3 : 0.01;
             const baseDelay = el.animDelay || 0;
             const charDelay = totalDur / Math.max(1, chars.length);
+            const bgTimeOffset = el.bgTimeOffset !== undefined ? el.bgTimeOffset : -0.1;
             
             content = chars.map((c, i) => {
               if (c === '\n') return '<br/>';
-              const del = (Number(baseDelay) + i * charDelay).toFixed(3);
+              const delNum = Number(baseDelay) + i * charDelay;
+              const del = delNum.toFixed(3);
               const charContent = c === ' ' ? ' ' : esc(c);
-              const animStyle = isImageExport ? '' : `opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;`;
-              return `<span style="${animStyle}">${charContent}</span>`;
+              
+              if (el.showBg) {
+                const bgDel = Math.max(0, delNum + Number(bgTimeOffset)).toFixed(3);
+                const textAnim = isImageExport ? '' : `opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;`;
+                const bgAnim = isImageExport ? '' : `opacity:0; animation: anim-fade-in ${charDur}s linear ${bgDel}s both;`;
+                return `<span style="position:relative;"><span style="position:absolute;top:-${el.padV || 0}px;bottom:-${el.padV || 0}px;left:0;right:0;background-color:${el.bgColor || '#000'};z-index:-1;${bgAnim}"></span><span style="position:relative;${textAnim}">${charContent}</span></span>`;
+              } else {
+                const animStyle = isImageExport ? '' : `opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;`;
+                return `<span style="${animStyle}">${charContent}</span>`;
+              }
             }).join('');
+          } else {
+            if (el.showBg) {
+              content = `<span style="background-color:${el.bgColor || '#000'};padding:${el.padV || 0}px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone;">${content}</span>`;
+            }
           }
           const vAlignMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
           const jc = vAlignMap[el.verticalAlign || 'top'];
@@ -4173,6 +4219,7 @@ ${elsTop}
       <tr><td><b>Undo</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
       <tr><td><b>Redo</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Y</span> or <span class="kbd">⇧</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
       <tr><td><b>Delete Elements</b></td><td style="text-align: right;"><span class="kbd">⌫</span> <span class="kbd">Del</span></td></tr>
+      <tr><td><b>Duplicate on Drag</b></td><td style="text-align: right;">Hold <span class="kbd">Alt</span> while dragging</td></tr>
       <tr><td><b>Scale Font Size</b></td><td style="text-align: right;">Hold <span class="kbd">Alt</span> + Resize handle</td></tr>
       <tr><td><b>Constrain Drag / Aspect Ratio</b></td><td style="text-align: right;">Hold <span class="kbd">⇧ Shift</span> while dragging / resizing</td></tr>
       <tr><td><b>Snap Resize to 10px</b></td><td style="text-align: right;">Hold <span class="kbd">⌘ / Ctrl</span> while resizing</td></tr>

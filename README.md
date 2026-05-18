@@ -134,6 +134,7 @@ No setup needed — just visit **[adcooker.netlify.app](https://adcooker.netlify
 | `Ctrl + Shift + G` | Ungroup selected elements |
 | `Ctrl + ]` / `Cmd + ]` | Bring layer forward |
 | `Ctrl + [` / `Cmd + [` | Send layer backward |
+| `Alt + Drag Element` | Duplicate element on drag |
 | `Alt + Resize Handle` | Scale font size proportionally (Text/Buttons) |
 | `Shift + Drag Element` | Constrain drag axis horizontally/vertically |
 | `Shift + Resize Corner` | Maintain aspect ratio while resizing |
