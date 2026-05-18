@@ -3171,15 +3171,37 @@
       }
 
       // Arrow keys → nudge (1px, or 10px with Shift)
-      if (el && e.key.startsWith('Arrow')) {
-        const step = e.shiftKey ? 10 : 1;
-        if (e.key === 'ArrowLeft') el.x -= step;
-        if (e.key === 'ArrowRight') el.x += step;
-        if (e.key === 'ArrowUp') el.y -= step;
-        if (e.key === 'ArrowDown') el.y += step;
-        e.preventDefault();
-        render();
-        return;
+      if (e.key.startsWith('Arrow')) {
+        const toMove = [];
+        if (state.layerSelection && state.layerSelection.length > 0) {
+          toMove.push(...state.layerSelection);
+        } else if (el) {
+          toMove.push(el.id);
+        }
+
+        if (toMove.length > 0) {
+          const step = e.shiftKey ? 10 : 1;
+          let dx = 0, dy = 0;
+          if (e.key === 'ArrowLeft') dx = -step;
+          if (e.key === 'ArrowRight') dx = step;
+          if (e.key === 'ArrowUp') dy = -step;
+          if (e.key === 'ArrowDown') dy = step;
+          
+          if (dx !== 0 || dy !== 0) {
+            const c = getActiveCanvas();
+            if (c) {
+              c.elements.forEach(x => {
+                if (toMove.includes(x.id) && !x.locked) {
+                  x.x += dx;
+                  x.y += dy;
+                }
+              });
+              e.preventDefault();
+              render();
+            }
+            return;
+          }
+        }
       }
 
       // Cmd/Ctrl+D → duplicate selection
