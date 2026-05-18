@@ -2249,7 +2249,7 @@
       }
 
       const f = [];
-      const num = (key, label) => `<div class="prop-row"><label>${label}</label><input type="number" data-k="${key}" value="${el[key]}" /></div>`;
+      const num = (key, label, def = '') => `<div class="prop-row"><label>${label}</label><input type="number" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
       const txt = (key, label) => `<div class="prop-row"><label>${label}</label><input type="text" data-k="${key}" value="${(el[key] || '').replace(/"/g, '&quot;')}" /></div>`;
       const col = (key, label) => `
     <div class="prop-row">
@@ -2287,7 +2287,7 @@
       f.push(`<div class="prop-row"><div class="align-group" style="justify-content:space-between; width:100%;">${alignElHtml}</div></div>`);
       f.push(`<div class="prop-row"><div class="prop-grid-2">${num('x', 'X')}${num('y', 'Y')}</div></div>`);
       f.push(`<div class="prop-row"><div class="prop-grid-2">${num('width', 'W')}${num('height', 'H')}</div></div>`);
-      f.push(`<div class="prop-row"><div class="prop-grid-2">${num('rotation', 'Rotation')}</div></div>`);
+      f.push(`<div class="prop-row"><div class="prop-grid-2">${num('rotation', 'Rotation', 0)}</div></div>`);
 
       const FONT_OPTIONS = ['Arial', 'Helvetica Neue LT Pro', 'Museo', 'Times New Roman', 'Verdana', 'Tahoma'];
       const fontWeights = {
@@ -2301,7 +2301,7 @@
 
 
 
-        f.push(`<div class="prop-row"><div style="display:grid; grid-template-columns: 1fr 1.25fr; gap:6px;">
+        f.push(`<div class="prop-row"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
       <div class="prop-row" style="margin:0"><label>Font</label>
         <select data-k="fontFamily">
           ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
@@ -2312,13 +2312,18 @@
           ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${w === el.weight ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
         </select>
       </div>
+      <div class="prop-row" style="margin:0"><label>Size</label>
+        <input type="number" data-k="fontSize" value="${el.fontSize}" />
+      </div>
     </div></div>`);
 
         f.push(colOpac('color', 'Color'));
 
-        // Font Size row
-        f.push(`<div class="prop-row" id="prop-fontsize-row">
-          ${num('fontSize', 'Size (px)')}
+        f.push(`<div class="prop-row" id="prop-spacing-row">
+          <div class="prop-grid-2">
+            <div class="prop-row" style="margin:0"><label>Line Height</label><input type="number" step="0.1" data-k="lineHeight" value="${el.lineHeight || '1.2'}" /></div>
+            <div class="prop-row" style="margin:0"><label>Spacing</label><input type="number" data-k="letterSpacing" value="${el.letterSpacing !== undefined ? el.letterSpacing : 0}" /></div>
+          </div>
         </div>`);
       }
 
@@ -2347,7 +2352,7 @@
       if (el.type === 'circle') { f.push(colOpac('color', 'Fill')); }
       if (el.type === 'button') {
         f.push(txt('text', 'Label'));
-        f.push(`<div class="prop-row"><div style="display:grid; grid-template-columns: 1fr 1.25fr; gap:6px;">
+        f.push(`<div class="prop-row"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
       <div class="prop-row" style="margin:0"><label>Font</label>
         <select data-k="fontFamily">
           ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
@@ -2358,11 +2363,13 @@
           ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${w === el.weight ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
         </select>
       </div>
+      <div class="prop-row" style="margin:0"><label>Size</label>
+        <input type="number" data-k="fontSize" value="${el.fontSize}" />
+      </div>
     </div></div>`);
         f.push(colOpac('bg', 'Background'));
         f.push(col('color', 'Text color'));
         f.push(num('radius', 'Radius'));
-        f.push(num('fontSize', 'Font size'));
         f.push(num('paddingLR', 'Padding L/R'));
         f.push(`<div class="prop-row"><div class="checkbox-row"><input type="checkbox" data-k="autoHug" ${el.autoHug ? 'checked' : ''}/><label>Auto-hug text</label></div></div>`);
         f.push(`<div class="prop-row"><div class="checkbox-row"><input type="checkbox" data-k="isClickArea" ${el.isClickArea ? 'checked' : ''}/><label>Use as clickTag area</label></div></div>`);
