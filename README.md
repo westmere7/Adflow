@@ -146,6 +146,7 @@ No setup needed — just visit **[adcooker.netlify.app](https://adcooker.netlify
 | `Double-click Text` | Edit text inline |
 | `Double-click Group` | Isolate and select inside group |
 | `Right-click Canvas` | Open Context Menu |
+| `Right-click Workspace` | Workspace Settings (Snapping, Rulers, Guides) |
 
 ---
 

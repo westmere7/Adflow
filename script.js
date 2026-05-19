@@ -4868,8 +4868,71 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
       <tr><td><b>Context Menu</b></td><td style="text-align: right;">Right-click Canvas or Element</td></tr>
       <tr><td><b>Edit Text Inline</b></td><td style="text-align: right;">Double-click text element</td></tr>
       <tr><td><b>Select Inside Group</b></td><td style="text-align: right;">Double-click grouped element</td></tr>
+      <tr><td><b>Workspace Settings</b></td><td style="text-align: right;">Right-click empty workspace</td></tr>
     </table>`;
   openModal('Shortcuts', body, false);
+});
+
+document.getElementById('menu-help-documentation').addEventListener('click', () => {
+  const body = `
+      <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:70vh; overflow-y:auto; padding-right:16px;">
+        
+        <h2 style="color:#22d3ee; margin-top:0; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">1. Workspace & Canvases</h2>
+        <p>Ad Cooker operates on an infinite panning workspace. You can create multiple "Canvases" (individual ad sizes) within a single project.</p>
+        <ul style="padding-left:20px; color:var(--text-muted);">
+          <li style="margin-bottom:6px;"><b>Adding Canvases:</b> Click the <b>+</b> button in the left panel to add common ad sizes (300x250, 728x90, etc.) or input custom dimensions.</li>
+          <li style="margin-bottom:6px;"><b>Navigation:</b> Hold <span class="kbd">Space</span> and drag to pan around. Scroll your mouse wheel to zoom in and out. Press <span class="kbd">Tab</span> to toggle Fullscreen Mode.</li>
+          <li style="margin-bottom:6px;"><b>Selection:</b> Click a canvas to make it active. The right-hand Properties Panel will then display settings specific to that canvas (like Background Color or Export options).</li>
+        </ul>
+
+        <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">2. Elements & Properties</h2>
+        <p>Right-click any active canvas to open the Context Menu and add elements. Once added, click an element to select it and view its options in the right-hand Properties Panel.</p>
+        <ul style="padding-left:20px; color:var(--text-muted);">
+          <li style="margin-bottom:6px;"><b>Text:</b> Double-click to edit inline. You can adjust Font Family (including embedded RMIT fonts like Museo and Helvetica Neue), Weight, Size, Line Height, Letter Spacing, and alignment.</li>
+          <li style="margin-bottom:6px;"><b>Images & Shapes:</b> Add external SVG assets, rectangles, or circles. Images maintain their aspect ratio by default. Hold <span class="kbd">Shift</span> while resizing to force aspect ratio constraints.</li>
+          <li style="margin-bottom:6px;"><b>Buttons:</b> Specialized text elements with built-in padding and background colors, ideal for Call-to-Actions (CTAs).</li>
+          <li style="margin-bottom:6px;"><b>Color Picker:</b> Click any color swatch to open the native-feeling picker. It supports solid HEX values, a built-in Eyedropper tool, and dynamic linear gradients.</li>
+          <li style="margin-bottom:6px;"><b>Brand Elements:</b> Pre-configured, high-quality SVGs (like RMIT logos) or standard legal text that automatically bundle into the final export without bloating your project file.</li>
+        </ul>
+
+        <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">3. Layers & Grouping</h2>
+        <p>Manage the stacking order of your ad through the Layers Panel on the left.</p>
+        <ul style="padding-left:20px; color:var(--text-muted);">
+          <li style="margin-bottom:6px;"><b>Reordering:</b> Drag and drop layers, or use <span class="kbd">Ctrl</span>+<span class="kbd">[</span> and <span class="kbd">Ctrl</span>+<span class="kbd">]</span> to push them backward or forward.</li>
+          <li style="margin-bottom:6px;"><b>Grouping:</b> Select multiple elements by holding <span class="kbd">Shift</span> and clicking them, then press <span class="kbd">Ctrl</span>+<span class="kbd">G</span>. Groups can be animated as a single unit. Double-click a group to isolate it and edit its internal contents.</li>
+          <li style="margin-bottom:6px;"><b>Persistence:</b> By default, elements only exist on the specific "Frame" they were created on. In the Layer panel, click the "Frame" badge to toggle it to <b>Top</b> or <b>Bottom</b>. Persistent elements will remain visible across <i>all</i> frames. Use this for your background color (Bottom) or your logo/CTA (Top).</li>
+        </ul>
+
+        <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">4. Timeline & Animation</h2>
+        <p>Ad Cooker uses a frame-based timeline approach rather than complex keyframing.</p>
+        <ul style="padding-left:20px; color:var(--text-muted);">
+          <li style="margin-bottom:6px;"><b>Frames:</b> Use the top bar controls to add/remove frames. Set the <b>Duration (s)</b> for how long each frame stays on screen.</li>
+          <li style="margin-bottom:6px;"><b>Transitions:</b> Select a transition (e.g. Slide Up, Fade) for how the <i>entire frame</i> enters the screen.</li>
+          <li style="margin-bottom:6px;"><b>Element Animations:</b> In the Properties Panel, apply <b>Entrance</b> animations (like Pop-in or Swipe Left) to individual elements to make them stagger in.</li>
+          <li style="margin-bottom:6px;"><b>Continuous Effects:</b> Apply subtle, looping effects like Pan, Zoom, or Float. If you disable "Perform once", the pan/zoom will ping-pong back and forth indefinitely.</li>
+          <li style="margin-bottom:6px;"><b>Looping:</b> Check the "Loop" box in the top bar to make the ad restart endlessly.</li>
+        </ul>
+
+        <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">5. Alignment & Guides</h2>
+        <p>Keep your designs pixel-perfect.</p>
+        <ul style="padding-left:20px; color:var(--text-muted);">
+          <li style="margin-bottom:6px;"><b>Snapping:</b> Right-click the dark workspace background to enable Snapping. Elements will magnetically snap to canvas edges, centers, and other elements.</li>
+          <li style="margin-bottom:6px;"><b>Rulers & Guides:</b> Toggle Rulers from the workspace context menu. Hover over the ruler edges (top or left) and drag inward to pull out an alignment guide. Drag a guide back into the ruler to delete it.</li>
+          <li style="margin-bottom:6px;"><b>Nudging:</b> Use the <span class="kbd">Arrow Keys</span> to nudge selected elements by 1px. Hold <span class="kbd">Shift</span> to nudge by 10px.</li>
+        </ul>
+
+        <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">6. Exporting & Google Ads</h2>
+        <p>Ad Cooker generates Google Ads-compliant, pure HTML5/CSS/JS bundles.</p>
+        <ul style="padding-left:20px; color:var(--text-muted);">
+          <li style="margin-bottom:6px;"><b>ClickTags:</b> Define your global ClickTag URL in the left-side Project panel. You can also override it per-canvas.</li>
+          <li style="margin-bottom:6px;"><b>Previewing:</b> Click the purple <b>Preview</b> button in a canvas's properties to see exactly how the HTML will render in a browser iframe.</li>
+          <li style="margin-bottom:6px;"><b>Validation:</b> The left panel continuously validates your canvases. It will flag if your ClickTag is missing, if you have external/unsupported assets, or if the final zip exceeds the Google Ads 150KB limit.</li>
+          <li style="margin-bottom:6px;"><b>Downloading:</b> Click <b>Download ZIP</b> to get the final ad package. The exporter automatically minifies the code, bundles external SVGs, and disables animations on persistent background layers to save file size.</li>
+          <li style="margin-bottom:6px;"><b>Multi-Save:</b> From the top left "File" menu, click "Multi-Save to Folder" to automatically zip up <i>every</i> canvas in your project at once.</li>
+          <li style="margin-bottom:6px;"><b>PNG Fallbacks:</b> Click <b>Download PNG</b> to instantly generate a static snapshot of the current frame for use as a backup image.</li>
+        </ul>
+      </div>`;
+  openModal('Ad Cooker Documentation', body, false);
 });
 
 document.getElementById('menu-about').addEventListener('click', () => {
