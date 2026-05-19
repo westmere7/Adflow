@@ -1541,7 +1541,8 @@ body.theme-pride {
 
 
     @media (max-width: 1023px),
-    (max-height: 767px) {
+    (max-height: 767px),
+    (pointer: coarse) and (hover: none) {
       #size-overlay {
         display: flex;
       }
