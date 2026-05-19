@@ -205,6 +205,66 @@
     const canvasesListEl = document.getElementById('canvases-list');
 
     
+    // Runtime per-line BG measurement: reads the per-char spans inside `wrapper`,
+    // groups them by offsetTop into "lines", and inserts an absolute-positioned bg
+    // overlay per line with a staggered scaleX animation that tracks each line's
+    // share of the total typing duration. Used by both the editor's hover preview
+    // and the exported HTML (serialized via .toString() in the export template).
+    function setupTextLineBgs(wrapper) {
+      if (wrapper.dataset.bgInited) return;
+      wrapper.dataset.bgInited = '1';
+      var charSpans = Array.prototype.filter.call(wrapper.children, function (c) { return c.tagName === 'SPAN'; });
+      if (!charSpans.length) return;
+      var bgColor = wrapper.dataset.bgColor;
+      var lr = parseFloat(wrapper.dataset.bgPadL) || 0;
+      var tb = parseFloat(wrapper.dataset.bgPadV) || 0;
+      var cov = (parseFloat(wrapper.dataset.bgCov) || 100) / 100;
+      var baseDelay = parseFloat(wrapper.dataset.bgDelay) || 0;
+      var totalDuration = parseFloat(wrapper.dataset.bgDuration) || 1;
+      var totalChars = charSpans.length;
+      var lines = [];
+      var cur = null;
+      charSpans.forEach(function (s, i) {
+        var t = Math.round(s.offsetTop);
+        if (!cur || Math.abs(cur.top - t) > 1) {
+          cur = { top: t, spans: [], firstIdx: i, lastIdx: i };
+          lines.push(cur);
+        } else {
+          cur.lastIdx = i;
+        }
+        cur.spans.push(s);
+      });
+      lines.forEach(function (line) {
+        var first = line.spans[0];
+        var last = line.spans[line.spans.length - 1];
+        var lineLeft = first.offsetLeft;
+        var lineTop = first.offsetTop;
+        var lineWidth = (last.offsetLeft + last.offsetWidth) - lineLeft;
+        var lineHeight = first.offsetHeight;
+        var startFrac = line.firstIdx / totalChars;
+        var endFrac = (line.lastIdx + 1) / totalChars;
+        var lineDur = totalDuration * (endFrac - startFrac);
+        var lineDelay = baseDelay + totalDuration * startFrac;
+        var bg = document.createElement('div');
+        bg.className = 'line-bg-overlay';
+        bg.style.cssText = 'position:absolute;left:' + (lineLeft - lr) + 'px;top:' + (lineTop - tb) + 'px;width:' + ((lineWidth + 2 * lr) * cov) + 'px;height:' + (lineHeight + 2 * tb) + 'px;background:' + bgColor + ';transform-origin:left center;transform:scaleX(0);z-index:-1;pointer-events:none;animation:anim-bg-grow ' + lineDur + 's cubic-bezier(0.22,1,0.36,1) ' + lineDelay + 's both;';
+        wrapper.insertBefore(bg, wrapper.firstChild);
+      });
+    }
+
+    // #RRGGBB[AA] → "rgba(r,g,b,a)". Used by the text BG to bake bgOpacity into a single
+    // color so we can apply it via background-image: linear-gradient (the only way to get
+    // an animatable background-size with box-decoration-break: clone).
+    function hexToRgba(hex, alpha) {
+      let h = String(hex || '#000000').replace(/^#/, '');
+      if (h.length === 3) h = h.split('').map(c => c + c).join('');
+      if (h.length !== 6 && h.length !== 8) return `rgba(0,0,0,${alpha})`;
+      const r = parseInt(h.substr(0, 2), 16);
+      const g = parseInt(h.substr(2, 2), 16);
+      const b = parseInt(h.substr(4, 2), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
     function applyColorToText(node, colorVal) {
       if (!colorVal) return;
       if (colorVal.includes('gradient')) {
@@ -1081,6 +1141,16 @@
           wireInlineEdit(ed, el, 'text');
           d.appendChild(ed);
         } else {
+          // Multi-line static BG: inline span + `box-decoration-break: clone` and a
+          // linear-gradient background so each wrapped line gets its own background
+          // rectangle that hugs that line's content + padding. background-size
+          // encodes horizontal coverage. The animated path (when animateBg + a typing
+          // anim) takes over at hover-preview time via setupTextLineBgs(), which
+          // measures the laid-out lines and stages per-line overlays.
+          const textBlock = document.createElement('div');
+          textBlock.style.textAlign = el.textAlign || 'left';
+          textBlock.style.width = '100%';
+
           const span = document.createElement(el.htmlTag || 'span');
           span.innerText = el.text;
           applyColorToText(span, el.color);
@@ -1089,11 +1159,26 @@
           span.style.fontFamily = el.fontFamily || 'Arial';
           span.style.lineHeight = el.lineHeight ? (String(el.lineHeight).includes('px') || String(el.lineHeight).includes('em') ? el.lineHeight : el.lineHeight + 'px') : '1.2';
           span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
-          span.style.textAlign = el.textAlign || 'left';
-          span.style.width = '100%';
-          span.style.display = 'block';
-          span.style.margin = '0';
-          d.appendChild(span);
+          span.style.wordBreak = 'break-word';
+
+          if (el.hasBg) {
+            const lr = el.bgPadL !== undefined ? el.bgPadL : 8;
+            const tb = el.bgPadV !== undefined ? el.bgPadV : 4;
+            const cov = el.bgCoverage !== undefined ? el.bgCoverage : 100;
+            const opa = (el.bgOpacity !== undefined ? el.bgOpacity : 100) / 100;
+            const bgRgba = hexToRgba(el.bg || '#000000', opa);
+            span.style.display = 'inline';
+            span.style.backgroundImage = `linear-gradient(${bgRgba}, ${bgRgba})`;
+            span.style.backgroundRepeat = 'no-repeat';
+            span.style.backgroundPosition = 'left center';
+            span.style.backgroundSize = `${cov}% 100%`;
+            span.style.padding = `${tb}px ${lr}px`;
+            span.style.setProperty('box-decoration-break', 'clone');
+            span.style.setProperty('-webkit-box-decoration-break', 'clone');
+          }
+
+          textBlock.appendChild(span);
+          d.appendChild(textBlock);
         }
       } else if (el.type === 'rect') {
         d.classList.add('shape-rect');
@@ -2415,6 +2500,11 @@
         }
       }
 
+      // Hex-copy button helpers — used by every hex color input across the app.
+      const HEX_COPY_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      const hexCopyBtn = (k) => `<button class="hex-copy" data-target-k="${k}" title="Copy hex" tabindex="-1" style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:2px; color:var(--text-muted); display:flex; align-items:center;">${HEX_COPY_SVG}</button>`;
+      const hexInputBox = (key, value, inputId = '') => `<div style="position:relative; flex:1; min-width:0;"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />${hexCopyBtn(key)}</div>`;
+
       if (!el) {
         if (!c) { propsEl.innerHTML = '<div class="panel-section"><h3>Properties</h3><div class="prop-empty">No canvas.</div></div>'; return; }
         // show canvas properties when no element is selected
@@ -2432,8 +2522,7 @@
           <label>Background Color</label>
           <div style="display:flex; gap:6px; align-items:center;">
             <button class="cp-trigger" data-k="canvas-bg" id="c-bg-color" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(c.bgColor) || '#000'}"></button>
-            <input type="text" id="c-bg-color-hex" data-k="canvas-bg" value="${(c.bgColor || '').replace(/^#/, '')}"
-              style="flex:1; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />
+            ${hexInputBox('canvas-bg', c.bgColor, 'c-bg-color-hex')}
           </div>
         </div>
         <div class="prop-row" style="margin-top:4px;">
@@ -2629,19 +2718,19 @@
       <label>${label}</label>
       <div style="display:flex; gap:6px; align-items:center;">
         <button class="cp-trigger" data-k="${key}" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el[key]) || '#000'}"></button>
-        <input type="text" data-k="${key}" value="${(el[key] || '').replace(/^#/, '')}" style="flex:1; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />
+        ${hexInputBox(key, el[key])}
       </div>
     </div>`;
       const colOpac = (key, label) => `
-    <div class="prop-row" style="display:flex; gap:12px;">
-      <div style="flex:1;">
+    <div class="prop-row" style="display:flex; gap:10px;">
+      <div style="flex:1; min-width:0;">
         <label>${label}</label>
         <div style="display:flex; gap:6px; align-items:center;">
           <button class="cp-trigger" data-k="${key}" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el[key]) || '#000'}"></button>
-          <input type="text" data-k="${key}" value="${(el[key] || '').replace(/^#/, '')}" style="flex:1; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />
+          ${hexInputBox(key, el[key])}
         </div>
       </div>
-      <div style="width:60px;">
+      <div style="width:78px; flex-shrink:0;">
         <label>Opacity %</label>
         <input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
       </div>
@@ -2698,6 +2787,31 @@
             <div class="prop-row" style="margin:0"><label>Spacing</label><input type="number" data-k="letterSpacing" value="${el.letterSpacing !== undefined ? el.letterSpacing : 0}" /></div>
           </div>
         </div>`);
+
+        // Text background — checkbox toggles a sub-panel of color/opacity/padding/coverage.
+        f.push(`<div class="prop-row"><div class="checkbox-row"><input type="checkbox" data-k="hasBg" ${el.hasBg ? 'checked' : ''}/><label>Background</label></div></div>`);
+        if (el.hasBg) {
+          // BG color column shrunk so "Opacity %" label fits on one line without wrapping.
+          f.push(`<div class="prop-row" style="display:flex; gap:10px;">
+            <div style="flex:1; min-width:0;">
+              <label>BG Color</label>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <button class="cp-trigger" data-k="bg" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el.bg || '#000000') || '#000'}"></button>
+                ${hexInputBox('bg', el.bg || '#000000')}
+              </div>
+            </div>
+            <div style="width:78px; flex-shrink:0;">
+              <label>Opacity %</label>
+              <input type="number" data-k="bgOpacity" value="${el.bgOpacity !== undefined ? el.bgOpacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
+            </div>
+          </div>`);
+          // L/R pad, T/B pad, Coverage — three compact columns on a single row.
+          f.push(`<div class="prop-row" style="display:flex; gap:6px;">
+            <div style="flex:1; min-width:0;"><label>L/R Pad</label><input type="number" data-k="bgPadL" value="${el.bgPadL !== undefined ? el.bgPadL : 8}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+            <div style="flex:1; min-width:0;"><label>T/B Pad</label><input type="number" data-k="bgPadV" value="${el.bgPadV !== undefined ? el.bgPadV : 4}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+            <div style="flex:1; min-width:0;"><label>Cover %</label><input type="number" data-k="bgCoverage" value="${el.bgCoverage !== undefined ? el.bgCoverage : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+          </div>`);
+        }
       }
 
       if (el.type === 'text' || el.type === 'button') {
@@ -2779,10 +2893,21 @@
     ${animOptions.map(o => `<button class="align-btn anim-btn ${o.val === (el.animType || 'none') ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;">${o.label}</button>`).join('')}
   </div>`);
 
+      // Seconds inputs use step=0.1 so wheel-scroll and arrow keys nudge by 0.1.
+      const secNum = (key, label, def = '') => `<div class="prop-row"><label>${label}</label><input type="number" step="0.1" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
       f.push(`<div class="prop-row" style="margin-bottom:16px;"><div class="prop-grid-2">
-    ${num('animDuration', 'Duration (s)')}
-    ${num('animDelay', 'Delay (s)')}
+    ${secNum('animDuration', 'Duration (s)')}
+    ${secNum('animDelay', 'Delay (s)')}
   </div></div>`);
+
+      // Animate BG belongs with the animation timing controls, not the BG sub-panel —
+      // it modulates how the BG arrives, which is conceptually part of the entry anim.
+      if (el.type === 'text' && el.hasBg && (el.animType === 'typing' || el.animType === 'fade-typing')) {
+        f.push(`<div class="prop-row"><div class="checkbox-row"><input type="checkbox" data-k="animateBg" ${el.animateBg ? 'checked' : ''}/><label>Animate BG</label></div></div>`);
+        if (el.animateBg) {
+          f.push(`<div class="prop-row"><label>BG Offset (s)</label><input type="number" step="0.1" data-k="bgOffset" value="${el.bgOffset !== undefined ? el.bgOffset : 0}" /></div>`);
+        }
+      }
 
       f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>Continuous Effect</label></div>`);
       const effectOptions = [
@@ -2884,14 +3009,21 @@
         });
         inp.addEventListener('change', () => {
           pushHistory();
-          if (inp.dataset.k === 'fontFamily') renderProps();
+          if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg') renderProps();
         });
         if (inp.type === 'number') {
           inp.addEventListener('wheel', (e) => {
             e.preventDefault();
-            const step = e.shiftKey ? 10 : 1;
+            // Use the input's step attribute as the base nudge (1 if unset). Shift = 10×.
+            // Result is rounded to the step's decimal precision to avoid 0.30000000000004.
+            const stepAttr = parseFloat(inp.step);
+            const baseStep = (stepAttr && stepAttr > 0) ? stepAttr : 1;
+            const step = e.shiftKey ? baseStep * 10 : baseStep;
             const delta = e.deltaY < 0 ? step : -step;
-            inp.value = clampNum(inp, Number(inp.value) + delta);
+            const decimals = (String(inp.step).split('.')[1] || '').length;
+            const next = Number(inp.value) + delta;
+            const rounded = decimals ? parseFloat(next.toFixed(decimals)) : next;
+            inp.value = clampNum(inp, rounded);
             updateProp(inp.dataset.k, Number(inp.value));
             clearTimeout(inp.wheelHistTimer);
             inp.wheelHistTimer = setTimeout(() => pushHistory(), 400);
@@ -2907,6 +3039,24 @@
           const key = btn.dataset.k;
           let val = el[key];
           openColorPicker(btn, key, val);
+        });
+      });
+
+      propsEl.querySelectorAll('.hex-copy').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const k = btn.dataset.targetK;
+          const inp = btn.parentElement.querySelector(`input[data-k="${k}"]`);
+          if (!inp) return;
+          const raw = String(inp.value || '').trim();
+          const hex = (raw.startsWith('#') ? raw : '#' + raw).toUpperCase();
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(hex);
+          }
+          const original = btn.innerHTML;
+          btn.innerHTML = '<span style="font-size:11px; font-weight:700; color:var(--accent-base);">✓</span>';
+          setTimeout(() => { btn.innerHTML = original; }, 900);
         });
       });
 
@@ -2928,6 +3078,7 @@
                 const target = node.querySelector('.editable') || node.querySelector('span');
                 if (target && !target.dataset.origHtml) {
                   target.dataset.origHtml = target.innerHTML;
+                  target.dataset.origStyle = target.getAttribute('style') || '';
                   const chars = [...(nodeEl.text || '')];
                   const totalDur = nodeEl.animDuration || 1;
                   const charDur = val === 'fade-typing' ? 0.3 : 0.01;
@@ -2939,6 +3090,34 @@
                     const escC = c === ' ' ? ' ' : c.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                     return `<span style="opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;">${escC}</span>`;
                   }).join('');
+                  // Match the export behavior: when Animate BG is on, swap the static
+                  // box-decoration-break bg for runtime per-line overlays so the bg
+                  // arrival tracks each line's typing window.
+                  if (nodeEl.hasBg && nodeEl.animateBg) {
+                    const lr = nodeEl.bgPadL !== undefined ? nodeEl.bgPadL : 8;
+                    const tb = nodeEl.bgPadV !== undefined ? nodeEl.bgPadV : 4;
+                    const cov = nodeEl.bgCoverage !== undefined ? nodeEl.bgCoverage : 100;
+                    const opa = (nodeEl.bgOpacity !== undefined ? nodeEl.bgOpacity : 100) / 100;
+                    const bgRgba = hexToRgba(nodeEl.bg || '#000000', opa);
+                    const bgDelay = Number(baseDelay) + (Number(nodeEl.bgOffset) || 0);
+                    // Strip the static bg styling so overlays don't double up.
+                    target.style.backgroundImage = '';
+                    target.style.padding = '';
+                    target.style.boxDecorationBreak = '';
+                    target.style.removeProperty('-webkit-box-decoration-break');
+                    // Switch to a positioned inline-block so absolute overlays anchor here.
+                    target.style.display = 'inline-block';
+                    target.style.position = 'relative';
+                    target.style.isolation = 'isolate';
+                    target.style.maxWidth = '100%';
+                    target.dataset.bgColor = bgRgba;
+                    target.dataset.bgPadL = lr;
+                    target.dataset.bgPadV = tb;
+                    target.dataset.bgCov = cov;
+                    target.dataset.bgDelay = bgDelay;
+                    target.dataset.bgDuration = totalDur;
+                    requestAnimationFrame(() => setupTextLineBgs(target));
+                  }
                 }
               } else {
                 node.style.animation = `anim-${val} ${nodeEl.animDuration || 1}s ease-out 0s both`;
@@ -2954,9 +3133,14 @@
             if (node) {
               node.style.animation = '';
               const target = node.querySelector('.editable') || node.querySelector('span');
-              if (target && target.dataset.origHtml) {
+              if (target && target.dataset.origHtml !== undefined) {
                 target.innerHTML = target.dataset.origHtml;
-                delete target.dataset.origHtml;
+                // Restore the original style attribute wholesale so any overlays-related
+                // inline styles (display, position, isolation, padding strip, etc.) revert.
+                if (target.dataset.origStyle !== undefined) {
+                  target.setAttribute('style', target.dataset.origStyle);
+                }
+                ['origHtml', 'origStyle', 'bgInited', 'bgColor', 'bgPadL', 'bgPadV', 'bgCov', 'bgDelay', 'bgDuration', 'bgAnim'].forEach(k => delete target.dataset[k]);
               }
             }
           });
@@ -3523,9 +3707,42 @@
             }).join('');
           }
           const vAlignMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+          const hAlignMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
           const jc = vAlignMap[el.verticalAlign || 'top'];
+          const hjc = hAlignMap[el.textAlign || 'left'];
           const ta = el.textAlign || 'left';
-          return `    <div style="${wrapStyle}">${openDivs}<div style="display:flex;flex-direction:column;justify-content:${jc};width:100%;height:100%;"><div style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:1.2;font-family:${ff};text-align:${ta};width:100%;display:block;margin:0;word-break:break-word;">${content}</div></div>${closeDivs}</div>`;
+          // Multi-line BG strategies:
+          //   - Static (no anim, or non-typing entry anim, or animateBg=off): use
+          //     `box-decoration-break: clone` + linear-gradient bg so each line gets
+          //     its own background rectangle automatically.
+          //   - Animated typing + animateBg: render the wrapper without inline bg,
+          //     emit data-bg-* attrs, and let setupTextLineBgs() (in the runtime
+          //     script) measure post-layout and inject per-line overlays with
+          //     staggered animation timing so the bg arrival matches each line's
+          //     share of the typing duration.
+          let bgStyle = '';
+          let bgDataAttrs = '';
+          const useLineBgScript = el.hasBg && el.animateBg && !isImageExport && (animType === 'typing' || animType === 'fade-typing');
+          if (el.hasBg) {
+            const lr = el.bgPadL !== undefined ? el.bgPadL : 8;
+            const tb = el.bgPadV !== undefined ? el.bgPadV : 4;
+            const cov = el.bgCoverage !== undefined ? el.bgCoverage : 100;
+            const opa = (el.bgOpacity !== undefined ? el.bgOpacity : 100) / 100;
+            const bgRgba = hexToRgba(el.bg || '#000000', opa);
+            if (useLineBgScript) {
+              const dur = el.animDuration || 1;
+              const delay = (Number(el.animDelay) || 0) + (Number(el.bgOffset) || 0);
+              bgStyle = `display:inline-block;max-width:100%;position:relative;isolation:isolate;text-align:${ta};`;
+              bgDataAttrs = ` data-bg-anim="1" data-bg-color="${bgRgba}" data-bg-pad-l="${lr}" data-bg-pad-v="${tb}" data-bg-cov="${cov}" data-bg-delay="${delay}" data-bg-duration="${dur}"`;
+            } else {
+              bgStyle = `display:inline;background-image:linear-gradient(${bgRgba},${bgRgba});background-repeat:no-repeat;background-position:left center;background-size:${cov}% 100%;padding:${tb}px ${lr}px;box-decoration-break:clone;-webkit-box-decoration-break:clone;`;
+            }
+          }
+          const innerSpan = el.hasBg
+            ? `<span${bgDataAttrs} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:1.2;font-family:${ff};word-break:break-word;${bgStyle}">${content}</span>`
+            : `<span style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:1.2;font-family:${ff};word-break:break-word;">${content}</span>`;
+          const inner = `<div style="text-align:${ta};width:100%;">${innerSpan}</div>`;
+          return `    <div style="${wrapStyle}">${openDivs}<div style="display:flex;flex-direction:column;justify-content:${jc};width:100%;height:100%;">${inner}</div>${closeDivs}</div>`;
         }
         if (el.type === 'rect') {
           return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:${el.radius || 0}px;"></div>${closeDivs}</div>`;
@@ -3615,6 +3832,7 @@ ${fontFaceRules.join('\n')}
   @keyframes anim-pop-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
   @keyframes anim-typing { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
   @keyframes anim-fade-typing { 0% { -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 65%); -webkit-mask-size: 300% 100%; -webkit-mask-position: 100% 0; } 100% { -webkit-mask-position: 0 0; } }
+  @keyframes anim-bg-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
   @keyframes eff-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
   @keyframes eff-float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
   @keyframes eff-flash { 0%, 50%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
@@ -3681,6 +3899,8 @@ ${elsTop}
       setTimeout(nextFrame, frames[currentFrame].duration * 1000);
     }
     
+    ${setupTextLineBgs.toString()}
+
     window.addEventListener('load', function () {
       if (frames.length > 1) {
         setTimeout(nextFrame, frames[0].duration * 1000);
@@ -3689,6 +3909,10 @@ ${elsTop}
         el.addEventListener('click', function () {
           window.open(clickTag);
         });
+      });
+      // Per-line animated bg: wait one frame so fonts/layout settle before measuring.
+      requestAnimationFrame(function () {
+        document.querySelectorAll('[data-bg-anim]').forEach(setupTextLineBgs);
       });
     });
   <\/script>

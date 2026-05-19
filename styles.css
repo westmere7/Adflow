@@ -221,6 +221,11 @@ body.theme-hc {
       }
     }
 
+    @keyframes anim-bg-grow {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+
 
     @keyframes eff-pulse {
       0% {
