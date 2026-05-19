@@ -373,6 +373,7 @@
       setTick('menu-theme-navy', 'Navy', state.theme === 'navy');
       setTick('menu-theme-light', 'Light', state.theme === 'light');
       setTick('menu-theme-hc', 'High Contrast', state.theme === 'hc');
+      setTick('menu-theme-pride', '🏳️‍🌈 Pride', state.theme === 'pride');
       
       const isFs = document.body.classList.contains('fullscreen-mode');
       const isPreview = document.body.classList.contains('preview-active');
@@ -1481,7 +1482,7 @@
         panStartY = e.clientY;
         scrollStartX = canvasArea.scrollLeft;
         scrollStartY = canvasArea.scrollTop;
-        canvasArea.style.cursor = 'grabbing';
+        canvasArea.style.cursor = 'var(--cur-grabbing, grabbing)';
         e.stopPropagation();
         return;
       }
@@ -1989,7 +1990,7 @@
         panStartY = e.clientY;
         scrollStartX = canvasArea.scrollLeft;
         scrollStartY = canvasArea.scrollTop;
-        canvasArea.style.cursor = 'grabbing';
+        canvasArea.style.cursor = 'var(--cur-grabbing, grabbing)';
         e.stopPropagation();
         return;
       }
@@ -2014,7 +2015,7 @@
     window.addEventListener('mouseup', () => {
       if (isPanning) {
         isPanning = false;
-        canvasArea.style.cursor = isSpaceDown ? 'grab' : '';
+        canvasArea.style.cursor = isSpaceDown ? 'var(--cur-grab, grab)' : '';
       }
     });
 
@@ -3520,7 +3521,7 @@
         e.preventDefault();
         if (!isSpaceDown) {
           isSpaceDown = true;
-          if (!isPanning) canvasArea.style.cursor = 'grab';
+          if (!isPanning) canvasArea.style.cursor = 'var(--cur-grab, grab)';
           document.querySelectorAll('.preview-iframe').forEach(ifr => ifr.style.pointerEvents = 'none');
         }
         return;
@@ -4451,7 +4452,7 @@ ${elsTop}
       });
     });
 
-    ['default', 'rmit', 'ocean', 'navy', 'light', 'hc'].forEach(t => {
+    ['default', 'rmit', 'ocean', 'navy', 'light', 'hc', 'pride'].forEach(t => {
       document.getElementById(`menu-theme-${t}`)?.addEventListener('click', () => {
         state.theme = t;
         render();
