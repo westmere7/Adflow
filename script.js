@@ -5207,7 +5207,8 @@ document.addEventListener('contextmenu', (e) => {
     render(true);
 
     const inPreview = state.singlePreviewId === state.activeCanvasId;
-    html += `<div class="ctx-item highlight" id="ctx-canvas-preview">${inPreview ? 'Exit Preview' : 'Preview'}</div>`;
+    const previewSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="${inPreview ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+    html += `<div class="ctx-item highlight" id="ctx-canvas-preview" style="display:flex; align-items:center; gap:8px;">${previewSvg}${inPreview ? 'Exit Preview' : 'Preview'}</div>`;
     html += `<div class="ctx-divider"></div>`;
     const svgWrap = (svg, text) => `<div style="display:flex; align-items:center; gap:8px;">${svg}${text}</div>`;
     const brandSvg = `<svg viewBox="0 0 578.52 556.76" fill="currentColor" style="width:14px;height:14px;"><path d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg>`;
@@ -5249,16 +5250,21 @@ document.addEventListener('contextmenu', (e) => {
     html += `<div class="ctx-item" id="ctx-toggle-snap">${state.snapEnabled !== false ? '✓ ' : ''}Snapping</div>`;
     html += `<div class="ctx-item" id="ctx-toggle-rulers">${state.showRulers ? 'Hide' : 'Show'} Rulers & Guides</div>`;
     html += `<div class="ctx-item" id="ctx-clear-guides">Clear All Guides</div>`;
+    html += `<div class="ctx-divider"></div>`;
+    html += `<div class="ctx-item" id="ctx-open-settings">Settings…</div>`;
   } else {
     html += `<div class="ctx-item" id="ctx-toggle-snap">${state.snapEnabled !== false ? '✓ ' : ''}Snapping</div>`;
     html += `<div class="ctx-item" id="ctx-toggle-rulers">${state.showRulers ? 'Hide' : 'Show'} Rulers & Guides</div>`;
     html += `<div class="ctx-item" id="ctx-clear-guides">Clear All Guides</div>`;
+    html += `<div class="ctx-divider"></div>`;
+    html += `<div class="ctx-item" id="ctx-open-settings">Settings…</div>`;
   }
 
   menu.innerHTML = html;
   menu.style.display = 'flex';
 
-  const mw = 160, mh = menu.children.length * 28 + 10;
+  const mw = menu.offsetWidth;
+  const mh = menu.offsetHeight;
   let left = e.clientX, top = e.clientY;
   if (left + mw > window.innerWidth) left -= mw;
   if (top + mh > window.innerHeight) top -= mh;
@@ -5403,6 +5409,7 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-toggle-snap', () => { state.snapEnabled = state.snapEnabled === false ? true : false; render(); });
   bind('ctx-toggle-rulers', () => { state.showRulers = !state.showRulers; render(); });
   bind('ctx-clear-guides', () => { state.guides = []; render(); });
+  bind('ctx-open-settings', () => { if (typeof openSettings === 'function') openSettings(); });
 });
 
 document.addEventListener('mousedown', (e) => {
