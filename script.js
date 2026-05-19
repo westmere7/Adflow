@@ -3417,8 +3417,29 @@ document.getElementById('clicktag').addEventListener('change', () => pushHistory
 
 function addElement(type) {
   const c = getActiveCanvas(); if (!c) return;
-  const el = makeElement(type);
-  c.elements.push(el);
+  const isBg = type === 'background';
+  const el = makeElement(isBg ? 'rect' : type);
+  
+  if (isBg) {
+    el.customName = 'Background';
+    el.color = '#000054';
+    el.x = 0;
+    el.y = 0;
+    el.width = c.width;
+    el.height = c.height;
+    el.radius = 0;
+    el.locked = true;
+    
+    const firstFrameIdx = c.elements.findIndex(e => e.persistent === false && e.frameId === state.activeFrameId);
+    if (firstFrameIdx === -1) {
+      c.elements.unshift(el);
+    } else {
+      c.elements.splice(firstFrameIdx, 0, el);
+    }
+  } else {
+    c.elements.push(el);
+  }
+  
   state.selectedElementId = el.id;
   state.layerSelection = [el.id];
   state.editingElementId = null;
