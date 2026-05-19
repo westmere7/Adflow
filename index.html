@@ -164,10 +164,15 @@
                   <circle cx="12" cy="12" r="8" />
                 </svg>Circle
               </button>
-              <button class="add-btn" data-add="button" style="grid-column: span 2">
+              <button class="add-btn" data-add="button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="8" width="18" height="8" rx="4" />
-                </svg>Button (click area)
+                </svg>Button
+              </button>
+              <button class="add-btn" data-add="pixel">
+                <svg viewBox="0 0 578.52 556.76" fill="currentColor" style="width: 16px; height: 16px;">
+                  <path d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/>
+                </svg>RMIT Pixel
               </button>
             </div>
           </div>
@@ -225,8 +230,11 @@
     </div>
     <div class="cp-body">
       <div id="cp-iro-container" style="display:flex; justify-content:center; margin-bottom:12px;"></div>
-      <div class="cp-row">
-        <input type="text" id="cp-hex-input" class="cp-input" />
+      <div class="cp-row" style="position:relative;">
+        <input type="text" id="cp-hex-input" class="cp-input" onclick="this.select()" style="padding-right:24px; text-transform:uppercase;" />
+        <button id="cp-copy-hex" title="Copy hex" tabindex="-1" style="position:absolute; right:32px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:2px; color:var(--text-muted); display:flex; align-items:center;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
         <button id="cp-eyedropper" class="cp-btn" title="Pick color from screen">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 2L11 13" />
@@ -240,12 +248,28 @@
           <label style="font-size:10px; color:var(--text-label); width: 40px;">Angle</label>
           <input type="number" id="cp-grad-angle" class="cp-input" value="90" style="flex:1" />
         </div>
+        <div class="cp-row" style="margin-top:8px;">
+          <label style="font-size:10px; color:var(--text-label); width: 40px;">Balance</label>
+          <input type="range" id="cp-grad-midpoint" class="cp-input" min="0" max="100" value="50" style="flex:1" />
+        </div>
         <div class="cp-row" style="margin-top:8px; justify-content:space-between; gap: 8px;">
-          <div class="cp-grad-stop-container active" id="cp-stop-1-container">
-            <button id="cp-grad-stop-1" class="cp-color-btn" style="background: #7c5cff;"></button>
+          <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
+            <div class="cp-grad-stop-container active" id="cp-stop-1-container">
+              <button id="cp-grad-stop-1" class="cp-color-btn" style="background: #7c5cff;"></button>
+            </div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
+              <label style="font-size:10px; color:var(--text-muted);">Opac.</label>
+              <input type="number" id="cp-grad-op-1" class="cp-input" value="100" min="0" max="100" style="flex:1" />
+            </div>
           </div>
-          <div class="cp-grad-stop-container" id="cp-stop-2-container">
-            <button id="cp-grad-stop-2" class="cp-color-btn" style="background: #2a1f55;"></button>
+          <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
+            <div class="cp-grad-stop-container" id="cp-stop-2-container">
+              <button id="cp-grad-stop-2" class="cp-color-btn" style="background: #2a1f55;"></button>
+            </div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
+              <label style="font-size:10px; color:var(--text-muted);">Opac.</label>
+              <input type="number" id="cp-grad-op-2" class="cp-input" value="100" min="0" max="100" style="flex:1" />
+            </div>
           </div>
         </div>
       </div>

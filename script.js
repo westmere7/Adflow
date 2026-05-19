@@ -99,6 +99,7 @@
         case 'text': return { ...base, type, text: 'Your headline', fontSize: 22, color: '#ffffff', weight: '700', fontFamily: 'Arial', width: 220, height: 32 };
         case 'rect': return { ...base, type, color: '#7c5cff', width: 120, height: 80, radius: 8 };
         case 'circle': return { ...base, type, color: '#22d3ee', width: 80, height: 80 };
+        case 'pixel': return { ...base, type, color: '#e61e2a', width: 100, height: 100 };
         case 'button': return { ...base, type, text: 'Learn more', fontSize: 14, color: '#ffffff', bg: '#7c5cff', radius: 6, fontFamily: 'Arial', width: 130, height: 40, isClickArea: true };
         case 'image': return { ...base, type, assetId: null, width: 140, height: 90 };
       }
@@ -264,6 +265,40 @@
       const g = parseInt(h.substr(2, 2), 16);
       const b = parseInt(h.substr(4, 2), 16);
       return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    // Stroke for rect/circle/button. Drawn as an SVG overlay sized to the element box.
+    // Path is inset by stroke-width/2 so the stroke sits fully inside the element bounds
+    // (SVG strokes paint centered on the path by default). Returns either an SVGElement
+    // (for editor DOM) or an HTML string (for the exported markup).
+    function strokeOverlayHTML(el) {
+      const sw = el.strokeWidth !== undefined ? el.strokeWidth : 0;
+      if (sw <= 0) return '';
+      const W = el.width;
+      const H = el.height;
+      const opa = (el.strokeOpacity !== undefined ? el.strokeOpacity : 100) / 100;
+      const color = hexToRgba(el.strokeColor || '#ffffff', opa);
+      const dash = Number(el.strokeDash) || 0;
+      const gap = Number(el.strokeGap) || 0;
+      const dashAttr = (dash > 0 && gap > 0) ? ` stroke-dasharray="${dash},${gap}"` : '';
+      let shape;
+      if (el.type === 'circle') {
+        shape = `<ellipse cx="${W / 2}" cy="${H / 2}" rx="${Math.max(0, W / 2 - sw / 2)}" ry="${Math.max(0, H / 2 - sw / 2)}" fill="none" stroke="${color}" stroke-width="${sw}"${dashAttr} />`;
+      } else if (el.type === 'pixel') {
+        return `<svg width="${W}" height="${H}" viewBox="0 0 578.52 556.76" preserveAspectRatio="none" style="position:absolute;inset:0;pointer-events:none;overflow:visible;"><path d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0" fill="none" stroke="${color}" stroke-width="${sw}"${dashAttr} vector-effect="non-scaling-stroke"/></svg>`;
+      } else {
+        const r = Math.max(0, (el.radius || 0) - sw / 2);
+        shape = `<rect x="${sw / 2}" y="${sw / 2}" width="${Math.max(0, W - sw)}" height="${Math.max(0, H - sw)}" rx="${r}" ry="${r}" fill="none" stroke="${color}" stroke-width="${sw}"${dashAttr} />`;
+      }
+      return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="position:absolute;inset:0;pointer-events:none;overflow:visible;">${shape}</svg>`;
+    }
+
+    function strokeOverlayNode(el) {
+      const html = strokeOverlayHTML(el);
+      if (!html) return null;
+      const wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      return wrap.firstChild;
     }
 
     function applyColorToText(node, colorVal) {
@@ -1097,7 +1132,14 @@
       d.style.width = el.width + 'px';
       d.style.height = el.height + 'px';
       d.style.transform = `rotate(${el.rotation || 0}deg)`;
-      d.style.opacity = el.opacity !== undefined ? el.opacity / 100 : 1;
+      // For shapes (rect/circle) and buttons, `opacity` is a *fill* opacity and gets
+      // baked into a dedicated fill layer below — so the wrapper stays at full opacity
+      // and stroke/text aren't dragged down with it. Other element types use the
+      // wrapper-level opacity as a general dim.
+      const isFillTypeWithStroke = el.type === 'rect' || el.type === 'circle' || el.type === 'button';
+      if (!isFillTypeWithStroke) {
+        d.style.opacity = el.opacity !== undefined ? el.opacity / 100 : 1;
+      }
       if (state.isDragging && state.layerSelection && state.layerSelection.includes(el.id)) {
         d.style.zIndex = '99999';
       }
@@ -1176,15 +1218,31 @@
         }
       } else if (el.type === 'rect') {
         d.classList.add('shape-rect');
-        d.style.background = el.color;
         d.style.borderRadius = (el.radius || 0) + 'px';
+        const fill = document.createElement('div');
+        fill.style.cssText = `position:absolute;inset:0;background:${el.color};border-radius:${el.radius || 0}px;opacity:${(el.opacity !== undefined ? el.opacity : 100) / 100};pointer-events:none;`;
+        d.appendChild(fill);
+        const stroke = strokeOverlayNode(el);
+        if (stroke) d.appendChild(stroke);
       } else if (el.type === 'circle') {
         d.classList.add('shape-circle');
-        d.style.background = el.color;
         d.style.borderRadius = '50%';
+        const fill = document.createElement('div');
+        fill.style.cssText = `position:absolute;inset:0;background:${el.color};border-radius:50%;opacity:${(el.opacity !== undefined ? el.opacity : 100) / 100};pointer-events:none;`;
+        d.appendChild(fill);
+        const stroke = strokeOverlayNode(el);
+        if (stroke) d.appendChild(stroke);
+      } else if (el.type === 'pixel') {
+        d.classList.add('shape-pixel');
+        const fillOpacity = (el.opacity !== undefined ? el.opacity : 100) / 100;
+        const fill = document.createElement('div');
+        fill.style.cssText = `position:absolute;inset:0;opacity:${fillOpacity};pointer-events:none;`;
+        fill.innerHTML = `<svg viewBox="0 0 578.52 556.76" width="100%" height="100%" preserveAspectRatio="none"><path fill="${el.color}" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg>`;
+        d.appendChild(fill);
+        const stroke = strokeOverlayNode(el);
+        if (stroke) d.appendChild(stroke);
       } else if (el.type === 'button') {
         d.classList.add('button');
-        d.style.background = el.bg;
         d.style.color = el.color;
         d.style.fontSize = el.fontSize + 'px';
         d.style.fontFamily = el.fontFamily || 'Arial';
@@ -1196,6 +1254,11 @@
         const alignMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
         d.style.justifyContent = alignMap[el.textAlign || 'center'];
         d.style.textAlign = el.textAlign || 'center';
+        // Fill goes on a dedicated absolute layer so its opacity is independent of
+        // the text and the stroke overlay.
+        const fill = document.createElement('div');
+        fill.style.cssText = `position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${(el.opacity !== undefined ? el.opacity : 100) / 100};pointer-events:none;`;
+        d.appendChild(fill);
         if (editing) {
           const ed = document.createElement('span');
           ed.className = 'editable';
@@ -1210,6 +1273,9 @@
           ed.style.display = 'inline';
           ed.style.width = 'auto';
           ed.style.wordBreak = 'normal';
+          // position:relative makes the text stack above the absolute fill child,
+          // since positioned elements paint after non-positioned ones by default.
+          ed.style.position = 'relative';
           ed.innerText = el.text;
           wireInlineEdit(ed, el, 'text');
           d.appendChild(ed);
@@ -1218,8 +1284,11 @@
           span.innerText = el.text;
           applyColorToText(span, el.color);
           span.style.fontWeight = el.weight || '600';
+          span.style.position = 'relative';
           d.appendChild(span);
         }
+        const stroke = strokeOverlayNode(el);
+        if (stroke) d.appendChild(stroke);
       } else if (el.type === 'image') {
         d.classList.add('image');
         if (el.assetId && state.assets[el.assetId]) {
@@ -2441,18 +2510,36 @@
       if (type === 'image') return '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.5-3.5L11 18"/>';
       if (type === 'rect') return '<rect x="4" y="4" width="16" height="16" rx="2"/>';
       if (type === 'circle') return '<circle cx="12" cy="12" r="8"/>';
+      if (type === 'pixel') return '<g transform="scale(0.041)"><path d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0" fill="currentColor"/></g>';
       if (type === 'button') return '<rect x="3" y="8" width="18" height="8" rx="4"/>';
       return '';
     }
 
-    function layerLabel(el) {
+    function baseLayerLabel(el) {
       if (el.customName) return el.customName;
       if (el.type === 'text') return (el.text || 'Text').slice(0, 28) || 'Text';
       if (el.type === 'button') return 'Button · ' + ((el.text || '').slice(0, 20));
       if (el.type === 'image') return 'Image';
       if (el.type === 'rect') return 'Rectangle';
       if (el.type === 'circle') return 'Circle';
+      if (el.type === 'pixel') return 'RMIT Pixel';
       return el.type;
+    }
+
+    function layerLabel(el) {
+      const base = baseLayerLabel(el);
+      const canvas = getActiveCanvas();
+      if (!canvas) return base;
+
+      let count = 1;
+      for (let i = 0; i < canvas.elements.length; i++) {
+        const otherEl = canvas.elements[i];
+        if (otherEl.id === el.id) break;
+        if (baseLayerLabel(otherEl) === base) {
+          count++;
+        }
+      }
+      return count > 1 ? `${base} ${count}` : base;
     }
 
     function reorder(c, id, dir) {
@@ -2782,8 +2869,37 @@
       </div>
     </div>`);
       }
-      if (el.type === 'rect') { f.push(colOpac('color', 'Fill')); f.push(num('radius', 'Radius')); }
-      if (el.type === 'circle') { f.push(colOpac('color', 'Fill')); }
+      // Stroke section — applies to shapes (rect/circle) and the button frame, NOT to
+      // text elements or the text inside a button. Always rendered (no toggle); thickness
+      // = 0 simply means no stroke is drawn. The other fields stay editable since their
+      // values don't visually change anything until thickness is non-zero anyway.
+      const strokeSection = () => {
+        const sw = el.strokeWidth !== undefined ? el.strokeWidth : 0;
+        let h = '';
+        h += `<div class="prop-row" style="display:flex; gap:10px;">
+          <div style="flex:1; min-width:0;">
+            <label>Stroke Color</label>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="cp-trigger" data-k="strokeColor" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el.strokeColor || '#ffffff') || '#fff'}"></button>
+              ${hexInputBox('strokeColor', el.strokeColor || '#ffffff')}
+            </div>
+          </div>
+          <div style="width:78px; flex-shrink:0;">
+            <label>Opacity %</label>
+            <input type="number" data-k="strokeOpacity" value="${el.strokeOpacity !== undefined ? el.strokeOpacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
+          </div>
+        </div>`;
+        h += `<div class="prop-row" style="display:flex; gap:6px;">
+          <div style="flex:1; min-width:0;"><label>Thickness</label><input type="number" data-k="strokeWidth" value="${sw}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+          <div style="flex:1; min-width:0;"><label>Dash</label><input type="number" data-k="strokeDash" value="${el.strokeDash !== undefined ? el.strokeDash : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+          <div style="flex:1; min-width:0;"><label>Gap</label><input type="number" data-k="strokeGap" value="${el.strokeGap !== undefined ? el.strokeGap : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+        </div>`;
+        return h;
+      };
+
+      if (el.type === 'rect') { f.push(colOpac('color', 'Fill')); f.push(num('radius', 'Radius')); f.push(strokeSection()); }
+      if (el.type === 'circle') { f.push(colOpac('color', 'Fill')); f.push(strokeSection()); }
+      if (el.type === 'pixel') { f.push(colOpac('color', 'Fill')); f.push(strokeSection()); }
       if (el.type === 'button') {
         f.push(txt('text', 'Label'));
         f.push(`<div class="prop-row"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
@@ -2803,10 +2919,14 @@
     </div></div>`);
         f.push(colOpac('bg', 'Background'));
         f.push(col('color', 'Text color'));
-        f.push(num('radius', 'Radius'));
-        f.push(num('paddingLR', 'Padding L/R'));
+        // Radius + Padding L/R share a row.
+        f.push(`<div class="prop-row" style="display:flex; gap:6px;">
+          <div style="flex:1; min-width:0;"><label>Radius</label><input type="number" data-k="radius" value="${el.radius !== undefined ? el.radius : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+          <div style="flex:1; min-width:0;"><label>Padding L/R</label><input type="number" data-k="paddingLR" value="${el.paddingLR !== undefined ? el.paddingLR : 16}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+        </div>`);
         f.push(`<div class="prop-row"><div class="checkbox-row"><input type="checkbox" data-k="autoHug" ${el.autoHug ? 'checked' : ''}/><label>Auto-hug text</label></div></div>`);
         f.push(`<div class="prop-row"><div class="checkbox-row"><input type="checkbox" data-k="isClickArea" ${el.isClickArea ? 'checked' : ''}/><label>Use as clickTag area</label></div></div>`);
+        f.push(strokeSection());
       }
       if (el.type === 'image') {
         f.push(`<div class="prop-row"><label>Upload image</label><input type="file" accept="image/*" id="img-upload" /></div>`);
@@ -2943,14 +3063,14 @@
               inp.value = clamped;
             }
           }
-          if (inp.type === 'text' && (inp.dataset.k === 'color' || inp.dataset.k === 'bg')) {
+          if (inp.type === 'text' && (inp.dataset.k === 'color' || inp.dataset.k === 'bg' || inp.dataset.k === 'strokeColor')) {
             if (!val.startsWith('#') && val.length > 0 && !val.includes('gradient')) val = '#' + val;
           }
           updateProp(inp.dataset.k, val);
           propsEl.querySelectorAll(`[data-k="${inp.dataset.k}"]`).forEach(otherInp => {
             if (otherInp !== inp) {
               if (otherInp.classList.contains('cp-trigger')) otherInp.style.background = val;
-              else otherInp.value = (inp.dataset.k === 'color' || inp.dataset.k === 'bg' || inp.dataset.k === 'canvas-bg') ? val.replace(/^#/, '') : val;
+              else otherInp.value = (inp.dataset.k === 'color' || inp.dataset.k === 'bg' || inp.dataset.k === 'canvas-bg' || inp.dataset.k === 'strokeColor') ? val.replace(/^#/, '') : val;
             }
           });
         });
@@ -3661,7 +3781,13 @@
 
       const renderEl = (el) => {
         if (el.hidden) return '';
-        const wrapStyle = `position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;transform:rotate(${el.rotation || 0}deg);opacity:${el.opacity !== undefined ? el.opacity / 100 : 1};`;
+        // For rect/circle/button the opacity is the *fill* opacity and is applied to
+        // the fill layer below — leave the wrapper at 1 so stroke/text aren't dragged
+        // down. All other element types get the opacity on the wrapper as before.
+        const isFillTypeWithStroke = el.type === 'rect' || el.type === 'circle' || el.type === 'button' || el.type === 'pixel';
+        const wrapOpacity = isFillTypeWithStroke ? 1 : (el.opacity !== undefined ? el.opacity / 100 : 1);
+        const fillOpacity = (el.opacity !== undefined ? el.opacity : 100) / 100;
+        const wrapStyle = `position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;transform:rotate(${el.rotation || 0}deg);opacity:${wrapOpacity};`;
 
         const animType = el.animType || 'none';
         const effType = el.effectType || 'none';
@@ -3765,16 +3891,22 @@
           return `    <div style="${wrapStyle}">${openDivs}<div style="display:flex;flex-direction:column;justify-content:${jc};width:100%;height:100%;">${inner}</div>${closeDivs}</div>`;
         }
         if (el.type === 'rect') {
-          return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:${el.radius || 0}px;"></div>${closeDivs}</div>`;
+          return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
         }
         if (el.type === 'circle') {
-          return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:50%;"></div>${closeDivs}</div>`;
+          return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:50%;opacity:${fillOpacity};"></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+        }
+        if (el.type === 'pixel') {
+          return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;opacity:${fillOpacity};"><svg viewBox="0 0 578.52 556.76" width="100%" height="100%" preserveAspectRatio="none"><path fill="${el.color}" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
         }
         if (el.type === 'button') {
           const ff = el.fontFamily ? el.fontFamily + ',sans-serif' : 'Arial,Helvetica,sans-serif';
           const alignMap = { left: 'flex-start', center: 'center', right: 'flex-end', justify: 'space-between' };
           const jc = alignMap[el.textAlign || 'center'];
-          return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.bg};color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};border-radius:${el.radius || 0}px;display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:0 ${el.paddingLR || 16}px;box-sizing:border-box;">${esc(el.text)}</div>${closeDivs}</div>`;
+          // Fill is its own absolute layer with `fillOpacity`; the text sits on top
+          // at full opacity (relative positioning so it stacks above the fill); the
+          // stroke overlay paints last on top of both.
+          return `    <div style="${wrapStyle}">${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div style="position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:0 ${el.paddingLR || 16}px;box-sizing:border-box;">${esc(el.text)}</div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
         }
         if (el.type === 'image' && el.assetId && state.assets[el.assetId]) {
           let src = state.assets[el.assetId];
@@ -4969,10 +5101,23 @@ ${elsTop}
     let currentCpKey = null;
     let cpIsGradient = false;
     let cpGradStops = ['#7c5cff', '#2a1f55'];
+    let cpGradMidpoint = 50;
+    let cpGradOpacities = [100, 100];
     let cpActiveStop = 0;
     
     if (!state.savedPalette) {
       state.savedPalette = ['#ffffff', '#000000', '#7c5cff', '#e91e63', '#00bcd4', '#4caf50', '#ff9800', '#f44336'];
+    }
+
+    function parseRgbaString(str) {
+      if (str.startsWith('#')) return { hex: str, alpha: 100 };
+      const m = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+      if (!m) return { hex: '#000000', alpha: 100 };
+      const r = parseInt(m[1]).toString(16).padStart(2, '0');
+      const g = parseInt(m[2]).toString(16).padStart(2, '0');
+      const b = parseInt(m[3]).toString(16).padStart(2, '0');
+      const a = m[4] !== undefined ? Math.round(parseFloat(m[4]) * 100) : 100;
+      return { hex: `#${r}${g}${b}`, alpha: a };
     }
 
     function initColorPicker() {
@@ -4990,6 +5135,27 @@ ${elsTop}
       const hexInput = document.getElementById('cp-hex-input');
       const btnDropper = document.getElementById('cp-eyedropper');
       const addSwatchBtn = document.getElementById('cp-add-swatch');
+      
+      document.getElementById('cp-copy-hex').addEventListener('click', () => {
+        const h = hexInput.value.replace(/^#/, '');
+        navigator.clipboard.writeText('#' + h.toUpperCase());
+        const original = document.getElementById('cp-copy-hex').innerHTML;
+        document.getElementById('cp-copy-hex').innerHTML = '<span style="font-size:11px; font-weight:700; color:var(--accent-base);">✓</span>';
+        setTimeout(() => { document.getElementById('cp-copy-hex').innerHTML = original; }, 900);
+      });
+
+      document.getElementById('cp-grad-midpoint').addEventListener('input', (e) => {
+        cpGradMidpoint = Number(e.target.value);
+        emitColorUpdate();
+      });
+      document.getElementById('cp-grad-op-1').addEventListener('input', (e) => {
+        cpGradOpacities[0] = Number(e.target.value);
+        emitColorUpdate();
+      });
+      document.getElementById('cp-grad-op-2').addEventListener('input', (e) => {
+        cpGradOpacities[1] = Number(e.target.value);
+        emitColorUpdate();
+      });
       
       iroPicker.on('color:change', (color) => {
         if (document.activeElement !== hexInput) {
@@ -5097,7 +5263,9 @@ ${elsTop}
       let val = '';
       if (cpIsGradient) {
         const angle = document.getElementById('cp-grad-angle').value || 90;
-        val = `linear-gradient(${angle}deg, ${cpGradStops[0]}, ${cpGradStops[1]})`;
+        const c1 = hexToRgba(cpGradStops[0], cpGradOpacities[0] / 100);
+        const c2 = hexToRgba(cpGradStops[1], cpGradOpacities[1] / 100);
+        val = `linear-gradient(${angle}deg, ${c1} 0%, ${cpGradMidpoint}%, ${c2} 100%)`;
       } else {
         val = iroPicker.color.hexString;
       }
@@ -5120,14 +5288,30 @@ ${elsTop}
       if (initialValue && initialValue.includes('gradient')) {
          cpIsGradient = true;
          document.querySelector('.cp-tab[data-tab="gradient"]').click();
-         const match = initialValue.match(/linear-gradient\(\s*(-?\d+)deg\s*,\s*([^,]+)\s*,\s*([^)]+)\s*\)/);
-         if (match) {
-            document.getElementById('cp-grad-angle').value = match[1];
-            cpGradStops = [match[2].trim(), match[3].trim()];
-            document.getElementById('cp-grad-stop-1').style.background = cpGradStops[0];
-            document.getElementById('cp-grad-stop-2').style.background = cpGradStops[1];
-            iroPicker.color.set(cpGradStops[cpActiveStop]);
+         const aMatch = initialValue.match(/linear-gradient\(\s*(-?\d+)deg/);
+         if (aMatch) document.getElementById('cp-grad-angle').value = aMatch[1];
+         
+         const colorMatches = initialValue.match(/(rgba?\([^)]+\)|#[a-fA-F0-9]+)/g);
+         if (colorMatches && colorMatches.length >= 2) {
+           const s1 = parseRgbaString(colorMatches[0]);
+           const s2 = parseRgbaString(colorMatches[colorMatches.length - 1]);
+           cpGradStops = [s1.hex, s2.hex];
+           cpGradOpacities = [s1.alpha, s2.alpha];
          }
+         const pctMatch = initialValue.match(/,\s*(\d+(\.\d+)?)%\s*,/);
+         if (pctMatch) {
+           cpGradMidpoint = Number(pctMatch[1]);
+         } else {
+           cpGradMidpoint = 50;
+         }
+         
+         document.getElementById('cp-grad-midpoint').value = cpGradMidpoint;
+         document.getElementById('cp-grad-op-1').value = cpGradOpacities[0];
+         document.getElementById('cp-grad-op-2').value = cpGradOpacities[1];
+         
+         document.getElementById('cp-grad-stop-1').style.background = cpGradStops[0];
+         document.getElementById('cp-grad-stop-2').style.background = cpGradStops[1];
+         iroPicker.color.set(cpGradStops[cpActiveStop]);
       } else {
          cpIsGradient = false;
          document.querySelector('.cp-tab[data-tab="solid"]').click();
