@@ -88,18 +88,26 @@
           style="width:60px;background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;" />
         <label style="margin-left:8px" id="frame-transition-label">Transition</label>
         <select id="frame-transition"
-          style="background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;width:80px;">
+          style="background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;width:90px;">
           <option value="none">None</option>
           <option value="fade">Fade</option>
           <option value="slide-left">Slide Left</option>
           <option value="slide-right">Slide Right</option>
           <option value="slide-up">Slide Up</option>
           <option value="slide-down">Slide Down</option>
+          <option value="swipe-left">Swipe Left</option>
+          <option value="swipe-right">Swipe Right</option>
+          <option value="swipe-up">Swipe Up</option>
+          <option value="swipe-down">Swipe Down</option>
         </select>
         <input type="number" id="frame-transition-duration" title="Transition Duration (s)" value="0.5" min="0.1"
           step="0.1" onkeydown="if(['e','E','+','-'].includes(event.key)) event.preventDefault();"
           style="width:60px;background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;margin-left:4px;" />
         <label style="margin-left:4px" id="frame-transition-duration-label">seconds</label>
+        <div class="checkbox-row" id="frame-transition-fade-row" style="margin-left:8px; display:flex; align-items:center; gap:4px;">
+          <input type="checkbox" id="frame-transition-fade" style="margin:0;" />
+          <label for="frame-transition-fade" id="frame-transition-fade-label" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer;">Add Fade</label>
+        </div>
         <div class="checkbox-row" style="margin-left:12px; display:flex; align-items:center; gap:4px;">
           <input type="checkbox" id="project-loop-ad" style="margin:0;" />
           <label for="project-loop-ad" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer;">Loop</label>

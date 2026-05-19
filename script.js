@@ -622,12 +622,16 @@ function renderFrameControls() {
   const transLabel = document.getElementById('frame-transition-label');
   const transDur = document.getElementById('frame-transition-duration');
   const transDurLabel = document.getElementById('frame-transition-duration-label');
+  const fadeRow = document.getElementById('frame-transition-fade-row');
+  const fadeChk = document.getElementById('frame-transition-fade');
+  const fadeLabel = document.getElementById('frame-transition-fade-label');
   if (transSelect && transLabel && currentFrame) {
     if (state.frames.length > 0 && state.frames[0].id === currentFrame.id) {
       transSelect.style.display = 'none';
       transLabel.style.display = 'none';
       if (transDur) transDur.style.display = 'none';
       if (transDurLabel) transDurLabel.style.display = 'none';
+      if (fadeRow) fadeRow.style.display = 'none';
     } else {
       transSelect.style.display = 'inline-block';
       transLabel.style.display = 'inline-block';
@@ -643,6 +647,27 @@ function renderFrameControls() {
         if (transDurLabel) {
           transDurLabel.style.display = 'inline-block';
           transDurLabel.style.visibility = transDur.style.visibility;
+        }
+      }
+      // Add Fade checkbox: hide when no transition; gray out when transition is
+      // 'fade' (the fade flag is meaningless — fade is the transition).
+      if (fadeRow) {
+        const t = transSelect.value;
+        const hide = (t === 'none');
+        fadeRow.style.display = hide ? 'none' : 'flex';
+        if (!hide) {
+          const grayed = (t === 'fade');
+          const fadeRaw = currentFrame.transitionFade;
+          // Resolved value matches export: slide defaults to faded, swipe defaults
+          // to pure. Fade transition is always shown as checked.
+          const resolved = (t === 'fade') ? true
+                         : (fadeRaw === undefined) ? (t.indexOf('slide-') === 0)
+                         : !!fadeRaw;
+          fadeChk.checked = resolved;
+          fadeChk.disabled = grayed;
+          fadeRow.style.opacity = grayed ? '0.45' : '1';
+          fadeRow.style.pointerEvents = grayed ? 'none' : 'auto';
+          if (fadeLabel) fadeLabel.style.cursor = grayed ? 'default' : 'pointer';
         }
       }
     }
@@ -4010,7 +4035,7 @@ function generateExportHTML(targetCanvas, zipRef, isImageExport = false) {
   state.frames.forEach((f, i) => {
     const frameEls = c.elements.filter(e => e.persistent === false && e.frameId === f.id).map(renderEl).join('\n');
     framesHTML += `<div class="frame" id="frame-${f.id}" style="display:${i === 0 ? 'block' : 'none'};width:100%;height:100%;position:absolute;inset:0;">\n${frameEls}\n</div>\n`;
-    frameData.push({ id: f.id, duration: f.duration || 2, transition: i === 0 ? 'none' : (f.transition || 'fade'), transitionDuration: f.transitionDuration || 0.5 });
+    frameData.push({ id: f.id, duration: f.duration || 2, transition: i === 0 ? 'none' : (f.transition || 'fade'), transitionDuration: f.transitionDuration || 0.5, transitionFade: f.transitionFade });
   });
 
   let clickAreasHTML = '';
@@ -4055,11 +4080,27 @@ ${fontFaceRules.join('\n')}
   @keyframes anim-slide-left-nofade { from { transform: translateX(20px); } to { transform: translateX(0); } }
   @keyframes anim-slide-right { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
   @keyframes anim-slide-right-nofade { from { transform: translateX(-20px); } to { transform: translateX(0); } }
+  @keyframes anim-frame-slide-up { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes anim-frame-slide-up-nofade { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes anim-frame-slide-down { from { opacity: 0; transform: translateY(-100%); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes anim-frame-slide-down-nofade { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+  @keyframes anim-frame-slide-left { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes anim-frame-slide-left-nofade { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  @keyframes anim-frame-slide-right { from { opacity: 0; transform: translateX(-100%); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes anim-frame-slide-right-nofade { from { transform: translateX(-100%); } to { transform: translateX(0); } }
   @keyframes anim-pop-in { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
   @keyframes anim-pop-in-nofade { from { transform: scale(0.8); } to { transform: scale(1); } }
   @keyframes anim-typing { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
   @keyframes anim-fade-typing { 0% { -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 65%); -webkit-mask-size: 300% 100%; -webkit-mask-position: 100% 0; } 100% { -webkit-mask-position: 0 0; } }
   @keyframes anim-bg-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @keyframes anim-swipe-left  { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes anim-swipe-right { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes anim-swipe-up    { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes anim-swipe-down  { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes anim-swipe-left-fade  { from { clip-path: inset(0 0 0 100%); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+  @keyframes anim-swipe-right-fade { from { clip-path: inset(0 100% 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+  @keyframes anim-swipe-up-fade    { from { clip-path: inset(0 0 100% 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+  @keyframes anim-swipe-down-fade  { from { clip-path: inset(100% 0 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
   @keyframes eff-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
   @keyframes eff-float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
   @keyframes eff-flash { 0%, 50%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
@@ -4113,12 +4154,16 @@ ${elsTop}
       next.style.display = 'block';
       var t = frames[currentFrame].transition;
       var td = (frames[currentFrame].transitionDuration || 0.5) + 's';
-      if (t === 'fade') next.style.animation = 'anim-fade-in ' + td + ' ease both';
-      else if (t === 'slide-left') next.style.animation = 'anim-slide-left ' + td + ' ease both';
-      else if (t === 'slide-right') next.style.animation = 'anim-slide-right ' + td + ' ease both';
-      else if (t === 'slide-up') next.style.animation = 'anim-slide-up ' + td + ' ease both';
-      else if (t === 'slide-down') next.style.animation = 'anim-slide-down ' + td + ' ease both';
-      else next.style.animation = '';
+      // transitionFade: optional boolean. Defaults: slide keeps its baked-in fade,
+      // swipe stays pure (no fade) unless the user opts in. Fade transition ignores
+      // the flag since it IS the fade.
+      var fadeRaw = frames[currentFrame].transitionFade;
+      var fade = (fadeRaw === undefined) ? (t && t.indexOf('slide-') === 0) : !!fadeRaw;
+      var anim = '';
+      if (t === 'fade') anim = 'anim-fade-in';
+      else if (t && t.indexOf('slide-') === 0) anim = 'anim-frame-' + t + (fade ? '' : '-nofade');
+      else if (t && t.indexOf('swipe-') === 0) anim = 'anim-' + t + (fade ? '-fade' : '');
+      next.style.animation = anim ? (anim + ' ' + td + ' ease both') : '';
       
       if (!loopAd && currentFrame === frames.length - 1) {
         return;
@@ -4408,6 +4453,15 @@ document.getElementById('frame-transition-duration').addEventListener('input', (
   }
 });
 document.getElementById('frame-transition-duration').addEventListener('change', () => pushHistory());
+
+document.getElementById('frame-transition-fade').addEventListener('change', (e) => {
+  const f = state.frames.find(x => x.id === state.activeFrameId);
+  if (f) {
+    f.transitionFade = e.target.checked;
+    pushHistory();
+    render();
+  }
+});
 
 document.getElementById('menu-file-open').addEventListener('click', openProjectFromZip);
 document.getElementById('menu-file-save').addEventListener('click', saveProjectToZip);
