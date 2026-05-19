@@ -1150,6 +1150,10 @@
           const textBlock = document.createElement('div');
           textBlock.style.textAlign = el.textAlign || 'left';
           textBlock.style.width = '100%';
+          // Prevent the div's strut (inherited body font-size ~16px) from being taller
+          // than the actual text content and pushing it downward. Match the span's values.
+          textBlock.style.fontSize = el.fontSize + 'px';
+          textBlock.style.lineHeight = el.lineHeight ? (String(el.lineHeight).includes('px') || String(el.lineHeight).includes('em') ? el.lineHeight : el.lineHeight + 'px') : '1.2';
 
           const span = document.createElement(el.htmlTag || 'span');
           span.innerText = el.text;
@@ -3738,10 +3742,13 @@
               bgStyle = `display:inline;background-image:linear-gradient(${bgRgba},${bgRgba});background-repeat:no-repeat;background-position:left center;background-size:${cov}% 100%;padding:${tb}px ${lr}px;box-decoration-break:clone;-webkit-box-decoration-break:clone;`;
             }
           }
+          const resolvedLH = el.lineHeight ? (String(el.lineHeight).includes('px') || String(el.lineHeight).includes('em') ? el.lineHeight : el.lineHeight + 'px') : '1.2';
           const innerSpan = el.hasBg
-            ? `<span${bgDataAttrs} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:1.2;font-family:${ff};word-break:break-word;${bgStyle}">${content}</span>`
-            : `<span style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:1.2;font-family:${ff};word-break:break-word;">${content}</span>`;
-          const inner = `<div style="text-align:${ta};width:100%;">${innerSpan}</div>`;
+            ? `<span${bgDataAttrs} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:break-word;${bgStyle}">${content}</span>`
+            : `<span style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:break-word;">${content}</span>`;
+          // font-size + line-height on the wrapper div eliminates the inherited body strut
+          // (browser default ~16px * normal) which would push small-font text downward.
+          const inner = `<div style="text-align:${ta};width:100%;font-size:${el.fontSize}px;line-height:${resolvedLH};">${innerSpan}</div>`;
           return `    <div style="${wrapStyle}">${openDivs}<div style="display:flex;flex-direction:column;justify-content:${jc};width:100%;height:100%;">${inner}</div>${closeDivs}</div>`;
         }
         if (el.type === 'rect') {
