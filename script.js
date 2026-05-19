@@ -122,6 +122,7 @@
       snapToElements: true,
       snapToCanvas: true,
       snapToGuides: true,
+      cropToCanvas: false,
       loopAd: false,
       guides: [],
       activeSmartGuides: null,
@@ -359,22 +360,7 @@
         if (exitBtn) exitBtn.style.display = 'none';
       }
 
-      // Update checkmarks in view menu
-      const tick = (val) => val ? '✓ ' : '&nbsp;&nbsp;&nbsp;';
-      const setTick = (id, label, val) => { const e = document.getElementById(id); if (e) e.innerHTML = tick(val) + label; };
-      setTick('menu-view-snap-enabled', 'Snapping', state.snapEnabled !== false);
-      setTick('menu-view-snap-elements', 'Snap to Elements', state.snapToElements !== false);
-      setTick('menu-view-snap-canvas', 'Snap to Canvas Bounds', state.snapToCanvas !== false);
-      setTick('menu-view-snap-guides', 'Snap to Guides', state.snapToGuides !== false);
-
-      setTick('menu-theme-default', 'Dark (Default)', state.theme === 'default' || !state.theme);
-      setTick('menu-theme-rmit', 'RMIT', state.theme === 'rmit');
-      setTick('menu-theme-ocean', 'Ocean', state.theme === 'ocean');
-      setTick('menu-theme-navy', 'Navy', state.theme === 'navy');
-      setTick('menu-theme-light', 'Light', state.theme === 'light');
-      setTick('menu-theme-hc', 'High Contrast', state.theme === 'hc');
-      setTick('menu-theme-pride', '🏳️‍🌈 Pride', state.theme === 'pride');
-      
+      // (View/Snap/Theme menu items moved into the Settings panel — no menu ticks here.)
       const isFs = document.body.classList.contains('fullscreen-mode');
       const isPreview = document.body.classList.contains('preview-active');
       document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
@@ -804,7 +790,10 @@
         canvasInner.className = 'canvas-inner';
         canvasInner.style.width = '100%';
         canvasInner.style.height = '100%';
-        canvasInner.style.overflow = (c.id === state.activeCanvasId) ? 'visible' : 'hidden';
+        // The active canvas normally allows overflow so users can drag elements out of
+        // bounds while editing. Crop-to-Canvas (a Settings toggle) forces overflow:hidden
+        // on every canvas — the editor preview of the trimmed export.
+        canvasInner.style.overflow = (c.id === state.activeCanvasId && !state.cropToCanvas) ? 'visible' : 'hidden';
         canvasInner.style.position = 'absolute';
         canvasInner.style.top = '0';
         canvasInner.style.left = '0';
@@ -2645,19 +2634,7 @@
         if (btnDlZip) {
           btnDlZip.addEventListener('mouseenter', () => { btnDlZip.style.borderColor = 'var(--accent-base)'; });
           btnDlZip.addEventListener('mouseleave', () => { btnDlZip.style.borderColor = '#272c3a'; });
-          btnDlZip.addEventListener('click', async () => {
-            if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
-            const zip = new JSZip();
-            const projName = state.projectName || 'Ad';
-            const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
-            zip.file('index.html', generateExportHTML(c, zip));
-            const content = await zip.generateAsync({ type: 'blob' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(content);
-            a.download = `${safeName}_${c.width}x${c.height}.zip`;
-            a.click();
-            URL.revokeObjectURL(a.href);
-          });
+          btnDlZip.addEventListener('click', () => exportCanvasAsZip(c));
         }
 
         // ── Download PNG button ──
@@ -2668,42 +2645,7 @@
           btnDlImg.addEventListener('click', async () => {
             btnDlImg.textContent = 'Rendering…';
             btnDlImg.disabled = true;
-            try {
-              const html = generateExportHTML(c, null, true); // true = disable animations for static image
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(html, 'text/html');
-              const xhtml = new XMLSerializer().serializeToString(doc.documentElement);
-              
-              const canvas = document.createElement('canvas');
-              canvas.width = c.width;
-              canvas.height = c.height;
-              const ctx = canvas.getContext('2d');
-              ctx.fillStyle = c.bgColor || '#000';
-              ctx.fillRect(0, 0, c.width, c.height);
-
-              const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${c.width}" height="${c.height}"><foreignObject x="0" y="0" width="100%" height="100%">${xhtml}</foreignObject></svg>`;
-              const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-              const svgUrl = URL.createObjectURL(svgBlob);
-              
-              await new Promise((res, rej) => {
-                const img = new Image();
-                img.onload = () => { ctx.drawImage(img, 0, 0); res(); };
-                img.onerror = (e) => { console.error('SVG load error', e); rej(new Error('Image failed to load from SVG')); };
-                img.src = svgUrl;
-              });
-              URL.revokeObjectURL(svgUrl);
-              
-              const pngUrl = canvas.toDataURL('image/png');
-              const a = document.createElement('a');
-              const projName = state.projectName || 'Ad';
-              const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
-              a.download = `${safeName}_${c.width}x${c.height}.png`;
-              a.href = pngUrl;
-              a.click();
-            } catch (err) {
-              console.error('PNG export failed:', err);
-              alert('PNG export failed. Try the ZIP export instead.');
-            }
+            await exportCanvasAsPng(c);
             btnDlImg.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.5-3.5L11 18"/></svg> Download PNG';
             btnDlImg.disabled = false;
           });
@@ -3647,6 +3589,71 @@
     // ============================================================================
     // Export — Google-Ads-friendly HTML5 (active canvas)
     // ============================================================================
+    // Shared single-canvas exporters — used by both the Canvas Properties panel buttons
+    // and the canvas right-click context menu so the two paths can't drift apart.
+    async function exportCanvasAsZip(c) {
+      if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
+      const zip = new JSZip();
+      const projName = state.projectName || 'Ad';
+      const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      zip.file('index.html', generateExportHTML(c, zip));
+      const content = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(content);
+      a.download = `${safeName}_${c.width}x${c.height}.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    async function exportCanvasAsPng(c) {
+      try {
+        const html = generateExportHTML(c, null, true); // disable anims for static image
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const xhtml = new XMLSerializer().serializeToString(doc.documentElement);
+        const cnv = document.createElement('canvas');
+        cnv.width = c.width;
+        cnv.height = c.height;
+        const ctx = cnv.getContext('2d');
+        ctx.fillStyle = c.bgColor || '#000';
+        ctx.fillRect(0, 0, c.width, c.height);
+        const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${c.width}" height="${c.height}"><foreignObject x="0" y="0" width="100%" height="100%">${xhtml}</foreignObject></svg>`;
+        const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+        const svgUrl = URL.createObjectURL(svgBlob);
+        await new Promise((res, rej) => {
+          const img = new Image();
+          img.onload = () => { ctx.drawImage(img, 0, 0); res(); };
+          img.onerror = () => rej(new Error('Image failed to load from SVG'));
+          img.src = svgUrl;
+        });
+        URL.revokeObjectURL(svgUrl);
+        const pngUrl = cnv.toDataURL('image/png');
+        const a = document.createElement('a');
+        const projName = state.projectName || 'Ad';
+        const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+        a.download = `${safeName}_${c.width}x${c.height}.png`;
+        a.href = pngUrl;
+        a.click();
+      } catch (err) {
+        console.error('PNG export failed:', err);
+        alert('PNG export failed. Try the ZIP export instead.');
+      }
+    }
+
+    // Clear contents = remove all frame-specific elements from the active frame, keep
+    // persistent top/bottom layers. Maps to the "wipe the working frame" intent.
+    function clearCanvasFrame(c) {
+      c.elements = c.elements.filter(el =>
+        el.persistent === 'top' ||
+        el.persistent === 'bottom' ||
+        el.frameId !== state.activeFrameId
+      );
+      state.selectedElementId = null;
+      state.layerSelection = [];
+      pushHistory();
+      render();
+    }
+
     function generateExportHTML(targetCanvas, zipRef, isImageExport = false) {
       const c = targetCanvas || getActiveCanvas();
       if (!c) return '';
@@ -4444,25 +4451,106 @@ ${elsTop}
       openModal('About RMIT Ad Cooker', body, false);
     });
 
-    document.getElementById('menu-view-rulers').addEventListener('click', () => { state.showRulers = !state.showRulers; render(); });
     document.getElementById('menu-view-clear-guides').addEventListener('click', () => { state.guides = []; render(); });
-    document.getElementById('menu-view-snap-enabled').addEventListener('click', () => { state.snapEnabled = state.snapEnabled === false ? true : false; render(); });
+    document.getElementById('menu-open-settings').addEventListener('click', () => { openSettings(); });
 
-    ['Elements', 'Canvas', 'Guides'].forEach(type => {
-      const btn = document.getElementById(`menu-view-snap-${type.toLowerCase()}`);
-      if (btn) btn.addEventListener('click', () => {
-        const key = `snapTo${type}`;
-        state[key] = state[key] === false ? true : false;
+    // Settings panel — opens from the main menu only, doesn't live among the working
+    // panels. Houses everything that's an app/view preference (rulers, snapping,
+    // theme) plus the new Crop-to-Canvas toggle.
+    const THEMES = [
+      { id: 'default', label: 'Dark (Default)' },
+      { id: 'rmit', label: 'RMIT' },
+      { id: 'ocean', label: 'Ocean' },
+      { id: 'navy', label: 'Navy' },
+      { id: 'light', label: 'Light' },
+      { id: 'hc', label: 'High Contrast' },
+      { id: 'pride', label: '🏳️‍🌈 Pride' },
+    ];
+
+    function openSettings() {
+      const existing = document.getElementById('settings-panel-bg');
+      if (existing) { existing.remove(); return; }
+
+      const bg = document.createElement('div');
+      bg.id = 'settings-panel-bg';
+      bg.className = 'modal-bg';
+
+      const themeBtns = THEMES.map(t => {
+        const active = (state.theme || 'default') === t.id;
+        return `<button class="settings-theme-btn" data-theme="${t.id}" style="padding:8px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:500; font-family:inherit; text-align:left; border:1px solid ${active ? 'var(--accent-base)' : '#272c3a'}; background:${active ? 'rgba(124,92,255,0.18)' : 'var(--bg-input)'}; color:${active ? 'var(--accent-base)' : 'var(--text-main)'};">${t.label}</button>`;
+      }).join('');
+
+      const row = (id, label, checked, hint = '') => `
+        <label class="settings-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; border-radius:6px; cursor:pointer;">
+          <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} style="margin:2px 0 0 0;" />
+          <span style="display:flex; flex-direction:column; gap:2px;">
+            <span style="font-size:12px; color:var(--text-main);">${label}</span>
+            ${hint ? `<span style="font-size:10px; color:var(--text-muted);">${hint}</span>` : ''}
+          </span>
+        </label>`;
+
+      bg.innerHTML = `
+        <div class="modal" style="max-width:520px;">
+          <div class="modal-head">
+            <h2>Settings</h2>
+            <button class="btn" id="settings-close">Close</button>
+          </div>
+          <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
+            <section>
+              <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">View</h3>
+              ${row('set-rulers', 'Show rulers & guides', state.showRulers !== false)}
+              ${row('set-crop', 'Crop to Canvas', !!state.cropToCanvas, 'Hide anything placed outside the canvas bounds while you work.')}
+            </section>
+            <section>
+              <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Snapping</h3>
+              ${row('set-snap', 'Snapping', state.snapEnabled !== false, 'Master switch — turning off disables all snap types below.')}
+              ${row('set-snap-el', 'Snap to other elements', state.snapToElements !== false)}
+              ${row('set-snap-cv', 'Snap to canvas bounds', state.snapToCanvas !== false)}
+              ${row('set-snap-gd', 'Snap to guides', state.snapToGuides !== false)}
+            </section>
+            <section>
+              <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Theme</h3>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">${themeBtns}</div>
+            </section>
+          </div>
+        </div>`;
+
+      document.body.appendChild(bg);
+
+      const closeFn = () => {
+        bg.remove();
+        document.removeEventListener('keydown', escHandler);
+      };
+      const escHandler = (e) => { if (e.key === 'Escape') closeFn(); };
+      document.addEventListener('keydown', escHandler);
+      bg.querySelector('#settings-close').addEventListener('click', closeFn);
+      bg.addEventListener('click', (e) => { if (e.target === bg) closeFn(); });
+
+      const bind = (id, key) => bg.querySelector('#' + id).addEventListener('change', (e) => {
+        state[key] = e.target.checked;
         render();
       });
-    });
+      bind('set-rulers', 'showRulers');
+      bind('set-crop', 'cropToCanvas');
+      bind('set-snap', 'snapEnabled');
+      bind('set-snap-el', 'snapToElements');
+      bind('set-snap-cv', 'snapToCanvas');
+      bind('set-snap-gd', 'snapToGuides');
 
-    ['default', 'rmit', 'ocean', 'navy', 'light', 'hc', 'pride'].forEach(t => {
-      document.getElementById(`menu-theme-${t}`)?.addEventListener('click', () => {
-        state.theme = t;
-        render();
+      bg.querySelectorAll('.settings-theme-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.theme = btn.dataset.theme;
+          render();
+          // Restyle the theme buttons in place without rebuilding the panel.
+          bg.querySelectorAll('.settings-theme-btn').forEach(b => {
+            const active = b.dataset.theme === state.theme;
+            b.style.border = `1px solid ${active ? 'var(--accent-base)' : '#272c3a'}`;
+            b.style.background = active ? 'rgba(124,92,255,0.18)' : 'var(--bg-input)';
+            b.style.color = active ? 'var(--accent-base)' : 'var(--text-main)';
+          });
+        });
       });
-    });
+    }
 
     // ============================================================================
     // Modal
@@ -4651,19 +4739,24 @@ ${elsTop}
         html += `<div class="ctx-item" id="ctx-bring-fwd">Bring Forward</div>`;
         html += `<div class="ctx-item" id="ctx-send-bwd">Send Backward</div>`;
         html += `<div class="ctx-divider"></div>`;
+        html += `<div class="ctx-item" id="ctx-cut">Cut</div>`;
+        html += `<div class="ctx-item" id="ctx-copy">Copy</div>`;
         html += `<div class="ctx-item" id="ctx-clone">Clone</div>`;
         html += `<div class="ctx-divider"></div>`;
+        html += `<div class="ctx-item" id="ctx-reset-transform">Reset Transform</div>`;
 
-        if (state.layerSelection && state.layerSelection.length > 1) {
-          html += `<div class="ctx-item" id="ctx-group">Group Selection</div>`;
-        }
+        // Only emit the Group/Ungroup section + its divider when there's actually
+        // something to put there — avoids two adjacent dividers leaving a blank gap.
         const c = getActiveCanvas();
+        const showGroup = state.layerSelection && state.layerSelection.length > 1;
         const hasGroup = state.layerSelection && state.layerSelection.some(selId => {
           const el = c.elements.find(x => x.id === selId);
           return el && el.groupId;
         });
-        if (hasGroup) {
-          html += `<div class="ctx-item" id="ctx-ungroup">Ungroup</div>`;
+        if (showGroup || hasGroup) {
+          html += `<div class="ctx-divider"></div>`;
+          if (showGroup) html += `<div class="ctx-item" id="ctx-group">Group Selection</div>`;
+          if (hasGroup) html += `<div class="ctx-item" id="ctx-ungroup">Ungroup</div>`;
         }
 
         html += `<div class="ctx-divider"></div>`;
@@ -4674,9 +4767,18 @@ ${elsTop}
         state.layerSelection = [];
         render(true);
 
+        const inPreview = state.singlePreviewId === state.activeCanvasId;
+        html += `<div class="ctx-item" id="ctx-canvas-preview">${inPreview ? 'Exit Preview' : 'Preview'}</div>`;
+        html += `<div class="ctx-divider"></div>`;
         html += `<div class="ctx-item" id="ctx-add-text">Add Text</div>`;
         html += `<div class="ctx-item" id="ctx-add-rect">Add Rectangle</div>`;
         html += `<div class="ctx-item" id="ctx-add-btn">Add Button</div>`;
+        html += `<div class="ctx-divider"></div>`;
+        html += `<div class="ctx-item" id="ctx-canvas-bg-color">Change background color</div>`;
+        html += `<div class="ctx-item" id="ctx-canvas-export-html">Export HTML5</div>`;
+        html += `<div class="ctx-item" id="ctx-canvas-export-png">Export PNG</div>`;
+        html += `<div class="ctx-divider"></div>`;
+        html += `<div class="ctx-item" id="ctx-canvas-clear" style="color:#ef4444">Clear contents</div>`;
         html += `<div class="ctx-divider"></div>`;
         html += `<div class="ctx-item" id="ctx-toggle-snap">${state.snapEnabled !== false ? '✓ ' : ''}Snapping</div>`;
         html += `<div class="ctx-item" id="ctx-toggle-rulers">${state.showRulers ? 'Hide' : 'Show'} Rulers & Guides</div>`;
@@ -4701,6 +4803,45 @@ ${elsTop}
 
       bind('ctx-bring-fwd', () => { const c = getActiveCanvas(); if (c && state.layerSelection) { state.layerSelection.forEach(id => reorder(c, id, +1)); pushHistory(); render(); } });
       bind('ctx-send-bwd', () => { const c = getActiveCanvas(); if (c && state.layerSelection) { [...state.layerSelection].reverse().forEach(id => reorder(c, id, -1)); pushHistory(); render(); } });
+      bind('ctx-copy', () => {
+        const c = getActiveCanvas();
+        if (c && state.layerSelection?.length > 0) {
+          state.clipboard = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
+        }
+      });
+      bind('ctx-cut', () => {
+        const c = getActiveCanvas();
+        if (c && state.layerSelection?.length > 0) {
+          state.clipboard = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
+          c.elements = c.elements.filter(x => !state.layerSelection.includes(x.id));
+          state.layerSelection = [];
+          state.selectedElementId = null;
+          pushHistory();
+          render();
+        }
+      });
+      bind('ctx-reset-transform', () => {
+        // Resets rotation + W/H back to the type's defaults from makeElement().
+        // X/Y are intentionally preserved so the element stays where the user put it.
+        const c = getActiveCanvas();
+        if (!c || !state.layerSelection?.length) return;
+        const defaultDims = { text: [220, 32], rect: [120, 80], circle: [80, 80], button: [130, 40], image: [140, 90] };
+        let changed = false;
+        c.elements.forEach(el => {
+          if (!state.layerSelection.includes(el.id)) return;
+          const def = defaultDims[el.type];
+          if (el.rotation) { el.rotation = 0; changed = true; }
+          if (def && (el.width !== def[0] || el.height !== def[1])) {
+            el.width = def[0];
+            el.height = def[1];
+            changed = true;
+          }
+        });
+        if (changed) {
+          pushHistory();
+          render();
+        }
+      });
       bind('ctx-group', groupSelection);
       bind('ctx-ungroup', ungroupSelection);
       bind('ctx-clone', () => {
@@ -4765,6 +4906,24 @@ ${elsTop}
       bind('ctx-add-text', () => addElement('text'));
       bind('ctx-add-rect', () => addElement('rect'));
       bind('ctx-add-btn', () => addElement('button'));
+      bind('ctx-canvas-preview', () => {
+        state.singlePreviewId = (state.singlePreviewId === state.activeCanvasId) ? null : state.activeCanvasId;
+        render();
+      });
+      bind('ctx-canvas-bg-color', () => {
+        // Surface the canvas Properties panel (renders when nothing is selected) and
+        // programmatically click the bg-color swatch to open the existing color picker.
+        state.selectedElementId = null;
+        state.layerSelection = [];
+        render();
+        setTimeout(() => {
+          const trigger = document.getElementById('c-bg-color');
+          if (trigger) trigger.click();
+        }, 50);
+      });
+      bind('ctx-canvas-export-html', () => { const c = getActiveCanvas(); if (c) exportCanvasAsZip(c); });
+      bind('ctx-canvas-export-png', () => { const c = getActiveCanvas(); if (c) exportCanvasAsPng(c); });
+      bind('ctx-canvas-clear', () => { const c = getActiveCanvas(); if (c) clearCanvasFrame(c); });
       bind('ctx-toggle-snap', () => { state.snapEnabled = state.snapEnabled === false ? true : false; render(); });
       bind('ctx-toggle-rulers', () => { state.showRulers = !state.showRulers; render(); });
       bind('ctx-clear-guides', () => { state.guides = []; render(); });
