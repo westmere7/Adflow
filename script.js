@@ -3105,9 +3105,11 @@
                     const opa = (nodeEl.bgOpacity !== undefined ? nodeEl.bgOpacity : 100) / 100;
                     const bgRgba = hexToRgba(nodeEl.bg || '#000000', opa);
                     const bgDelay = Number(baseDelay) + (Number(nodeEl.bgOffset) || 0);
-                    // Strip the static bg styling so overlays don't double up.
+                    // Strip the static bg styling so overlays don't double up. Keep
+                    // the padding — the per-line overlays' math assumes the wrapper
+                    // is padded (charSpan.offsetLeft = lr), and removing it would shift
+                    // the text left compared to the static-bg state.
                     target.style.backgroundImage = '';
-                    target.style.padding = '';
                     target.style.boxDecorationBreak = '';
                     target.style.removeProperty('-webkit-box-decoration-break');
                     // Switch to a positioned inline-block so absolute overlays anchor here.
@@ -3737,7 +3739,10 @@
             if (useLineBgScript) {
               const dur = el.animDuration || 1;
               const delay = (Number(el.animDelay) || 0) + (Number(el.bgOffset) || 0);
-              bgStyle = `display:inline-block;max-width:100%;position:relative;isolation:isolate;text-align:${ta};`;
+              // Padding on the wrapper matches the static path's per-line padding — without
+              // it, char.offsetLeft starts at 0 and the text appears shifted left by `lr`
+              // compared to the editor (and to the static-bg variant of the same element).
+              bgStyle = `display:inline-block;max-width:100%;position:relative;isolation:isolate;text-align:${ta};padding:${tb}px ${lr}px;`;
               bgDataAttrs = ` data-bg-anim="1" data-bg-color="${bgRgba}" data-bg-pad-l="${lr}" data-bg-pad-v="${tb}" data-bg-cov="${cov}" data-bg-delay="${delay}" data-bg-duration="${dur}"`;
             } else {
               bgStyle = `display:inline;background-image:linear-gradient(${bgRgba},${bgRgba});background-repeat:no-repeat;background-position:left center;background-size:${cov}% 100%;padding:${tb}px ${lr}px;box-decoration-break:clone;-webkit-box-decoration-break:clone;`;
