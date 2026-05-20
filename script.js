@@ -3512,8 +3512,120 @@ function addElement(type) {
   render();
 }
 
+function addBackgroundToCanvases(allCanvases) {
+  const activeCanvas = getActiveCanvas();
+  if (!activeCanvas) return;
+
+  const color = '#000054';
+  const canvasesToAdd = allCanvases ? state.canvases : [activeCanvas];
+  let activeElId = null;
+
+  canvasesToAdd.forEach(c => {
+    const el = makeElement('rect');
+    el.customName = 'Background';
+    el.color = color;
+    el.x = 0;
+    el.y = 0;
+    el.width = c.width;
+    el.height = c.height;
+    el.radius = 0;
+    el.locked = true;
+
+    const firstFrameIdx = c.elements.findIndex(e => e.persistent === false && e.frameId === state.activeFrameId);
+    if (firstFrameIdx === -1) {
+      c.elements.unshift(el);
+    } else {
+      c.elements.splice(firstFrameIdx, 0, el);
+    }
+
+    if (c.id === activeCanvas.id) {
+      activeElId = el.id;
+    }
+  });
+
+  if (activeElId) {
+    state.selectedElementId = activeElId;
+    state.layerSelection = [activeElId];
+  }
+  state.editingElementId = null;
+  pushHistory();
+  render();
+}
+
+function showBackgroundDropdown(e) {
+  let popup = document.getElementById('background-popup');
+  if (popup) { popup.remove(); return; }
+
+  popup = document.createElement('div');
+  popup.id = 'background-popup';
+  popup.style.position = 'absolute';
+  popup.style.background = 'var(--bg-panel)';
+  popup.style.border = '1px solid var(--border-light)';
+  popup.style.borderRadius = '6px';
+  popup.style.padding = '4px 0';
+  popup.style.zIndex = '1000000';
+  popup.style.width = '240px';
+  popup.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)';
+
+  const items = [
+    { label: 'Add to current canvas only', action: () => addBackgroundToCanvases(false) },
+    { label: 'Add to all canvases', action: () => addBackgroundToCanvases(true) }
+  ];
+
+  items.forEach(item => {
+    const btn = document.createElement('div');
+    btn.textContent = item.label;
+    btn.style.padding = '8px 16px';
+    btn.style.cursor = 'pointer';
+    btn.style.fontSize = '12px';
+    btn.style.color = 'var(--text-main)';
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = 'var(--accent-base)';
+      btn.style.color = 'var(--text-bright)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--text-main)';
+    });
+    btn.addEventListener('click', () => {
+      item.action();
+      popup.remove();
+    });
+    popup.appendChild(btn);
+  });
+
+  document.body.appendChild(popup);
+
+  const triggerEl = e.currentTarget || e.target || e;
+  const rect = triggerEl.getBoundingClientRect();
+  popup.style.left = rect.left + 'px';
+  popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+
+  const popupRect = popup.getBoundingClientRect();
+  if (popupRect.right > window.innerWidth) {
+    popup.style.left = (window.innerWidth - popupRect.width - 8) + 'px';
+  }
+  if (popupRect.bottom > window.innerHeight) {
+    popup.style.top = (rect.top - popupRect.height - 4) + 'px';
+  }
+
+  const closer = (ev) => {
+    if (!popup.contains(ev.target) && ev.target !== triggerEl && !triggerEl.contains(ev.target)) {
+      popup.remove();
+      document.removeEventListener('mousedown', closer);
+    }
+  };
+  document.addEventListener('mousedown', closer);
+}
+
 document.querySelectorAll('[data-add]').forEach(btn => {
-  btn.addEventListener('click', () => addElement(btn.dataset.add));
+  if (btn.dataset.add === 'background') {
+    btn.addEventListener('click', (e) => {
+      showBackgroundDropdown(e);
+    });
+  } else {
+    btn.addEventListener('click', () => addElement(btn.dataset.add));
+  }
 });
 
 document.getElementById('btn-add-brand')?.addEventListener('click', (e) => {
@@ -4946,7 +5058,13 @@ function openChangelogModal() {
   const changelogHtml = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:400px; overflow-y:auto; padding-right:8px;">
         <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.3 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.4 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Added quick dropdown to background creation to allow adding background layers to all canvases simultaneously.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.3 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
           <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
             <li style="margin-bottom:4px;">Expanded overlay screen joke database to 30+ jokes.</li>
           </ul>
@@ -5016,7 +5134,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.3</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.4</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -5072,7 +5190,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.3</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.4</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -5420,7 +5538,7 @@ document.addEventListener('contextmenu', (e) => {
   menu.style.left = left + 'px';
   menu.style.top = top + 'px';
 
-  const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = () => { fn(); menu.style.display = 'none'; }; };
+  const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = (e) => { fn(e); menu.style.display = 'none'; }; };
 
   bind('ctx-bring-fwd', () => { const c = getActiveCanvas(); if (c && state.layerSelection) { state.layerSelection.forEach(id => reorder(c, id, +1)); pushHistory(); render(); } });
   bind('ctx-send-bwd', () => { const c = getActiveCanvas(); if (c && state.layerSelection) { [...state.layerSelection].reverse().forEach(id => reorder(c, id, -1)); pushHistory(); render(); } });
@@ -5529,7 +5647,7 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-add-rect', () => addElement('rect'));
   bind('ctx-add-circle', () => addElement('circle'));
   bind('ctx-add-btn', () => addElement('button'));
-  bind('ctx-add-bg', () => addElement('background'));
+  bind('ctx-add-bg', (e) => showBackgroundDropdown(e));
 
   bind('ctx-brand-cricos', () => addBrandElement('cricos'));
   bind('ctx-brand-rfwn', () => addBrandElement('rfwn'));

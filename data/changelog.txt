@@ -1,6 +1,9 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.3 (Current) - May 2026
+v1.3.4 (Current) - May 2026
+- Added quick dropdown to background creation to allow adding background layers to all canvases simultaneously.
+
+v1.3.3 - May 2026
 - Expanded overlay screen joke database to 30+ jokes.
 
 v1.3.2 - May 2026
