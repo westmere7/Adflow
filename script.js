@@ -50,6 +50,23 @@
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 
+const isLineHeightAuto = (el) => {
+  if (el.lineHeightAuto !== undefined) return !!el.lineHeightAuto;
+  return el.lineHeight === undefined;
+};
+
+const getResolvedLineHeight = (el) => {
+  if (isLineHeightAuto(el)) return 'normal';
+  const val = el.lineHeight;
+  if (val === undefined || val === null || val === '') return '1.2';
+  const str = String(val);
+  if (str.includes('px') || str.includes('em') || str.includes('%')) return str;
+  const num = Number(val);
+  if (Number.isNaN(num)) return '1.2';
+  if (num <= 3.5) return String(num);
+  return num + 'px';
+};
+
 let isSpaceDown = false;
 let isPanning = false;
 let panStartX = 0, panStartY = 0;
@@ -1236,7 +1253,7 @@ function elementNode(el, canvasCtx) {
       ed.style.fontSize = el.fontSize + 'px';
       ed.style.fontWeight = el.weight;
       ed.style.fontFamily = el.fontFamily || 'Arial';
-      ed.style.lineHeight = el.lineHeight ? (String(el.lineHeight).includes('px') || String(el.lineHeight).includes('em') ? el.lineHeight : el.lineHeight + 'px') : '1.2';
+      ed.style.lineHeight = getResolvedLineHeight(el);
       ed.style.letterSpacing = (el.letterSpacing || 0) + 'px';
       ed.style.textAlign = el.textAlign || 'left';
       ed.style.width = '100%';
@@ -1259,7 +1276,7 @@ function elementNode(el, canvasCtx) {
       // Prevent the div's strut (inherited body font-size ~16px) from being taller
       // than the actual text content and pushing it downward. Match the span's values.
       textBlock.style.fontSize = el.fontSize + 'px';
-      textBlock.style.lineHeight = el.lineHeight ? (String(el.lineHeight).includes('px') || String(el.lineHeight).includes('em') ? el.lineHeight : el.lineHeight + 'px') : '1.2';
+      textBlock.style.lineHeight = getResolvedLineHeight(el);
 
       const span = document.createElement(el.htmlTag || 'span');
       span.innerText = el.text;
@@ -1267,7 +1284,7 @@ function elementNode(el, canvasCtx) {
       span.style.fontSize = el.fontSize + 'px';
       span.style.fontWeight = el.weight;
       span.style.fontFamily = el.fontFamily || 'Arial';
-      span.style.lineHeight = el.lineHeight ? (String(el.lineHeight).includes('px') || String(el.lineHeight).includes('em') ? el.lineHeight : el.lineHeight + 'px') : '1.2';
+      span.style.lineHeight = getResolvedLineHeight(el);
       span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
       span.style.wordBreak = 'break-word';
 
@@ -2891,10 +2908,21 @@ function renderProps() {
 
     f.push(colOpac('color', 'Color'));
 
+    const autoChecked = isLineHeightAuto(el);
     f.push(`<div class="prop-row" id="prop-spacing-row">
-          <div class="prop-grid-2">
-            <div class="prop-row" style="margin:0"><label>Line Height</label><input type="number" step="0.1" data-k="lineHeight" value="${el.lineHeight || '1.2'}" /></div>
-            <div class="prop-row" style="margin:0"><label>Spacing</label><input type="number" data-k="letterSpacing" value="${el.letterSpacing !== undefined ? el.letterSpacing : 0}" /></div>
+          <div style="display:flex; align-items:end; gap:8px; width:100%;">
+            <div class="prop-row" style="margin:0; flex:1;">
+              <label>Leading</label>
+              <input type="number" step="0.1" min="0.1" data-k="lineHeight" value="${el.lineHeight !== undefined ? el.lineHeight : '1.2'}" ${autoChecked ? 'disabled' : ''} style="width:100%;" />
+            </div>
+            <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
+              <input type="checkbox" data-k="lineHeightAuto" ${autoChecked ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
+              <span>Auto</span>
+            </div>
+            <div class="prop-row" style="margin:0; flex:1;">
+              <label>Tracking</label>
+              <input type="number" data-k="letterSpacing" value="${el.letterSpacing !== undefined ? el.letterSpacing : 0}" style="width:100%;" />
+            </div>
           </div>
         </div>`);
 
@@ -3152,13 +3180,21 @@ function renderProps() {
       c.elements.filter(e => state.layerSelection.includes(e.id)).forEach(selEl => {
         if (k === 'text' && selEl.id !== el.id) return; // Don't copy specific text content across elements
         if (['fontFamily', 'fontSize', 'weight', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'verticalAlign'].includes(k) && selEl.type !== 'text' && selEl.type !== 'button') return;
-        selEl[k] = val;
+        if (val === undefined) {
+          delete selEl[k];
+        } else {
+          selEl[k] = val;
+        }
         if (selEl.type === 'button' && selEl.autoHug) {
           selEl.width = measureButtonWidth(selEl);
         }
       });
     } else {
-      el[k] = val;
+      if (val === undefined) {
+        delete el[k];
+      } else {
+        el[k] = val;
+      }
       if (el.type === 'button' && el.autoHug) {
         el.width = measureButtonWidth(el);
       }
@@ -3175,15 +3211,15 @@ function renderProps() {
 
   propsEl.querySelectorAll('input, select, textarea').forEach((inp) => {
     inp.addEventListener('input', () => {
-      let val = inp.type === 'number' ? Number(inp.value) : (inp.type === 'checkbox' ? inp.checked : inp.value);
-      if (inp.type === 'number' && inp.value !== '') {
+      let val = inp.type === 'number' ? (inp.value === '' ? undefined : Number(inp.value)) : (inp.type === 'checkbox' ? inp.checked : inp.value);
+      if (inp.type === 'number' && inp.value !== '' && val !== undefined) {
         const clamped = clampNum(inp, val);
         if (clamped !== val) {
           val = clamped;
           inp.value = clamped;
         }
       }
-      if (inp.type === 'text' && (inp.dataset.k === 'color' || inp.dataset.k === 'bg' || inp.dataset.k === 'strokeColor')) {
+      if (inp.type === 'text' && (inp.dataset.k === 'color' || inp.dataset.k === 'bg' || inp.dataset.k === 'strokeColor') && val !== undefined) {
         if (!val.startsWith('#') && val.length > 0 && !val.includes('gradient')) val = '#' + val;
       }
       updateProp(inp.dataset.k, val);
@@ -3198,13 +3234,13 @@ function renderProps() {
               otherInp.style.boxShadow = 'none';
             }
           }
-          else otherInp.value = (inp.dataset.k === 'color' || inp.dataset.k === 'bg' || inp.dataset.k === 'canvas-bg' || inp.dataset.k === 'strokeColor') ? val.replace(/^#/, '') : val;
+          else otherInp.value = (inp.dataset.k === 'color' || inp.dataset.k === 'bg' || inp.dataset.k === 'canvas-bg' || inp.dataset.k === 'strokeColor') ? (val !== undefined ? val.replace(/^#/, '') : '') : (val !== undefined ? val : '');
         }
       });
     });
     inp.addEventListener('change', () => {
       pushHistory();
-      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg') renderProps();
+      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'lineHeightAuto') renderProps();
     });
     if (inp.type === 'number') {
       inp.addEventListener('wheel', (e) => {
@@ -4290,7 +4326,7 @@ function generateExportHTML(targetCanvas, zipRef, isImageExport = false) {
           bgStyle = `display:inline;background-image:linear-gradient(${bgRgba},${bgRgba});background-repeat:no-repeat;background-position:left center;background-size:${cov}% 100%;padding:${tb}px ${lr}px;box-decoration-break:clone;-webkit-box-decoration-break:clone;`;
         }
       }
-      const resolvedLH = el.lineHeight ? (String(el.lineHeight).includes('px') || String(el.lineHeight).includes('em') ? el.lineHeight : el.lineHeight + 'px') : '1.2';
+      const resolvedLH = getResolvedLineHeight(el);
       const innerSpan = el.hasBg
         ? `<span${bgDataAttrs} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:break-word;${bgStyle}">${content}</span>`
         : `<span style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:break-word;">${content}</span>`;
@@ -5060,7 +5096,31 @@ function openChangelogModal() {
   const changelogHtml = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:400px; overflow-y:auto; padding-right:8px;">
         <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.7 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.11 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Arranged spacing properties in "Leading - Auto - Tracking" order with custom spacing constraints for clean visual separation.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.10 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Renamed spacing properties to Leading and Tracking, and placed the Auto checkbox after Tracking on the same line.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.9 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Reorganized Spacing Properties layout (moved Auto checkbox underneath the input and expanded column gap) to prevent visual overlap.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.8 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Renamed Line Height to Line Spacing, fixed text-jamming bugs for unitless spacing multipliers, and added an Auto line spacing toggle.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.7 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
           <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
             <li style="margin-bottom:4px;">Prevented middle-mouse panning from triggering canvas marquee selection or header dragging.</li>
           </ul>
@@ -5154,7 +5214,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.7</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.11</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -5210,7 +5270,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.7</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.11</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

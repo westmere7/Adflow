@@ -1,6 +1,18 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.7 (Current) - May 2026
+v1.3.11 (Current) - May 2026
+- Arranged spacing properties in "Leading - Auto - Tracking" order with custom spacing constraints for clean visual separation.
+
+v1.3.10 - May 2026
+- Renamed spacing properties to Leading and Tracking, and placed the Auto checkbox after Tracking on the same line.
+
+v1.3.9 - May 2026
+- Reorganized Spacing Properties layout (moved Auto checkbox underneath the input and expanded column gap) to prevent visual overlap.
+
+v1.3.8 - May 2026
+- Renamed Line Height to Line Spacing, fixed text-jamming bugs for unitless spacing multipliers, and added an Auto line spacing toggle.
+
+v1.3.7 - May 2026
 - Prevented middle-mouse panning from triggering canvas marquee selection or header dragging.
 
 v1.3.6 - May 2026
@@ -36,7 +48,7 @@ v1.3.0 - May 2026
 
 v1.2.0 - May 2026
 - Added new "Settings..." workspace shortcuts to the top menu and canvas context menu.
-- Introduced a detailed Help Documentation system with in-app guide modals.
+- Introduced a detailed Help Documentation system in the app.
 - Synchronized all workspace shortcut listings across in-app modals and project docs.
 
 v1.1.0 - May 2026

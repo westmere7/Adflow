@@ -1479,9 +1479,15 @@ body.theme-navy {
 
       outline: none;
 
-      font-family: inherit;
-
     }
+
+    .prop-row input:disabled,
+    .prop-row select:disabled,
+    .prop-row textarea:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
 
 
 
