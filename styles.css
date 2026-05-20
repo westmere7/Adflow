@@ -2818,6 +2818,15 @@ body.theme-pride {
 
     }
 
+    .cp-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .cp-btn:disabled:hover {
+      background: var(--border-light);
+      color: var(--text-main);
+    }
+
     .cp-color-btn {
 
       width: 100%;
@@ -3135,7 +3144,10 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 
     .cp-trigger {
       padding: 0 !important;
-
+      /* Clip the (gradient) background to the padding box so it doesn't bleed under
+         the 1px border — Chrome otherwise renders a thin light seam between a dark
+         border and a gradient fill on small rounded elements. */
+      background-clip: padding-box;
     }
 
 

@@ -5561,27 +5561,27 @@ function cpParseGradient(str) {
     }
     return { color: colorStr, opacity: 100, pos };
   });
-  // The UI edits exactly two stops; collapse extras to first + last.
-  if (stops.length > 2) stops = [stops[0], stops[stops.length - 1]];
+  // The UI supports 2-5 stops; keep the first 5, ensure at least 2.
+  if (stops.length > 5) stops = stops.slice(0, 5);
   if (stops.length === 1) stops.push({ color: stops[0].color, opacity: stops[0].opacity, pos: 100 });
   return { angle, stops };
 }
 
-// Push current cpGradStops state into all gradient UI: swatches, opacity/location
-// inputs, the preview bar, and the draggable markers.
+// Lightweight per-frame update: positions, colors, active states, inputs and the
+// preview bar. Does NOT recreate DOM (safe to call during a marker drag).
 function cpSyncGradientUI() {
-  cpGradStops.forEach((s, i) => {
-    const sw = document.getElementById(`cp-grad-stop-${i + 1}`);
-    if (sw) sw.style.background = s.color;
-  });
-  document.querySelectorAll('.cp-grad-stop-container').forEach((c, i) => {
+  document.querySelectorAll('#cp-grad-swatches .cp-grad-stop-container').forEach((c, i) => {
     c.classList.toggle('active', i === cpActiveStop);
+    const btn = c.querySelector('.cp-color-btn');
+    if (btn && cpGradStops[i]) btn.style.background = cpGradStops[i].color;
   });
   const opInput = document.getElementById('cp-grad-opacity');
   const locInput = document.getElementById('cp-grad-location');
   const active = cpGradStops[cpActiveStop];
-  if (opInput && document.activeElement !== opInput) opInput.value = active.opacity !== undefined ? active.opacity : 100;
-  if (locInput && document.activeElement !== locInput) locInput.value = active.pos !== undefined ? active.pos : 0;
+  if (active) {
+    if (opInput && document.activeElement !== opInput) opInput.value = active.opacity !== undefined ? active.opacity : 100;
+    if (locInput && document.activeElement !== locInput) locInput.value = active.pos !== undefined ? active.pos : 0;
+  }
   const bar = document.getElementById('cp-grad-bar');
   if (bar) {
     const ordered = [...cpGradStops].sort((a, b) => a.pos - b.pos);
@@ -5594,6 +5594,110 @@ function cpSyncGradientUI() {
     m.style.background = cpGradStops[idx].color;
     m.classList.toggle('active', idx === cpActiveStop);
   });
+  const removeBtn = document.getElementById('cp-grad-remove');
+  const addBtn = document.getElementById('cp-grad-add');
+  if (removeBtn) removeBtn.disabled = cpGradStops.length <= 2;
+  if (addBtn) addBtn.disabled = cpGradStops.length >= 5;
+}
+
+// Recreate the markers + swatch buttons from scratch — called when the stop count
+// changes (add/remove) or the picker opens. Drag/click handlers are bound here.
+function cpRebuildStops() {
+  const track = document.getElementById('cp-grad-track');
+  const swatches = document.getElementById('cp-grad-swatches');
+  if (track) {
+    track.innerHTML = '';
+    cpGradStops.forEach((stop, idx) => {
+      const marker = document.createElement('div');
+      marker.className = 'cp-grad-marker';
+      marker.dataset.stop = idx;
+      marker.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        cpActiveStop = idx;
+        if (iroPicker) iroPicker.color.set(cpGradStops[idx].color);
+        cpSyncGradientUI();
+        const bar = document.getElementById('cp-grad-bar');
+        const rect = bar.getBoundingClientRect();
+        const onMove = (ev) => {
+          let pct = ((ev.clientX - rect.left) / rect.width) * 100;
+          pct = Math.max(0, Math.min(100, Math.round(pct)));
+          cpGradStops[idx].pos = pct;
+          cpSyncGradientUI();
+          emitColorUpdate();
+        };
+        const onUp = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+      marker.addEventListener('dblclick', (e) => { e.preventDefault(); cpRemoveStop(idx); });
+      track.appendChild(marker);
+    });
+  }
+  if (swatches) {
+    swatches.innerHTML = '';
+    cpGradStops.forEach((stop, idx) => {
+      const cont = document.createElement('div');
+      cont.className = 'cp-grad-stop-container' + (idx === cpActiveStop ? ' active' : '');
+      const btn = document.createElement('button');
+      btn.className = 'cp-color-btn';
+      btn.style.background = stop.color;
+      btn.addEventListener('click', () => {
+        cpActiveStop = idx;
+        if (iroPicker) iroPicker.color.set(cpGradStops[idx].color);
+        cpSyncGradientUI();
+      });
+      cont.appendChild(btn);
+      swatches.appendChild(cont);
+    });
+  }
+  cpSyncGradientUI();
+}
+
+// Interpolate a hex color between the two stops surrounding `pos`.
+function cpColorAtPos(pos) {
+  const ordered = [...cpGradStops].sort((a, b) => a.pos - b.pos);
+  let lo = ordered[0], hi = ordered[ordered.length - 1];
+  for (let i = 0; i < ordered.length - 1; i++) {
+    if (pos >= ordered[i].pos && pos <= ordered[i + 1].pos) { lo = ordered[i]; hi = ordered[i + 1]; break; }
+  }
+  const span = hi.pos - lo.pos || 1;
+  const t = Math.max(0, Math.min(1, (pos - lo.pos) / span));
+  const toRgb = (hx) => { let h = hx.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; };
+  const a = toRgb(lo.color), b = toRgb(hi.color);
+  const mix = a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  return '#' + mix.map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function cpAddStop(pos) {
+  if (cpGradStops.length >= 5) return;
+  if (pos === undefined) {
+    // Default: midpoint of the widest gap between consecutive stops.
+    const ordered = [...cpGradStops].sort((a, b) => a.pos - b.pos);
+    let bestGap = -1, bestPos = 50;
+    for (let i = 0; i < ordered.length - 1; i++) {
+      const gap = ordered[i + 1].pos - ordered[i].pos;
+      if (gap > bestGap) { bestGap = gap; bestPos = (ordered[i].pos + ordered[i + 1].pos) / 2; }
+    }
+    pos = Math.round(bestPos);
+  }
+  const opacity = (cpGradStops[cpActiveStop] && cpGradStops[cpActiveStop].opacity) ?? 100;
+  cpGradStops.push({ color: cpColorAtPos(pos), opacity, pos });
+  cpActiveStop = cpGradStops.length - 1;
+  if (iroPicker) iroPicker.color.set(cpGradStops[cpActiveStop].color);
+  cpRebuildStops();
+  emitColorUpdate();
+}
+
+function cpRemoveStop(idx) {
+  if (cpGradStops.length <= 2) return;
+  cpGradStops.splice(idx, 1);
+  if (cpActiveStop >= cpGradStops.length) cpActiveStop = cpGradStops.length - 1;
+  if (iroPicker) iroPicker.color.set(cpGradStops[cpActiveStop].color);
+  cpRebuildStops();
+  emitColorUpdate();
 }
 
 if (!state.savedPalette) {
@@ -5694,52 +5798,24 @@ function initColorPicker() {
 
       if (cpIsGradient) {
         iroPicker.color.set(cpGradStops[cpActiveStop].color);
-        cpSyncGradientUI();
+        cpRebuildStops();
       }
       emitColorUpdate();
     });
   });
 
-  [1, 2].forEach(i => {
-    const btn = document.getElementById(`cp-grad-stop-${i}`);
-    btn.addEventListener('click', () => {
-      cpActiveStop = i - 1;
-      iroPicker.color.set(cpGradStops[cpActiveStop].color);
-      cpSyncGradientUI();
-    });
-  });
-
-  // Draggable position markers over the preview bar.
-  const gradTrack = document.getElementById('cp-grad-track');
-  if (gradTrack) {
-    [0, 1].forEach(idx => {
-      const marker = document.createElement('div');
-      marker.className = 'cp-grad-marker';
-      marker.dataset.stop = idx;
-      marker.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        cpActiveStop = idx;
-        iroPicker.color.set(cpGradStops[idx].color);
-        cpSyncGradientUI();
-        const bar = document.getElementById('cp-grad-bar');
-        const rect = bar.getBoundingClientRect();
-        const onMove = (ev) => {
-          let pct = ((ev.clientX - rect.left) / rect.width) * 100;
-          pct = Math.max(0, Math.min(100, Math.round(pct)));
-          cpGradStops[idx].pos = pct;
-          cpSyncGradientUI();
-          emitColorUpdate();
-        };
-        const onUp = () => {
-          window.removeEventListener('mousemove', onMove);
-          window.removeEventListener('mouseup', onUp);
-        };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-      });
-      gradTrack.appendChild(marker);
+  // Click an empty spot on the preview bar to add a stop at that position.
+  const gradBar = document.getElementById('cp-grad-bar');
+  if (gradBar) {
+    gradBar.addEventListener('click', (e) => {
+      const rect = gradBar.getBoundingClientRect();
+      let pct = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+      pct = Math.max(0, Math.min(100, pct));
+      cpAddStop(pct);
     });
   }
+  document.getElementById('cp-grad-add').addEventListener('click', () => cpAddStop());
+  document.getElementById('cp-grad-remove').addEventListener('click', () => cpRemoveStop(cpActiveStop));
 
   document.getElementById('cp-grad-opacity').addEventListener('input', (e) => {
     let v = parseInt(e.target.value, 10);
@@ -5864,7 +5940,7 @@ function openColorPicker(btn, key, initialValue) {
       cpGradStops = parsed.stops;
       cpActiveStop = 0;
       iroPicker.color.set(cpGradStops[0].color);
-      cpSyncGradientUI();
+      cpRebuildStops();
     }
   } else {
     cpIsGradient = false;
@@ -5934,7 +6010,7 @@ function syncColorPickerWithSelection(el, c) {
       cpGradStops = parsed.stops;
       if (cpActiveStop > cpGradStops.length - 1) cpActiveStop = 0;
       iroPicker.color.set(cpGradStops[cpActiveStop].color);
-      cpSyncGradientUI();
+      cpRebuildStops();
     }
   } else {
     cpIsGradient = false;
