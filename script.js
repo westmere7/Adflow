@@ -537,11 +537,19 @@ function applyLinkSync(sourceEl, targetEl, group) {
   if (cat === 'text') {
     if (sync.text) targetEl.text = sourceEl.text;
     if (sync.font) {
-      const fontProps = ['fontSize', 'fontFamily', 'weight', 'lineHeight', 'lineSpacing', 'leading', 'tracking', 'textAlign', 'verticalAlign'];
+      // Font family/weight/spacing/alignment — NOT fontSize (handled separately so a
+      // group can sync typeface but keep per-canvas sizes, as auto-resize needs).
+      const fontProps = ['fontFamily', 'weight', 'lineHeight', 'lineSpacing', 'leading', 'tracking', 'textAlign', 'verticalAlign'];
       fontProps.forEach(p => {
         if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
         else delete targetEl[p];
       });
+    }
+    // Backward-compat: groups created before fontSize was split have no fontSize key,
+    // so it follows the font toggle (preserving old "font syncs size too" behavior).
+    const syncFontSize = sync.fontSize !== undefined ? sync.fontSize : sync.font;
+    if (syncFontSize) {
+      if (sourceEl.fontSize !== undefined) targetEl.fontSize = sourceEl.fontSize;
     }
     if (sync.color) {
       if (sourceEl.color !== undefined) targetEl.color = sourceEl.color;
@@ -3236,6 +3244,7 @@ function renderLinkControl() {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} /> Text content</label>
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} /> Font settings</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fontSize" ${(sync.fontSize !== undefined ? sync.fontSize : sync.font) ? 'checked' : ''} /> Font size</label>
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} /> Colors</label>
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
@@ -3359,7 +3368,7 @@ function renderLinkControl() {
           
           const cat = group.category;
           let keys = [];
-          if (cat === 'text') keys = ['text', 'font', 'color', 'opacity', 'inAnim', 'effect'];
+          if (cat === 'text') keys = ['text', 'font', 'fontSize', 'color', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'button') keys = ['text', 'textColor', 'fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'image') keys = ['image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
           else if (cat === 'shape') keys = ['fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
@@ -5989,9 +5998,174 @@ document.getElementById('btn-toggle-safezones').addEventListener('click', (e) =>
   render();
 });
 
-document.getElementById('btn-ai-resize').addEventListener('click', () => {
-  openModal('Auto-resize', '<div style="padding:18px 6px; font-size:13px; line-height:1.5;">Milo and Roy are working hard to implement this highly anticipated feature.</div>', false);
-});
+// ============================================================================
+// Auto-resize from selected canvas
+// ============================================================================
+// Classifies each element of the source canvas into a role (hybrid: layer name
+// first, then heuristics), then places & sizes a matching element on every other
+// canvas using per-format presets, links them, and syncs content/appearance
+// (keeping position, size and font-size independent per canvas).
+
+function canvasFormatClass(c) {
+  const w = c.width, h = c.height, r = w / h;
+  if (h <= 60) return 'mobile';                       // 320×50
+  if (r >= 3) return w >= 900 ? 'billboard' : 'leaderboard'; // 970×250 vs 728×90
+  if (h >= w * 1.6) return 'skyscraper';              // 160×600, 300×600
+  return 'rectangle';                                 // 300×250
+}
+
+function detectElementRole(el, canvas) {
+  const name = (el.customName || '').toLowerCase();
+  const area = (el.width * el.height) / (canvas.width * canvas.height || 1);
+  // Name-based (hybrid: trusted first)
+  if (name.includes('logo')) return 'logo';
+  if (name.includes('compliance') || name === 'cricos' || name === 'rfwn') return 'compliance';
+  if (name === 'background' || name === 'bg') return 'bgimage';
+  if (name === 'heading' || name.includes('headline')) return 'heading';
+  if (name === 'subheading' || name.includes('subhead')) return 'subheading';
+  // Type + heuristic fallbacks
+  if (el.type === 'button') return 'button';
+  if (el.type === 'image') {
+    if (area >= 0.7 || el.persistent === 'bottom') return 'bgimage';
+    if (el.persistent === 'top' && area < 0.18) return 'logo';
+    return 'image';
+  }
+  if (['rect', 'circle', 'pixel'].includes(el.type)) {
+    if (area >= 0.7 || el.persistent === 'bottom') return 'bgimage';
+    return 'shape';
+  }
+  if (el.type === 'text') {
+    if (el.persistent === 'top') return 'compliance'; // tiny persistent legal text
+    const texts = canvas.elements
+      .filter(e => e.type === 'text' && e.persistent !== 'top')
+      .sort((a, b) => (b.fontSize || 0) - (a.fontSize || 0));
+    if (texts[0] && texts[0].id === el.id) return 'heading';
+    if (texts[1] && texts[1].id === el.id) return 'subheading';
+    return 'text';
+  }
+  return 'other';
+}
+
+function syncDefaultsForRole(role, cat) {
+  // Baseline: content + appearance; keep layout (transform) and font-size independent.
+  const s = { opacity: true, inAnim: true, effect: true, transform: false };
+  if (cat === 'text') { s.text = true; s.font = true; s.fontSize = false; s.color = true; }
+  else if (cat === 'button') { s.text = true; s.textColor = true; s.fill = true; s.stroke = true; }
+  else if (cat === 'image') { s.image = true; s.rotation = true; }
+  else if (cat === 'shape') { s.fill = true; s.stroke = true; }
+  return s;
+}
+
+function layoutForRole(role, c, srcEl) {
+  const w = c.width, h = c.height;
+  const pad = Math.max(8, Math.round(Math.min(w, h) * 0.06));
+  const fmt = canvasFormatClass(c);
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  if (role === 'bgimage') {
+    return { x: 0, y: 0, width: w, height: h };
+  }
+  if (role === 'logo') {
+    const ratio = (srcEl.width && srcEl.height) ? srcEl.height / srcEl.width : 0.35;
+    const lw = clamp(Math.round(w * 0.2), 48, 110);
+    return { x: w - lw - pad, y: pad, width: lw, height: Math.round(lw * ratio) };
+  }
+  if (role === 'heading') {
+    const fs = clamp(Math.round(Math.min(w, h) * 0.12), 12, 46);
+    const reserve = (fmt === 'leaderboard' || fmt === 'billboard') ? Math.round(w * 0.28) : 0;
+    return { x: pad, y: pad, width: Math.max(60, w - pad * 2 - reserve), height: Math.round(fs * 1.3), fontSize: fs };
+  }
+  if (role === 'subheading') {
+    const hFs = clamp(Math.round(Math.min(w, h) * 0.12), 12, 46);
+    const fs = Math.max(10, Math.round(hFs * 0.55));
+    const reserve = (fmt === 'leaderboard' || fmt === 'billboard') ? Math.round(w * 0.28) : 0;
+    return { x: pad, y: pad + Math.round(hFs * 1.3) + Math.round(fs * 0.5), width: Math.max(60, w - pad * 2 - reserve), height: Math.round(fs * 1.3), fontSize: fs };
+  }
+  if (role === 'button') {
+    const btnH = clamp(Math.round(h * 0.12), 22, 48);
+    const btnW = clamp(Math.round(w * 0.4), 80, w - pad * 2);
+    const fs = Math.max(11, Math.round(btnH * 0.42));
+    let x, y;
+    if (fmt === 'leaderboard' || fmt === 'billboard' || fmt === 'mobile') {
+      x = w - btnW - pad; y = Math.round((h - btnH) / 2);     // right, vertically centered
+    } else { // skyscraper / rectangle
+      x = Math.round((w - btnW) / 2); y = h - btnH - pad;     // bottom, centered
+    }
+    return { x, y, width: btnW, height: btnH, fontSize: fs };
+  }
+  // Generic shape / image / loose text: scale to fit, centered (preserve aspect).
+  const ratio = (srcEl.width && srcEl.height) ? srcEl.width / srcEl.height : 1;
+  let nw = clamp(Math.round(w * 0.5), 20, w - pad * 2);
+  let nh = Math.round(nw / (ratio || 1));
+  if (nh > h - pad * 2) { nh = Math.max(10, h - pad * 2); nw = Math.round(nh * ratio); }
+  const out = { x: Math.round((w - nw) / 2), y: Math.round((h - nh) / 2), width: nw, height: nh };
+  if (srcEl.type === 'text') {
+    const fs = clamp(Math.round(Math.min(w, h) * 0.1), 10, 40);
+    out.fontSize = fs;
+    out.height = Math.round(fs * 1.3);
+  }
+  return out;
+}
+
+function autoResizeFromSelected() {
+  const src = getActiveCanvas();
+  if (!src) { alert('Select a source canvas first (click its header).'); return; }
+  if (state.canvases.length < 2) { alert('Add at least one more canvas to resize into.'); return; }
+
+  const otherCount = state.canvases.length - 1;
+  if (!confirm(`Auto-resize from "${src.name || src.width + '×' + src.height}" (${src.width}×${src.height})?\n\n⚠ This first CLEARS every element on the other ${otherCount} canvas${otherCount > 1 ? 'es' : ''}, then places & sizes every element from this canvas onto them, links them, and syncs content/appearance. Position, size and font-size stay per-canvas. You can undo.`)) return;
+
+  if (!state.linkGroups) state.linkGroups = {};
+
+  // Wipe the target canvases completely — only source-derived elements will remain.
+  state.canvases.forEach(c => {
+    if (c.id === src.id) return;
+    c.elements = [];
+  });
+
+  // Every source element in the active frame (+ persistent layers) gets carried over.
+  const srcEls = src.elements.filter(el => el.persistent !== false || el.frameId === state.activeFrameId);
+
+  srcEls.forEach(srcEl => {
+    const role = detectElementRole(srcEl, src);
+    const cat = getElementCategory(srcEl) || srcEl.type;
+
+    // Create or refresh this element's link group with role-appropriate sync defaults.
+    let gid = srcEl.linkGroupId;
+    if (!gid || !state.linkGroups[gid]) {
+      gid = 'lg_' + uid();
+      state.linkGroups[gid] = { id: gid, name: baseLayerLabel(srcEl), category: cat, syncProperties: syncDefaultsForRole(role, cat) };
+      srcEl.linkGroupId = gid;
+    } else {
+      state.linkGroups[gid].syncProperties = syncDefaultsForRole(role, cat);
+    }
+    const group = state.linkGroups[gid];
+    const srcLabel = baseLayerLabel(srcEl);
+
+    state.canvases.forEach(c => {
+      if (c.id === src.id) return;
+      // Reuse a same-named element of the same type if one exists, else clone.
+      let target = c.elements.find(el => el.type === srcEl.type && baseLayerLabel(el) === srcLabel);
+      if (!target) {
+        target = JSON.parse(JSON.stringify(srcEl));
+        target.id = uid();
+        if (target.persistent === false) target.frameId = state.activeFrameId;
+        insertAtGroupEnd(c.elements, target);
+      }
+      target.linkGroupId = gid;
+      // Place & size per format, then sync content/appearance from the source.
+      Object.assign(target, layoutForRole(role, c, srcEl));
+      applyLinkSync(srcEl, target, group);
+      if (target.type === 'button' && target.autoHug) target.width = measureButtonWidth(target);
+    });
+  });
+
+  cleanupLinkGroups(); // prune any groups orphaned by the clear
+  pushHistory();
+  render();
+}
+
+document.getElementById('btn-ai-resize').addEventListener('click', autoResizeFromSelected);
 
 document.getElementById('btn-clear-everything')?.addEventListener('click', () => {
   if (!confirm("Are you sure you want to clear all elements from all canvases? This cannot be undone.")) return;
@@ -6858,36 +7032,57 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
   const body = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:70vh; overflow-y:auto; padding-right:16px;">
         
-        <div style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(124, 92, 255, 0.08)); border: 1px solid rgba(124, 92, 255, 0.2); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+        <div style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(124, 92, 255, 0.08)); border: 1px solid rgba(124, 92, 255, 0.2); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
           <h3 style="color:#22d3ee; margin:0 0 6px 0; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
             Key Concept: Multi-Canvas Workflow & Link Groups
           </h3>
           <p style="margin:0; font-size:12px; color:var(--text-muted); line-height:1.5;">
-            Design once, propagate everywhere. RMIT Display Studio allows you to orchestrate multiple banner sizes (Canvases) within a single project. Using <b>Link Groups</b>, you can bind elements (like headlines, CTA buttons, or background shapes) across different canvases. Changes then sync automatically or in real-time, eliminating redundant, manual edits across different banner sizes.
+            Design once, propagate everywhere. RMIT Display Studio lets you orchestrate every banner size (Canvas) inside a single project. Using <b>Link Groups</b>, you bind elements — headlines, CTA buttons, logos, background shapes — across canvases, so a change syncs automatically (or in real time) instead of being re-done by hand in every size.
+          </p>
+        </div>
+
+        <div style="background: linear-gradient(135deg, rgba(124, 92, 255, 0.14), rgba(167, 139, 250, 0.06)); border: 1px solid rgba(124, 92, 255, 0.35); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+          <h3 style="color:var(--accent-light); margin:0 0 6px 0; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 9l-4.8 3.5L17 18l-5-3.5L7 18l1.8-5.5L4 9l6.1.2z"></path></svg>
+            Headline Feature: Auto-Resize from Selected (AI)
+          </h3>
+          <p style="margin:0; font-size:12px; color:var(--text-muted); line-height:1.5;">
+            Build your whole size set from one designed canvas. Lay out a single banner exactly how you want it, then hit <b>Auto-resize from selected</b> in the Tools panel — Studio reads every element, figures out its role, rebuilds all the other canvases to fit their proportions, and links everything together so future edits stay in sync. See section 2 for the full breakdown.
           </p>
         </div>
 
         <h2 style="color:#22d3ee; margin-top:0; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">1. Workspace & Multi-Canvas Orchestration</h2>
-        <p>Instead of managing separate files for each banner size, RMIT Display Studio arranges all your ad sizes (Canvases) side-by-side on an infinite panning canvas.</p>
+        <p>Instead of managing separate files for each banner size, RMIT Display Studio arranges all your ad sizes (Canvases) side-by-side on an infinite panning workspace.</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:6px;"><b>Adding Canvases:</b> Click the <b>+</b> button in the left sidebar to add standard IAB display sizes (300x250, 728x90, 160x600, etc.) or input custom dimensions.</li>
-          <li style="margin-bottom:6px;"><b>Active Canvas Selection:</b> Click any canvas to make it the active workspace. The side property panels and options will automatically scope to the selected canvas.</li>
-          <li style="margin-bottom:6px;"><b>Navigation & Zoom:</b> Hold <span class="kbd">Space</span> and drag to pan the workspace. Scroll your mouse wheel (or pinch-to-zoom) to zoom in and out. Press <span class="kbd">Tab</span> to toggle Fullscreen Mode.</li>
-          <li style="margin-bottom:6px;"><b>Canvas Controls:</b> Double-click a Canvas title to rename it. Right-click canvas headers to duplicate or remove the canvas.</li>
+          <li style="margin-bottom:6px;"><b>Adding Canvases:</b> Click the <b>+</b> button in the left sidebar to add standard IAB display sizes (300×250, 728×90, 160×600, 970×250, 320×50, …) or input custom dimensions.</li>
+          <li style="margin-bottom:6px;"><b>Active Canvas Selection:</b> Click any canvas to make it the active workspace. The side property panels and options automatically scope to the selected canvas.</li>
+          <li style="margin-bottom:6px;"><b>Navigation & Zoom:</b> Hold <span class="kbd">Space</span> and drag to pan. Scroll the mouse wheel (or pinch) to zoom; click the zoom % in the top bar to reset to 100%. Press <span class="kbd">Tab</span> to toggle Fullscreen Mode.</li>
+          <li style="margin-bottom:6px;"><b>Canvas Controls:</b> Double-click a canvas title to rename it. Right-click a canvas for Preview, Export HTML5 / PNG, change background, or clear contents. Right-click its sidebar entry to clone or delete.</li>
+          <li style="margin-bottom:6px;"><b>Crop to Canvas:</b> Enable in <b>Settings</b> to clip anything that bleeds outside a canvas's bounds — an Illustrator-style trim preview of the exported result.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">2. Link Groups & Synchronization (Real-time & Manual)</h2>
-        <p>Link Groups are the engine behind the multi-canvas workflow, allowing you to link sibling elements across canvases.</p>
+        <h2 style="color:var(--accent-light); margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">2. Auto-Resize from Selected ✨ (AI)</h2>
+        <p>The flagship workflow accelerator. Design one canvas, then propagate it across every other size in a single click via the <b>Auto-resize from selected</b> button in the left <b>Tools</b> panel.</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:10px;">
+          <li style="margin-bottom:8px;"><b>Role detection (hybrid):</b> Each element on the source canvas is classified by layer name first, then by smart heuristics — <i>heading</i>, <i>subheading</i>, <i>button</i>, <i>logo</i>, <i>shape</i>, <i>background image</i> (anything filling the canvas), or a generic fallback for anything unrecognised.</li>
+          <li style="margin-bottom:8px;"><b>Format-aware placement & sizing:</b> Every target canvas is matched to a format class — skyscraper, rectangle, leaderboard, billboard, mobile — and each role is positioned and scaled with presets tuned for that shape (e.g. CTAs anchor bottom-centre on tall/rectangle formats and right-centre on wide/mobile strips; headings stack top-left and reserve space for the button on wide units; logos pin top-right; full-bleed images fill the frame).</li>
+          <li style="margin-bottom:8px;"><b>Clean slate:</b> Before rebuilding, the other canvases are <b>cleared</b> so only source-derived elements remain — you'll be asked to confirm first, and the whole operation is a single undo.</li>
+          <li style="margin-bottom:8px;"><b>Auto-linking:</b> Every propagated element is placed in its own Link Group with role-appropriate sync defaults. Content and appearance (text, typeface, colours, stroke, animation) stay in sync across canvases, while <b>position, dimensions and font-size remain independent</b> per format — so later edits to wording or colour ripple everywhere without disturbing each size's tuned layout.</li>
+        </ul>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Tip: results are a strong starting point, not a final layout — nudge anything afterwards, and your manual tweaks to size/position won't be overwritten by content syncs.</p>
+
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">3. Link Groups & Synchronization (Real-time & Manual)</h2>
+        <p>Link Groups are the engine behind the multi-canvas workflow, binding sibling elements across canvases.</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:8px;"><b>Auto-Link:</b> Click <b>Auto-Link</b> in the sidebar to automatically scan all canvases and group matching elements with the same layer name and type. Toggle the <b>Selected only</b> checkbox to only scan and match based on the currently selected layer.</li>
-          <li style="margin-bottom:8px;"><b>Manual Linking:</b> Right-click an element, select <b>Link Group</b>, and choose an existing group (or select "Linked to..." at the top of the submenu to view current links). You can also create a new group via the Link panel.</li>
-          <li style="margin-bottom:8px;"><b>Sync Properties:</b> Define exactly which properties sync within a group. You can toggle checkboxes for <i>Text content</i>, <i>Font settings</i>, <i>Colors & Fill</i>, <i>Stroke</i>, <i>Transform (Width/Height)</i>, <i>Opacity</i>, <i>IN Animations</i>, and <i>Effects</i>.</li>
-          <li style="margin-bottom:8px;"><b>Live-Link Mode (Real-time Sync):</b> Toggle the lightning bolt icon in the Link Groups panel or the <b>Live-link mode</b> checkbox under Sync Properties. When active, any edit you make to an element (moving, resizing, editing text, changing color) immediately propagates to all sibling elements in the group in real-time.</li>
-          <li style="margin-bottom:8px;"><b>Manual Push:</b> If Live-link is disabled, you can manually broadcast changes by selecting <b>Push changes to group</b> in the main context menu or clicking the button in the side panel.</li>
+          <li style="margin-bottom:8px;"><b>Auto-Link:</b> Click <b>Auto-Link</b> in the sidebar to scan all canvases and group matching elements by layer name and type. Toggle <b>Selected only</b> to match against just the currently selected layer.</li>
+          <li style="margin-bottom:8px;"><b>Manual Linking:</b> Right-click an element → <b>Link Group</b> to join an existing group (the "Linked to…" entries at the top show current membership), or create a new group from the Link panel.</li>
+          <li style="margin-bottom:8px;"><b>Sync Properties:</b> Define exactly which properties sync within a group — <i>Text content</i>, <i>Font settings</i> (family/weight/spacing/alignment), the new standalone <i>Font size</i>, <i>Colors &amp; Fill</i>, <i>Stroke</i>, <i>Transform (Width/Height)</i>, <i>Opacity</i>, <i>IN Animations</i>, and <i>Effects</i>. Splitting Font size from Font settings lets you keep one typeface across canvases while each size keeps its own scale.</li>
+          <li style="margin-bottom:8px;"><b>Live-Link Mode (Real-time Sync):</b> Toggle the lightning-bolt icon in the Link Groups panel (or the <b>Live-link mode</b> checkbox under Sync Properties). When active, any edit — moving, resizing, editing text, changing colour — propagates to all siblings instantly.</li>
+          <li style="margin-bottom:8px;"><b>Manual Push:</b> With Live-link off, broadcast changes on demand via <b>Push changes to group</b> in the context menu or the side-panel button.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">3. Element Creation & Customization</h2>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">4. Element Creation & Customization</h2>
         <p>Right-click inside any canvas to add design layers. Adjust their visuals using the right-hand Properties Panel:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
           <li style="margin-bottom:6px;"><b>Text & Typography:</b> Supports custom styling (size, alignment, weight, line-height, leading, and tracking). Includes pre-installed brand typography (Museo Sans, RMIT Lato, etc.). Double-click text layers to edit content inline.</li>
@@ -6897,7 +7092,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
           <li style="margin-bottom:6px;"><b>Advanced Color Picker:</b> Swatches support linear and radial gradients, hex inputs, alpha opacity settings, and saved project swatches.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">4. Layer Stacking & Persistence</h2>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">5. Layer Stacking & Persistence</h2>
         <p>Order and target layers across frames via the left Layers Panel:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
           <li style="margin-bottom:6px;"><b>Arranging:</b> Drag layers up and down the stack, or use <span class="kbd">Ctrl</span>+<span class="kbd">[</span> and <span class="kbd">Ctrl</span>+<span class="kbd">]</span> to order.</li>
@@ -6905,16 +7100,17 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
           <li style="margin-bottom:6px;"><b>Persistence (Frame vs Top vs Bottom):</b> Click the persistence badge on a layer. <i>Frame</i> limits the element to the current timeline frame. <i>Bottom</i> locks it as a background across all frames. <i>Top</i> forces it to overlay above all frames (useful for branding logos and persistent CTAs).</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">5. Timeline, Animations & Loop</h2>
-        <p>Animate your display ads using the frame-based animation sequencer at the top of the workspace:</p>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">6. Timeline, Animations & Loop</h2>
+        <p>Animate your display ads using the frame-based sequencer at the top of the workspace:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:6px;"><b>Frames:</b> Create sequence steps with individual display durations. Transition selectors determine slide, swipe, fade, or scale animations between frames.</li>
-          <li style="margin-bottom:6px;"><b>Entrance Animations:</b> Apply entrance transitions (Pop-in, Fade, Slide Up/Down/Left/Right) to layers to animate them onto the screen as a frame begins.</li>
-          <li style="margin-bottom:6px;"><b>Continuous Effects:</b> Apply looping animations (Pan, Zoom, Float, Pulsate) to keep banners dynamic. Toggle "Perform once" to restrict effects to one cycle or play indefinitely.</li>
-          <li style="margin-bottom:6px;"><b>Timeline Loop:</b> Toggle the global Loop option to repeat the entire animation timeline continuously.</li>
+          <li style="margin-bottom:6px;"><b>Frames:</b> Create sequence steps with individual display durations. The per-frame transition selector covers <i>Fade</i>, <i>Slide</i> (L/R/U/D), and <i>Swipe</i> (L/R/U/D, a wipe that reveals the next frame). Slide/Swipe also offer an <b>Add Fade</b> toggle and a transition duration.</li>
+          <li style="margin-bottom:6px;"><b>Entrance Animations:</b> Apply IN animations (Pop-in, Fade, Slide, Typing) per layer to animate them onto the screen when a frame begins, with duration, delay and an optional fade toggle.</li>
+          <li style="margin-bottom:6px;"><b>Continuous Effects:</b> Apply looping effects (Pan, Zoom, Float, Pulse, Wiggle, Spin, Heartbeat, Flash) to keep banners dynamic. Toggle "Perform once" to play a single cycle instead of looping.</li>
+          <li style="margin-bottom:6px;"><b>Text background animation:</b> Text layers can carry a coloured background with adjustable padding and coverage; with a typing IN animation it can sweep in line-by-line alongside the text.</li>
+          <li style="margin-bottom:6px;"><b>Timeline Loop:</b> Toggle the global Loop option to repeat the whole timeline continuously.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">6. Alignment, Guides & Snapping</h2>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">7. Alignment, Guides & Snapping</h2>
         <p>Ensure precise layout alignment across your banners:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
           <li style="margin-bottom:6px;"><b>Magnetic Snapping:</b> Elements align and snap to canvas edges, centers, guidelines, and sibling layers. Toggle Snapping in the workspace context menu.</li>
@@ -6922,13 +7118,23 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
           <li style="margin-bottom:6px;"><b>Precision Nudging:</b> Use arrow keys to nudge elements 1px, or hold <span class="kbd">Shift</span> to nudge 10px.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">7. Exporting & Google Ads Validation</h2>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">8. Saving, Auto-Save & Project Management</h2>
+        <p>Your work is protected automatically, and projects are easy to start, reopen and configure:</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
+          <li style="margin-bottom:6px;"><b>Seamless auto-save:</b> Every change is continuously persisted to this browser (IndexedDB) and restored when you return — including your zoom and scroll position. The top bar shows a live status: <i>All changes saved</i>, <i>Saving…</i>, or <i>Unsaved changes</i>. No prompt on close.</li>
+          <li style="margin-bottom:6px;"><b>Manual save / open (.cook):</b> <b>File → Save Project</b> (<span class="kbd">⌘ / Ctrl</span>+<span class="kbd">S</span>) writes a portable <b>.cook</b> file (project + embedded assets); <b>Open Project</b> loads <code>.cook</code> (and legacy <code>.zip</code>) back in.</li>
+          <li style="margin-bottom:6px;"><b>Open Recent:</b> The File menu lists your last manually-saved projects with timestamps for one-click restore.</li>
+          <li style="margin-bottom:6px;"><b>New Project wizard:</b> Choose which canvas sizes to include (all on by default), the project name, ClickTag URL, the default canvas background colour, and a configurable <b>maximum ad weight (KB)</b> used by the live validator.</li>
+          <li style="margin-bottom:6px;"><b>Project Settings &amp; Settings:</b> Edit project name / ClickTag in <b>File → Project Settings</b>; app-level preferences (theme, rulers, snapping, Crop to Canvas) live in <b>File → Settings</b>.</li>
+        </ul>
+
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">9. Exporting & Google Ads Validation</h2>
         <p>Export ready-to-run HTML5 ad packages tailored for Google Ads compliance:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:8px;">
           <li style="margin-bottom:6px;"><b>ClickTag Configuration:</b> Set target redirects globally or override individual click destinations per canvas.</li>
-          <li style="margin-bottom:6px;"><b>Validation Audits:</b> The system runs live checks on assets, script counts, external links, and sizes. It flags errors if files exceed the 150KB Google Ads limit or contain non-compliant external assets.</li>
-          <li style="margin-bottom:6px;"><b>Production Bundling:</b> Exports as optimized, minified ZIP files containing pure inline code and lightweight embedded assets.</li>
-          <li style="margin-bottom:6px;"><b>PNG backup:</b> Instant high-resolution raster capture of any frame to use as static backup assets.</li>
+          <li style="margin-bottom:6px;"><b>Validation Audits:</b> The left panel runs live checks on assets, external links and weight, flagging errors when a canvas exceeds your configured size limit (default 150&nbsp;KB, the Google Ads standard) or contains non-compliant external assets.</li>
+          <li style="margin-bottom:6px;"><b>Production Bundling:</b> Exports as self-contained ZIP files with inline code and embedded assets — per canvas, or batch-export the whole set.</li>
+          <li style="margin-bottom:6px;"><b>PNG backup:</b> One-click static raster capture of any frame for use as a fallback image.</li>
         </ul>
 
       </div>`;
@@ -6937,6 +7143,18 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v1.4.0',
+    date: 'May 2026',
+    items: [
+      'Auto-resize from selected (AI): build your entire size set in one click. It reads every element on the selected canvas, detects each one’s role (heading, subheading, button, logo, shape, background image, or generic), then clears the other canvases and re-places + re-sizes matching elements using per-format layout presets.',
+      'Auto-resize automatically links every propagated element into its own group with role-aware sync defaults — content and appearance stay in sync across canvases while position, dimensions and font-size remain independent per format.',
+      'Added a dedicated "Font size" sync property for text link groups, split out from "Font settings" — you can now sync the typeface across canvases while keeping per-canvas sizes.',
+      'Added seamless local auto-save: projects are continuously persisted to the browser (IndexedDB) and restored on reload, with a live save-status indicator (All changes saved / Saving… / Unsaved) in the top bar. Manual .cook saving is unchanged.',
+      'New Project wizard now lets you pick which canvas sizes to include, the project name, the default canvas background colour, and a configurable maximum ad weight (KB) that drives the live size-validation warnings.',
+      'Cleaned up the Tools panel — removed the permanent highlight on the Auto-resize and Toggle Safezones buttons (the AI badge stays).'
+    ]
+  },
   {
     version: 'v1.3.32',
     date: 'May 2026',
@@ -7243,7 +7461,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v1.3.32';
+  const currentVersion = 'v1.4.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -7313,7 +7531,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.32</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.4.0</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -7369,7 +7587,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.32</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.4.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

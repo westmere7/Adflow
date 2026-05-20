@@ -2960,11 +2960,7 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 
     .automation-btn.active {
 
-      background: rgba(124, 92, 255, 0.15);
-
-      color: var(--accent-base);
-
-      border-color: var(--accent-base);
+      color: var(--accent-light);
 
     }
 

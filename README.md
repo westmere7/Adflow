@@ -20,12 +20,27 @@ To avoid duplicate, manual updates across different canvases, you use **Link Gro
 
 ---
 
+## ✨ Headline Feature: Auto-Resize from Selected (AI)
+
+Design **one** banner, generate the **whole size set** in a single click. With a source canvas selected, the **Auto-resize from selected** button in the Tools panel rebuilds every other canvas to fit its own proportions:
+
+- **Hybrid role detection** — each element on the source canvas is classified first by layer name, then by heuristics, into a role: *heading*, *subheading*, *button*, *logo*, *shape*, *background image* (anything filling the canvas), or a generic fallback for unrecognised layers.
+- **Format-aware placement & sizing** — every target canvas is matched to a format class (*skyscraper, rectangle, leaderboard, billboard, mobile*) and each role is positioned/scaled with presets tuned to that shape: CTAs anchor bottom-centre on tall/rectangle units and right-centre on wide/mobile strips; headings stack top-left and reserve room for the button on wide formats; logos pin top-right; full-bleed images fill the frame.
+- **Clean slate, fully undoable** — target canvases are cleared first (after a confirm) so only source-derived elements remain; the entire rebuild is a single Undo step.
+- **Automatic linking with smart defaults** — every propagated element is dropped into its own Link Group. Content and appearance (text, typeface, colours, stroke, animation) sync across canvases, while **position, dimensions and font-size stay independent per format** — so editing the headline or CTA colour later ripples everywhere without disturbing each size's tuned layout.
+
+Results are a strong starting point you can refine freely; manual size/position tweaks are never overwritten by content syncs.
+
+---
+
 ## Key Features
 
 ### Workspace & Architecture
 - **Infinite Multi-Canvas Workspace**: Design and edit multiple ad sizes simultaneously side-by-side within a single project window.
-- **Save & Load Architecture**: Persist work locally as lightweight `.adcooker` JSON project files.
-- **Theming System**: Switch between 6 distinct UI color schemas (Dark, RMIT Brand, Ocean, Navy, Light, High Contrast).
+- **Seamless Auto-Save**: Every change is continuously persisted to the browser (IndexedDB) and restored on reload — including zoom & scroll position — with a live save-status indicator in the top bar. No "unsaved changes" nagging.
+- **Portable `.cook` Projects**: Manually save/open self-contained `.cook` files (project + embedded assets), with an **Open Recent** list of your last saved projects for one-click restore.
+- **New Project Wizard**: Spin up a project by picking which canvas sizes to include, the name, ClickTag, default background colour, and a configurable maximum ad weight (KB).
+- **Theming System**: Switch between distinct UI color schemas (Dark, RMIT Brand, Ocean, Navy, Light).
 - **History Management**: Full Undo/Redo stack supporting complex nested operations.
 
 ### Element & Asset Management
@@ -37,7 +52,7 @@ To avoid duplicate, manual updates across different canvases, you use **Link Gro
 
 ### Animation & Timeline
 - **Frame-Based Sequencing**: Define sequences with per-frame durations (in seconds).
-- **Frame Transitions**: Apply global entering transitions (Fade, Slide Up/Down/Left/Right).
+- **Frame Transitions**: Apply per-frame entering transitions — Fade, Slide (Up/Down/Left/Right), and Swipe (Up/Down/Left/Right, a directional wipe that reveals the next frame) — each with an optional **Add Fade** toggle and adjustable duration.
 - **Element Entrance Animations**: Stagger elements with individual entrance animations (Pop-in, Swipe, Fade, etc.).
 - **Continuous Effects**: Apply non-destructive, persistent effects such as Pan, Zoom, Wiggle, and Float. Effects can loop infinitely or perform once.
 
@@ -53,7 +68,7 @@ To avoid duplicate, manual updates across different canvases, you use **Link Gro
 
 ### Export & Validation Pipeline
 - **Google Ads Compliance**: Automatically generates self-contained `.zip` files validated against Google's HTML5 ad network requirements.
-- **Pre-flight Validation**: Real-time validation checks for missing ClickTags, external asset references, and 150KB maximum file size limits.
+- **Pre-flight Validation**: Real-time validation checks for missing ClickTags, external asset references, and a configurable maximum ad weight (default 150 KB — the Google Ads standard), set per project.
 - **Automated Bundling**: Fetches and embeds external SVGs directly into the final ZIP structure to ensure total portability.
 - **Static Fallbacks**: One-click generation of static PNG snapshot fallbacks for any frame.
 
