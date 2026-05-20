@@ -1582,6 +1582,24 @@ function wireInlineEdit(ed, el, key) {
     e.stopPropagation(); // don't fire global shortcuts while typing
     if (e.key === 'Escape') { e.preventDefault(); cancel(); }
   });
+  ed.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+    if (document.queryCommandSupported('insertText')) {
+      document.execCommand('insertText', false, text);
+    } else {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      selection.deleteFromDocument();
+      const range = selection.getRangeAt(0);
+      const textNode = document.createTextNode(text);
+      range.insertNode(textNode);
+      range.setStartAfter(textNode);
+      range.setEndAfter(textNode);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  });
   ed.addEventListener('input', () => {
     el[key] = ed.innerText;
     if (el.type === 'button' && el.autoHug) {
@@ -4069,55 +4087,8 @@ window.addEventListener('keydown', (e) => {
 
   const c = getActiveCanvas();
 
-  // Copy
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
-    if (c && state.layerSelection?.length > 0) {
-      state.clipboard = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
-    }
-    return;
-  }
+  // Copy, Cut, and Paste are handled by standard window events below
 
-  // Cut
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
-    if (c && state.layerSelection?.length > 0) {
-      state.clipboard = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
-      c.elements = c.elements.filter(x => !state.layerSelection.includes(x.id));
-      state.layerSelection = [];
-      state.selectedElementId = null;
-      pushHistory();
-      render();
-    }
-    return;
-  }
-
-  // Paste
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-    if (c && state.clipboard && state.clipboard.length > 0) {
-      const groupMap = {};
-      const newIds = [];
-      const pasted = state.clipboard.map(x => {
-        const copy = JSON.parse(JSON.stringify(x));
-        copy.id = uid();
-        copy.x += 10;
-        copy.y += 10;
-        if (copy.persistent === false) {
-          copy.frameId = state.activeFrameId;
-        }
-        if (copy.groupId) {
-          if (!groupMap[copy.groupId]) groupMap[copy.groupId] = uid();
-          copy.groupId = groupMap[copy.groupId];
-        }
-        newIds.push(copy.id);
-        return copy;
-      });
-      pasted.forEach(p => insertAtGroupEnd(c.elements, p));
-      state.layerSelection = newIds;
-      state.selectedElementId = newIds.length === 1 ? newIds[0] : null;
-      pushHistory();
-      render();
-    }
-    return;
-  }
 
   if (e.code === 'Space') {
     e.preventDefault();
@@ -4232,6 +4203,170 @@ window.addEventListener('keydown', (e) => {
     }
     e.preventDefault();
     return;
+  }
+});
+
+window.addEventListener('copy', (e) => {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+    return;
+  }
+  const c = getActiveCanvas();
+  if (c && state.layerSelection?.length > 0) {
+    const selected = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
+    state.clipboard = selected;
+    e.clipboardData.setData('application/x-adcooker-elements', JSON.stringify(selected));
+    e.preventDefault();
+  }
+});
+
+window.addEventListener('cut', (e) => {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+    return;
+  }
+  const c = getActiveCanvas();
+  if (c && state.layerSelection?.length > 0) {
+    const selected = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
+    state.clipboard = selected;
+    e.clipboardData.setData('application/x-adcooker-elements', JSON.stringify(selected));
+    c.elements = c.elements.filter(x => !state.layerSelection.includes(x.id));
+    state.layerSelection = [];
+    state.selectedElementId = null;
+    e.preventDefault();
+    pushHistory();
+    render();
+  }
+});
+
+window.addEventListener('paste', (e) => {
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+    return;
+  }
+  const c = getActiveCanvas();
+  if (!c) return;
+
+  // 1. Try pasting Adcooker elements
+  const elementsData = e.clipboardData.getData('application/x-adcooker-elements');
+  if (elementsData) {
+    e.preventDefault();
+    try {
+      const parsed = JSON.parse(elementsData);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const groupMap = {};
+        const newIds = [];
+        const pasted = parsed.map(x => {
+          const copy = JSON.parse(JSON.stringify(x));
+          copy.id = uid();
+          copy.x += 10;
+          copy.y += 10;
+          if (copy.persistent === false) {
+            copy.frameId = state.activeFrameId;
+          }
+          if (copy.groupId) {
+            if (!groupMap[copy.groupId]) groupMap[copy.groupId] = uid();
+            copy.groupId = groupMap[copy.groupId];
+          }
+          newIds.push(copy.id);
+          return copy;
+        });
+        pasted.forEach(p => insertAtGroupEnd(c.elements, p));
+        state.layerSelection = newIds;
+        state.selectedElementId = newIds.length === 1 ? newIds[0] : null;
+        pushHistory();
+        render();
+        return;
+      }
+    } catch (err) {
+      console.warn('Failed to parse pasted elements:', err);
+    }
+  }
+
+  // 2. Try pasting images from clipboard
+  const items = e.clipboardData?.items;
+  if (items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(event) {
+            const dataUrl = event.target.result;
+            const assetKey = 'pasted_' + uid();
+            state.assets[assetKey] = dataUrl;
+            
+            const imgEl = Object.assign(makeElement('image'), {
+              customName: 'Pasted Image',
+              assetKey: assetKey,
+              x: 20,
+              y: 20,
+              width: 150,
+              height: 150,
+              persistent: false,
+              frameId: state.activeFrameId
+            });
+            
+            const img = new Image();
+            img.onload = function() {
+              const maxW = Math.round(c.width * 0.8);
+              const maxH = Math.round(c.height * 0.8);
+              let w = img.width;
+              let h = img.height;
+              if (w > maxW || h > maxH) {
+                const ratio = Math.min(maxW / w, maxH / h);
+                w = Math.round(w * ratio);
+                h = Math.round(h * ratio);
+              }
+              imgEl.width = w;
+              imgEl.height = h;
+              imgEl.x = Math.round((c.width - w) / 2);
+              imgEl.y = Math.round((c.height - h) / 2);
+              render();
+            };
+            img.src = dataUrl;
+
+            insertAtGroupEnd(c.elements, imgEl);
+            state.selectedElementId = imgEl.id;
+            state.layerSelection = [imgEl.id];
+            pushHistory();
+            render();
+          };
+          reader.readAsDataURL(file);
+        }
+        return;
+      }
+    }
+  }
+
+  // 3. Try pasting plain text
+  const text = e.clipboardData?.getData('text/plain');
+  if (text) {
+    e.preventDefault();
+    const textEl = Object.assign(makeElement('text'), {
+      customName: 'Pasted Text',
+      text: text,
+      x: 20,
+      y: 20,
+      width: Math.min(250, Math.round(c.width * 0.8)),
+      height: 40,
+      fontSize: 18,
+      fontFamily: 'Helvetica Neue LT Pro',
+      weight: '400',
+      color: '#ffffff',
+      persistent: false,
+      frameId: state.activeFrameId
+    });
+    textEl.x = Math.round((c.width - textEl.width) / 2);
+    textEl.y = Math.round((c.height - textEl.height) / 2);
+
+    insertAtGroupEnd(c.elements, textEl);
+    state.selectedElementId = textEl.id;
+    state.layerSelection = [textEl.id];
+    pushHistory();
+    render();
   }
 });
 
@@ -5466,7 +5601,19 @@ function openChangelogModal() {
   const changelogHtml = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:400px; overflow-y:auto; padding-right:8px;">
         <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.18 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.20 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Allows direct pasting of text strings and image files from standard clipboards into active canvas without selecting or adding element placeholders first.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.19 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Strips all rich-text and source formatting (HTML/inline styles) when pasting text from external applications like Adobe Illustrator, Microsoft Word, or web pages.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.18 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
           <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
             <li style="margin-bottom:4px;">Updated default "Learn more" button to use Museo 700 branding typeface.</li>
           </ul>
@@ -5626,7 +5773,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.18</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.20</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -5682,7 +5829,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.18</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.20</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

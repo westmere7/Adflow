@@ -1,6 +1,12 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.18 (Current) - May 2026
+v1.3.20 (Current) - May 2026
+- Allows direct pasting of text strings and image files from standard clipboards into active canvas without selecting or adding element placeholders first.
+
+v1.3.19 - May 2026
+- Strips all rich-text and source formatting (HTML/inline styles) when pasting text from external applications like Adobe Illustrator, Microsoft Word, or web pages.
+
+v1.3.18 - May 2026
 - Updated default "Learn more" button to use Museo 700 branding typeface.
 
 v1.3.17 - May 2026
