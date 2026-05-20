@@ -382,9 +382,29 @@ function areStylesAndNamesEqual(el1, el2) {
 }
 
 function autoLinkElements() {
+  const chkSelectedOnly = document.getElementById('lnk-opt-selected-only');
+  const selectedOnly = chkSelectedOnly ? chkSelectedOnly.checked : false;
+
+  let allowedTargets = null;
+  if (selectedOnly) {
+    const selectedCanvas = getActiveCanvas();
+    if (!selectedCanvas || !state.layerSelection?.length) {
+      alert("No elements are currently selected. Select one or more elements to use 'Selected only' auto-linking.");
+      return;
+    }
+    allowedTargets = state.layerSelection.map(id => {
+      const el = selectedCanvas.elements.find(x => x.id === id);
+      return el ? { type: el.type, name: baseLayerLabel(el) } : null;
+    }).filter(Boolean);
+  }
+
   const allElements = [];
   state.canvases.forEach(c => {
     c.elements.forEach(el => {
+      if (allowedTargets) {
+        const matchesAllowed = allowedTargets.some(t => t.type === el.type && t.name === baseLayerLabel(el));
+        if (!matchesAllowed) return;
+      }
       allElements.push(el);
     });
   });
@@ -478,11 +498,27 @@ function autoLinkElements() {
   }
 
   if (countLinked > 0) {
-    alert(`Successfully auto-linked ${countLinked} elements into ${countGroupsCreated} group(s)!`);
     pushHistory();
     render();
   } else {
-    alert("No matching elements with the same layer name and style were found.");
+    if (selectedOnly) {
+      const selectedCanvas = getActiveCanvas();
+      const selectedEls = selectedCanvas && state.layerSelection?.length
+        ? state.layerSelection.map(id => selectedCanvas.elements.find(x => x.id === id)).filter(Boolean)
+        : [];
+      const allSelectedLinked = selectedEls.length > 0 && selectedEls.every(el => el.linkGroupId && state.linkGroups?.[el.linkGroupId]);
+      if (allSelectedLinked) {
+        alert("The selected element is already linked, and no other matching elements were found to link.");
+        return;
+      }
+    }
+
+    const anyLinked = allElements.some(el => el.linkGroupId && state.linkGroups?.[el.linkGroupId]);
+    if (anyLinked) {
+      alert("Matching elements are already linked, and no new matching elements were found.");
+    } else {
+      alert("No matching elements with the same layer name and style were found.");
+    }
   }
 }
 
@@ -3115,13 +3151,19 @@ function renderLinkControl() {
   const activeEl = getSelectedElement();
   html += `
     <div style="margin-bottom: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--bg-input);">
-      <button id="lnk-btn-autolink" class="btn" style="width:100%; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-dark); background: rgba(124, 92, 255, 0.05); color: var(--accent-light); margin-bottom: 8px; box-sizing:border-box;">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-        </svg>
-        Auto-Link
-      </button>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; width:100%; box-sizing:border-box;">
+        <button id="lnk-btn-autolink" class="btn" style="flex:1; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-dark); background: rgba(124, 92, 255, 0.05); color: var(--accent-light); box-sizing:border-box;">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          Auto-Link
+        </button>
+        <div style="display:flex; align-items:center; gap:4px; flex-shrink:0; white-space:nowrap;">
+          <input type="checkbox" id="lnk-opt-selected-only" style="margin:0; cursor:pointer;" ${state.autoLinkSelectedOnly ? 'checked' : ''} />
+          <label for="lnk-opt-selected-only" style="font-size:11px; color:var(--text-muted); cursor:pointer; user-select:none;">Selected only</label>
+        </div>
+      </div>
   `;
 
   if (activeEl) {
@@ -3318,6 +3360,13 @@ function renderLinkControl() {
       if (selectedElements.length > 0) {
         autoAddAndLink(selectedElements[0]);
       }
+    };
+  }
+
+  const chkSelectedOnly = document.getElementById('lnk-opt-selected-only');
+  if (chkSelectedOnly) {
+    chkSelectedOnly.onchange = (e) => {
+      state.autoLinkSelectedOnly = e.target.checked;
     };
   }
 
@@ -6809,6 +6858,28 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 const CHANGELOG_DATA = [
   {
+    version: 'v1.3.30',
+    date: 'May 2026',
+    items: [
+      'Disabled the success pop-up message upon successful auto-linking; alerts are now shown only when no elements are found to link.'
+    ]
+  },
+  {
+    version: 'v1.3.29',
+    date: 'May 2026',
+    items: [
+      'Reorganized context menu layout: Moved "Push changes to group" to the main context menu directly above the "Link Group" submenu item.',
+      'Renamed "Link to: [Name]" list items inside the "Link Group" submenu to "Linked to: [Name]" and moved them to the top of the submenu.'
+    ]
+  },
+  {
+    version: 'v1.3.28',
+    date: 'May 2026',
+    items: [
+      'Added a "Selected only" checkbox option under Auto-Link to only auto-link elements matching the name and type of currently selected layers.'
+    ]
+  },
+  {
     version: 'v1.3.27',
     date: 'May 2026',
     items: [
@@ -7077,7 +7148,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v1.3.27';
+  const currentVersion = 'v1.3.30';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -7147,7 +7218,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.27</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.30</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -7203,7 +7274,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.27</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.30</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -7493,22 +7564,26 @@ document.addEventListener('contextmenu', (e) => {
       const hasLink = groupIds.length > 0;
 
       html += `<div class="ctx-divider"></div>`;
+      if (hasLink) {
+        html += `<div class="ctx-item" id="ctx-link-push" style="color:var(--accent-light); white-space:nowrap;">Push Changes to Group</div>`;
+      }
       html += `<div class="ctx-item has-submenu">Link Group
-        <div class="ctx-submenu">
-          <div class="ctx-item" id="ctx-link-new" style="white-space:nowrap;">Create New Group...</div>
-          <div class="ctx-item" id="ctx-link-autoadd" style="white-space:nowrap;">Add to canvases and link</div>`;
+        <div class="ctx-submenu">`;
       
       const groups = Object.values(state.linkGroups || {}).filter(g => g.category === cat);
       if (groups.length > 0) {
-        html += `<div class="ctx-divider"></div>`;
         groups.forEach(g => {
-          html += `<div class="ctx-item ctx-link-to-existing" data-group-id="${g.id}" style="white-space:nowrap;">Link to: ${g.name}</div>`;
+          html += `<div class="ctx-item ctx-link-to-existing" data-group-id="${g.id}" style="white-space:nowrap;">Linked to: ${g.name}</div>`;
         });
+        html += `<div class="ctx-divider"></div>`;
       }
+
+      html += `
+          <div class="ctx-item" id="ctx-link-new" style="white-space:nowrap;">Create New Group...</div>
+          <div class="ctx-item" id="ctx-link-autoadd" style="white-space:nowrap;">Add to canvases and link</div>`;
 
       if (hasLink) {
         html += `<div class="ctx-divider"></div>`;
-        html += `<div class="ctx-item" id="ctx-link-push" style="color:var(--accent-light); white-space:nowrap;">Push Changes to Group</div>`;
         html += `<div class="ctx-item" id="ctx-link-remove" style="color:#ef4444; white-space:nowrap;">Remove Link</div>`;
         html += `<div class="ctx-item" id="ctx-link-delete-all" style="color:#ef4444; white-space:nowrap;">Delete Group & Elements</div>`;
       }
