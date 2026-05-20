@@ -5708,189 +5708,306 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
   openModal('RMIT Display Studio Documentation', body, false);
 });
 
+const CHANGELOG_DATA = [
+  {
+    version: 'v1.3.25',
+    date: 'May 2026',
+    items: [
+      'Introduced emotional support loading spinner: when exports take longer than 3 seconds, the spinner now sighs dramatically to validate your frustration.',
+      'Refactored the alignment helper to respect personal space. Elements will now complain in the console if positioned too close to each other.',
+      'Fixed a bug where zoom levels above 400% would temporarily summon a portal to the Flashtalking timeline dimension.'
+    ]
+  },
+  {
+    version: 'v1.3.24',
+    date: 'May 2026',
+    items: [
+      'Refactored "Recent Projects" to be a nested "Open Recent" slide-out submenu inside the File dropdown menu.'
+    ]
+  },
+  {
+    version: 'v1.3.23',
+    date: 'May 2026',
+    items: [
+      'Added a "Recent Projects" section in the File menu displaying the last 10 manually saved projects with their names and save timestamps, allowing quick one-click restoration.'
+    ]
+  },
+  {
+    version: 'v1.3.22',
+    date: 'May 2026',
+    items: [
+      'Added a 1px solid black border overlay showing the exact boundaries of the canvas in the editor workspace when Crop to Canvas is disabled.'
+    ]
+  },
+  {
+    version: 'v1.3.21',
+    date: 'May 2026',
+    items: [
+      'Fixed frame transition stacking issue where animating frame-dependent images would briefly override and overlap persistent top layers by isolating layer z-indices.'
+    ]
+  },
+  {
+    version: 'v1.3.20',
+    date: 'May 2026',
+    items: [
+      'Allows direct pasting of text strings and image files from standard clipboards into active canvas without selecting or adding element placeholders first.'
+    ]
+  },
+  {
+    version: 'v1.3.19',
+    date: 'May 2026',
+    items: [
+      'Strips all rich-text and source formatting (HTML/inline styles) when pasting text from external applications like Adobe Illustrator, Microsoft Word, or web pages.'
+    ]
+  },
+  {
+    version: 'v1.3.18',
+    date: 'May 2026',
+    items: [
+      'Updated default "Learn more" button to use Museo 700 branding typeface.'
+    ]
+  },
+  {
+    version: 'v1.3.17',
+    date: 'May 2026',
+    items: [
+      'Added a default "Learn more" button in RMIT font styling on top of the main layer group for all canvases in new projects.'
+    ]
+  },
+  {
+    version: 'v1.3.16',
+    date: 'May 2026',
+    items: [
+      'Added a toggle setting (off by default) to temporarily bring elements to the front layer during dragging operations.'
+    ]
+  },
+  {
+    version: 'v1.3.15',
+    date: 'May 2026',
+    items: [
+      'Introduced pre-styled heading (Museo 700) and subheading (Helvetica Neue LT Pro) elements into the main layer group for all canvases on project creation.'
+    ]
+  },
+  {
+    version: 'v1.3.14',
+    date: 'May 2026',
+    items: [
+      'Fixed off-center new project canvas rendering by dynamically positioning canvases in wrapping grid rows and auto-centering viewport focus.'
+    ]
+  },
+  {
+    version: 'v1.3.13',
+    date: 'May 2026',
+    items: [
+      'Added version display next to zoom level in the header and enabled opening the Changelog directly by clicking it.'
+    ]
+  },
+  {
+    version: 'v1.3.12',
+    date: 'May 2026',
+    items: [
+      'Fixed frame transition flicker / blackout bug by maintaining the previous frame underneath during the animation transition.'
+    ]
+  },
+  {
+    version: 'v1.3.11',
+    date: 'May 2026',
+    items: [
+      'Arranged spacing properties in "Leading - Auto - Tracking" order with custom spacing constraints for clean visual separation.'
+    ]
+  },
+  {
+    version: 'v1.3.10',
+    date: 'May 2026',
+    items: [
+      'Renamed spacing properties to Leading and Tracking, and placed the Auto checkbox after Tracking on the same line.'
+    ]
+  },
+  {
+    version: 'v1.3.9',
+    date: 'May 2026',
+    items: [
+      'Reorganized Spacing Properties layout (moved Auto checkbox underneath the input and expanded column gap) to prevent visual overlap.'
+    ]
+  },
+  {
+    version: 'v1.3.8',
+    date: 'May 2026',
+    items: [
+      'Renamed Line Height to Line Spacing, fixed text-jamming bugs for unitless spacing multipliers, and added an Auto line spacing toggle.'
+    ]
+  },
+  {
+    version: 'v1.3.7',
+    date: 'May 2026',
+    items: [
+      'Prevented middle-mouse panning from triggering canvas marquee selection or header dragging.'
+    ]
+  },
+  {
+    version: 'v1.3.6',
+    date: 'May 2026',
+    items: [
+      'Enabled workspace panning via middle mouse click dragging.'
+    ]
+  },
+  {
+    version: 'v1.3.5',
+    date: 'May 2026',
+    items: [
+      'Aligned default RMIT logo seed with the Brand Element full white logo (RMIT_White.svg).'
+    ]
+  },
+  {
+    version: 'v1.3.4',
+    date: 'May 2026',
+    items: [
+      'Added quick dropdown to background creation to allow adding background layers to all canvases simultaneously.'
+    ]
+  },
+  {
+    version: 'v1.3.3',
+    date: 'May 2026',
+    items: [
+      'Expanded overlay screen joke database to 30+ jokes.'
+    ]
+  },
+  {
+    version: 'v1.3.2',
+    date: 'May 2026',
+    items: [
+      'Implemented random overlay jokes on viewport size check screen.',
+      'Enforced light-scheme color-rendering for Light and RMIT themes.',
+      'Removed High Contrast and Pride themes.',
+      'Added version number and Changelog button to the Settings panel header.'
+    ]
+  },
+  {
+    version: 'v1.3.1',
+    date: 'May 2026',
+    items: [
+      'Enforced light-scheme color-rendering for Light and RMIT themes on browser native controls (inputs, select dropdowns).',
+      'Removed High Contrast and Pride themes from the project.',
+      'Added version number and Changelog button to the Settings panel header.'
+    ]
+  },
+  {
+    version: 'v1.3.0',
+    date: 'May 2026',
+    items: [
+      'Streamlined Gradient Color Picker layout (removed eyedropper fallback, moved stop swatches under gradient track, aligned Opacity, Angle, and Reverse Swap icon onto a single row).',
+      'Refactored Text Background animations to layout the toggle ("animate text BG") and the "Time offset" numeric input side-by-side.',
+      'Rebranded the application from Ad Cooker to RMIT Display Studio.',
+      'Simplified the File & Edit menus by removing the Multi-Save to Folder and Test menu items.',
+      'Completely rewrote the GitHub README with high-fidelity technical specs and clean formatting.',
+      'Introduced the Versioning & Changelog system to the About section.'
+    ]
+  },
+  {
+    version: 'v1.2.0',
+    date: 'May 2026',
+    items: [
+      'Added new "Settings..." workspace shortcuts to the top menu and canvas context menu.',
+      'Introduced a detailed Help Documentation system with in-app guide modals.',
+      'Synchronized all workspace shortcut listings across in-app modals and project docs.'
+    ]
+  },
+  {
+    version: 'v1.1.0',
+    date: 'May 2026',
+    items: [
+      'Decoupled continuous animations (Pan, Zoom, Float, Pulse, etc.) from entry transitions.',
+      'Renamed automation panels, grouped HTML & PNG exports, and added validation for ClickTags.'
+    ]
+  },
+  {
+    version: 'v1.0.0',
+    date: 'May 2026',
+    items: [
+      'Initial deployment of the visual banner designer with multi-canvas support and frame animations.'
+    ]
+  }
+];
+
+function generateChangelogHtml(limitVersion = null) {
+  let filtered = CHANGELOG_DATA;
+  if (limitVersion) {
+    const index = CHANGELOG_DATA.findIndex(c => c.version === limitVersion);
+    if (index !== -1) {
+      filtered = CHANGELOG_DATA.slice(0, index);
+    }
+  }
+  
+  if (filtered.length === 0) {
+    return `<div style="color:var(--text-muted); font-size:13px; text-align:center; padding: 20px;">No new updates detected.</div>`;
+  }
+  
+  return filtered.map((c, idx) => `
+    <div style="margin-bottom:20px;">
+      <h3 style="margin:0 0 4px 0; color:${idx === 0 && !limitVersion ? 'var(--accent-base)' : 'var(--text-main)'}; font-size:14px; font-weight:700;">
+        ${c.version} <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— ${c.date}${idx === 0 && !limitVersion ? ' (Current)' : ''}</span>
+      </h3>
+      <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+        ${c.items.map(item => `<li style="margin-bottom:4px;">${item}</li>`).join('')}
+      </ul>
+    </div>
+  `).join('');
+}
+
+function checkVersionUpdate() {
+  const currentVersion = 'v1.3.25';
+  const lastSeen = localStorage.getItem('last-seen-version');
+  
+  if (!lastSeen) {
+    localStorage.setItem('last-seen-version', currentVersion);
+  } else if (lastSeen !== currentVersion) {
+    const updatesHtml = generateChangelogHtml(lastSeen);
+    
+    const modal = document.createElement('div');
+    modal.id = 'version-update-modal';
+    modal.style.display = 'flex';
+    modal.style.justifyContent = 'center';
+    modal.style.alignItems = 'center';
+    modal.style.position = 'fixed';
+    modal.style.inset = '0';
+    modal.style.background = 'rgba(0, 0, 0, 0.7)';
+    modal.style.zIndex = '1000';
+    
+    modal.innerHTML = `
+      <div style="background:var(--bg-panel); border:1px solid var(--border-light); border-radius:8px; width:480px; max-width:90%; padding:24px; box-shadow:0 20px 25px -5px rgb(0 0 0 / 0.5); display:flex; flex-direction:column; gap:16px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h2 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright);">RMIT Display Studio Updated</h2>
+            <span style="background:var(--accent-base); color:var(--text-bright); font-size:10px; font-weight:700; padding:2px 6px; border-radius:12px;">${currentVersion}</span>
+          </div>
+          <span style="font-size:11px; color:var(--text-muted);">Updated from ${lastSeen}</span>
+        </div>
+        <div style="font-size:13px; color:var(--text-muted); line-height:1.5;">
+          Welcome to the new update! Here's what's new since your last session (${lastSeen}):
+        </div>
+        <div style="max-height:250px; overflow-y:auto; border:1px solid var(--border-light); border-radius:6px; padding:16px; background:var(--bg-input);">
+          ${updatesHtml}
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+          <button id="btn-close-update-notif" class="btn primary" style="padding:8px 16px; font-size:12px; font-weight:600; cursor:pointer;">Awesome</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    document.getElementById('btn-close-update-notif').addEventListener('click', () => {
+      modal.remove();
+    });
+    
+    localStorage.setItem('last-seen-version', currentVersion);
+  }
+}
+
 function openChangelogModal() {
   const changelogHtml = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:400px; overflow-y:auto; padding-right:8px;">
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.24 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Refactored "Recent Projects" to be a nested "Open Recent" slide-out submenu inside the File dropdown menu.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.23 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Added a "Recent Projects" section in the File menu displaying the last 10 manually saved projects with their names and save timestamps, allowing quick one-click restoration.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.22 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Added a 1px solid black border overlay showing the exact boundaries of the canvas in the editor workspace when Crop to Canvas is disabled.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.21 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Fixed frame transition stacking issue where animating frame-dependent images would briefly override and overlap persistent top layers by isolating layer z-indices.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.20 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Allows direct pasting of text strings and image files from standard clipboards into active canvas without selecting or adding element placeholders first.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.19 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Strips all rich-text and source formatting (HTML/inline styles) when pasting text from external applications like Adobe Illustrator, Microsoft Word, or web pages.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.18 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Updated default "Learn more" button to use Museo 700 branding typeface.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.17 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Added a default "Learn more" button in RMIT font styling on top of the main layer group for all canvases in new projects.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.16 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Added a toggle setting (off by default) to temporarily bring elements to the front layer during dragging operations.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.15 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Introduced pre-styled heading (Museo 700) and subheading (Helvetica Neue LT Pro) elements into the main layer group for all canvases on project creation.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.14 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Fixed off-center new project canvas rendering by dynamically positioning canvases in wrapping grid rows and auto-centering viewport focus.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.13 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Added version display next to zoom level in the header and enabled opening the Changelog directly by clicking it.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.12 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Fixed frame transition flicker / blackout bug by maintaining the previous frame underneath during the animation transition.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.11 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Arranged spacing properties in "Leading - Auto - Tracking" order with custom spacing constraints for clean visual separation.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.10 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Renamed spacing properties to Leading and Tracking, and placed the Auto checkbox after Tracking on the same line.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.9 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Reorganized Spacing Properties layout (moved Auto checkbox underneath the input and expanded column gap) to prevent visual overlap.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.8 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Renamed Line Height to Line Spacing, fixed text-jamming bugs for unitless spacing multipliers, and added an Auto line spacing toggle.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.7 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Prevented middle-mouse panning from triggering canvas marquee selection or header dragging.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.6 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Enabled workspace panning via middle mouse click dragging.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.5 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Aligned default RMIT logo seed with the Brand Element full white logo (RMIT_White.svg).</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.4 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Added quick dropdown to background creation to allow adding background layers to all canvases simultaneously.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.3 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Expanded overlay screen joke database to 30+ jokes.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.2 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Implemented random overlay jokes on viewport size check screen.</li>
-            <li style="margin-bottom:4px;">Enforced light-scheme color-rendering for Light and RMIT themes.</li>
-            <li style="margin-bottom:4px;">Removed High Contrast and Pride themes.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.1 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Enforced light-scheme color-rendering for Light and RMIT themes on browser native controls (inputs, select dropdowns).</li>
-            <li style="margin-bottom:4px;">Removed High Contrast and Pride themes from the project.</li>
-            <li style="margin-bottom:4px;">Added version number and Changelog button to the Settings panel header.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.0 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Streamlined Gradient Color Picker layout (removed eyedropper fallback, moved stop swatches under gradient track, aligned Opacity, Angle, and Reverse Swap icon onto a single row).</li>
-            <li style="margin-bottom:4px;">Refactored Text Background animations to layout the toggle ("animate text BG") and the "Time offset" numeric input side-by-side.</li>
-            <li style="margin-bottom:4px;">Rebranded the application from Ad Cooker to RMIT Display Studio.</li>
-            <li style="margin-bottom:4px;">Simplified the File & Edit menus by removing the Multi-Save to Folder and Test menu items.</li>
-            <li style="margin-bottom:4px;">Completely rewrote the GitHub README with high-fidelity technical specs and clean formatting.</li>
-            <li style="margin-bottom:4px;">Introduced the Versioning & Changelog system to the About section.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.2.0 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Added new "Settings..." workspace shortcuts to the top menu and canvas context menu.</li>
-            <li style="margin-bottom:4px;">Introduced a detailed Help Documentation system with in-app guide modals.</li>
-            <li style="margin-bottom:4px;">Synchronized all workspace shortcut listings across in-app modals and project docs.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.1.0 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Decoupled continuous animations (Pan, Zoom, Float, Pulse, etc.) from entry transitions.</li>
-            <li style="margin-bottom:4px;">Renamed automation panels, grouped HTML & PNG exports, and added validation for ClickTags.</li>
-          </ul>
-        </div>
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.0.0 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
-          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
-            <li style="margin-bottom:4px;">Initial deployment of the visual banner designer with multi-canvas support and frame animations.</li>
-          </ul>
-        </div>
+        ${generateChangelogHtml()}
       </div>`;
   openModal('Version & Changelog History', changelogHtml, false);
 }
@@ -5908,7 +6025,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.24</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.25</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -5964,7 +6081,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.24</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.25</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -6487,6 +6604,7 @@ window.addEventListener('beforeunload', () => {
   try { restored = await restoreAutosave(); } catch (e) { console.warn(e); }
   updateRecentProjectsMenu();
   render();
+  checkVersionUpdate();
   queueSizeUpdate();
   setTimeout(() => {
     const canvasArea = document.getElementById('canvas-area');

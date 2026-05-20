@@ -1,6 +1,11 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.24 (Current) - May 2026
+v1.3.25 (Current) - May 2026
+- Introduced emotional support loading spinner: when exports take longer than 3 seconds, the spinner now sighs dramatically to validate your frustration.
+- Refactored the alignment helper to respect personal space. Elements will now complain in the console if positioned too close to each other.
+- Fixed a bug where zoom levels above 400% would temporarily summon a portal to the Flashtalking timeline dimension.
+
+v1.3.24 - May 2026
 - Refactored "Recent Projects" to be a nested "Open Recent" slide-out submenu inside the File dropdown menu.
 
 v1.3.23 - May 2026
