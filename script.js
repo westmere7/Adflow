@@ -5576,11 +5576,9 @@ function cpSyncGradientUI() {
     if (btn && cpGradStops[i]) btn.style.background = cpGradStops[i].color;
   });
   const opInput = document.getElementById('cp-grad-opacity');
-  const locInput = document.getElementById('cp-grad-location');
   const active = cpGradStops[cpActiveStop];
   if (active) {
     if (opInput && document.activeElement !== opInput) opInput.value = active.opacity !== undefined ? active.opacity : 100;
-    if (locInput && document.activeElement !== locInput) locInput.value = active.pos !== undefined ? active.pos : 0;
   }
   const bar = document.getElementById('cp-grad-bar');
   if (bar) {
@@ -5717,7 +5715,6 @@ function initColorPicker() {
 
   const modal = document.getElementById('color-picker-modal');
   const hexInput = document.getElementById('cp-hex-input');
-  const btnDropper = document.getElementById('cp-eyedropper');
   const addSwatchBtn = document.getElementById('cp-add-swatch');
   const copyHexBtn = document.getElementById('cp-hex-copy');
 
@@ -5754,29 +5751,6 @@ function initColorPicker() {
       const original = copyHexBtn.innerHTML;
       copyHexBtn.innerHTML = '<span style="font-size:10px; font-weight:700; color:var(--accent-base);">✓</span>';
       setTimeout(() => { copyHexBtn.innerHTML = original; }, 900);
-    });
-  }
-
-  const nativeColorInput = document.getElementById('cp-native-color');
-  if (nativeColorInput) {
-    nativeColorInput.addEventListener('input', (e) => {
-      const val = e.target.value;
-      iroPicker.color.set(val);
-      hexInput.value = val.replace(/^#/, '');
-      updateCurrentColor(val);
-    });
-  }
-
-  if (window.EyeDropper) {
-    btnDropper.addEventListener('click', async (e) => {
-      e.preventDefault(); // Prevent opening the native color input since we have EyeDropper
-      try {
-        const eyeDropper = new EyeDropper();
-        const result = await eyeDropper.open();
-        iroPicker.color.set(result.sRGBHex);
-        hexInput.value = result.sRGBHex.replace(/^#/, '');
-        updateCurrentColor(result.sRGBHex);
-      } catch (err) { }
     });
   }
 
@@ -5825,14 +5799,6 @@ function initColorPicker() {
     emitColorUpdate();
   });
 
-  document.getElementById('cp-grad-location').addEventListener('input', (e) => {
-    let v = parseInt(e.target.value, 10);
-    if (isNaN(v)) return;
-    cpGradStops[cpActiveStop].pos = Math.max(0, Math.min(100, v));
-    cpSyncGradientUI();
-    emitColorUpdate();
-  });
-
   document.getElementById('cp-grad-reverse').addEventListener('click', () => {
     // Mirror every stop's position so the colour order flips along the same axis.
     cpGradStops.forEach(s => { s.pos = 100 - s.pos; });
@@ -5847,7 +5813,7 @@ function initColorPicker() {
 
   // Scroll-wheel to nudge the gradient number fields (1 per tick, 10 with Shift),
   // clamped to each input's min/max. Re-dispatches 'input' so the handlers above run.
-  ['cp-grad-angle', 'cp-grad-opacity', 'cp-grad-location'].forEach(id => {
+  ['cp-grad-angle', 'cp-grad-opacity'].forEach(id => {
     const inp = document.getElementById(id);
     if (!inp) return;
     inp.addEventListener('wheel', (e) => {
