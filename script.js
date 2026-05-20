@@ -3011,13 +3011,29 @@ function renderProps() {
     f.push(`<div class="prop-row" style="display:flex; gap:16px; margin-bottom:12px;">${extraProps}</div>`);
   }
 
-  // Animate BG belongs with the animation timing controls, not the BG sub-panel —
-  // it modulates how the BG arrives, which is conceptually part of the entry anim.
   if (el.type === 'text' && el.hasBg && (el.animType === 'typing' || el.animType === 'fade-typing')) {
-    f.push(`<div class="prop-row"><div class="checkbox-row"><input type="checkbox" data-k="animateBg" ${el.animateBg ? 'checked' : ''}/><label>Animate BG</label></div></div>`);
+    let animTextBgRow = '';
     if (el.animateBg) {
-      f.push(`<div class="prop-row"><label>BG Offset (s)</label><input type="number" step="0.1" data-k="bgOffset" value="${el.bgOffset !== undefined ? el.bgOffset : 0}" /></div>`);
+      animTextBgRow = `
+        <div class="checkbox-row" style="align-self: end; margin-bottom: 4px;">
+          <input type="checkbox" data-k="animateBg" ${el.animateBg ? 'checked' : ''}/>
+          <label>Animate text BG</label>
+        </div>
+        <div class="prop-row" style="margin: 0;">
+          <label style="text-transform: none;">Time offset</label>
+          <input type="number" step="0.1" data-k="bgOffset" value="${el.bgOffset !== undefined ? el.bgOffset : 0}" />
+        </div>
+      `;
+    } else {
+      animTextBgRow = `
+        <div class="checkbox-row" style="align-self: center; margin-top: 4px;">
+          <input type="checkbox" data-k="animateBg" ${el.animateBg ? 'checked' : ''}/>
+          <label>Animate text BG</label>
+        </div>
+        <div></div>
+      `;
     }
+    f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">${animTextBgRow}</div></div>`);
   }
 
   f.push(`<div style="height:1px; background:var(--border-color, #272c3a); margin:16px 0;"></div>`);
