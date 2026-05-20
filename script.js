@@ -5514,8 +5514,87 @@ setTimeout(() => {
 let iroPicker = null;
 let currentCpKey = null;
 let cpIsGradient = false;
-let cpGradStops = ['#7c5cff', '#2a1f55'];
+// Each stop carries color (hex), opacity (0-100) and pos (0-100). Output is a
+// linear-gradient using rgba() so opacity bakes into the CSS string the rest of
+// the app already consumes.
+let cpGradStops = [
+  { color: '#7c5cff', opacity: 100, pos: 0 },
+  { color: '#2a1f55', opacity: 100, pos: 100 }
+];
 let cpActiveStop = 0;
+
+function cpStopCss(s) {
+  return `${hexToRgba(s.color, (s.opacity !== undefined ? s.opacity : 100) / 100)} ${s.pos}%`;
+}
+
+function cpBuildGradient() {
+  const angle = document.getElementById('cp-grad-angle').value || 90;
+  const ordered = [...cpGradStops].sort((a, b) => a.pos - b.pos);
+  return `linear-gradient(${angle}deg, ${ordered.map(cpStopCss).join(', ')})`;
+}
+
+// Parse a linear-gradient string back into {angle, stops}. Handles both bare hex
+// stops (legacy gradients) and rgba()+position stops (the new format).
+function cpParseGradient(str) {
+  const m = str.match(/linear-gradient\(\s*(-?\d+(?:\.\d+)?)deg\s*,\s*(.+)\)\s*$/i);
+  if (!m) return null;
+  const angle = parseFloat(m[1]);
+  const parts = [];
+  let depth = 0, cur = '';
+  for (const ch of m[2]) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  if (cur.trim()) parts.push(cur);
+  let stops = parts.map((p, i) => {
+    p = p.trim();
+    const posM = p.match(/\s+(\d+(?:\.\d+)?)%\s*$/);
+    const pos = posM ? parseFloat(posM[1]) : (i === 0 ? 0 : 100);
+    const colorStr = (posM ? p.slice(0, posM.index) : p).trim();
+    const rgbaM = colorStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)/i);
+    if (rgbaM) {
+      const hex = '#' + [rgbaM[1], rgbaM[2], rgbaM[3]].map(n => (+n).toString(16).padStart(2, '0')).join('');
+      const op = rgbaM[4] !== undefined ? Math.round(parseFloat(rgbaM[4]) * 100) : 100;
+      return { color: hex, opacity: op, pos };
+    }
+    return { color: colorStr, opacity: 100, pos };
+  });
+  // The UI edits exactly two stops; collapse extras to first + last.
+  if (stops.length > 2) stops = [stops[0], stops[stops.length - 1]];
+  if (stops.length === 1) stops.push({ color: stops[0].color, opacity: stops[0].opacity, pos: 100 });
+  return { angle, stops };
+}
+
+// Push current cpGradStops state into all gradient UI: swatches, opacity/location
+// inputs, the preview bar, and the draggable markers.
+function cpSyncGradientUI() {
+  cpGradStops.forEach((s, i) => {
+    const sw = document.getElementById(`cp-grad-stop-${i + 1}`);
+    if (sw) sw.style.background = s.color;
+  });
+  document.querySelectorAll('.cp-grad-stop-container').forEach((c, i) => {
+    c.classList.toggle('active', i === cpActiveStop);
+  });
+  const opInput = document.getElementById('cp-grad-opacity');
+  const locInput = document.getElementById('cp-grad-location');
+  const active = cpGradStops[cpActiveStop];
+  if (opInput && document.activeElement !== opInput) opInput.value = active.opacity !== undefined ? active.opacity : 100;
+  if (locInput && document.activeElement !== locInput) locInput.value = active.pos !== undefined ? active.pos : 0;
+  const bar = document.getElementById('cp-grad-bar');
+  if (bar) {
+    const ordered = [...cpGradStops].sort((a, b) => a.pos - b.pos);
+    bar.style.backgroundImage = `linear-gradient(to right, ${ordered.map(cpStopCss).join(', ')})`;
+  }
+  document.querySelectorAll('#cp-grad-track .cp-grad-marker').forEach(m => {
+    const idx = +m.dataset.stop;
+    if (!cpGradStops[idx]) return;
+    m.style.left = cpGradStops[idx].pos + '%';
+    m.style.background = cpGradStops[idx].color;
+    m.classList.toggle('active', idx === cpActiveStop);
+  });
+}
 
 if (!state.savedPalette) {
   state.savedPalette = ['#ffffff', '#000000', '#000054', '#e61e2a', '#00bcd4', '#4caf50', '#ff9800', '#f44336'];
@@ -5614,7 +5693,8 @@ function initColorPicker() {
       document.getElementById('cp-gradient-controls').style.display = cpIsGradient ? 'block' : 'none';
 
       if (cpIsGradient) {
-        iroPicker.color.set(cpGradStops[cpActiveStop]);
+        iroPicker.color.set(cpGradStops[cpActiveStop].color);
+        cpSyncGradientUI();
       }
       emitColorUpdate();
     });
@@ -5623,15 +5703,86 @@ function initColorPicker() {
   [1, 2].forEach(i => {
     const btn = document.getElementById(`cp-grad-stop-${i}`);
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.cp-grad-stop-container').forEach(c => c.classList.remove('active'));
-      document.getElementById(`cp-stop-${i}-container`).classList.add('active');
       cpActiveStop = i - 1;
-      iroPicker.color.set(cpGradStops[cpActiveStop]);
+      iroPicker.color.set(cpGradStops[cpActiveStop].color);
+      cpSyncGradientUI();
     });
   });
 
-  document.getElementById('cp-grad-angle').addEventListener('input', () => {
+  // Draggable position markers over the preview bar.
+  const gradTrack = document.getElementById('cp-grad-track');
+  if (gradTrack) {
+    [0, 1].forEach(idx => {
+      const marker = document.createElement('div');
+      marker.className = 'cp-grad-marker';
+      marker.dataset.stop = idx;
+      marker.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        cpActiveStop = idx;
+        iroPicker.color.set(cpGradStops[idx].color);
+        cpSyncGradientUI();
+        const bar = document.getElementById('cp-grad-bar');
+        const rect = bar.getBoundingClientRect();
+        const onMove = (ev) => {
+          let pct = ((ev.clientX - rect.left) / rect.width) * 100;
+          pct = Math.max(0, Math.min(100, Math.round(pct)));
+          cpGradStops[idx].pos = pct;
+          cpSyncGradientUI();
+          emitColorUpdate();
+        };
+        const onUp = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+      gradTrack.appendChild(marker);
+    });
+  }
+
+  document.getElementById('cp-grad-opacity').addEventListener('input', (e) => {
+    let v = parseInt(e.target.value, 10);
+    if (isNaN(v)) return;
+    cpGradStops[cpActiveStop].opacity = Math.max(0, Math.min(100, v));
+    cpSyncGradientUI();
     emitColorUpdate();
+  });
+
+  document.getElementById('cp-grad-location').addEventListener('input', (e) => {
+    let v = parseInt(e.target.value, 10);
+    if (isNaN(v)) return;
+    cpGradStops[cpActiveStop].pos = Math.max(0, Math.min(100, v));
+    cpSyncGradientUI();
+    emitColorUpdate();
+  });
+
+  document.getElementById('cp-grad-reverse').addEventListener('click', () => {
+    // Mirror every stop's position so the colour order flips along the same axis.
+    cpGradStops.forEach(s => { s.pos = 100 - s.pos; });
+    cpSyncGradientUI();
+    emitColorUpdate();
+  });
+
+  document.getElementById('cp-grad-angle').addEventListener('input', () => {
+    cpSyncGradientUI();
+    emitColorUpdate();
+  });
+
+  // Scroll-wheel to nudge the gradient number fields (1 per tick, 10 with Shift),
+  // clamped to each input's min/max. Re-dispatches 'input' so the handlers above run.
+  ['cp-grad-angle', 'cp-grad-opacity', 'cp-grad-location'].forEach(id => {
+    const inp = document.getElementById(id);
+    if (!inp) return;
+    inp.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      let v = (parseFloat(inp.value) || 0) + (e.deltaY < 0 ? step : -step);
+      if (inp.min !== '') v = Math.max(parseFloat(inp.min), v);
+      if (inp.max !== '') v = Math.min(parseFloat(inp.max), v);
+      inp.value = v;
+      inp.dispatchEvent(new Event('input'));
+    });
   });
 
   document.addEventListener('mousedown', (e) => {
@@ -5659,8 +5810,8 @@ function renderPalettes() {
 
 function updateCurrentColor(hex) {
   if (cpIsGradient) {
-    cpGradStops[cpActiveStop] = hex;
-    document.getElementById(`cp-grad-stop-${cpActiveStop + 1}`).style.background = hex;
+    cpGradStops[cpActiveStop].color = hex;
+    cpSyncGradientUI();
   }
   emitColorUpdate();
 }
@@ -5669,8 +5820,7 @@ function emitColorUpdate() {
   if (!currentCpKey) return;
   let val = '';
   if (cpIsGradient) {
-    const angle = document.getElementById('cp-grad-angle').value || 90;
-    val = `linear-gradient(${angle}deg, ${cpGradStops[0]}, ${cpGradStops[1]})`;
+    val = cpBuildGradient();
   } else {
     val = iroPicker.color.hexString;
   }
@@ -5708,13 +5858,13 @@ function openColorPicker(btn, key, initialValue) {
   if (initialValue && initialValue.includes('gradient') && key !== 'strokeColor') {
     cpIsGradient = true;
     document.querySelector('.cp-tab[data-tab="gradient"]').click();
-    const match = initialValue.match(/linear-gradient\(\s*(-?\d+)deg\s*,\s*([^,]+)\s*,\s*([^)]+)\s*\)/);
-    if (match) {
-      document.getElementById('cp-grad-angle').value = match[1];
-      cpGradStops = [match[2].trim(), match[3].trim()];
-      document.getElementById('cp-grad-stop-1').style.background = cpGradStops[0];
-      document.getElementById('cp-grad-stop-2').style.background = cpGradStops[1];
-      iroPicker.color.set(cpGradStops[cpActiveStop]);
+    const parsed = cpParseGradient(initialValue);
+    if (parsed) {
+      document.getElementById('cp-grad-angle').value = parsed.angle;
+      cpGradStops = parsed.stops;
+      cpActiveStop = 0;
+      iroPicker.color.set(cpGradStops[0].color);
+      cpSyncGradientUI();
     }
   } else {
     cpIsGradient = false;
@@ -5778,13 +5928,13 @@ function syncColorPickerWithSelection(el, c) {
     document.querySelector('.cp-tab[data-tab="solid"]').classList.remove('active');
     document.getElementById('cp-gradient-controls').style.display = 'block';
 
-    const match = val.match(/linear-gradient\(\s*(-?\d+)deg\s*,\s*([^,]+)\s*,\s*([^)]+)\s*\)/);
-    if (match) {
-      document.getElementById('cp-grad-angle').value = match[1];
-      cpGradStops = [match[2].trim(), match[3].trim()];
-      document.getElementById('cp-grad-stop-1').style.background = cpGradStops[0];
-      document.getElementById('cp-grad-stop-2').style.background = cpGradStops[1];
-      iroPicker.color.set(cpGradStops[cpActiveStop]);
+    const parsed = cpParseGradient(val);
+    if (parsed) {
+      document.getElementById('cp-grad-angle').value = parsed.angle;
+      cpGradStops = parsed.stops;
+      if (cpActiveStop > cpGradStops.length - 1) cpActiveStop = 0;
+      iroPicker.color.set(cpGradStops[cpActiveStop].color);
+      cpSyncGradientUI();
     }
   } else {
     cpIsGradient = false;

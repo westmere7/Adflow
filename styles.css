@@ -3138,3 +3138,21 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 
     }
 
+
+    /* ---------- gradient stop markers ---------- */
+    .cp-grad-marker {
+      position: absolute;
+      top: 0;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+      transform: translateX(-50%);
+      cursor: ew-resize;
+      box-sizing: border-box;
+    }
+    .cp-grad-marker.active {
+      border-color: var(--accent-base);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 0 6px var(--accent-base);
+    }
