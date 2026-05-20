@@ -8,10 +8,22 @@ Designed to replace bloated legacy tools like Google Web Designer, this applicat
 
 ---
 
+## 🚀 Core Concept: Multi-Canvas Workflow & Link Groups
+
+The standout feature of RMIT Display Studio is its **Multi-Canvas Orchestration**. Instead of creating and managing separate files for each banner size (e.g. 300x250, 728x90, 160x600), you lay out all sizes side-by-side on an infinite panning workspace.
+
+To avoid duplicate, manual updates across different canvases, you use **Link Groups**:
+- **Auto-Link Matching Elements**: Pressing **Auto-Link** automatically scans all canvases and groups elements with the same layer name and category/type. Toggle **Selected only** to scan and group matches targeting only the currently selected layer.
+- **Granular Sync Properties**: Choose exactly which properties should sync for a group (e.g., sync only text content, but keep different font sizes; or sync font, colors, animations, and opacity while keeping independent dimensions).
+- **Live-Link Mode (Real-Time Sync)**: Enable the lightning bolt toggle on any group, and any modification you make to an element (dragging, resizing, editing text inline, or changing properties in the sidebar panel) will immediately propagate to all sibling elements on other canvases in real time.
+- **Contextual Actions**: Right-click elements to manage link settings, or use **Push changes to group** in the main context menu to broadcast updates manually when Live-link is off.
+
+---
+
 ## Key Features
 
 ### Workspace & Architecture
-- **Infinite Multi-Canvas Workspace**: Design and edit multiple ad sizes (e.g., 300x250, 728x90) simultaneously side-by-side within a single project.
+- **Infinite Multi-Canvas Workspace**: Design and edit multiple ad sizes simultaneously side-by-side within a single project window.
 - **Save & Load Architecture**: Persist work locally as lightweight `.adcooker` JSON project files.
 - **Theming System**: Switch between 6 distinct UI color schemas (Dark, RMIT Brand, Ocean, Navy, Light, High Contrast).
 - **History Management**: Full Undo/Redo stack supporting complex nested operations.

@@ -1,6 +1,13 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.30 (Current) - May 2026
+v1.3.32 (Current) - May 2026
+- Disabled the confirmation pop-up alert when adding/cloning elements to other canvases and linking them.
+
+v1.3.31 - May 2026
+- Added a "Live-link mode" option under Sync Properties which synchronizes element updates across all canvases in real time as the user edits (dragging, resizing, typing, etc.).
+- Added a "Live-link" lightning bolt button to the active link groups panel, and condensed the action button layout to optimize sidebar space.
+
+v1.3.30 - May 2026
 - Disabled the success pop-up message upon successful auto-linking; alerts are now shown only when no elements are found to link.
 
 v1.3.29 - May 2026

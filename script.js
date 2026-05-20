@@ -838,19 +838,6 @@ function autoAddAndLink(srcEl) {
 
   // Now push changes to propagate the source properties to all members of the group
   pushGroupChangesForId(gid);
-
-  // Toast/alert confirmation
-  let msg = `Linked group "${state.linkGroups[gid].name}" updated:\n`;
-  if (countCloned > 0 && countLinkedExisting > 0) {
-    msg += `- Cloned to ${countCloned} canvas(es)\n- Linked ${countLinkedExisting} existing element(s).`;
-  } else if (countCloned > 0) {
-    msg += `- Cloned and linked to ${countCloned} canvas(es).`;
-  } else if (countLinkedExisting > 0) {
-    msg += `- Linked ${countLinkedExisting} existing element(s).`;
-  } else {
-    msg += `All canvases are already synchronized.`;
-  }
-  alert(msg);
 }
 
 function pushGroupChanges() {
@@ -1093,6 +1080,28 @@ function applyColorToText(node, colorVal) {
 }
 
 function render(skipProps = false) {
+  // Live-link mode propagation
+  if (state.layerSelection && state.layerSelection.length > 0) {
+    const activeCanvas = getActiveCanvas();
+    if (activeCanvas) {
+      state.layerSelection.forEach(id => {
+        const el = activeCanvas.elements.find(x => x.id === id);
+        if (el && el.linkGroupId) {
+          const group = state.linkGroups?.[el.linkGroupId];
+          if (group && group.liveLink) {
+            state.canvases.forEach(c => {
+              c.elements.forEach(targetEl => {
+                if (targetEl.linkGroupId === el.linkGroupId && targetEl.id !== el.id) {
+                  applyLinkSync(el, targetEl, group);
+                }
+              });
+            });
+          }
+        }
+      });
+    }
+  }
+
   document.querySelector('.app').classList.toggle('preview-lock', !!(state.isPreviewMode || state.singlePreviewId));
   // workspace sizing
   const z = state.zoom || 1;
@@ -3124,18 +3133,23 @@ function renderLinkControl() {
         : '';
 
       html += `
-        <div class="link-group-row" data-group-id="${g.id}" style="display:flex; align-items:center; justify-content:between; padding:6px 8px; border-radius:4px; margin-bottom:4px; background:${rowBg}; ${rowStyle} cursor:pointer; gap:8px;">
-          <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:0;">
+        <div class="link-group-row" data-group-id="${g.id}" style="display:flex; align-items:center; justify-content:space-between; padding:5px 6px; border-radius:4px; margin-bottom:4px; background:${rowBg}; ${rowStyle} cursor:pointer; gap:6px;">
+          <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0;">
             ${iconHtml}
             <span class="layer-name" style="font-size:11px; font-weight:500; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${g.name}</span>
           </div>
-          <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
-            <span style="font-size:10px; font-weight:600; color:var(--text-bright); background:rgba(255,255,255,0.08); padding:2px 5px; border-radius:8px; margin-right:4px; display:inline-block; line-height:1;">${count}</span>
-            <button class="icon-btn ${hasElements && !allHidden ? 'active' : ''} lg-eye-btn" data-group-id="${g.id}" title="Toggle group visibility" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
+            <span style="font-size:10px; font-weight:600; color:var(--text-bright); background:rgba(255,255,255,0.08); padding:2px 4px; border-radius:8px; margin-right:2px; display:inline-block; line-height:1;">${count}</span>
+            <button class="icon-btn ${g.liveLink ? 'active' : ''} lg-live-btn" data-group-id="${g.id}" title="Toggle Live-Link Mode (Instant Sync)" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:${g.liveLink ? 'var(--accent-light)' : 'var(--text-muted)'};">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="${g.liveLink ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+            </button>
+            <button class="icon-btn ${hasElements && !allHidden ? 'active' : ''} lg-eye-btn" data-group-id="${g.id}" title="Toggle group visibility" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:${hasElements && !allHidden ? 'var(--text-bright)' : 'var(--text-muted)'};">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             </button>
             <button class="icon-btn active lg-delete-btn" data-group-id="${g.id}" title="Unlink group" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:#ef4444;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.84 12.2a4.5 4.5 0 0 0-6.37-6.37l-1.5 1.5"></path><path d="M11.53 16.07a4.5 4.5 0 0 0 6.37 6.37l1.5-1.5"></path></svg>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.84 12.2a4.5 4.5 0 0 0-6.37-6.37l-1.5 1.5"></path><path d="M11.53 16.07a4.5 4.5 0 0 0 6.37 6.37l1.5-1.5"></path></svg>
             </button>
           </div>
         </div>
@@ -3258,6 +3272,13 @@ function renderLinkControl() {
             </div>`;
           }
           html += `</div>`;
+          
+          html += `<div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--bg-input); display:flex; align-items:center; margin-bottom:6px;">
+            <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-bright); font-weight:500; cursor:pointer;" title="Sync changes instantly across all canvases">
+              <input type="checkbox" id="lnk-live-toggle" ${group.liveLink ? 'checked' : ''} />
+              Live-link mode
+            </label>
+          </div>`;
 
           html += `<button id="lnk-btn-push" class="btn primary" style="width:100%; font-size:11px; padding:6px 12px; font-weight:600; margin-top:8px; box-sizing:border-box;">Push Changes to Group</button>`;
           html += `<button id="lnk-btn-unlink" class="btn" style="width:100%; font-size:11px; padding:6px 12px; margin-top:4px; box-sizing:border-box;">Unlink Selected</button>`;
@@ -3379,6 +3400,42 @@ function renderLinkControl() {
         if (group && group.syncProperties) {
           group.syncProperties[prop] = cb.checked;
           pushHistory();
+        }
+      }
+    };
+  });
+
+  const chkLive = document.getElementById('lnk-live-toggle');
+  if (chkLive) {
+    chkLive.onchange = (e) => {
+      const groupIds = [...new Set(selectedElements.map(el => el.linkGroupId).filter(Boolean))];
+      if (groupIds.length === 1) {
+        const group = state.linkGroups[groupIds[0]];
+        if (group) {
+          group.liveLink = e.target.checked;
+          if (group.liveLink) {
+            pushGroupChangesForId(groupIds[0]);
+          } else {
+            pushHistory();
+            render();
+          }
+        }
+      }
+    };
+  }
+
+  panel.querySelectorAll('.lg-live-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const gid = btn.dataset.groupId;
+      const group = state.linkGroups[gid];
+      if (group) {
+        group.liveLink = !group.liveLink;
+        if (group.liveLink) {
+          pushGroupChangesForId(gid);
+        } else {
+          pushHistory();
+          render();
         }
       }
     };
@@ -6795,68 +6852,106 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
   openModal('Shortcuts', body, false);
 });
 
+
+
 document.getElementById('menu-help-documentation').addEventListener('click', () => {
   const body = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:70vh; overflow-y:auto; padding-right:16px;">
         
-        <h2 style="color:#22d3ee; margin-top:0; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">1. Workspace & Canvases</h2>
-        <p>RMIT Display Studio operates on an infinite panning workspace. You can create multiple "Canvases" (individual ad sizes) within a single project.</p>
-        <ul style="padding-left:20px; color:var(--text-muted);">
-          <li style="margin-bottom:6px;"><b>Adding Canvases:</b> Click the <b>+</b> button in the left panel to add common ad sizes (300x250, 728x90, etc.) or input custom dimensions.</li>
-          <li style="margin-bottom:6px;"><b>Navigation:</b> Hold <span class="kbd">Space</span> and drag to pan around. Scroll your mouse wheel to zoom in and out. Press <span class="kbd">Tab</span> to toggle Fullscreen Mode.</li>
-          <li style="margin-bottom:6px;"><b>Selection:</b> Click a canvas to make it active. The right-hand Properties Panel will then display settings specific to that canvas (like Background Color or Export options).</li>
+        <div style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(124, 92, 255, 0.08)); border: 1px solid rgba(124, 92, 255, 0.2); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+          <h3 style="color:#22d3ee; margin:0 0 6px 0; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            Key Concept: Multi-Canvas Workflow & Link Groups
+          </h3>
+          <p style="margin:0; font-size:12px; color:var(--text-muted); line-height:1.5;">
+            Design once, propagate everywhere. RMIT Display Studio allows you to orchestrate multiple banner sizes (Canvases) within a single project. Using <b>Link Groups</b>, you can bind elements (like headlines, CTA buttons, or background shapes) across different canvases. Changes then sync automatically or in real-time, eliminating redundant, manual edits across different banner sizes.
+          </p>
+        </div>
+
+        <h2 style="color:#22d3ee; margin-top:0; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">1. Workspace & Multi-Canvas Orchestration</h2>
+        <p>Instead of managing separate files for each banner size, RMIT Display Studio arranges all your ad sizes (Canvases) side-by-side on an infinite panning canvas.</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
+          <li style="margin-bottom:6px;"><b>Adding Canvases:</b> Click the <b>+</b> button in the left sidebar to add standard IAB display sizes (300x250, 728x90, 160x600, etc.) or input custom dimensions.</li>
+          <li style="margin-bottom:6px;"><b>Active Canvas Selection:</b> Click any canvas to make it the active workspace. The side property panels and options will automatically scope to the selected canvas.</li>
+          <li style="margin-bottom:6px;"><b>Navigation & Zoom:</b> Hold <span class="kbd">Space</span> and drag to pan the workspace. Scroll your mouse wheel (or pinch-to-zoom) to zoom in and out. Press <span class="kbd">Tab</span> to toggle Fullscreen Mode.</li>
+          <li style="margin-bottom:6px;"><b>Canvas Controls:</b> Double-click a Canvas title to rename it. Right-click canvas headers to duplicate or remove the canvas.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">2. Elements & Properties</h2>
-        <p>Right-click any active canvas to open the Context Menu and add elements. Once added, click an element to select it and view its options in the right-hand Properties Panel.</p>
-        <ul style="padding-left:20px; color:var(--text-muted);">
-          <li style="margin-bottom:6px;"><b>Text:</b> Double-click to edit inline. You can adjust Font Family (including embedded RMIT fonts like Museo and Helvetica Neue), Weight, Size, Line Height, Letter Spacing, and alignment.</li>
-          <li style="margin-bottom:6px;"><b>Images & Shapes:</b> Add external SVG assets, rectangles, or circles. Images maintain their aspect ratio by default. Hold <span class="kbd">Shift</span> while resizing to force aspect ratio constraints.</li>
-          <li style="margin-bottom:6px;"><b>Buttons:</b> Specialized text elements with built-in padding and background colors, ideal for Call-to-Actions (CTAs).</li>
-          <li style="margin-bottom:6px;"><b>Color Picker:</b> Click any color swatch to open the native-feeling picker. It supports solid HEX values, dynamic linear gradients, and custom stops.</li>
-          <li style="margin-bottom:6px;"><b>Brand Elements:</b> Pre-configured, high-quality SVGs (like RMIT logos) or standard legal text that automatically bundle into the final export without bloating your project file.</li>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">2. Link Groups & Synchronization (Real-time & Manual)</h2>
+        <p>Link Groups are the engine behind the multi-canvas workflow, allowing you to link sibling elements across canvases.</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
+          <li style="margin-bottom:8px;"><b>Auto-Link:</b> Click <b>Auto-Link</b> in the sidebar to automatically scan all canvases and group matching elements with the same layer name and type. Toggle the <b>Selected only</b> checkbox to only scan and match based on the currently selected layer.</li>
+          <li style="margin-bottom:8px;"><b>Manual Linking:</b> Right-click an element, select <b>Link Group</b>, and choose an existing group (or select "Linked to..." at the top of the submenu to view current links). You can also create a new group via the Link panel.</li>
+          <li style="margin-bottom:8px;"><b>Sync Properties:</b> Define exactly which properties sync within a group. You can toggle checkboxes for <i>Text content</i>, <i>Font settings</i>, <i>Colors & Fill</i>, <i>Stroke</i>, <i>Transform (Width/Height)</i>, <i>Opacity</i>, <i>IN Animations</i>, and <i>Effects</i>.</li>
+          <li style="margin-bottom:8px;"><b>Live-Link Mode (Real-time Sync):</b> Toggle the lightning bolt icon in the Link Groups panel or the <b>Live-link mode</b> checkbox under Sync Properties. When active, any edit you make to an element (moving, resizing, editing text, changing color) immediately propagates to all sibling elements in the group in real-time.</li>
+          <li style="margin-bottom:8px;"><b>Manual Push:</b> If Live-link is disabled, you can manually broadcast changes by selecting <b>Push changes to group</b> in the main context menu or clicking the button in the side panel.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">3. Layers & Grouping</h2>
-        <p>Manage the stacking order of your ad through the Layers Panel on the left.</p>
-        <ul style="padding-left:20px; color:var(--text-muted);">
-          <li style="margin-bottom:6px;"><b>Reordering:</b> Drag and drop layers, or use <span class="kbd">Ctrl</span>+<span class="kbd">[</span> and <span class="kbd">Ctrl</span>+<span class="kbd">]</span> to push them backward or forward.</li>
-          <li style="margin-bottom:6px;"><b>Grouping:</b> Select multiple elements by holding <span class="kbd">Shift</span> and clicking them, then press <span class="kbd">Ctrl</span>+<span class="kbd">G</span>. Groups can be animated as a single unit. Double-click a group to isolate it and edit its internal contents.</li>
-          <li style="margin-bottom:6px;"><b>Persistence:</b> By default, elements only exist on the specific "Frame" they were created on. In the Layer panel, click the "Frame" badge to toggle it to <b>Top</b> or <b>Bottom</b>. Persistent elements will remain visible across <i>all</i> frames. Use this for your background color (Bottom) or your logo/CTA (Top).</li>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">3. Element Creation & Customization</h2>
+        <p>Right-click inside any canvas to add design layers. Adjust their visuals using the right-hand Properties Panel:</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
+          <li style="margin-bottom:6px;"><b>Text & Typography:</b> Supports custom styling (size, alignment, weight, line-height, leading, and tracking). Includes pre-installed brand typography (Museo Sans, RMIT Lato, etc.). Double-click text layers to edit content inline.</li>
+          <li style="margin-bottom:6px;"><b>CTA Buttons:</b> Specialized text boxes with integrated auto-hug layout padding, stroke widths, and background fills. Excellent for responsive Call-to-Actions.</li>
+          <li style="margin-bottom:6px;"><b>Images & Brand Assets:</b> Insert SVG/PNG assets. Supports RMIT logo configurations and custom file uploads. Holds aspect ratio bounds automatically (press <span class="kbd">Shift</span> to stretch).</li>
+          <li style="margin-bottom:6px;"><b>Vector Shapes:</b> Add editable rectangles, circles, or custom shapes with stroke and fill adjustments.</li>
+          <li style="margin-bottom:6px;"><b>Advanced Color Picker:</b> Swatches support linear and radial gradients, hex inputs, alpha opacity settings, and saved project swatches.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">4. Timeline & Animation</h2>
-        <p>RMIT Display Studio uses a frame-based timeline approach rather than complex keyframing.</p>
-        <ul style="padding-left:20px; color:var(--text-muted);">
-          <li style="margin-bottom:6px;"><b>Frames:</b> Use the top bar controls to add/remove frames. Set the <b>Duration (s)</b> for how long each frame stays on screen.</li>
-          <li style="margin-bottom:6px;"><b>Transitions:</b> Select a transition (e.g. Slide Up, Fade) for how the <i>entire frame</i> enters the screen.</li>
-          <li style="margin-bottom:6px;"><b>Element Animations:</b> In the Properties Panel, apply <b>Entrance</b> animations (like Pop-in or Swipe Left) to individual elements to make them stagger in.</li>
-          <li style="margin-bottom:6px;"><b>Continuous Effects:</b> Apply subtle, looping effects like Pan, Zoom, or Float. If you disable "Perform once", the pan/zoom will ping-pong back and forth indefinitely.</li>
-          <li style="margin-bottom:6px;"><b>Looping:</b> Check the "Loop" box in the top bar to make the ad restart endlessly.</li>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">4. Layer Stacking & Persistence</h2>
+        <p>Order and target layers across frames via the left Layers Panel:</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
+          <li style="margin-bottom:6px;"><b>Arranging:</b> Drag layers up and down the stack, or use <span class="kbd">Ctrl</span>+<span class="kbd">[</span> and <span class="kbd">Ctrl</span>+<span class="kbd">]</span> to order.</li>
+          <li style="margin-bottom:6px;"><b>Group & Isolate:</b> Select multiple items and press <span class="kbd">Ctrl</span>+<span class="kbd">G</span> to group. Double-click a group to isolate it, focusing edits solely inside its bounds.</li>
+          <li style="margin-bottom:6px;"><b>Persistence (Frame vs Top vs Bottom):</b> Click the persistence badge on a layer. <i>Frame</i> limits the element to the current timeline frame. <i>Bottom</i> locks it as a background across all frames. <i>Top</i> forces it to overlay above all frames (useful for branding logos and persistent CTAs).</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">5. Alignment & Guides</h2>
-        <p>Keep your designs pixel-perfect.</p>
-        <ul style="padding-left:20px; color:var(--text-muted);">
-          <li style="margin-bottom:6px;"><b>Snapping:</b> Right-click the dark workspace background to enable Snapping. Elements will magnetically snap to canvas edges, centers, and other elements.</li>
-          <li style="margin-bottom:6px;"><b>Rulers & Guides:</b> Toggle Rulers from the workspace context menu. Hover over the ruler edges (top or left) and drag inward to pull out an alignment guide. Drag a guide back into the ruler to delete it.</li>
-          <li style="margin-bottom:6px;"><b>Nudging:</b> Use the <span class="kbd">Arrow Keys</span> to nudge selected elements by 1px. Hold <span class="kbd">Shift</span> to nudge by 10px.</li>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">5. Timeline, Animations & Loop</h2>
+        <p>Animate your display ads using the frame-based animation sequencer at the top of the workspace:</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
+          <li style="margin-bottom:6px;"><b>Frames:</b> Create sequence steps with individual display durations. Transition selectors determine slide, swipe, fade, or scale animations between frames.</li>
+          <li style="margin-bottom:6px;"><b>Entrance Animations:</b> Apply entrance transitions (Pop-in, Fade, Slide Up/Down/Left/Right) to layers to animate them onto the screen as a frame begins.</li>
+          <li style="margin-bottom:6px;"><b>Continuous Effects:</b> Apply looping animations (Pan, Zoom, Float, Pulsate) to keep banners dynamic. Toggle "Perform once" to restrict effects to one cycle or play indefinitely.</li>
+          <li style="margin-bottom:6px;"><b>Timeline Loop:</b> Toggle the global Loop option to repeat the entire animation timeline continuously.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">6. Exporting & Google Ads</h2>
-        <p>RMIT Display Studio generates Google Ads-compliant, pure HTML5/CSS/JS bundles.</p>
-        <ul style="padding-left:20px; color:var(--text-muted);">
-          <li style="margin-bottom:6px;"><b>ClickTags:</b> Define your global ClickTag URL in the left-side Project panel. You can also override it per-canvas.</li>
-          <li style="margin-bottom:6px;"><b>Previewing:</b> Click the purple <b>Preview</b> button in a canvas's properties to see exactly how the HTML will render in a browser iframe.</li>
-          <li style="margin-bottom:6px;"><b>Validation:</b> The left panel continuously validates your canvases. It will flag if your ClickTag is missing, if you have external/unsupported assets, or if the final zip exceeds the Google Ads 150KB limit.</li>
-          <li style="margin-bottom:6px;"><b>Downloading:</b> Click <b>Download ZIP</b> to get the final ad package. The exporter automatically minifies the code, bundles external SVGs, and disables animations on persistent background layers to save file size.</li>
-          <li style="margin-bottom:6px;"><b>PNG Fallbacks:</b> Click <b>Download PNG</b> to instantly generate a static snapshot of the current frame for use as a backup image.</li>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">6. Alignment, Guides & Snapping</h2>
+        <p>Ensure precise layout alignment across your banners:</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
+          <li style="margin-bottom:6px;"><b>Magnetic Snapping:</b> Elements align and snap to canvas edges, centers, guidelines, and sibling layers. Toggle Snapping in the workspace context menu.</li>
+          <li style="margin-bottom:6px;"><b>Guides & Rulers:</b> Toggle rulers on. Drag from the horizontal or vertical ruler into a canvas to position alignment guides. Drag a guide back to the ruler to delete.</li>
+          <li style="margin-bottom:6px;"><b>Precision Nudging:</b> Use arrow keys to nudge elements 1px, or hold <span class="kbd">Shift</span> to nudge 10px.</li>
         </ul>
+
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">7. Exporting & Google Ads Validation</h2>
+        <p>Export ready-to-run HTML5 ad packages tailored for Google Ads compliance:</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:8px;">
+          <li style="margin-bottom:6px;"><b>ClickTag Configuration:</b> Set target redirects globally or override individual click destinations per canvas.</li>
+          <li style="margin-bottom:6px;"><b>Validation Audits:</b> The system runs live checks on assets, script counts, external links, and sizes. It flags errors if files exceed the 150KB Google Ads limit or contain non-compliant external assets.</li>
+          <li style="margin-bottom:6px;"><b>Production Bundling:</b> Exports as optimized, minified ZIP files containing pure inline code and lightweight embedded assets.</li>
+          <li style="margin-bottom:6px;"><b>PNG backup:</b> Instant high-resolution raster capture of any frame to use as static backup assets.</li>
+        </ul>
+
       </div>`;
   openModal('RMIT Display Studio Documentation', body, false);
 });
 
+
 const CHANGELOG_DATA = [
+  {
+    version: 'v1.3.32',
+    date: 'May 2026',
+    items: [
+      'Disabled the confirmation pop-up alert when adding/cloning elements to other canvases and linking them.'
+    ]
+  },
+  {
+    version: 'v1.3.31',
+    date: 'May 2026',
+    items: [
+      'Added a "Live-link mode" option under Sync Properties which synchronizes element updates across all canvases in real time as the user edits (dragging, resizing, typing, etc.).',
+      'Added a "Live-link" lightning bolt button to the active link groups panel, and condensed the action button layout to optimize sidebar space.'
+    ]
+  },
   {
     version: 'v1.3.30',
     date: 'May 2026',
@@ -7148,7 +7243,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v1.3.30';
+  const currentVersion = 'v1.3.32';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -7218,7 +7313,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.30</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.32</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -7274,7 +7369,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.30</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.32</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
