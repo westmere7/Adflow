@@ -32,6 +32,7 @@
           <div
             style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
             File</div>
+          <div class="dropdown-item" id="menu-file-new">New Project…</div>
           <div class="dropdown-item" id="menu-file-open">Open Project...</div>
           <div class="dropdown-item" id="menu-file-save">Save Project <span class="kbd"
               style="background:transparent;border:none;padding:0">Ctrl+S</span></div>
@@ -109,8 +110,9 @@
         </div>
       </div>
       <div class="spacer"></div>
+      <span id="save-status" style="font-weight: 500; font-size: 11px; color: var(--text-muted); margin-right: 16px; user-select: none;" title="Your work auto-saves to this browser"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent-light);margin-right:6px;vertical-align:middle;"></span>All changes saved</span>
       <span id="zoom-level-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Reset Zoom">Zoom 100%</span>
-      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v1.3.13</span>
+      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v1.3.14</span>
       <button class="btn" id="btn-preview">Preview</button>
       <button class="btn primary" id="btn-export-top">Export</button>
     </div>

@@ -99,8 +99,8 @@ function seedCanvas(preset, layoutIdx) {
     width: preset.width,
     height: preset.height,
     bgColor: '#0f172a',
-    workspaceX: INITIAL_LAYOUT[layoutIdx]?.x ?? 40,
-    workspaceY: INITIAL_LAYOUT[layoutIdx]?.y ?? 40,
+    workspaceX: INITIAL_LAYOUT[layoutIdx]?.x ?? (2050 + (layoutIdx || 0) * 30),
+    workspaceY: INITIAL_LAYOUT[layoutIdx]?.y ?? (2050 + (layoutIdx || 0) * 30),
     elements: defaultElements(preset),
   };
 }
@@ -194,6 +194,8 @@ const state = {
   guides: [],
   activeSmartGuides: null,
   showSafezones: false,
+  adSizeLimit: 150,      // max exported ad weight in KB (IAB display-ad standard)
+  defaultBg: '#0f172a',  // default background for newly created canvases
   clipboard: null
 };
 state.activeCanvasId = state.canvases[0].id;
@@ -225,6 +227,117 @@ function pushHistory() {
   if (history.length > 15) history.shift();
   else historyIndex++;
   queueSizeUpdate();
+  scheduleAutosave();
+}
+
+// ============================================================================
+// Auto-save (IndexedDB) + save-status indicator
+// ============================================================================
+// IndexedDB (not localStorage) so large projects with embedded image data URLs
+// don't hit the ~5MB localStorage ceiling. A single record holds the latest
+// working state; it's overwritten on a debounce after every change.
+const AUTOSAVE_DB = 'adcooker-autosave';
+const AUTOSAVE_STORE = 'state';
+const AUTOSAVE_KEY = 'current';
+
+function _idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(AUTOSAVE_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(AUTOSAVE_STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function _idbPut(key, val) {
+  const db = await _idbOpen();
+  try {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(AUTOSAVE_STORE, 'readwrite');
+      tx.objectStore(AUTOSAVE_STORE).put(val, key);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally { db.close(); }
+}
+async function _idbGet(key) {
+  const db = await _idbOpen();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(AUTOSAVE_STORE, 'readonly');
+      const r = tx.objectStore(AUTOSAVE_STORE).get(key);
+      r.onsuccess = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+    });
+  } finally { db.close(); }
+}
+
+// Serializable snapshot of the working state — drops transient/edit-only fields and
+// records the current scroll so a reload restores the user's exact view.
+function buildStateSnapshot() {
+  const snap = JSON.parse(JSON.stringify(state));
+  // Strip transient/view-mode state so a reload always opens in normal editor mode.
+  snap.editingElementId = null;
+  snap.activeSmartGuides = null;
+  snap.isDragging = false;
+  snap.isPreviewMode = false;
+  snap.singlePreviewId = null;
+  snap.isolatedGroupId = null;
+  snap.clipboard = null;
+  delete snap.prePreviewZoom;
+  delete snap.prePreviewScrollLeft;
+  delete snap.prePreviewScrollTop;
+  const ca = document.getElementById('canvas-area');
+  if (ca) { snap.viewScrollLeft = ca.scrollLeft; snap.viewScrollTop = ca.scrollTop; }
+  return snap;
+}
+
+let _saveStatus = 'saved';      // 'saved' | 'unsaved' | 'saving' | 'error'
+let _autosaveTimer = null;
+let _autosaveSuspended = true;  // suppressed until the initial restore/render finishes
+
+function setSaveStatus(status) {
+  _saveStatus = status;
+  const el = document.getElementById('save-status');
+  if (!el) return;
+  const map = {
+    saved:   { text: 'All changes saved', dot: 'var(--accent-light)', color: 'var(--text-muted)' },
+    unsaved: { text: 'Unsaved changes',   dot: '#eab308',             color: 'var(--text-label)' },
+    saving:  { text: 'Saving…',           dot: '#38bdf8',             color: 'var(--text-label)' },
+    error:   { text: 'Auto-save failed',  dot: '#ef4444',             color: '#ef4444' },
+  };
+  const m = map[status] || map.saved;
+  el.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${m.dot};margin-right:6px;vertical-align:middle;"></span>${m.text}`;
+  el.style.color = m.color;
+}
+
+async function writeAutosave() {
+  try {
+    setSaveStatus('saving');
+    await _idbPut(AUTOSAVE_KEY, { savedAt: Date.now(), state: buildStateSnapshot() });
+    setSaveStatus('saved');
+  } catch (e) {
+    console.warn('Auto-save failed:', e);
+    setSaveStatus('error');
+  }
+}
+
+// Debounced — called from every state-mutating path (pushHistory + render).
+function scheduleAutosave() {
+  if (_autosaveSuspended) return;
+  if (_saveStatus !== 'saving') setSaveStatus('unsaved');
+  if (_autosaveTimer) clearTimeout(_autosaveTimer);
+  _autosaveTimer = setTimeout(writeAutosave, 1000);
+}
+
+async function restoreAutosave() {
+  try {
+    const rec = await _idbGet(AUTOSAVE_KEY);
+    if (rec && rec.state && Array.isArray(rec.state.canvases) && rec.state.canvases.length) {
+      Object.assign(state, rec.state);
+      return true;
+    }
+  } catch (e) { console.warn('Auto-save restore failed:', e); }
+  return false;
 }
 
 function undo() {
@@ -467,6 +580,11 @@ function render(skipProps = false) {
   document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
   if (isFs) document.body.classList.add('fullscreen-mode');
   if (isPreview) document.body.classList.add('preview-active');
+
+  // Catch-all autosave trigger: render() runs after virtually every state change
+  // (element edits, project settings, theme, etc.). Debounced + suspended during the
+  // initial restore, so this is cheap and won't fire spuriously on boot.
+  scheduleAutosave();
 }
 
 function centerWorkspace() {
@@ -2294,6 +2412,7 @@ document.getElementById('btn-add-canvas').addEventListener('click', (e) => {
       item.addEventListener('click', () => {
         const idx = state.canvases.length;
         const c = seedCanvas(sz, idx % PRESET_SIZES.length);
+        if (state.defaultBg) c.bgColor = state.defaultBg;
         if (idx >= PRESET_SIZES.length) {
           c.workspaceX = 2060 + idx * 30;
           c.workspaceY = 2060 + idx * 30;
@@ -4841,6 +4960,170 @@ document.getElementById('frame-transition-fade').addEventListener('change', (e) 
 
 document.getElementById('menu-file-open').addEventListener('click', openProjectFromZip);
 document.getElementById('menu-file-save').addEventListener('click', saveProjectToZip);
+document.getElementById('menu-file-new').addEventListener('click', openNewProjectDialog);
+
+// ============================================================================
+// New Project dialog
+// ============================================================================
+// Builds a fresh project from picked canvas presets (all checked by default),
+// a name, an ad-size limit (KB) and a default canvas background. Replaces the
+// working state and lets the normal autosave persist it.
+function createNewProject({ name, presetIndices, sizeLimitKb, bgColor }) {
+  const bg = bgColor || '#0f172a';
+  
+  let currentX = 2050;
+  let currentY = 2050;
+  let rowMaxHeight = 0;
+  const maxRowWidth = 1400;
+
+  const canvases = presetIndices.map((pi, i) => {
+    const preset = PRESET_SIZES[pi];
+    const c = seedCanvas(preset, i);
+    c.bgColor = bg;
+    
+    c.workspaceX = currentX;
+    c.workspaceY = currentY;
+    
+    currentX += preset.width + 60;
+    rowMaxHeight = Math.max(rowMaxHeight, preset.height);
+    
+    if (i < presetIndices.length - 1) {
+      const nextPreset = PRESET_SIZES[presetIndices[i + 1]];
+      if (currentX + nextPreset.width - 2050 > maxRowWidth) {
+        currentX = 2050;
+        currentY += rowMaxHeight + 60;
+        rowMaxHeight = 0;
+      }
+    }
+    
+    // Start clean: keep only the persistent brand layers (RMIT logo + compliance),
+    // drop the demo "Summer sale" content.
+    c.elements = c.elements.filter(el => el.persistent === 'top' || el.persistent === 'bottom');
+    return c;
+  });
+
+  state.projectName = (name || 'RMIT_Ad').trim() || 'RMIT_Ad';
+  state.adSizeLimit = Math.max(1, parseInt(sizeLimitKb, 10) || 150);
+  state.defaultBg = bg;
+  state.canvases = canvases;
+  state.activeCanvasId = canvases[0] ? canvases[0].id : null;
+  state.frames = [{ id: 1, duration: 2 }];
+  state.activeFrameId = 1;
+  state.selectedElementId = null;
+  state.layerSelection = [];
+  state.editingElementId = null;
+  state.isolatedGroupId = null;
+  state.guides = [];
+  state.clipboard = null;
+  // Drop user-uploaded assets; keep the bundled RMIT logo data-url if present.
+  state.assets = state.assets && state.assets.rmit_logo ? { rmit_logo: state.assets.rmit_logo } : {};
+  state.zoom = 1;
+
+  history.length = 0;
+  historyIndex = -1;
+  pushHistory();
+  render();
+  setTimeout(() => {
+    const ca = document.getElementById('canvas-area');
+    if (ca && ca.scrollTo && state.canvases.length > 0) {
+      const { x, y } = allCanvasesCenter();
+      const z = state.zoom || 1;
+      const targetScrollLeft = Math.max(0, x * z - ca.clientWidth / 2);
+      const targetScrollTop = Math.max(0, y * z - ca.clientHeight / 2);
+      ca.scrollTo({ left: targetScrollLeft, top: targetScrollTop, behavior: 'instant' });
+    } else if (ca && ca.scrollTo) {
+      ca.scrollTo({ left: 2000, top: 2000, behavior: 'instant' });
+    }
+  }, 50);
+}
+
+function openNewProjectDialog() {
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+
+  const presetRows = PRESET_SIZES.map((p, i) => `
+    <label class="np-row" style="display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:6px; cursor:pointer;">
+      <input type="checkbox" class="np-canvas" data-idx="${i}" checked style="margin:0;" />
+      <span style="font-size:12px; color:var(--text-main);">${p.name}</span>
+      <span style="font-size:11px; color:var(--text-muted); margin-left:auto;">${p.width} × ${p.height}</span>
+    </label>`).join('');
+
+  bg.innerHTML = `
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-head">
+        <h2>New Project</h2>
+        <button class="btn" id="np-close">Close</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
+        <div>
+          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project name</label>
+          <input type="text" id="np-name" value="${(state.projectName || 'RMIT_Ad').replace(/"/g, '&quot;')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+        </div>
+        <div>
+          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span>Canvases</span>
+            <span id="np-canvas-toggle" style="cursor:pointer; color:var(--accent-light); text-transform:none; letter-spacing:0;">Toggle all</span>
+          </label>
+          <div style="border:1px solid #272c3a; border-radius:6px; padding:4px;">${presetRows}</div>
+        </div>
+        <div style="display:flex; gap:14px;">
+          <div style="flex:1;">
+            <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
+            <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Default background</label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="color" id="np-bg" value="${(state.defaultBg || '#0f172a')}" style="width:36px; height:32px; padding:0; border:1px solid #272c3a; border-radius:4px; background:none; cursor:pointer;" />
+              <input type="text" id="np-bg-hex" value="${(state.defaultBg || '#0f172a').replace(/^#/, '').toUpperCase()}" maxlength="6" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; text-transform:uppercase;" />
+            </div>
+          </div>
+        </div>
+        <p style="margin:0; font-size:11px; color:var(--text-muted); line-height:1.5;">This replaces your current project. Your existing work is auto-saved — save a <strong>.cook</strong> file first if you want a separate backup.</p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="np-cancel">Cancel</button>
+        <button class="btn primary" id="np-create">Create Project</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(bg);
+
+  const closeFn = () => { bg.remove(); document.removeEventListener('keydown', escHandler); };
+  const escHandler = (e) => { if (e.key === 'Escape') closeFn(); };
+  document.addEventListener('keydown', escHandler);
+  bg.querySelector('#np-close').onclick = closeFn;
+  bg.querySelector('#np-cancel').onclick = closeFn;
+  bg.onclick = (e) => { if (e.target === bg) closeFn(); };
+
+  // Keep the color swatch and hex field in sync.
+  const colorInp = bg.querySelector('#np-bg');
+  const hexInp = bg.querySelector('#np-bg-hex');
+  colorInp.addEventListener('input', () => { hexInp.value = colorInp.value.replace(/^#/, '').toUpperCase(); });
+  hexInp.addEventListener('input', () => {
+    const v = hexInp.value.replace(/[^0-9a-fA-F]/g, '');
+    if (v.length === 6) colorInp.value = '#' + v;
+  });
+
+  bg.querySelector('#np-canvas-toggle').onclick = () => {
+    const boxes = [...bg.querySelectorAll('.np-canvas')];
+    const allOn = boxes.every(b => b.checked);
+    boxes.forEach(b => { b.checked = !allOn; });
+  };
+
+  bg.querySelector('#np-create').onclick = () => {
+    const presetIndices = [...bg.querySelectorAll('.np-canvas:checked')].map(b => +b.dataset.idx);
+    if (presetIndices.length === 0) { alert('Pick at least one canvas size.'); return; }
+    const hex = '#' + (hexInp.value.replace(/[^0-9a-fA-F]/g, '').padEnd(6, '0').slice(0, 6) || '0f172a');
+    createNewProject({
+      name: bg.querySelector('#np-name').value,
+      presetIndices,
+      sizeLimitKb: bg.querySelector('#np-size-limit').value,
+      bgColor: hex,
+    });
+    closeFn();
+  };
+}
 
 
 function openExportModal() {
@@ -5001,8 +5284,9 @@ function queueSizeUpdate() {
       const blob = await zip.generateAsync({ type: 'blob' });
       const kb = (blob.size / 1024).toFixed(1);
 
-      if (blob.size > 153600) {
-        errors.push(`Filesize (${kb} KB) exceeds 150KB limit`);
+      const limitKb = state.adSizeLimit || 150;
+      if (blob.size > limitKb * 1024) {
+        errors.push(`Filesize (${kb} KB) exceeds ${limitKb}KB limit`);
       }
 
       c._valKb = kb;
@@ -5117,7 +5401,13 @@ function openChangelogModal() {
   const changelogHtml = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:400px; overflow-y:auto; padding-right:8px;">
         <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.13 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.14 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Fixed off-center new project canvas rendering by dynamically positioning canvases in wrapping grid rows and auto-centering viewport focus.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.13 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
           <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
             <li style="margin-bottom:4px;">Added version display next to zoom level in the header and enabled opening the Changelog directly by clicking it.</li>
           </ul>
@@ -5247,7 +5537,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.13</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.14</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -5303,7 +5593,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.13</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.14</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -5808,21 +6098,37 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-window.addEventListener('beforeunload', (e) => {
-  if (historyIndex > 0) {
-    e.preventDefault();
-    e.returnValue = '';
+// Autosave makes leaving seamless — no "unsaved changes" prompt. If a debounced
+// write is still pending, flush it best-effort (IndexedDB may not finish, but the
+// previous autosave is at most ~1s old).
+window.addEventListener('beforeunload', () => {
+  if (_autosaveTimer) {
+    clearTimeout(_autosaveTimer);
+    _autosaveTimer = null;
+    if (!_autosaveSuspended) writeAutosave();
   }
 });
 
-render();
-queueSizeUpdate();
-setTimeout(() => {
-  const canvasArea = document.getElementById('canvas-area');
-  if (canvasArea.scrollTo) {
-    canvasArea.scrollTo({ left: 2000, top: 2000, behavior: 'instant' });
-  }
-}, 10);
+(async function initApp() {
+  let restored = false;
+  try { restored = await restoreAutosave(); } catch (e) { console.warn(e); }
+  render();
+  queueSizeUpdate();
+  setTimeout(() => {
+    const canvasArea = document.getElementById('canvas-area');
+    if (!canvasArea || !canvasArea.scrollTo) return;
+    if (restored && state.viewScrollLeft !== undefined) {
+      canvasArea.scrollTo({ left: state.viewScrollLeft, top: state.viewScrollTop, behavior: 'instant' });
+    } else {
+      canvasArea.scrollTo({ left: 2000, top: 2000, behavior: 'instant' });
+    }
+  }, 10);
+  // Enable autosave now that the initial state is settled, and persist the seed
+  // project once if there was nothing to restore.
+  _autosaveSuspended = false;
+  setSaveStatus('saved');
+  if (!restored) writeAutosave();
+})();
 
 
 // ============================================================================

@@ -1,6 +1,9 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.13 (Current) - May 2026
+v1.3.14 (Current) - May 2026
+- Fixed off-center new project canvas rendering by dynamically positioning canvases in wrapping grid rows and auto-centering viewport focus.
+
+v1.3.13 - May 2026
 - Added version display next to zoom level in the header and enabled opening the Changelog directly by clicking it.
 
 v1.3.12 - May 2026
