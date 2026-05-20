@@ -116,16 +116,16 @@ function defaultElements(preset) {
   out.push(Object.assign(makeElement('text'),
     {
       x: pad, y: pad, text: 'Summer sale',
-      fontSize: fs, color: '#ffffff', weight: '700',
-      width: w - pad * 2, height: Math.round(fs * 1.2)
+      fontSize: fs, color: '#ffffff', weight: '700', fontFamily: 'Museo',
+      width: Math.max(120, w - pad * 2 - (w * 0.25)), height: Math.round(fs * 1.2)
     }));
   if (!isWide || w > 600) {
     out.push(Object.assign(makeElement('text'),
       {
-        x: pad, y: pad + fs + 6, text: 'Up to 50% off',
+        x: pad, y: pad + Math.round(fs * 1.2) + 8, text: 'Up to 50% off',
         fontSize: Math.max(11, Math.round(fs * 0.55)),
-        color: '#c7ccdb', weight: '500',
-        width: w - pad * 2, height: Math.round(fs * 0.7)
+        color: '#c7ccdb', weight: '400', fontFamily: 'Helvetica Neue LT Pro',
+        width: w - pad * 2, height: Math.round(Math.max(11, Math.round(fs * 0.55)) * 1.2)
       }));
   }
   const btnW = Math.min(140, Math.round(w * 0.35));
@@ -136,7 +136,8 @@ function defaultElements(preset) {
       y: isTall ? h - btnH - pad : h - btnH - pad,
       text: 'Shop now', bg: '#7c5cff', color: '#fff',
       fontSize: Math.max(11, Math.round(btnH * 0.42)),
-      radius: 6, width: btnW, height: btnH, isClickArea: true
+      radius: 6, width: btnW, height: btnH, isClickArea: true,
+      fontFamily: 'Helvetica Neue LT Pro', weight: '500'
     }));
 
   const logoW = Math.max(60, Math.min(100, Math.round(w * 0.2)));
@@ -4999,6 +5000,48 @@ function createNewProject({ name, presetIndices, sizeLimitKb, bgColor }) {
     // Start clean: keep only the persistent brand layers (RMIT logo + compliance),
     // drop the demo "Summer sale" content.
     c.elements = c.elements.filter(el => el.persistent === 'top' || el.persistent === 'bottom');
+    
+    // Add Heading and Subheading inside the main layer group (frame-dependent)
+    const w = preset.width;
+    const h = preset.height;
+    const isWide = w > h * 3;
+    const fsHeading = Math.max(14, Math.min(40, Math.round(Math.min(w, h) * 0.12)));
+    const fsSubheading = Math.max(11, Math.round(fsHeading * 0.55));
+    const pad = Math.max(10, Math.round(Math.min(w, h) * 0.06));
+    
+    const heading = Object.assign(makeElement('text'), {
+      customName: 'Heading',
+      x: pad,
+      y: pad,
+      text: 'Heading Text',
+      fontSize: fsHeading,
+      fontFamily: 'Museo',
+      weight: '700',
+      color: '#ffffff',
+      width: Math.max(120, w - pad * 2 - (w * 0.25)),
+      height: Math.round(fsHeading * 1.3),
+      persistent: false
+    });
+    
+    const subheading = Object.assign(makeElement('text'), {
+      customName: 'Subheading',
+      x: pad,
+      y: pad + Math.round(fsHeading * 1.3) + 8,
+      text: 'Subheading Text',
+      fontSize: fsSubheading,
+      fontFamily: 'Helvetica Neue LT Pro',
+      weight: '400',
+      color: '#c7ccdb',
+      width: w - pad * 2,
+      height: Math.round(fsSubheading * 1.3),
+      persistent: false
+    });
+    
+    c.elements.push(heading);
+    if (!isWide || w > 600) {
+      c.elements.push(subheading);
+    }
+    
     return c;
   });
 
@@ -5401,7 +5444,13 @@ function openChangelogModal() {
   const changelogHtml = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:400px; overflow-y:auto; padding-right:8px;">
         <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.14 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.15 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Introduced pre-styled heading (Museo 700) and subheading (Helvetica Neue LT Pro) elements into the main layer group for all canvases on project creation.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.14 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
           <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
             <li style="margin-bottom:4px;">Fixed off-center new project canvas rendering by dynamically positioning canvases in wrapping grid rows and auto-centering viewport focus.</li>
           </ul>
@@ -5537,7 +5586,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.14</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.15</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -5593,7 +5642,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.14</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.15</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

@@ -1,6 +1,9 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.14 (Current) - May 2026
+v1.3.15 (Current) - May 2026
+- Introduced pre-styled heading (Museo 700) and subheading (Helvetica Neue LT Pro) elements into the main layer group for all canvases on project creation.
+
+v1.3.14 - May 2026
 - Fixed off-center new project canvas rendering by dynamically positioning canvases in wrapping grid rows and auto-centering viewport focus.
 
 v1.3.13 - May 2026
