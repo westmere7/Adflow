@@ -3135,3 +3135,10 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
       border-color: var(--accent-base);
       box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 0 6px var(--accent-base);
     }
+
+
+    /* Linked-element highlight (visual only — siblings of the selected element or a hovered link-group row) */
+    .el.link-highlight, .el.link-highlight-hover {
+      outline: calc(2px / var(--z, 1)) dashed var(--accent-light);
+      outline-offset: calc(1px / var(--z, 1));
+    }

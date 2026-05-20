@@ -967,6 +967,22 @@ const getSelectedElement = () => {
   return c ? c.elements.find(e => e.id === state.selectedElementId) : null;
 };
 
+// The link group whose members should be highlighted (visual only). Active when the
+// current selection is entirely within one link group — e.g. a single linked child
+// element, or all members on one canvas after clicking a group row. Recomputed once
+// per render and cached so elementNode() can read it cheaply.
+let _highlightGid = null;
+function computeHighlightLinkGroupId() {
+  if (!state.linkGroups) return null;
+  const c = getActiveCanvas();
+  if (!c || !state.layerSelection || !state.layerSelection.length) return null;
+  const sel = c.elements.filter(e => state.layerSelection.includes(e.id));
+  const gids = new Set(sel.map(e => e.linkGroupId).filter(Boolean));
+  if (gids.size !== 1) return null;
+  const gid = [...gids][0];
+  return state.linkGroups[gid] ? gid : null;
+}
+
 // ============================================================================
 // Render
 // ============================================================================
@@ -1088,6 +1104,7 @@ function applyColorToText(node, colorVal) {
 }
 
 function render(skipProps = false) {
+  _highlightGid = computeHighlightLinkGroupId();
   // Live-link mode propagation
   if (state.layerSelection && state.layerSelection.length > 0) {
     const activeCanvas = getActiveCanvas();
@@ -1963,6 +1980,13 @@ function elementNode(el, canvasCtx) {
   d.className = 'el';
   if (el.hidden) d.style.display = 'none';
   d.dataset.id = el.id;
+  // Tag link-group membership so hovering a group row can highlight siblings directly.
+  if (el.linkGroupId) d.dataset.linkGroup = el.linkGroupId;
+  // Highlight (visual only) the linked siblings of the current selection — but not the
+  // selected elements themselves, which already show a selection outline.
+  if (el.linkGroupId && el.linkGroupId === _highlightGid && !(state.layerSelection && state.layerSelection.includes(el.id))) {
+    d.classList.add('link-highlight');
+  }
   d.style.left = el.x + 'px';
   d.style.top = el.y + 'px';
   d.style.width = el.width + 'px';
@@ -3469,6 +3493,14 @@ function renderLinkControl() {
   });
 
   panel.querySelectorAll('.link-group-row').forEach(row => {
+    // Hovering a group row highlights its members across all canvases (visual only).
+    row.addEventListener('mouseenter', () => {
+      const gid = row.dataset.groupId;
+      document.querySelectorAll(`.el[data-link-group="${gid}"]`).forEach(el => el.classList.add('link-highlight-hover'));
+    });
+    row.addEventListener('mouseleave', () => {
+      document.querySelectorAll('.el.link-highlight-hover').forEach(el => el.classList.remove('link-highlight-hover'));
+    });
     row.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
       const nameSpan = row.querySelector('.layer-name');
