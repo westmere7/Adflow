@@ -1,6 +1,12 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.22 (Current) - May 2026
+v1.3.24 (Current) - May 2026
+- Refactored "Recent Projects" to be a nested "Open Recent" slide-out submenu inside the File dropdown menu.
+
+v1.3.23 - May 2026
+- Added a "Recent Projects" section in the File menu displaying the last 10 manually saved projects with their names and save timestamps, allowing quick one-click restoration.
+
+v1.3.22 - May 2026
 - Added a 1px solid black border overlay showing the exact boundaries of the canvas in the editor workspace when Crop to Canvas is disabled.
 
 v1.3.21 - May 2026

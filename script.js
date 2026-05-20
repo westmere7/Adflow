@@ -4936,6 +4936,7 @@ async function saveProjectAsCook() {
       const writable = await handle.createWritable();
       await writable.write(content);
       await writable.close();
+      await addRecentProject(exportState);
     } catch (e) { if (e.name !== 'AbortError') console.error('Save failed:', e); }
   } else {
     const a = document.createElement('a');
@@ -4943,12 +4944,110 @@ async function saveProjectAsCook() {
     a.download = suggestedName;
     a.click();
     URL.revokeObjectURL(a.href);
+    await addRecentProject(exportState);
   }
 }
 
 // Backwards-compat alias — keyboard shortcuts and a few other places still reference
 // the original name.
 const saveProjectToZip = saveProjectAsCook;
+
+async function addRecentProject(exportState) {
+  try {
+    const recents = (await _idbGet('recents')) || [];
+    const projName = state.projectName || 'RMIT_Ad';
+    const filtered = recents.filter(r => r.name !== projName);
+    filtered.unshift({
+      name: projName,
+      timestamp: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      stateSnapshot: JSON.parse(JSON.stringify(exportState))
+    });
+    const limited = filtered.slice(0, 10);
+    await _idbPut('recents', limited);
+    updateRecentProjectsMenu();
+  } catch (err) {
+    console.error('Failed to add recent project:', err);
+  }
+}
+
+async function updateRecentProjectsMenu() {
+  const container = document.getElementById('recent-projects-list');
+  if (!container) return;
+  try {
+    const recents = (await _idbGet('recents')) || [];
+    container.innerHTML = '';
+    if (recents.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'dropdown-item';
+      empty.style.color = 'var(--text-muted)';
+      empty.style.cursor = 'default';
+      empty.style.pointerEvents = 'none';
+      empty.style.padding = '6px 16px';
+      empty.textContent = '(No recent projects)';
+      container.appendChild(empty);
+      return;
+    }
+    recents.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'dropdown-item';
+      el.style.display = 'flex';
+      el.style.flexDirection = 'column';
+      el.style.alignItems = 'flex-start';
+      el.style.gap = '2px';
+      el.style.padding = '6px 16px';
+      el.style.lineHeight = '1.3';
+      
+      const name = document.createElement('div');
+      name.style.fontWeight = '500';
+      name.style.color = 'inherit';
+      name.textContent = item.name;
+      
+      const date = document.createElement('div');
+      date.style.fontSize = '9px';
+      date.style.color = 'var(--text-muted)';
+      date.style.transition = 'color 0.2s';
+      date.textContent = item.timestamp;
+      
+      el.appendChild(name);
+      el.appendChild(date);
+      
+      el.addEventListener('mouseenter', () => {
+        date.style.color = '#e0e0e0';
+      });
+      el.addEventListener('mouseleave', () => {
+        date.style.color = 'var(--text-muted)';
+      });
+      
+      el.addEventListener('click', () => {
+        if (confirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
+          loadProjectFromState(item.stateSnapshot);
+        }
+      });
+      container.appendChild(el);
+    });
+  } catch (e) {
+    console.error('Failed to update recents menu:', e);
+  }
+}
+
+function loadProjectFromState(loadedState) {
+  state.selectedElementId = null;
+  state.layerSelection = [];
+  state.editingElementId = null;
+  state.isolatedGroupId = null;
+
+  Object.assign(state, JSON.parse(JSON.stringify(loadedState)));
+  history.length = 0;
+  historyIndex = -1;
+  pushHistory();
+  render();
+  if (loadedState.viewScrollLeft !== undefined) {
+    setTimeout(() => {
+      const ca = document.getElementById('canvas-area');
+      if (ca && ca.scrollTo) ca.scrollTo({ left: loadedState.viewScrollLeft, top: loadedState.viewScrollTop, behavior: 'instant' });
+    }, 10);
+  }
+}
 
 // Shared inflater used by the menu Open dialog AND the drag-drop overlay. Both
 // formats — modern .cook and legacy .zip — share the same internal structure.
@@ -5613,7 +5712,19 @@ function openChangelogModal() {
   const changelogHtml = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:400px; overflow-y:auto; padding-right:8px;">
         <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.22 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.24 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Refactored "Recent Projects" to be a nested "Open Recent" slide-out submenu inside the File dropdown menu.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.23 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Added a "Recent Projects" section in the File menu displaying the last 10 manually saved projects with their names and save timestamps, allowing quick one-click restoration.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.22 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
           <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
             <li style="margin-bottom:4px;">Added a 1px solid black border overlay showing the exact boundaries of the canvas in the editor workspace when Crop to Canvas is disabled.</li>
           </ul>
@@ -5797,7 +5908,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.22</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.24</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -5853,7 +5964,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.22</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.24</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -6374,6 +6485,7 @@ window.addEventListener('beforeunload', () => {
 (async function initApp() {
   let restored = false;
   try { restored = await restoreAutosave(); } catch (e) { console.warn(e); }
+  updateRecentProjectsMenu();
   render();
   queueSizeUpdate();
   setTimeout(() => {
