@@ -1,0 +1,35 @@
+RMIT Display Studio - Version & Changelog History
+
+v1.3.3 (Current) - May 2026
+- Expanded overlay screen joke database to 30+ jokes.
+
+v1.3.2 - May 2026
+- Implemented random overlay jokes on viewport size check screen.
+- Enforced light-scheme color-rendering for Light and RMIT themes.
+- Removed High Contrast and Pride themes.
+- Added version number and Changelog button to the Settings panel header.
+
+v1.3.1 - May 2026
+- Enforced light-scheme color-rendering for Light and RMIT themes on browser native controls (inputs, select dropdowns).
+- Removed High Contrast and Pride themes from the project.
+- Added version number and Changelog button to the Settings panel header.
+
+v1.3.0 - May 2026
+- Streamlined Gradient Color Picker layout (removed eyedropper fallback, moved stop swatches under gradient track, aligned Opacity, Angle, and Reverse Swap icon onto a single row).
+- Refactored Text Background animations to layout the toggle ("animate text BG") and the "Time offset" numeric input side-by-side.
+- Rebranded the application from Ad Cooker to RMIT Display Studio.
+- Simplified the File & Edit menus by removing the Multi-Save to Folder and Test menu items.
+- Completely rewrote the GitHub README with high-fidelity technical specs and clean formatting.
+- Introduced the Versioning & Changelog system to the About section.
+
+v1.2.0 - May 2026
+- Added new "Settings..." workspace shortcuts to the top menu and canvas context menu.
+- Introduced a detailed Help Documentation system with in-app guide modals.
+- Synchronized all workspace shortcut listings across in-app modals and project docs.
+
+v1.1.0 - May 2026
+- Decoupled continuous animations (Pan, Zoom, Float, Pulse, etc.) from entry transitions.
+- Renamed automation panels, grouped HTML & PNG exports, and added validation for ClickTags.
+
+v1.0.0 - May 2026
+- Initial deployment of the visual banner designer with multi-canvas support and frame animations.

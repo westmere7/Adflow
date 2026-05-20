@@ -17,6 +17,7 @@
 }
 
 body.theme-rmit {
+  color-scheme: light;
   --bg-body: #f4f4f4;
   --bg-panel: #ffffff;
   --bg-input: #e0e0e0;
@@ -51,6 +52,7 @@ body.theme-ocean {
 }
 
 body.theme-light {
+  color-scheme: light;
   --bg-body: #f1f5f9;
   --bg-panel: #ffffff;
   --bg-input: #f8fafc;
@@ -82,40 +84,6 @@ body.theme-navy {
   --accent-hover: #7caeff;
   --accent-light: #b3cfff;
   --accent-dark: #102a5c;
-}
-
-body.theme-hc {
-  --bg-body: #000000;
-  --bg-panel: #000000;
-  --bg-input: #000000;
-  --bg-btn: #1a1a1a;
-  --border-light: #ffffff;
-  --border-btn: #ffffff;
-  --text-main: #ffffff;
-  --text-muted: #cccccc;
-  --text-bright: #ffffff;
-  --text-label: #ffffff;
-  --accent-base: #ffff00;
-  --accent-hover: #00ff00;
-  --accent-light: #ffff00;
-  --accent-dark: #333300;
-}
-
-body.theme-pride {
-  --bg-body: #1a0033;
-  --bg-panel: #2d0057;
-  --bg-input: #3d006e;
-  --bg-btn: #55008a;
-  --border-light: #ff00cc;
-  --border-btn: #ff6600;
-  --text-main: #ffffff;
-  --text-muted: #ff99ee;
-  --text-bright: #ffff00;
-  --text-label: #00ffcc;
-  --accent-base: #ff0099;
-  --accent-hover: #ff6600;
-  --accent-light: #ffff00;
-  --accent-dark: #660033;
 }
     @font-face {
       font-family: 'Museo';

@@ -1,6 +1,53 @@
 // ============================================================================
 // State — multi-canvas model, all serializable to JSON.
 // ============================================================================
+// Random overlay joke selector
+(function() {
+  const jokes = [
+    "Get a real work equipment",
+    "What is this, a screen for ants?",
+    "Are you designing on a smart fridge?",
+    "Your browser is too small, just like my patience.",
+    "Enhance! ...No seriously, we need more pixels.",
+    "We're going to need a bigger monitor.",
+    "This screen is tighter than our display budget.",
+    "Banner production requires actual screen real estate.",
+    "Your viewport is currently in 'pocket' mode.",
+    "A wild mobile device appeared! Studio used Block.",
+    "This app does not fit in your pocket. Yet.",
+    "Are you trying to build HTML5 banners on a pager?",
+    "Please maximize your window or buy a larger screen.",
+    "Warning: Viewport is below minimum design-grade limits.",
+    "Your screen is smaller than my motivation on a Friday afternoon.",
+    "Are you building HTML5 ads on a microwave?",
+    "Error 404: Screen real estate not found.",
+    "Is this a custom viewport for smartwatches?",
+    "If I wanted to design on this size, I'd build app icons.",
+    "Responsive design doesn't mean *this* responsive.",
+    "My eyes are squinting harder than a CSS compiler.",
+    "This resolution belongs in 1995.",
+    "Did the client ask you to fit the logo, copy, disclaimer, and CTA on *this*?",
+    "Please expand your screen. The CSS grid is claustrophobic.",
+    "This viewport is tighter than a zip file on a budget.",
+    "Go find a desktop. Canvas production is not a mobile game.",
+    "Where did the rest of your pixels go?",
+    "Too small. Even the media queries are protesting.",
+    "I've seen larger screen viewports on a calculator.",
+    "Is that a screen or a stamp?",
+    "Your screen resolution has been demoted to thumbnail."
+  ];
+  const joke = jokes[Math.floor(Math.random() * jokes.length)];
+  const setJoke = () => {
+    const el = document.querySelector('#size-overlay h2');
+    if (el) el.textContent = joke;
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setJoke);
+  } else {
+    setJoke();
+  }
+})();
+
 const uid = () => Math.random().toString(36).slice(2, 8);
 
 let isSpaceDown = false;
@@ -4839,7 +4886,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:70vh; overflow-y:auto; padding-right:16px;">
         
         <h2 style="color:#22d3ee; margin-top:0; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">1. Workspace & Canvases</h2>
-        <p>Ad Cooker operates on an infinite panning workspace. You can create multiple "Canvases" (individual ad sizes) within a single project.</p>
+        <p>RMIT Display Studio operates on an infinite panning workspace. You can create multiple "Canvases" (individual ad sizes) within a single project.</p>
         <ul style="padding-left:20px; color:var(--text-muted);">
           <li style="margin-bottom:6px;"><b>Adding Canvases:</b> Click the <b>+</b> button in the left panel to add common ad sizes (300x250, 728x90, etc.) or input custom dimensions.</li>
           <li style="margin-bottom:6px;"><b>Navigation:</b> Hold <span class="kbd">Space</span> and drag to pan around. Scroll your mouse wheel to zoom in and out. Press <span class="kbd">Tab</span> to toggle Fullscreen Mode.</li>
@@ -4852,7 +4899,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
           <li style="margin-bottom:6px;"><b>Text:</b> Double-click to edit inline. You can adjust Font Family (including embedded RMIT fonts like Museo and Helvetica Neue), Weight, Size, Line Height, Letter Spacing, and alignment.</li>
           <li style="margin-bottom:6px;"><b>Images & Shapes:</b> Add external SVG assets, rectangles, or circles. Images maintain their aspect ratio by default. Hold <span class="kbd">Shift</span> while resizing to force aspect ratio constraints.</li>
           <li style="margin-bottom:6px;"><b>Buttons:</b> Specialized text elements with built-in padding and background colors, ideal for Call-to-Actions (CTAs).</li>
-          <li style="margin-bottom:6px;"><b>Color Picker:</b> Click any color swatch to open the native-feeling picker. It supports solid HEX values, a built-in Eyedropper tool, and dynamic linear gradients.</li>
+          <li style="margin-bottom:6px;"><b>Color Picker:</b> Click any color swatch to open the native-feeling picker. It supports solid HEX values, dynamic linear gradients, and custom stops.</li>
           <li style="margin-bottom:6px;"><b>Brand Elements:</b> Pre-configured, high-quality SVGs (like RMIT logos) or standard legal text that automatically bundle into the final export without bloating your project file.</li>
         </ul>
 
@@ -4865,7 +4912,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
         </ul>
 
         <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">4. Timeline & Animation</h2>
-        <p>Ad Cooker uses a frame-based timeline approach rather than complex keyframing.</p>
+        <p>RMIT Display Studio uses a frame-based timeline approach rather than complex keyframing.</p>
         <ul style="padding-left:20px; color:var(--text-muted);">
           <li style="margin-bottom:6px;"><b>Frames:</b> Use the top bar controls to add/remove frames. Set the <b>Duration (s)</b> for how long each frame stays on screen.</li>
           <li style="margin-bottom:6px;"><b>Transitions:</b> Select a transition (e.g. Slide Up, Fade) for how the <i>entire frame</i> enters the screen.</li>
@@ -4883,35 +4930,105 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
         </ul>
 
         <h2 style="color:#22d3ee; margin-top:24px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:16px;">6. Exporting & Google Ads</h2>
-        <p>Ad Cooker generates Google Ads-compliant, pure HTML5/CSS/JS bundles.</p>
+        <p>RMIT Display Studio generates Google Ads-compliant, pure HTML5/CSS/JS bundles.</p>
         <ul style="padding-left:20px; color:var(--text-muted);">
           <li style="margin-bottom:6px;"><b>ClickTags:</b> Define your global ClickTag URL in the left-side Project panel. You can also override it per-canvas.</li>
           <li style="margin-bottom:6px;"><b>Previewing:</b> Click the purple <b>Preview</b> button in a canvas's properties to see exactly how the HTML will render in a browser iframe.</li>
           <li style="margin-bottom:6px;"><b>Validation:</b> The left panel continuously validates your canvases. It will flag if your ClickTag is missing, if you have external/unsupported assets, or if the final zip exceeds the Google Ads 150KB limit.</li>
           <li style="margin-bottom:6px;"><b>Downloading:</b> Click <b>Download ZIP</b> to get the final ad package. The exporter automatically minifies the code, bundles external SVGs, and disables animations on persistent background layers to save file size.</li>
-
           <li style="margin-bottom:6px;"><b>PNG Fallbacks:</b> Click <b>Download PNG</b> to instantly generate a static snapshot of the current frame for use as a backup image.</li>
         </ul>
       </div>`;
-  openModal('Ad Cooker Documentation', body, false);
+  openModal('RMIT Display Studio Documentation', body, false);
 });
+
+function openChangelogModal() {
+  const changelogHtml = `
+      <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:400px; overflow-y:auto; padding-right:8px;">
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.3 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Expanded overlay screen joke database to 30+ jokes.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.2 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Implemented random overlay jokes on viewport size check screen.</li>
+            <li style="margin-bottom:4px;">Enforced light-scheme color-rendering for Light and RMIT themes.</li>
+            <li style="margin-bottom:4px;">Removed High Contrast and Pride themes.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.1 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Enforced light-scheme color-rendering for Light and RMIT themes on browser native controls (inputs, select dropdowns).</li>
+            <li style="margin-bottom:4px;">Removed High Contrast and Pride themes from the project.</li>
+            <li style="margin-bottom:4px;">Added version number and Changelog button to the Settings panel header.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.0 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Streamlined Gradient Color Picker layout (removed eyedropper fallback, moved stop swatches under gradient track, aligned Opacity, Angle, and Reverse Swap icon onto a single row).</li>
+            <li style="margin-bottom:4px;">Refactored Text Background animations to layout the toggle ("animate text BG") and the "Time offset" numeric input side-by-side.</li>
+            <li style="margin-bottom:4px;">Rebranded the application from Ad Cooker to RMIT Display Studio.</li>
+            <li style="margin-bottom:4px;">Simplified the File & Edit menus by removing the Multi-Save to Folder and Test menu items.</li>
+            <li style="margin-bottom:4px;">Completely rewrote the GitHub README with high-fidelity technical specs and clean formatting.</li>
+            <li style="margin-bottom:4px;">Introduced the Versioning & Changelog system to the About section.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.2.0 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Added new "Settings..." workspace shortcuts to the top menu and canvas context menu.</li>
+            <li style="margin-bottom:4px;">Introduced a detailed Help Documentation system with in-app guide modals.</li>
+            <li style="margin-bottom:4px;">Synchronized all workspace shortcut listings across in-app modals and project docs.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.1.0 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Decoupled continuous animations (Pan, Zoom, Float, Pulse, etc.) from entry transitions.</li>
+            <li style="margin-bottom:4px;">Renamed automation panels, grouped HTML & PNG exports, and added validation for ClickTags.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.0.0 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Initial deployment of the visual banner designer with multi-canvas support and frame animations.</li>
+          </ul>
+        </div>
+      </div>`;
+  openModal('Version & Changelog History', changelogHtml, false);
+}
 
 document.getElementById('menu-about').addEventListener('click', () => {
   const body = `
-      <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-        <p>Hi, I’m Danh.</p>
-        <p>After months of wrestling with Google Web Designer and Flashtalking, I came to a very professional conclusion: banner production should not be this painful.</p>
-        <p>These tools somehow manage to be both massively overkill and still missing basic features I need daily. Weird workflows, clicktag chaos, timeline madness, random compatibility issues, and somehow every single ad feels like a fight against the software instead of actually designing.</p>
-        <p>So eventually I hit the point where I thought:<br/>
+      <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
+        <p style="margin: 0 0 16px 0;">After months of wrestling with Google Web Designer and Flashtalking, I came to a very professional conclusion: banner production should not be this painful.</p>
+        <p style="margin: 0 0 16px 0;">These tools somehow manage to be both massively overkill and still missing basic features I need daily. Weird workflows, clicktag chaos, timeline madness, random compatibility issues, and somehow every single ad feels like a fight against the software instead of actually designing.</p>
+        <p style="margin: 0 0 16px 0;">So eventually I hit the point where I thought:<br/>
         “Fuck it, I’ll just build my own.”</p>
-        <p>This project is my attempt at creating the HTML5 ad tool I always wanted: fast, lightweight, visual, export-friendly, Google Ads compatible, and without the feeling that the software is actively fighting me.</p>
-        <p>Also, my teammate Eden, who has suffered through years of banner production alongside me, may finally have his curse lifted.</p>
-        <p style="font-style:italic; margin-top:20px; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
-        <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; text-align:center;">
-          <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a coffee</a>
+        <p style="margin: 0 0 16px 0;">This project is my attempt at creating the HTML5 ad tool I always wanted: fast, lightweight, visual, export-friendly, Google Ads compatible, and without the feeling that the software is actively fighting me.</p>
+        <p style="margin: 0 0 16px 0;">Also, my teammate Eden, who has suffered through years of banner production alongside me, may finally have his curse lifted.</p>
+        <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
+        <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.3</span>
+            <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
+          </div>
+          <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
         </div>
       </div>`;
-  openModal('About RMIT Ad Cooker', body, false);
+  openModal('About RMIT Display Studio', body, false);
+  const btnChangelog = document.getElementById('btn-changelog');
+  if (btnChangelog) {
+    btnChangelog.onclick = () => {
+      openChangelogModal();
+    };
+  }
 });
 
 document.getElementById('menu-view-clear-guides').addEventListener('click', () => { state.guides = []; render(); });
@@ -4926,8 +5043,6 @@ const THEMES = [
   { id: 'ocean', label: 'Ocean' },
   { id: 'navy', label: 'Navy' },
   { id: 'light', label: 'Light' },
-  { id: 'hc', label: 'High Contrast' },
-  { id: 'pride', label: '🏳️‍🌈 Pride' },
 ];
 
 function openSettings() {
@@ -4955,7 +5070,11 @@ function openSettings() {
   bg.innerHTML = `
         <div class="modal" style="max-width:520px;">
           <div class="modal-head">
-            <h2>Settings</h2>
+            <div style="display:flex; align-items:center; gap:12px; flex:1;">
+              <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.3</span>
+              <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
+            </div>
             <button class="btn" id="settings-close">Close</button>
           </div>
           <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
@@ -4987,6 +5106,12 @@ function openSettings() {
   const escHandler = (e) => { if (e.key === 'Escape') closeFn(); };
   document.addEventListener('keydown', escHandler);
   bg.querySelector('#settings-close').addEventListener('click', closeFn);
+  const btnChangelog = bg.querySelector('#settings-changelog');
+  if (btnChangelog) {
+    btnChangelog.addEventListener('click', () => {
+      openChangelogModal();
+    });
+  }
   bg.addEventListener('click', (e) => { if (e.target === bg) closeFn(); });
 
   const bind = (id, key) => bg.querySelector('#' + id).addEventListener('change', (e) => {
@@ -5036,22 +5161,22 @@ function openModal(title, body, isCode) {
       </div>
     </div>`;
   document.body.appendChild(bg);
-  if (isCode) document.getElementById('modal-text').value = body;
+  if (isCode) bg.querySelector('#modal-text').value = body;
   const closeFn = () => {
     bg.remove();
     document.removeEventListener('keydown', escHandler);
   };
   const escHandler = (e) => { if (e.key === 'Escape') closeFn(); };
   document.addEventListener('keydown', escHandler);
-  document.getElementById('modal-close').onclick = closeFn;
+  bg.querySelector('#modal-close').onclick = closeFn;
   bg.onclick = (e) => { if (e.target === bg) closeFn(); };
   if (isCode) {
-    document.getElementById('modal-copy').onclick = () => {
+    bg.querySelector('#modal-copy').onclick = () => {
       navigator.clipboard.writeText(body);
-      document.getElementById('modal-copy').textContent = 'Copied!';
-      setTimeout(() => { const b = document.getElementById('modal-copy'); if (b) b.textContent = 'Copy'; }, 1200);
+      bg.querySelector('#modal-copy').textContent = 'Copied!';
+      setTimeout(() => { const b = bg.querySelector('#modal-copy'); if (b) b.textContent = 'Copy'; }, 1200);
     };
-    document.getElementById('modal-download').onclick = () => {
+    bg.querySelector('#modal-download').onclick = () => {
       const c = getActiveCanvas();
       const blob = new Blob([body], { type: 'text/html' });
       const a = document.createElement('a');
