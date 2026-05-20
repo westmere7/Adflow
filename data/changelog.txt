@@ -1,6 +1,21 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.25 (Current) - May 2026
+v1.3.27 (Current) - May 2026
+- Added a "Clear everything" button to the TOOLs section to reset all canvases, selections, and link groups.
+- Cleaned up the element context menu by grouping Remove Link, Push Changes, and Delete Group actions inside the Link Group submenu.
+- Added "Add to canvases and link" as a direct context menu action under the Link Group submenu.
+- Renamed the link-group panel button to "Auto-Link" and the canvas element cloning action to "Add to canvases and link".
+- Ensured cloned elements are automatically centered on target canvases.
+- Synchronized link group icons to match the exact SVGs of the corresponding Layer list item types.
+- Highlighted active link group rows in the sidebar when any of their elements are selected.
+
+v1.3.26 - May 2026
+- Added a comprehensive component linking system: link elements of the same type across canvases to sync text, styles, shapes, button properties, images, rotation, opacity, IN animations, and effects.
+- Added support for auto-linking elements by layer name and type, with visual highlighting, group visibility toggles, and group deletion.
+- Added inline double-click renaming, marquee scrolling, and a dedicated right-side element counter badge for link groups.
+- Relocated project settings to a dedicated modal dialog accessible from the File dropdown menu, and added a ClickTag URL field to the New Project wizard.
+
+v1.3.25 - May 2026
 - Introduced emotional support loading spinner: when exports take longer than 3 seconds, the spinner now sighs dramatically to validate your frustration.
 - Refactored the alignment helper to respect personal space. Elements will now complain in the console if positioned too close to each other.
 - Fixed a bug where zoom levels above 400% would temporarily summon a portal to the Flashtalking timeline dimension.

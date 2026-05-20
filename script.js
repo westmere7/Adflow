@@ -198,7 +198,8 @@ const state = {
   showSafezones: false,
   adSizeLimit: 150,      // max exported ad weight in KB (IAB display-ad standard)
   defaultBg: '#0f172a',  // default background for newly created canvases
-  clipboard: null
+  clipboard: null,
+  linkGroups: {}
 };
 state.activeCanvasId = state.canvases[0].id;
 
@@ -221,7 +222,8 @@ function pushHistory() {
     activeCanvasId: state.activeCanvasId,
     selectedElementId: state.selectedElementId,
     layerSelection: state.layerSelection,
-    guides: state.guides
+    guides: state.guides,
+    linkGroups: state.linkGroups
   });
   if (historyIndex >= 0 && history[historyIndex] === snapshot) return;
   history.splice(historyIndex + 1);
@@ -363,11 +365,567 @@ function restoreSnapshot(snapStr) {
   state.selectedElementId = snap.selectedElementId;
   state.layerSelection = snap.layerSelection || [];
   state.guides = snap.guides || [];
+  state.linkGroups = snap.linkGroups || {};
   state.editingElementId = null;
   render();
 }
 
 pushHistory();
+
+// ============================================================================
+// Element Linking System Helpers & Operations
+// ============================================================================
+
+function areStylesAndNamesEqual(el1, el2) {
+  if (el1.type !== el2.type) return false;
+  return baseLayerLabel(el1) === baseLayerLabel(el2);
+}
+
+function autoLinkElements() {
+  const allElements = [];
+  state.canvases.forEach(c => {
+    c.elements.forEach(el => {
+      allElements.push(el);
+    });
+  });
+
+  let countLinked = 0;
+  let countGroupsCreated = 0;
+  const processed = new Set();
+
+  for (let i = 0; i < allElements.length; i++) {
+    const el1 = allElements[i];
+    if (processed.has(el1)) continue;
+
+    const matches = [];
+    for (let j = 0; j < allElements.length; j++) {
+      if (i === j) continue;
+      const el2 = allElements[j];
+      if (areStylesAndNamesEqual(el1, el2)) {
+        matches.push(el2);
+      }
+    }
+
+    if (matches.length > 0) {
+      const set = [el1, ...matches];
+      set.forEach(el => processed.add(el));
+
+      let existingGid = null;
+      for (let el of set) {
+        if (el.linkGroupId && state.linkGroups?.[el.linkGroupId]) {
+          existingGid = el.linkGroupId;
+          break;
+        }
+      }
+
+      let gid = existingGid;
+      if (!gid) {
+        const baseName = baseLayerLabel(el1);
+        const name = baseName + " Group";
+        const cat = getElementCategory(el1);
+        gid = 'lg_' + uid();
+
+        const defaultSync = {};
+        if (cat === 'text') {
+          defaultSync.text = true;
+          defaultSync.font = true;
+          defaultSync.color = true;
+          defaultSync.opacity = true;
+          defaultSync.inAnim = true;
+          defaultSync.effect = true;
+        } else if (cat === 'button') {
+          defaultSync.text = true;
+          defaultSync.textColor = true;
+          defaultSync.fill = true;
+          defaultSync.stroke = true;
+          defaultSync.transform = true;
+          defaultSync.opacity = true;
+          defaultSync.inAnim = true;
+          defaultSync.effect = true;
+        } else if (cat === 'image') {
+          defaultSync.image = true;
+          defaultSync.transform = true;
+          defaultSync.opacity = true;
+          defaultSync.rotation = true;
+          defaultSync.inAnim = true;
+          defaultSync.effect = true;
+        } else if (cat === 'shape') {
+          defaultSync.fill = true;
+          defaultSync.stroke = true;
+          defaultSync.transform = true;
+          defaultSync.opacity = true;
+          defaultSync.inAnim = true;
+          defaultSync.effect = true;
+        }
+
+        if (!state.linkGroups) state.linkGroups = {};
+        state.linkGroups[gid] = {
+          id: gid,
+          name: name,
+          category: cat,
+          syncProperties: defaultSync
+        };
+        countGroupsCreated++;
+      }
+
+      set.forEach(el => {
+        if (el.linkGroupId !== gid) {
+          el.linkGroupId = gid;
+          countLinked++;
+        }
+      });
+    }
+  }
+
+  if (countLinked > 0) {
+    alert(`Successfully auto-linked ${countLinked} elements into ${countGroupsCreated} group(s)!`);
+    pushHistory();
+    render();
+  } else {
+    alert("No matching elements with the same layer name and style were found.");
+  }
+}
+
+function getElementCategory(el) {
+  if (!el) return null;
+  if (el.type === 'text') return 'text';
+  if (el.type === 'button') return 'button';
+  if (el.type === 'image') return 'image';
+  if (['rect', 'circle', 'pixel'].includes(el.type)) return 'shape';
+  return el.type;
+}
+
+function applyLinkSync(sourceEl, targetEl, group) {
+  const cat = group.category;
+  const sync = group.syncProperties || {};
+  if (cat === 'text') {
+    if (sync.text) targetEl.text = sourceEl.text;
+    if (sync.font) {
+      const fontProps = ['fontSize', 'fontFamily', 'weight', 'lineHeight', 'lineSpacing', 'leading', 'tracking', 'textAlign', 'verticalAlign'];
+      fontProps.forEach(p => {
+        if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
+        else delete targetEl[p];
+      });
+    }
+    if (sync.color) {
+      if (sourceEl.color !== undefined) targetEl.color = sourceEl.color;
+      else delete targetEl.color;
+      
+      const bgProps = ['bg', 'hasBg', 'textBgColor', 'animateBg', 'timeOffset'];
+      bgProps.forEach(p => {
+        if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
+        else delete targetEl[p];
+      });
+    }
+  } else if (cat === 'button') {
+    if (sync.text) targetEl.text = sourceEl.text;
+    if (sync.textColor) {
+      if (sourceEl.color !== undefined) targetEl.color = sourceEl.color;
+      else delete targetEl.color;
+    }
+    if (sync.fill) {
+      if (sourceEl.bg !== undefined) targetEl.bg = sourceEl.bg;
+      else delete targetEl.bg;
+    }
+    if (sync.stroke) {
+      const strokeProps = ['strokeColor', 'strokeWidth'];
+      strokeProps.forEach(p => {
+        if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
+        else delete targetEl[p];
+      });
+    }
+    if (sync.transform) {
+      targetEl.width = sourceEl.width;
+      targetEl.height = sourceEl.height;
+    }
+    if (targetEl.type === 'button' && targetEl.autoHug) {
+      targetEl.width = measureButtonWidth(targetEl);
+    }
+  } else if (cat === 'image') {
+    if (sync.image) {
+      targetEl.assetId = sourceEl.assetId;
+    }
+    if (sync.transform) {
+      targetEl.width = sourceEl.width;
+      targetEl.height = sourceEl.height;
+    }
+    if (sync.rotation) {
+      if (sourceEl.rotation !== undefined) targetEl.rotation = sourceEl.rotation;
+      else delete targetEl.rotation;
+    }
+  } else if (cat === 'shape') {
+    if (sync.fill) {
+      if (sourceEl.color !== undefined) targetEl.color = sourceEl.color;
+      else delete targetEl.color;
+    }
+    if (sync.stroke) {
+      const strokeProps = ['strokeColor', 'strokeWidth'];
+      strokeProps.forEach(p => {
+        if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
+        else delete targetEl[p];
+      });
+    }
+    if (sync.transform) {
+      targetEl.width = sourceEl.width;
+      targetEl.height = sourceEl.height;
+    }
+  }
+
+  if (sync.opacity) {
+    if (sourceEl.opacity !== undefined) targetEl.opacity = sourceEl.opacity;
+    else delete targetEl.opacity;
+  }
+  if (sync.inAnim) {
+    const inAnimProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animateBg', 'bgOffset'];
+    inAnimProps.forEach(p => {
+      if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
+      else delete targetEl[p];
+    });
+  }
+  if (sync.effect) {
+    const effectProps = ['effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget'];
+    effectProps.forEach(p => {
+      if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
+      else delete targetEl[p];
+    });
+  }
+}
+
+function cleanupLinkGroups() {
+  if (!state.linkGroups) return;
+  const activeIds = new Set();
+  state.canvases.forEach(c => {
+    c.elements.forEach(el => {
+      if (el.linkGroupId) activeIds.add(el.linkGroupId);
+    });
+  });
+  Object.keys(state.linkGroups).forEach(gid => {
+    if (!activeIds.has(gid)) {
+      delete state.linkGroups[gid];
+    }
+  });
+}
+
+function createAndLinkGroup(name) {
+  const c = getActiveCanvas();
+  if (!c || !state.layerSelection?.length) return;
+  const activeEl = getSelectedElement();
+  const cat = getElementCategory(activeEl);
+  if (!cat) return;
+
+  const gid = 'lg_' + uid();
+  const defaultSync = {};
+  if (cat === 'text') {
+    defaultSync.text = true;
+    defaultSync.font = true;
+    defaultSync.color = true;
+    defaultSync.opacity = true;
+    defaultSync.inAnim = true;
+    defaultSync.effect = true;
+  } else if (cat === 'button') {
+    defaultSync.text = true;
+    defaultSync.textColor = true;
+    defaultSync.fill = true;
+    defaultSync.stroke = true;
+    defaultSync.transform = true;
+    defaultSync.opacity = true;
+    defaultSync.inAnim = true;
+    defaultSync.effect = true;
+  } else if (cat === 'image') {
+    defaultSync.image = true;
+    defaultSync.transform = true;
+    defaultSync.opacity = true;
+    defaultSync.rotation = true;
+    defaultSync.inAnim = true;
+    defaultSync.effect = true;
+  } else if (cat === 'shape') {
+    defaultSync.fill = true;
+    defaultSync.stroke = true;
+    defaultSync.transform = true;
+    defaultSync.opacity = true;
+    defaultSync.inAnim = true;
+    defaultSync.effect = true;
+  }
+
+  if (!state.linkGroups) state.linkGroups = {};
+  state.linkGroups[gid] = {
+    id: gid,
+    name: name,
+    category: cat,
+    syncProperties: defaultSync
+  };
+
+  // Assign selected elements to this group
+  c.elements.forEach(el => {
+    if (state.layerSelection.includes(el.id)) {
+      el.linkGroupId = gid;
+    }
+  });
+
+  pushHistory();
+  render();
+}
+
+function linkSelectionToGroup(gid) {
+  const c = getActiveCanvas();
+  if (!c || !state.layerSelection?.length) return;
+
+  c.elements.forEach(el => {
+    if (state.layerSelection.includes(el.id)) {
+      el.linkGroupId = gid;
+    }
+  });
+
+  pushHistory();
+  render();
+}
+
+function removeSelectionFromGroup() {
+  const c = getActiveCanvas();
+  if (!c || !state.layerSelection?.length) return;
+
+  c.elements.forEach(el => {
+    if (state.layerSelection.includes(el.id)) {
+      delete el.linkGroupId;
+    }
+  });
+
+  cleanupLinkGroups();
+  pushHistory();
+  render();
+}
+
+function removeGroupEntirely(gid) {
+  state.canvases.forEach(c => {
+    c.elements.forEach(el => {
+      if (el.linkGroupId === gid) {
+        delete el.linkGroupId;
+      }
+    });
+  });
+
+  if (state.linkGroups && state.linkGroups[gid]) {
+    delete state.linkGroups[gid];
+  }
+
+  pushHistory();
+  render();
+}
+
+function autoAddAndLink(srcEl) {
+  if (!srcEl) return;
+  const name = baseLayerLabel(srcEl);
+  const cat = getElementCategory(srcEl);
+  if (!cat) return;
+
+  let gid = srcEl.linkGroupId;
+  let isNewGroup = false;
+
+  if (!gid) {
+    gid = 'lg_' + uid();
+    isNewGroup = true;
+    
+    const defaultSync = {};
+    if (cat === 'text') {
+      defaultSync.text = true;
+      defaultSync.font = true;
+      defaultSync.color = true;
+      defaultSync.opacity = true;
+      defaultSync.inAnim = true;
+      defaultSync.effect = true;
+    } else if (cat === 'button') {
+      defaultSync.text = true;
+      defaultSync.textColor = true;
+      defaultSync.fill = true;
+      defaultSync.stroke = true;
+      defaultSync.transform = true;
+      defaultSync.opacity = true;
+      defaultSync.inAnim = true;
+      defaultSync.effect = true;
+    } else if (cat === 'image') {
+      defaultSync.image = true;
+      defaultSync.transform = true;
+      defaultSync.opacity = true;
+      defaultSync.rotation = true;
+      defaultSync.inAnim = true;
+      defaultSync.effect = true;
+    } else if (cat === 'shape') {
+      defaultSync.fill = true;
+      defaultSync.stroke = true;
+      defaultSync.transform = true;
+      defaultSync.opacity = true;
+      defaultSync.inAnim = true;
+      defaultSync.effect = true;
+    }
+
+    if (!state.linkGroups) state.linkGroups = {};
+    state.linkGroups[gid] = {
+      id: gid,
+      name: name + " Group",
+      category: cat,
+      syncProperties: defaultSync
+    };
+    
+    srcEl.linkGroupId = gid;
+  }
+
+  let countCloned = 0;
+  let countLinkedExisting = 0;
+
+  state.canvases.forEach(c => {
+    // Find matching element on canvas c
+    const match = c.elements.find(el => el.type === srcEl.type && baseLayerLabel(el) === name);
+    if (match) {
+      if (match.linkGroupId !== gid) {
+        match.linkGroupId = gid;
+        countLinkedExisting++;
+      }
+    } else {
+      // Clone the element to this canvas
+      const clone = JSON.parse(JSON.stringify(srcEl));
+      clone.id = uid();
+      if (clone.persistent === false) {
+        clone.frameId = state.activeFrameId;
+      }
+      clone.linkGroupId = gid;
+      
+      // Center the element no matter where the original element is
+      const cloneW = clone.width || 0;
+      const cloneH = clone.height || 0;
+      clone.x = Math.round((c.width - cloneW) / 2);
+      clone.y = Math.round((c.height - cloneH) / 2);
+
+      insertAtGroupEnd(c.elements, clone);
+      countCloned++;
+    }
+  });
+
+  // Now push changes to propagate the source properties to all members of the group
+  pushGroupChangesForId(gid);
+
+  // Toast/alert confirmation
+  let msg = `Linked group "${state.linkGroups[gid].name}" updated:\n`;
+  if (countCloned > 0 && countLinkedExisting > 0) {
+    msg += `- Cloned to ${countCloned} canvas(es)\n- Linked ${countLinkedExisting} existing element(s).`;
+  } else if (countCloned > 0) {
+    msg += `- Cloned and linked to ${countCloned} canvas(es).`;
+  } else if (countLinkedExisting > 0) {
+    msg += `- Linked ${countLinkedExisting} existing element(s).`;
+  } else {
+    msg += `All canvases are already synchronized.`;
+  }
+  alert(msg);
+}
+
+function pushGroupChanges() {
+  const sourceEl = getSelectedElement();
+  if (!sourceEl || !sourceEl.linkGroupId) return;
+  const gid = sourceEl.linkGroupId;
+  const group = state.linkGroups[gid];
+  if (!group) return;
+
+  state.canvases.forEach(c => {
+    c.elements.forEach(targetEl => {
+      if (targetEl.linkGroupId === gid && targetEl.id !== sourceEl.id) {
+        applyLinkSync(sourceEl, targetEl, group);
+      }
+    });
+  });
+
+  pushHistory();
+  render();
+}
+
+
+function deleteGroupAndElements(gid) {
+  if (!gid || !state.linkGroups[gid]) return;
+  const gName = state.linkGroups[gid].name;
+  if (!confirm(`Are you sure you want to delete the link group "${gName}" AND delete all elements belonging to it across all canvases?`)) {
+    return;
+  }
+  delete state.linkGroups[gid];
+  state.canvases.forEach(cv => {
+    cv.elements = cv.elements.filter(el => el.linkGroupId !== gid);
+  });
+  state.layerSelection = [];
+  state.selectedElementId = null;
+  pushHistory();
+  render();
+}
+
+
+function pushGroupChangesForId(gid) {
+  const group = state.linkGroups[gid];
+  if (!group) return;
+  let elementsInGroup = [];
+  state.canvases.forEach(c => {
+    c.elements.forEach(el => {
+      if (el.linkGroupId === gid) {
+        elementsInGroup.push(el);
+      }
+    });
+  });
+  if (elementsInGroup.length < 2) return;
+  const sourceEl = elementsInGroup[0];
+  state.canvases.forEach(c => {
+    c.elements.forEach(targetEl => {
+      if (targetEl.linkGroupId === gid && targetEl.id !== sourceEl.id) {
+        applyLinkSync(sourceEl, targetEl, group);
+      }
+    });
+  });
+  pushHistory();
+  render();
+}
+
+function toggleGroupVisibility(gid) {
+  let allHidden = true;
+  let hasElements = false;
+  state.canvases.forEach(cv => {
+    cv.elements.forEach(el => {
+      if (el.linkGroupId === gid) {
+        hasElements = true;
+        if (!el.hidden) allHidden = false;
+      }
+    });
+  });
+
+  if (!hasElements) return;
+
+  const targetHiddenState = !allHidden;
+  state.canvases.forEach(cv => {
+    cv.elements.forEach(el => {
+      if (el.linkGroupId === gid) {
+        el.hidden = targetHiddenState;
+      }
+    });
+  });
+
+  pushHistory();
+  render();
+}
+
+function selectGroupElements(gid) {
+  const activeCanvas = getActiveCanvas();
+  let members = activeCanvas ? activeCanvas.elements.filter(el => el.linkGroupId === gid) : [];
+
+  if (members.length === 0) {
+    for (let c of state.canvases) {
+      const cvMembers = c.elements.filter(el => el.linkGroupId === gid);
+      if (cvMembers.length > 0) {
+        state.activeCanvasId = c.id;
+        members = cvMembers;
+        break;
+      }
+    }
+  }
+
+  if (members.length > 0) {
+    state.layerSelection = members.map(el => el.id);
+    state.selectedElementId = members.length === 1 ? members[0].id : null;
+    render();
+  }
+}
 
 // ============================================================================
 // Accessors
@@ -384,6 +942,7 @@ const getSelectedElement = () => {
 const workspaceEl = document.getElementById('workspace-canvas');
 const canvasArea = document.getElementById('canvas-area');
 const layersEl = document.getElementById('layers');
+const linkControlEl = document.getElementById('link-control');
 const propsEl = document.getElementById('props');
 const canvasesListEl = document.getElementById('canvases-list');
 
@@ -534,6 +1093,7 @@ function render(skipProps = false) {
   renderRulers();
   renderCanvasesList();
   renderLayers();
+  renderLinkControl();
   renderFrameControls();
   updatePreviewZoomNotice();
   const szBtn = document.getElementById('btn-toggle-safezones');
@@ -2473,6 +3033,467 @@ document.getElementById('btn-add-canvas').addEventListener('click', (e) => {
 });
 
 // ============================================================================
+// Link Control panel
+// ============================================================================
+function renderLinkControl() {
+  const panel = document.getElementById('link-control');
+  if (!panel) return;
+
+  if (!state.linkGroups) state.linkGroups = {};
+  
+  cleanupLinkGroups();
+
+  const c = getActiveCanvas();
+  let selectedElements = [];
+  if (c && state.layerSelection?.length) {
+    selectedElements = c.elements.filter(el => state.layerSelection.includes(el.id));
+  }
+  const groups = Object.values(state.linkGroups);
+  let html = '';
+
+  // 1. ACTIVE LINK GROUPS LIST AT THE TOP
+  if (groups.length > 0) {
+    groups.forEach(g => {
+      let count = 0;
+      let allHidden = true;
+      let hasElements = false;
+      state.canvases.forEach(cv => {
+        cv.elements.forEach(el => {
+          if (el.linkGroupId === g.id) {
+            count++;
+            hasElements = true;
+            if (!el.hidden) allHidden = false;
+          }
+        });
+      });
+
+      let exactType = null;
+      for (const canv of state.canvases) {
+        const found = canv.elements.find(el => el.linkGroupId === g.id);
+        if (found) {
+          exactType = found.type;
+          break;
+        }
+      }
+      if (!exactType) {
+        exactType = g.category === 'shape' ? 'rect' : g.category;
+      }
+      const iconPath = layerIcon(exactType);
+      const iconHtml = `<svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted); width: 13px; height: 13px; flex-shrink: 0;">${iconPath}</svg>`;
+
+      const isGroupSelected = selectedElements.some(el => el.linkGroupId === g.id);
+      const rowBg = isGroupSelected ? 'rgba(124, 92, 255, 0.12)' : 'rgba(255,255,255,0.02)';
+      const rowStyle = isGroupSelected 
+        ? 'border-left: 3px solid var(--accent-light); padding-left: 5px; border-top-left-radius: 0; border-bottom-left-radius: 0;' 
+        : '';
+
+      html += `
+        <div class="link-group-row" data-group-id="${g.id}" style="display:flex; align-items:center; justify-content:between; padding:6px 8px; border-radius:4px; margin-bottom:4px; background:${rowBg}; ${rowStyle} cursor:pointer; gap:8px;">
+          <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:0;">
+            ${iconHtml}
+            <span class="layer-name" style="font-size:11px; font-weight:500; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${g.name}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+            <span style="font-size:10px; font-weight:600; color:var(--text-bright); background:rgba(255,255,255,0.08); padding:2px 5px; border-radius:8px; margin-right:4px; display:inline-block; line-height:1;">${count}</span>
+            <button class="icon-btn ${hasElements && !allHidden ? 'active' : ''} lg-eye-btn" data-group-id="${g.id}" title="Toggle group visibility" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+            <button class="icon-btn active lg-delete-btn" data-group-id="${g.id}" title="Unlink group" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:#ef4444;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.84 12.2a4.5 4.5 0 0 0-6.37-6.37l-1.5 1.5"></path><path d="M11.53 16.07a4.5 4.5 0 0 0 6.37 6.37l1.5-1.5"></path></svg>
+            </button>
+          </div>
+        </div>
+      `;
+    });
+  } else {
+    html += `
+      <div style="font-size:10px; font-style:italic; color:var(--text-muted); text-align:center; padding:12px 0;">No active link groups.</div>
+    `;
+  }
+
+  // 2. AUTO-LINK & LINK CONTROL SECTIONS UNDERNEATH
+  const activeEl = getSelectedElement();
+  html += `
+    <div style="margin-bottom: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--bg-input);">
+      <button id="lnk-btn-autolink" class="btn" style="width:100%; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-dark); background: rgba(124, 92, 255, 0.05); color: var(--accent-light); margin-bottom: 8px; box-sizing:border-box;">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+        </svg>
+        Auto-Link
+      </button>
+  `;
+
+  if (activeEl) {
+    html += `
+      <button id="lnk-btn-autoadd" class="btn" style="width:100%; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-dark); background: rgba(124, 92, 255, 0.05); color: var(--accent-light); margin-bottom: 8px; box-sizing:border-box;">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+        Add to canvases and link
+      </button>
+    `;
+  }
+
+  html += `</div>`;
+
+  if (selectedElements.length > 0) {
+    const firstEl = selectedElements[0];
+    const cat = getElementCategory(firstEl);
+    const sameCat = selectedElements.every(el => getElementCategory(el) === cat);
+
+    if (sameCat && cat) {
+      const groupIds = [...new Set(selectedElements.map(el => el.linkGroupId).filter(Boolean))];
+      
+      html += `<div style="padding: 10px; border: 1px dashed var(--bg-input); border-radius: 4px; display:flex; flex-direction:column; gap:8px; background:rgba(255,255,255,0.02); align-items:stretch;">`;
+
+      if (groupIds.length === 0) {
+        html += `<div style="font-size: 11px; color:var(--text-muted);">Not linked to any group.</div>`;
+        
+        const existingGroups = Object.values(state.linkGroups).filter(g => g.category === cat);
+        if (existingGroups.length > 0) {
+          html += `<div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+            <select id="lnk-select-group" style="width:100%; background:var(--bg-panel); border:1px solid var(--bg-input); color:var(--text-main); font-size:11px; padding:6px; border-radius:4px; outline:none; box-sizing:border-box;">
+              ${existingGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+            </select>
+            <button id="lnk-btn-join" class="btn" style="width:100%; font-size:11px; padding:6px 12px; margin-top:2px; box-sizing:border-box;">Link to Selected Group</button>
+          </div>`;
+        }
+
+        html += `<div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
+          <input type="text" id="lnk-new-name" placeholder="New group name..." style="flex:1; min-width:0; background:var(--bg-panel); border:1px solid var(--bg-input); color:var(--text-main); font-size:11px; padding:6px; border-radius:4px; outline:none; box-sizing:border-box;" />
+          <button id="lnk-btn-create" class="btn primary" style="font-size:11px; padding:6px 12px; white-space:nowrap; box-sizing:border-box;">Create Link</button>
+        </div>`;
+
+      } else if (groupIds.length === 1) {
+        const gid = groupIds[0];
+        const group = state.linkGroups[gid];
+        if (group) {
+          const sync = group.syncProperties || {};
+          const anyChecked = Object.values(sync).some(Boolean);
+
+          html += `<div style="padding-top:4px;">`;
+          html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <div style="font-size:10px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em;">Sync Properties</div>
+            <button id="lnk-toggle-all-props" style="background:none; border:none; color:var(--accent-light); font-size:10px; cursor:pointer; padding:0; text-decoration:underline;">${anyChecked ? 'Unselect all' : 'Select all'}</button>
+          </div>`;
+          
+          if (cat === 'text') {
+            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} /> Text content</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} /> Font settings</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} /> Colors</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+            </div>`;
+          } else if (cat === 'button') {
+            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} /> Button text</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="textColor" ${sync.textColor ? 'checked' : ''} /> Button text color</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} /> Fill</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} /> Stroke</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Transform (W+H)</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+            </div>`;
+          } else if (cat === 'image') {
+            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="image" ${sync.image ? 'checked' : ''} /> Image asset</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Transform (W+H)</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="rotation" ${sync.rotation ? 'checked' : ''} /> Rotation</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+            </div>`;
+          } else if (cat === 'shape') {
+            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} /> Color</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} /> Stroke</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Transform (W+H)</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+            </div>`;
+          }
+          html += `</div>`;
+
+          html += `<button id="lnk-btn-push" class="btn primary" style="width:100%; font-size:11px; padding:6px 12px; font-weight:600; margin-top:8px; box-sizing:border-box;">Push Changes to Group</button>`;
+          html += `<button id="lnk-btn-unlink" class="btn" style="width:100%; font-size:11px; padding:6px 12px; margin-top:4px; box-sizing:border-box;">Unlink Selected</button>`;
+        }
+      } else {
+        html += `<div style="font-size: 11px; color:#ef4444; width:100%; box-sizing:border-box;">Selection contains multiple link groups.</div>`;
+        html += `<button id="lnk-btn-unlink-all" class="btn" style="width:100%; font-size:11px; padding:6px 12px; margin-top:4px; box-sizing:border-box;">Unlink All</button>`;
+      }
+    } else {
+      html += `<div style="padding: 8px; border: 1px dashed var(--bg-input); border-radius: 4px; margin-bottom: 12px; font-size: 11px; color:#ef4444; background:rgba(239, 68, 68, 0.05); text-align:center;">Cannot link different types of elements.</div>`;
+    }
+    html += `</div>`;
+  } else {
+    html += `<div style="padding: 10px; border: 1px dashed var(--bg-input); border-radius: 4px; font-size: 11px; color:var(--text-muted); background:rgba(255,255,255,0.01); text-align:center;">Select elements to manage links.</div>`;
+  }
+
+  panel.innerHTML = html;
+
+  const btnAutolink = document.getElementById('lnk-btn-autolink');
+  if (btnAutolink) {
+    btnAutolink.onclick = () => {
+      autoLinkElements();
+    };
+  }
+
+  const btnCreate = document.getElementById('lnk-btn-create');
+  if (btnCreate) {
+    btnCreate.onclick = () => {
+      const inp = document.getElementById('lnk-new-name');
+      if (inp && inp.value.trim()) {
+        createAndLinkGroup(inp.value.trim());
+      }
+    };
+  }
+
+  const btnJoin = document.getElementById('lnk-btn-join');
+  if (btnJoin) {
+    btnJoin.onclick = () => {
+      const select = document.getElementById('lnk-select-group');
+      if (select && select.value) {
+        linkSelectionToGroup(select.value);
+      }
+    };
+  }
+
+  const btnUnlink = document.getElementById('lnk-btn-unlink');
+  if (btnUnlink) {
+    btnUnlink.onclick = () => {
+      removeSelectionFromGroup();
+    };
+  }
+
+  const btnUnlinkAll = document.getElementById('lnk-btn-unlink-all');
+  if (btnUnlinkAll) {
+    btnUnlinkAll.onclick = () => {
+      removeSelectionFromGroup();
+    };
+  }
+
+  const btnPush = document.getElementById('lnk-btn-push');
+  if (btnPush) {
+    btnPush.onclick = () => {
+      pushGroupChanges();
+    };
+  }
+
+  const btnToggleAll = document.getElementById('lnk-toggle-all-props');
+  if (btnToggleAll) {
+    btnToggleAll.onclick = () => {
+      const groupIds = [...new Set(selectedElements.map(el => el.linkGroupId).filter(Boolean))];
+      if (groupIds.length === 1) {
+        const gid = groupIds[0];
+        const group = state.linkGroups[gid];
+        if (group) {
+          if (!group.syncProperties) group.syncProperties = {};
+          const anyChecked = Object.values(group.syncProperties).some(Boolean);
+          const targetVal = !anyChecked;
+          
+          const cat = group.category;
+          let keys = [];
+          if (cat === 'text') keys = ['text', 'font', 'color', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'button') keys = ['text', 'textColor', 'fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'image') keys = ['image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
+          else if (cat === 'shape') keys = ['fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
+          
+          keys.forEach(k => {
+            group.syncProperties[k] = targetVal;
+          });
+          
+          pushHistory();
+          render();
+        }
+      }
+    };
+  }
+
+  const btnAutoAdd = document.getElementById('lnk-btn-autoadd');
+  if (btnAutoAdd) {
+    btnAutoAdd.onclick = () => {
+      if (selectedElements.length > 0) {
+        autoAddAndLink(selectedElements[0]);
+      }
+    };
+  }
+
+  panel.querySelectorAll('.lnk-sync-prop').forEach(cb => {
+    cb.onchange = () => {
+      const prop = cb.dataset.prop;
+      const groupIds = [...new Set(selectedElements.map(el => el.linkGroupId).filter(Boolean))];
+      if (groupIds.length === 1) {
+        const group = state.linkGroups[groupIds[0]];
+        if (group && group.syncProperties) {
+          group.syncProperties[prop] = cb.checked;
+          pushHistory();
+        }
+      }
+    };
+  });
+
+  panel.querySelectorAll('.lg-eye-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const gid = btn.dataset.groupId;
+      toggleGroupVisibility(gid);
+    };
+  });
+
+  panel.querySelectorAll('.lg-delete-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const gid = btn.dataset.groupId;
+      if (confirm(`Are you sure you want to unlink all elements in the group "${state.linkGroups[gid]?.name || ''}"?`)) {
+        removeGroupEntirely(gid);
+      }
+    };
+  });
+
+  panel.querySelectorAll('.link-group-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const nameSpan = row.querySelector('.layer-name');
+      if (nameSpan.contentEditable === 'true') return;
+
+      const clickCount = e.detail;
+      if (clickCount === 1) {
+        row.clickTimeoutId = setTimeout(() => {
+          const gid = row.dataset.groupId;
+          selectGroupElements(gid);
+        }, 220);
+      } else if (clickCount >= 2) {
+        if (row.clickTimeoutId) {
+          clearTimeout(row.clickTimeoutId);
+        }
+      }
+    });
+
+    row.addEventListener('dblclick', (e) => {
+      if (e.target.closest('button')) return;
+      e.stopPropagation();
+      const gid = row.dataset.groupId;
+      const group = state.linkGroups[gid];
+      if (!group) return;
+
+      const nameSpan = row.querySelector('.layer-name');
+      if (nameSpan.dataset.scrollInterval) {
+        clearInterval(parseInt(nameSpan.dataset.scrollInterval, 10));
+        nameSpan.dataset.scrollInterval = '';
+        nameSpan.scrollLeft = 0;
+      }
+
+      nameSpan.contentEditable = 'true';
+      nameSpan.focus();
+      const sel = window.getSelection();
+      sel.selectAllChildren(nameSpan);
+
+      const finishEdit = () => {
+        nameSpan.contentEditable = 'false';
+        const newName = nameSpan.innerText.trim();
+        if (newName) {
+          group.name = newName;
+          pushHistory();
+        }
+        render();
+      };
+
+      nameSpan.addEventListener('blur', finishEdit, { once: true });
+      nameSpan.addEventListener('keydown', (ek) => {
+        if (ek.key === 'Enter') {
+          ek.preventDefault();
+          nameSpan.blur();
+        }
+        if (ek.key === 'Escape') {
+          ek.preventDefault();
+          nameSpan.innerText = group.name;
+          nameSpan.blur();
+        }
+      });
+    });
+
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const gid = row.dataset.groupId;
+      const group = state.linkGroups[gid];
+      if (!group) return;
+
+      selectGroupElements(gid);
+
+      const menu = document.getElementById('ctx-menu');
+      if (!menu) return;
+
+      menu.innerHTML = `
+        <div class="ctx-item" id="ctx-lg-select">Select Elements</div>
+        <div class="ctx-item" id="ctx-lg-push">Push Changes to Group</div>
+        <div class="ctx-divider"></div>
+        <div class="ctx-item" id="ctx-lg-unlink" style="color:#ef4444;">Unlink Group</div>
+        <div class="ctx-item" id="ctx-lg-delete-all" style="color:#ef4444; font-weight:600;">Delete Group & Elements</div>
+      `;
+
+      menu.style.display = 'flex';
+      const mw = menu.offsetWidth || 180;
+      const mh = menu.offsetHeight || 120;
+      let left = e.clientX, top = e.clientY;
+      if (left + mw > window.innerWidth) left -= mw;
+      if (top + mh > window.innerHeight) top -= mh;
+      menu.style.left = left + 'px';
+      menu.style.top = top + 'px';
+
+      const bind = (id, fn) => {
+        const el = document.getElementById(id);
+        if (el) el.onclick = (ev) => { fn(ev); menu.style.display = 'none'; };
+      };
+
+      bind('ctx-lg-select', () => {
+        selectGroupElements(gid);
+      });
+      bind('ctx-lg-push', () => {
+        pushGroupChangesForId(gid);
+      });
+      bind('ctx-lg-unlink', () => {
+        if (confirm(`Are you sure you want to remove link group "${group.name}"? This will unlink all its elements.`)) {
+          removeGroupEntirely(gid);
+        }
+      });
+      bind('ctx-lg-delete-all', () => {
+        deleteGroupAndElements(gid);
+      });
+    });
+
+    row.addEventListener('mouseenter', () => {
+      const nameSpan = row.querySelector('.layer-name');
+      if (nameSpan.contentEditable === 'true') return;
+      if (nameSpan.scrollWidth > nameSpan.clientWidth) {
+        let pos = 0;
+        nameSpan.dataset.scrollInterval = setInterval(() => {
+          pos += 1;
+          if (pos > nameSpan.scrollWidth - nameSpan.clientWidth + 20) {
+            pos = 0;
+            nameSpan.scrollLeft = 0;
+          } else {
+            nameSpan.scrollLeft = pos;
+          }
+        }, 30);
+      }
+    });
+
+    row.addEventListener('mouseleave', () => {
+      const nameSpan = row.querySelector('.layer-name');
+      if (nameSpan.dataset.scrollInterval) {
+        clearInterval(nameSpan.dataset.scrollInterval);
+        nameSpan.dataset.scrollInterval = '';
+        nameSpan.scrollLeft = 0;
+      }
+    });
+  });
+}
+
+// ============================================================================
 // Layers panel
 // ============================================================================
 function renderLayers() {
@@ -2507,7 +3528,7 @@ function renderLayers() {
           <button class="icon-btn ${el.locked ? 'active' : ''}" data-act="lock" title="Toggle lock">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </button>
-          <button class="icon-btn ${el.hidden ? 'active' : ''}" data-act="hide" title="Toggle visibility">
+          <button class="icon-btn ${!el.hidden ? 'active' : ''}" data-act="hide" title="Toggle visibility">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
@@ -2606,6 +3627,12 @@ function renderLayers() {
         if (e.target.closest('button')) return;
         e.stopPropagation();
         const nameSpan = div.querySelector('.layer-name');
+        if (nameSpan.dataset.scrollInterval) {
+          clearInterval(parseInt(nameSpan.dataset.scrollInterval, 10));
+          nameSpan.dataset.scrollInterval = '';
+          nameSpan.scrollLeft = 0;
+        }
+
         nameSpan.contentEditable = 'true';
         div.draggable = false; // Disable dragging to allow text selection
         nameSpan.focus();
@@ -3193,6 +4220,7 @@ function renderProps() {
     if (el.assetId && state.assets[el.assetId]) {
       f.push(`<div class="prop-row"><label>Preview</label><img src="${state.assets[el.assetId]}" style="max-width:100%;border-radius:4px;border:1px solid #272c3a;" /></div>`);
     }
+    f.push(`<div class="prop-row"><label>Opacity %</label><input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>`);
   }
 
   // Animation section
@@ -3664,10 +4692,7 @@ function renderProps() {
 // ============================================================================
 
 
-document.getElementById('project-name').addEventListener('input', (e) => { state.projectName = e.target.value; });
-document.getElementById('project-name').addEventListener('change', () => pushHistory());
-document.getElementById('clicktag').addEventListener('input', (e) => { state.clickTag = e.target.value; });
-document.getElementById('clicktag').addEventListener('change', () => pushHistory());
+
 
 function addElement(type) {
   const c = getActiveCanvas(); if (!c) return;
@@ -4862,6 +5887,18 @@ document.getElementById('btn-ai-resize').addEventListener('click', () => {
   openModal('Auto-resize', '<div style="padding:18px 6px; font-size:13px; line-height:1.5;">Milo and Roy are working hard to implement this highly anticipated feature.</div>', false);
 });
 
+document.getElementById('btn-clear-everything')?.addEventListener('click', () => {
+  if (!confirm("Are you sure you want to clear all elements from all canvases? This cannot be undone.")) return;
+  state.canvases.forEach(c => {
+    c.elements = [];
+  });
+  state.linkGroups = {};
+  state.selectedElementId = null;
+  state.layerSelection = [];
+  pushHistory();
+  render();
+});
+
 document.getElementById('btn-preview').addEventListener('click', () => {
   const c = getActiveCanvas(); if (!c) return;
   const area = document.getElementById('canvas-area');
@@ -5209,6 +6246,7 @@ document.getElementById('frame-transition-fade').addEventListener('change', (e) 
 document.getElementById('menu-file-open').addEventListener('click', openProjectFromZip);
 document.getElementById('menu-file-save').addEventListener('click', saveProjectToZip);
 document.getElementById('menu-file-new').addEventListener('click', openNewProjectDialog);
+document.getElementById('menu-project-settings').addEventListener('click', openProjectSettingsDialog);
 
 // ============================================================================
 // New Project dialog
@@ -5216,7 +6254,7 @@ document.getElementById('menu-file-new').addEventListener('click', openNewProjec
 // Builds a fresh project from picked canvas presets (all checked by default),
 // a name, an ad-size limit (KB) and a default canvas background. Replaces the
 // working state and lets the normal autosave persist it.
-function createNewProject({ name, presetIndices, sizeLimitKb, bgColor }) {
+function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, clickTag }) {
   const bg = bgColor || '#0f172a';
   
   let currentX = 2050;
@@ -5314,6 +6352,7 @@ function createNewProject({ name, presetIndices, sizeLimitKb, bgColor }) {
   });
 
   state.projectName = (name || 'RMIT_Ad').trim() || 'RMIT_Ad';
+  state.clickTag = (clickTag || 'https://www.rmit.edu.au/').trim();
   state.adSizeLimit = Math.max(1, parseInt(sizeLimitKb, 10) || 150);
   state.defaultBg = bg;
   state.canvases = canvases;
@@ -5369,6 +6408,10 @@ function openNewProjectDialog() {
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project name</label>
           <input type="text" id="np-name" value="${(state.projectName || 'RMIT_Ad').replace(/"/g, '&quot;')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+        </div>
+        <div>
+          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
+          <input type="url" id="np-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:flex; justify-content:space-between; margin-bottom:6px;">
@@ -5431,7 +6474,63 @@ function openNewProjectDialog() {
       presetIndices,
       sizeLimitKb: bg.querySelector('#np-size-limit').value,
       bgColor: hex,
+      clickTag: bg.querySelector('#np-clicktag').value,
     });
+    closeFn();
+  };
+}
+
+
+function openProjectSettingsDialog() {
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+
+  bg.innerHTML = `
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-head">
+        <h2>Project Settings</h2>
+        <button class="btn" id="ps-close">Close</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
+        <div>
+          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project Name</label>
+          <input type="text" id="ps-name" value="${(state.projectName || 'RMIT_Ad').replace(/"/g, '&quot;')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+        </div>
+        <div>
+          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
+          <input type="url" id="ps-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+        </div>
+        <div>
+          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
+          <input type="number" id="ps-size-limit" value="${state.adSizeLimit || 150}" min="1" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="ps-cancel">Cancel</button>
+        <button class="btn primary" id="ps-save">Save Settings</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(bg);
+
+  const closeFn = () => { bg.remove(); document.removeEventListener('keydown', escHandler); };
+  const escHandler = (e) => { if (e.key === 'Escape') closeFn(); };
+  document.addEventListener('keydown', escHandler);
+  bg.querySelector('#ps-close').onclick = closeFn;
+  bg.querySelector('#ps-cancel').onclick = closeFn;
+  bg.onclick = (e) => { if (e.target === bg) closeFn(); };
+
+  bg.querySelector('#ps-save').onclick = () => {
+    const newName = bg.querySelector('#ps-name').value.trim() || 'RMIT_Ad';
+    const newClickTag = bg.querySelector('#ps-clicktag').value.trim();
+    const newSizeLimit = Math.max(1, parseInt(bg.querySelector('#ps-size-limit').value, 10) || 150);
+
+    state.projectName = newName;
+    state.clickTag = newClickTag;
+    state.adSizeLimit = newSizeLimit;
+
+    pushHistory();
+    render();
     closeFn();
   };
 }
@@ -5710,6 +6809,29 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 const CHANGELOG_DATA = [
   {
+    version: 'v1.3.27',
+    date: 'May 2026',
+    items: [
+      'Added a "Clear everything" button to the TOOLs section to reset all canvases, selections, and link groups.',
+      'Cleaned up the element context menu by grouping Remove Link, Push Changes, and Delete Group actions inside the Link Group submenu.',
+      'Added "Add to canvases and link" as a direct context menu action under the Link Group submenu.',
+      'Renamed the link-group panel button to "Auto-Link" and the canvas element cloning action to "Add to canvases and link".',
+      'Ensured cloned elements are automatically centered on target canvases.',
+      'Synchronized link group icons to match the exact SVGs of the corresponding Layer list item types.',
+      'Highlighted active link group rows in the sidebar when any of their elements are selected.'
+    ]
+  },
+  {
+    version: 'v1.3.26',
+    date: 'May 2026',
+    items: [
+      'Added a comprehensive component linking system: link elements of the same type across canvases to sync text, styles, shapes, button properties, images, rotation, opacity, IN animations, and effects.',
+      'Added support for auto-linking elements by layer name and type, with visual highlighting, group visibility toggles, and group deletion.',
+      'Added inline double-click renaming, marquee scrolling, and a dedicated right-side element counter badge for link groups.',
+      'Relocated project settings to a dedicated modal dialog accessible from the File dropdown menu, and added a ClickTag URL field to the New Project wizard.'
+    ]
+  },
+  {
     version: 'v1.3.25',
     date: 'May 2026',
     items: [
@@ -5955,7 +7077,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v1.3.25';
+  const currentVersion = 'v1.3.27';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -6025,7 +7147,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.25</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.27</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -6081,7 +7203,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.25</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.27</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -6358,6 +7480,41 @@ document.addEventListener('contextmenu', (e) => {
       if (hasGroup) html += `<div class="ctx-item" id="ctx-ungroup">Ungroup</div>`;
     }
 
+    const activeEl = getSelectedElement();
+    const cat = activeEl ? getElementCategory(activeEl) : null;
+    const sameCat = state.layerSelection?.every(id => {
+      const el = c.elements.find(x => x.id === id);
+      return el && getElementCategory(el) === cat;
+    });
+
+    if (cat && sameCat) {
+      const linkedEl = c.elements.filter(x => state.layerSelection.includes(x.id));
+      const groupIds = [...new Set(linkedEl.map(x => x.linkGroupId).filter(Boolean))];
+      const hasLink = groupIds.length > 0;
+
+      html += `<div class="ctx-divider"></div>`;
+      html += `<div class="ctx-item has-submenu">Link Group
+        <div class="ctx-submenu">
+          <div class="ctx-item" id="ctx-link-new" style="white-space:nowrap;">Create New Group...</div>
+          <div class="ctx-item" id="ctx-link-autoadd" style="white-space:nowrap;">Add to canvases and link</div>`;
+      
+      const groups = Object.values(state.linkGroups || {}).filter(g => g.category === cat);
+      if (groups.length > 0) {
+        html += `<div class="ctx-divider"></div>`;
+        groups.forEach(g => {
+          html += `<div class="ctx-item ctx-link-to-existing" data-group-id="${g.id}" style="white-space:nowrap;">Link to: ${g.name}</div>`;
+        });
+      }
+
+      if (hasLink) {
+        html += `<div class="ctx-divider"></div>`;
+        html += `<div class="ctx-item" id="ctx-link-push" style="color:var(--accent-light); white-space:nowrap;">Push Changes to Group</div>`;
+        html += `<div class="ctx-item" id="ctx-link-remove" style="color:#ef4444; white-space:nowrap;">Remove Link</div>`;
+        html += `<div class="ctx-item" id="ctx-link-delete-all" style="color:#ef4444; white-space:nowrap;">Delete Group & Elements</div>`;
+      }
+      html += `</div></div>`;
+    }
+
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-delete" style="color:#ef4444">Delete</div>`;
   } else if (canvasNode) {
@@ -6507,6 +7664,41 @@ document.addEventListener('contextmenu', (e) => {
       pushHistory();
       render();
     }
+  });
+
+  bind('ctx-link-new', () => {
+    const name = prompt("Enter new link group name:");
+    if (name && name.trim()) {
+      createAndLinkGroup(name.trim());
+    }
+  });
+  bind('ctx-link-autoadd', () => {
+    const activeEl = getSelectedElement();
+    if (activeEl) {
+      autoAddAndLink(activeEl);
+    }
+  });
+  bind('ctx-link-remove', () => {
+    removeSelectionFromGroup();
+  });
+  bind('ctx-link-push', () => {
+    pushGroupChanges();
+  });
+  bind('ctx-link-delete-all', () => {
+    const c = getActiveCanvas();
+    if (c && state.layerSelection?.length > 0) {
+      const firstEl = c.elements.find(x => x.id === state.layerSelection[0]);
+      if (firstEl && firstEl.linkGroupId) {
+        deleteGroupAndElements(firstEl.linkGroupId);
+      }
+    }
+  });
+  menu.querySelectorAll('.ctx-link-to-existing').forEach(btn => {
+    btn.onclick = () => {
+      const gid = btn.dataset.groupId;
+      linkSelectionToGroup(gid);
+      menu.style.display = 'none';
+    };
   });
   if (canvasItemNode) {
     bind('ctx-canvas-clone', () => {

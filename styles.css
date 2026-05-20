@@ -1334,27 +1334,24 @@ body.theme-navy {
 
 
     .layer .layer-name[contenteditable="true"] {
-
       background: var(--bg-body);
-
       color: var(--text-bright);
-
       border: 1px solid var(--accent-base);
-
       border-radius: 3px;
-
       padding: 2px 4px;
-
       margin: -3px -5px;
-
       outline: none;
-
       cursor: text;
-
       user-select: text;
-
       -webkit-user-select: text;
-
+      mask-image: none !important;
+      -webkit-mask-image: none !important;
+      overflow-x: auto !important;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+    .layer .layer-name[contenteditable="true"]::-webkit-scrollbar {
+      display: none !important;
     }
 
 
