@@ -1,6 +1,12 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.16 (Current) - May 2026
+v1.3.18 (Current) - May 2026
+- Updated default "Learn more" button to use Museo 700 branding typeface.
+
+v1.3.17 - May 2026
+- Added a default "Learn more" button in RMIT font styling on top of the main layer group for all canvases in new projects.
+
+v1.3.16 - May 2026
 - Added a toggle setting (off by default) to temporarily bring elements to the front layer during dragging operations.
 
 v1.3.15 - May 2026
