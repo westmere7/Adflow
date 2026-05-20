@@ -1,6 +1,9 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.12 (Current) - May 2026
+v1.3.13 (Current) - May 2026
+- Added version display next to zoom level in the header and enabled opening the Changelog directly by clicking it.
+
+v1.3.12 - May 2026
 - Fixed frame transition flicker / blackout bug by maintaining the previous frame underneath during the animation transition.
 
 v1.3.11 - May 2026
