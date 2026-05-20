@@ -4501,24 +4501,41 @@ ${elsTop}
     
     function nextFrame() {
       if (frames.length <= 1) return;
-      var current = document.getElementById('frame-' + frames[currentFrame].id);
-      current.style.display = 'none';
-      current.style.animation = '';
+      var prevFrameIdx = currentFrame;
+      var prevFrameEl = document.getElementById('frame-' + frames[prevFrameIdx].id);
+      
       currentFrame = (currentFrame + 1) % frames.length;
-      var next = document.getElementById('frame-' + frames[currentFrame].id);
-      next.style.display = 'block';
+      var nextFrameEl = document.getElementById('frame-' + frames[currentFrame].id);
+      
+      prevFrameEl.style.zIndex = '1';
+      nextFrameEl.style.zIndex = '2';
+      nextFrameEl.style.display = 'block';
+      
       var t = frames[currentFrame].transition;
       var td = (frames[currentFrame].transitionDuration || 0.5) + 's';
-      // transitionFade: optional boolean. Defaults: slide keeps its baked-in fade,
-      // swipe stays pure (no fade) unless the user opts in. Fade transition ignores
-      // the flag since it IS the fade.
       var fadeRaw = frames[currentFrame].transitionFade;
       var fade = (fadeRaw === undefined) ? (t && t.indexOf('slide-') === 0) : !!fadeRaw;
       var anim = '';
       if (t === 'fade') anim = 'anim-fade-in';
       else if (t && t.indexOf('slide-') === 0) anim = 'anim-frame-' + t + (fade ? '' : '-nofade');
       else if (t && t.indexOf('swipe-') === 0) anim = 'anim-' + t + (fade ? '-fade' : '');
-      next.style.animation = anim ? (anim + ' ' + td + ' ease both') : '';
+      
+      nextFrameEl.style.animation = anim ? (anim + ' ' + td + ' ease both') : '';
+      
+      if (anim) {
+        var transDurationMs = (frames[currentFrame].transitionDuration || 0.5) * 1000;
+        setTimeout(function() {
+          prevFrameEl.style.display = 'none';
+          prevFrameEl.style.animation = '';
+          prevFrameEl.style.zIndex = '';
+          nextFrameEl.style.zIndex = '';
+        }, transDurationMs);
+      } else {
+        prevFrameEl.style.display = 'none';
+        prevFrameEl.style.animation = '';
+        prevFrameEl.style.zIndex = '';
+        nextFrameEl.style.zIndex = '';
+      }
       
       if (!loopAd && currentFrame === frames.length - 1) {
         return;
@@ -5096,7 +5113,13 @@ function openChangelogModal() {
   const changelogHtml = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:400px; overflow-y:auto; padding-right:8px;">
         <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.11 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <h3 style="margin:0 0 4px 0; color:var(--accent-base); font-size:14px; font-weight:700;">v1.3.12 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026 (Current)</span></h3>
+          <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
+            <li style="margin-bottom:4px;">Fixed frame transition flicker / blackout bug by maintaining the previous frame underneath during the animation transition.</li>
+          </ul>
+        </div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 4px 0; color:var(--text-main); font-size:14px; font-weight:700;">v1.3.11 <span style="font-weight:normal; font-size:11px; color:var(--text-muted);">— May 2026</span></h3>
           <ul style="margin:0 0 0 20px; padding:0; color:var(--text-muted);">
             <li style="margin-bottom:4px;">Arranged spacing properties in "Leading - Auto - Tracking" order with custom spacing constraints for clean visual separation.</li>
           </ul>
@@ -5214,7 +5237,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.3.11</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.3.12</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -5270,7 +5293,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.3.11</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.3.12</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

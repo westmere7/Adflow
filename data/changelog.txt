@@ -1,6 +1,9 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.11 (Current) - May 2026
+v1.3.12 (Current) - May 2026
+- Fixed frame transition flicker / blackout bug by maintaining the previous frame underneath during the animation transition.
+
+v1.3.11 - May 2026
 - Arranged spacing properties in "Leading - Auto - Tracking" order with custom spacing constraints for clean visual separation.
 
 v1.3.10 - May 2026
