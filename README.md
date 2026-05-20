@@ -1,123 +1,108 @@
-# 🍳 RMIT Ad Cooker
+# RMIT Display Studio
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-adcooker.netlify.app-brightgreen?style=for-the-badge&logo=netlify)](https://adcooker.netlify.app/)
 
-A browser-based visual design tool for building **animated HTML display ads** — no installation, no build step, just open and create.
+A professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. RMIT Display Studio eliminates the need for complex build pipelines and third-party software installations, providing a streamlined environment tailored for high-volume banner production.
 
-Built for RMIT University's marketing and digital teams, Ad Cooker lets you compose multi-frame, multi-canvas banner ads and export them as self-contained HTML packages ready for ad networks.
-
----
-
-## ✨ Features
-
-### 🎨 Canvas & Elements
-- **Multi-canvas support** — design multiple ad sizes (e.g. 300×250, 728×90) within a single project
-- **Element types** — Text, Image, Rectangle, Circle, and Button (clickable area)
-- **Drag, resize, and rotate** elements directly on the canvas
-- **Snapping** — snap to other elements, canvas bounds, and custom guides
-- **Rulers & guides** — toggle a ruler overlay and place pixel-perfect guides
-
-### 🎬 Animation & Frames
-- **Multi-frame timeline** — build animated ads with any number of frames
-- **Per-frame duration** — set how long each frame displays (in seconds)
-- **Transitions** — Fade, Slide Left, Slide Right, Slide Up, Slide Down
-- **Per-frame transition duration** — fine-tune the speed of each transition
-- **Loop toggle** — configure whether the ad loops continuously
-
-### 🖊️ Properties & Styling
-- **Right-side properties panel** — contextual controls for the selected element
-- **Color picker** — supports solid colors and two-stop linear gradients, with a saved swatch palette
-- **Eyedropper tool** — sample any color from the screen
-- **Layer panel** — reorder, hide, lock, and delete layers
-
-### 📦 Export & Project Management
-- **Export HTML** — packages the ad as a self-contained `.zip` via JSZip
-- **Multi-Save to Folder** — batch-export all canvases at once
-- **Save / Open Project** — persist and reload work as a `.adcooker` JSON file
-- **Undo / Redo** — full history stack (`Ctrl+Z` / `Ctrl+Y`)
-
-### 🎨 Themes
-Switch between UI color schemes from the hamburger menu:
-
-| Theme | Description |
-|---|---|
-| **Dark** (default) | Deep dark workspace |
-| **RMIT** | RMIT brand red palette |
-| **Ocean** | Teal/blue tones |
-| **Navy** | Dark navy blue |
-| **Light** | Light/white workspace |
-| **High Contrast** | Accessibility-focused high contrast |
+Designed to replace bloated legacy tools like Google Web Designer, this application allows creative teams to compose multi-frame, multi-size banner campaigns on an infinite canvas and instantly export them as Google Ads-compliant HTML5 packages.
 
 ---
 
-## 🗂️ Project Structure
+## Key Features
 
-```
-Adcooker/
-├── index.html          # App shell & UI markup
-├── script.js           # All application logic (~200 KB)
-├── styles.css          # UI styles & theme definitions
+### Workspace & Architecture
+- **Infinite Multi-Canvas Workspace**: Design and edit multiple ad sizes (e.g., 300x250, 728x90) simultaneously side-by-side within a single project.
+- **Save & Load Architecture**: Persist work locally as lightweight `.adcooker` JSON project files.
+- **Theming System**: Switch between 6 distinct UI color schemas (Dark, RMIT Brand, Ocean, Navy, Light, High Contrast).
+- **History Management**: Full Undo/Redo stack supporting complex nested operations.
+
+### Element & Asset Management
+- **Supported Entities**: Text, Images, SVGs, Rectangles, Circles, and Buttons.
+- **Typography Integration**: Embedded RMIT brand fonts (Museo, Helvetica Neue) and precise text controls (line-height, letter-spacing).
+- **Brand Element Library**: Built-in repository of pre-approved SVG assets (logos, Cricos text) that bypass manual file management and dynamically bundle on export.
+- **Layer System**: Illustrator-style layer reordering, grouping, isolation modes, and lock/hide toggles.
+- **Layer Persistence**: Designate elements to the "Top" or "Bottom" layer to persist them across all animation frames (ideal for static CTA buttons or backgrounds).
+
+### Animation & Timeline
+- **Frame-Based Sequencing**: Define sequences with per-frame durations (in seconds).
+- **Frame Transitions**: Apply global entering transitions (Fade, Slide Up/Down/Left/Right).
+- **Element Entrance Animations**: Stagger elements with individual entrance animations (Pop-in, Swipe, Fade, etc.).
+- **Continuous Effects**: Apply non-destructive, persistent effects such as Pan, Zoom, Wiggle, and Float. Effects can loop infinitely or perform once.
+
+### Advanced Styling & Color
+- **Advanced Color Engine**: Dual-mode color picker supporting solid HEX values, native Eyedropper sampling (Chromium), and dynamic linear gradients with multi-stop mapping.
+- **Custom Properties Panel**: Contextual right-side panel that exposes deep styling controls for active selections.
+- **Hover States**: Built-in CSS hover configurations for interactive elements.
+
+### Alignment & Precision
+- **Snapping Engine**: Magnetic snapping to canvas boundaries, element centers, and custom alignment guides.
+- **Rulers & Guides**: Draggable viewport rulers for creating pixel-perfect layout guides.
+- **Keyboard Precision**: Nudge elements via arrow keys (1px/10px increments). Aspect ratio locking and constrained dragging via keyboard modifiers.
+
+### Export & Validation Pipeline
+- **Google Ads Compliance**: Automatically generates self-contained `.zip` files validated against Google's HTML5 ad network requirements.
+- **Pre-flight Validation**: Real-time validation checks for missing ClickTags, external asset references, and 150KB maximum file size limits.
+- **Automated Bundling**: Fetches and embeds external SVGs directly into the final ZIP structure to ensure total portability.
+- **Static Fallbacks**: One-click generation of static PNG snapshot fallbacks for any frame.
+
+---
+
+## Technical Specifications
+
+### Architecture
+- **Core Technology**: 100% Vanilla JavaScript, HTML5, and CSS3. Zero framework overhead (No React/Vue/Angular).
+- **Total Application Size**: ~200 KB logic footprint.
+- **DOM Rendering Strategy**: Direct DOM manipulation with dynamic `<iframe>` sandboxing for live ad previews.
+- **Asset Bundling**: Real-time client-side zipping via [JSZip 3.10](https://stuk.github.io/jszip/).
+- **Color Processing**: Native color integration via [Iro.js 5](https://iro.js.org/).
+
+### Project Structure
+```text
+RMIT-Display-Studio/
+├── index.html          # Application shell & UI DOM structure
+├── script.js           # Core application logic, event delegation, and export pipeline
+├── styles.css          # UI styles, responsive rules, and theme definitions
 └── data/
-    ├── Elements/       # App assets (logos, favicon)
-    │   ├── AdCookerLogo.svg
-    │   ├── RMIT_white.svg
-    │   ├── Pixel.svg
-    │   ├── favicon.ico
-    │   └── favicon-32x32.png
-    └── fonts/          # Bundled typefaces
-        ├── Museo300-Regular.otf
-        ├── Museo500-Regular.otf
-        ├── Museo700-Regular.otf
-        ├── helveticaneueltpro.otf
-        ├── helveticaneueltpro_lt.otf
-        └── helveticaneueltpro_roman.otf
+    ├── Elements/       # Pre-registered application assets and SVG brand elements
+    └── fonts/          # Bundled web typefaces for local rendering
 ```
+
+### System Requirements
+- **Browser Compatibility**: Chromium-based browsers (Chrome 90+, Edge 90+) highly recommended for full API support (e.g., native Eyedropper). Firefox 88+ and Safari supported with feature fallbacks.
+- **Viewport**: Minimum resolution of 1024 x 768.
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
-No build tools or dependencies required.
+No build tools, `npm install`, or server configuration required.
 
-### 🌐 Use the hosted version
+### Hosted Environment
+Access the application immediately via the live deployment:
+**[adcooker.netlify.app](https://adcooker.netlify.app/)**
 
-No setup needed — just visit **[adcooker.netlify.app](https://adcooker.netlify.app/)** in your browser.
-
-### 💻 Run locally
-
+### Local Environment
 1. **Clone the repository**
    ```bash
    git clone <repo-url>
-   cd Adcooker
+   cd RMIT-Display-Studio
    ```
 
-2. **Open in a browser**
+2. **Serve locally**
+   Due to strict browser CORS policies regarding `file://` protocols and `<iframe>` rendering, it is highly recommended to serve the directory via a local HTTP server.
 
-   Simply open `index.html` in any modern browser:
    ```bash
-   # macOS / Linux
-   open index.html
+   # Python
+   python -m http.server 8080
 
-   # Windows
-   start index.html
+   # Node.js
+   npx serve .
    ```
-
-   > **Note:** For full functionality (especially file export), it is recommended to serve the files via a local HTTP server rather than opening directly as a `file://` URL.
-   >
-   > ```bash
-   > # Using Python
-   > python -m http.server 8080
-   >
-   > # Using Node.js (npx)
-   > npx serve .
-   > ```
-   > Then navigate to `http://localhost:8080`.
-
-3. **Minimum screen size:** 1024 × 768. A warning overlay is shown on smaller viewports.
+   Navigate to `http://localhost:8080`.
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## Keyboard Shortcuts
 
 | Shortcut | Action |
 |---|---|
@@ -128,48 +113,28 @@ No setup needed — just visit **[adcooker.netlify.app](https://adcooker.netlify
 | `Ctrl + D` / `Cmd + D` | Duplicate selected element(s) |
 | `Ctrl + Z` / `Cmd + Z` | Undo |
 | `Ctrl + Y` / `Cmd + Shift + Z` | Redo |
-| `Space + Drag` | Pan the canvas |
+| `Space + Drag` | Pan the workspace |
 | `Delete` / `Backspace` | Delete selected element(s) |
 | `Ctrl + G` / `Cmd + G` | Group selected elements |
 | `Ctrl + Shift + G` | Ungroup selected elements |
 | `Ctrl + ]` / `Cmd + ]` | Bring layer forward |
 | `Ctrl + [` / `Cmd + [` | Send layer backward |
 | `Alt + Drag Element` | Duplicate element on drag |
-| `Alt + Resize Handle` | Scale font size proportionally (Text/Buttons) |
+| `Alt + Resize Handle` | Scale font size proportionally |
 | `Shift + Drag Element` | Constrain drag axis horizontally/vertically |
 | `Shift + Resize Corner` | Maintain aspect ratio while resizing |
 | `Ctrl + Resize Handle` | Snap resize dimensions to nearest 10px |
 | `Arrow Keys` | Nudge element by 1 pixel |
 | `Shift + Arrow Keys` | Nudge element by 10 pixels |
-| `Escape` | Deselect elements / exit modes / close menus |
+| `Escape` | Deselect elements / close modals |
 | `Tab` | Toggle Fullscreen Mode |
 | `Double-click Text` | Edit text inline |
 | `Double-click Group` | Isolate and select inside group |
-| `Right-click Canvas` | Open Context Menu |
-| `Right-click Workspace` | Workspace Settings (Snapping, Rulers, Guides) |
+| `Right-click Canvas` | Open canvas context menu |
+| `Right-click Workspace` | Open workspace settings (Snapping, Rulers) |
 
 ---
 
-## 🛠️ Tech Stack
+## License
 
-| Library | Purpose |
-|---|---|
-| Vanilla HTML / CSS / JS | Core application — zero framework dependencies |
-| [JSZip 3.10](https://stuk.github.io/jszip/) | Packaging exported ad files into a `.zip` |
-| [Iro.js 5](https://iro.js.org/) | Color picker widget with gradient support |
-
-All dependencies are loaded from CDN — no `npm install` needed.
-
----
-
-## 📋 Requirements
-
-- A **modern browser** (Chrome 90+, Edge 90+, Firefox 88+)
-- Screen resolution of at least **1024 × 768**
-- Internet connection (for CDN-loaded libraries on first use)
-
----
-
-## 📄 License
-
-This project is internal tooling for RMIT University. Please refer to your organisation's policies regarding usage and distribution.
+This project is internal tooling developed for RMIT University. Please refer to your organisation's policies regarding usage, modification, and distribution.

@@ -4608,62 +4608,7 @@ document.getElementById('frame-transition-fade').addEventListener('change', (e) 
 document.getElementById('menu-file-open').addEventListener('click', openProjectFromZip);
 document.getElementById('menu-file-save').addEventListener('click', saveProjectToZip);
 
-document.getElementById('menu-test-multi-save').addEventListener('click', async () => {
-  if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
-  if (state.canvases.length === 0) { alert('No ads to save.'); return; }
 
-  if (!window.showDirectoryPicker) {
-    const useFallback = confirm('Browsers disable folder selection for local files (file://). Would you like to download them as individual ZIP files instead? (To use the folder picker, run this file via localhost/Live Server).');
-    if (!useFallback) return;
-
-    for (const c of state.canvases) {
-      const adZip = new JSZip();
-      const html = generateExportHTML(c, adZip);
-      const projName = state.projectName || 'Ad';
-      const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
-
-      adZip.file('index.html', html);
-      const adContent = await adZip.generateAsync({ type: 'blob' });
-
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(adContent);
-      a.download = `${safeName}_${c.width}x${c.height}.zip`;
-      a.click();
-      URL.revokeObjectURL(a.href);
-
-      // Delay so browser doesn't block multiple downloads
-      await new Promise(r => setTimeout(r, 300));
-    }
-    return;
-  }
-
-  try {
-    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-
-    for (const c of state.canvases) {
-      const adZip = new JSZip();
-      const html = generateExportHTML(c, adZip);
-      const projName = state.projectName || 'Ad';
-      const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
-
-      adZip.file('index.html', html);
-      const adContent = await adZip.generateAsync({ type: 'blob' });
-
-      const fileName = `${safeName}_${c.width}x${c.height}.zip`;
-      const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(adContent);
-      await writable.close();
-    }
-
-    alert(`Successfully saved ${state.canvases.length} ads to the folder!`);
-  } catch (err) {
-    if (err.name !== 'AbortError') {
-      console.error(err);
-      alert('Error saving folder: ' + err.message);
-    }
-  }
-});
 function openExportModal() {
   const tbody = state.canvases.map((c) => {
     const html = generateExportHTML(c);
@@ -4928,7 +4873,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
           <li style="margin-bottom:6px;"><b>Previewing:</b> Click the purple <b>Preview</b> button in a canvas's properties to see exactly how the HTML will render in a browser iframe.</li>
           <li style="margin-bottom:6px;"><b>Validation:</b> The left panel continuously validates your canvases. It will flag if your ClickTag is missing, if you have external/unsupported assets, or if the final zip exceeds the Google Ads 150KB limit.</li>
           <li style="margin-bottom:6px;"><b>Downloading:</b> Click <b>Download ZIP</b> to get the final ad package. The exporter automatically minifies the code, bundles external SVGs, and disables animations on persistent background layers to save file size.</li>
-          <li style="margin-bottom:6px;"><b>Multi-Save:</b> From the top left "File" menu, click "Multi-Save to Folder" to automatically zip up <i>every</i> canvas in your project at once.</li>
+
           <li style="margin-bottom:6px;"><b>PNG Fallbacks:</b> Click <b>Download PNG</b> to instantly generate a static snapshot of the current frame for use as a backup image.</li>
         </ul>
       </div>`;
@@ -4939,13 +4884,13 @@ document.getElementById('menu-about').addEventListener('click', () => {
   const body = `
       <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p>Hi, I’m Danh.</p>
-        <p>After months of wrestling with Google Web Designer and Flashtalking, I eventually came to a very professional conclusion: these tools are kind of a nightmare.</p>
-        <p>They somehow manage to be both incredibly overkill and still missing basic features I constantly need. Awkward workflows, clicktag weirdness, random compatibility issues, and a general feeling that making display ads should not be this painful in 2026.</p>
+        <p>After months of wrestling with Google Web Designer and Flashtalking, I came to a very professional conclusion: banner production should not be this painful.</p>
+        <p>These tools somehow manage to be both massively overkill and still missing basic features I need daily. Weird workflows, clicktag chaos, timeline madness, random compatibility issues, and somehow every single ad feels like a fight against the software instead of actually designing.</p>
         <p>So eventually I hit the point where I thought:<br/>
         “Fuck it, I’ll just build my own.”</p>
-        <p>This project is basically my attempt at creating the HTML5 ad tool I always wanted: fast, lightweight, visual, export-friendly, Google Ads compatible, and without the feeling that the software is actively fighting me.</p>
-        <p>Also, my teammate Eden - who has been the poor soul building these ads through all those years of suffering - will finally have his curse lifted.</p>
-        <p style="font-style:italic; margin-top:20px; color:var(--text-label);">Built by a designer trying to free creative teams from cursed banner production workflows.</p>
+        <p>This project is my attempt at creating the HTML5 ad tool I always wanted: fast, lightweight, visual, export-friendly, Google Ads compatible, and without the feeling that the software is actively fighting me.</p>
+        <p>Also, my teammate Eden, who has suffered through years of banner production alongside me, may finally have his curse lifted.</p>
+        <p style="font-style:italic; margin-top:20px; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; text-align:center;">
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a coffee</a>
         </div>
