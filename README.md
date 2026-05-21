@@ -33,6 +33,21 @@ Results are a strong starting point you can refine freely; manual size/position 
 
 ---
 
+## 🗂️ Headline Feature: Data & Versions (Dynamic Creative)
+
+Design **one** template, then data-merge a spreadsheet into it to produce a finished ad set **per row** — ideal for running the same banner set across dozens of RMIT courses. Open it from **File → Data & Versions** or the **Data** button in the top bar.
+
+- **Per-element dynamic opt-in** — select any element and tick which fields should vary per version in the new **Dynamic Data** panel: *Text* and *Color* on text; plus *Background* on buttons, *Image* on images, or fill *Color* on shapes. Unmarked elements are never touched by the merge; a small dot marks dynamic elements on the canvas.
+- **Slots compose with Link Groups** — a dynamic field becomes a *slot*. If the element is in a Link Group, the slot covers the **whole group**, so one binding fills that element on every size at once. Toggling a field on a linked element applies it to all siblings automatically — and your link-group sync settings are never altered.
+- **Bind columns → slots** — import a CSV (or build the sheet inline), map each column to a slot's field, pick the **★ key column** that names exported folders, and optionally bind a column to the **ClickTag** exit URL. The sheet is stored inside the `.cook` project (auto-saves and travels with it) and can be exported back to CSV for the team to edit.
+- **Live, non-destructive version switching** — pick a row from the top-bar **Version** dropdown to preview it on the canvas in both editing and preview modes. Your template defaults are never overwritten; "Template (no version)" returns to them.
+- **Edit-in-place + Data lock** — while a version is active, editing a dynamic slot on the canvas writes back to **that row's cell**, not the template. A **Data lock** toggle makes dynamic slots read-only so you can review versions without nudging the data.
+- **Batch export** — **Export All Versions** produces one folder per row (named from the key column), each holding the full Google Ads-compliant ZIP set, through the standard export pipeline.
+
+Frames need no special handling — a frame-1 and frame-2 headline are simply two differently-named slots, so multi-frame ads merge correctly out of the box.
+
+---
+
 ## Key Features
 
 ### Workspace & Architecture
@@ -42,6 +57,12 @@ Results are a strong starting point you can refine freely; manual size/position 
 - **New Project Wizard**: Spin up a project by picking which canvas sizes to include, the name, ClickTag, default background colour, and a configurable maximum ad weight (KB).
 - **Theming System**: Switch between distinct UI color schemas (Dark, RMIT Brand, Ocean, Navy, Light).
 - **History Management**: Full Undo/Redo stack supporting complex nested operations.
+
+### Data-Driven Production
+- **Data & Versions Engine**: Bind named element *slots* to spreadsheet columns and generate one finished ad set per row — see the headline feature above.
+- **Per-Element Dynamic Flags**: Opt individual fields (text, colour, background, image) into the merge from the Properties panel; flags propagate across Link Groups so a slot stays consistent on every size.
+- **Top-Bar Version Switcher**: Live, non-destructive preview of any version in both editing and preview, with edit-in-place write-back and a Data lock for read-only review.
+- **CSV Import / Export & Batch Export**: Round-trip the data sheet as CSV (stored inside the `.cook` project) and export every version as its own folder of Google Ads-compliant ZIPs.
 
 ### Element & Asset Management
 - **Supported Entities**: Text, Images, SVGs, Rectangles, Circles, and Buttons.

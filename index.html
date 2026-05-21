@@ -38,6 +38,7 @@
               style="background:transparent;border:none;padding:0">Ctrl+S</span></div>
           <div class="dropdown-item" id="menu-project-settings">Project Settings…</div>
           <div class="dropdown-item" id="menu-file-export">Export HTML</div>
+          <div class="dropdown-item" id="menu-file-data">Data &amp; Versions…</div>
           <div class="dropdown-item has-sub" id="menu-file-recent" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
             <span>Open Recent</span>
             <span style="font-size: 8px; color: var(--text-muted);">▶</span>
@@ -118,9 +119,18 @@
         </div>
       </div>
       <div class="spacer"></div>
+      <span id="version-switcher" style="display:none; align-items:center; gap:6px; margin-right:16px;">
+        <label style="font-size:11px;color:var(--text-muted);">Version</label>
+        <select id="version-select" title="Active data version"
+          style="background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;max-width:170px;"></select>
+        <button class="btn ghost icon" id="btn-data-lock" title="Data lock — make dynamic slots read-only" style="padding:4px 6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </button>
+        <button class="btn ghost" id="btn-open-data" title="Open Data &amp; Versions panel" style="padding:4px 8px;font-size:11px;">Data &amp; Versions</button>
+      </span>
       <span id="save-status" style="font-weight: 500; font-size: 11px; color: var(--text-muted); margin-right: 16px; user-select: none;" title="Your work auto-saves to this browser"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent-light);margin-right:6px;vertical-align:middle;"></span>All changes saved</span>
       <span id="zoom-level-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Reset Zoom">Zoom 100%</span>
-      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v1.4.1</span>
+      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v1.5.0</span>
       <button class="btn" id="btn-preview">Preview</button>
       <button class="btn primary" id="btn-export-top">Export</button>
     </div>

@@ -201,7 +201,19 @@ const state = {
   adSizeLimit: 150,      // max exported ad weight in KB (IAB display-ad standard)
   defaultBg: '#0f172a',  // default background for newly created canvases
   clipboard: null,
-  linkGroups: {}
+  linkGroups: {},
+  assetNames: {},        // assetId -> original filename (for data-merge image lookup)
+  // Data-merge / versioning: bind named element "slots" to spreadsheet columns so a
+  // single template produces one finished ad set per row (e.g. one per RMIT course).
+  dataMerge: {
+    enabled: false,
+    columns: [],         // header names, in order
+    rows: [],            // array of { columnName: value }
+    keyColumn: null,     // column used to name exported zips
+    activeVersion: null, // index into rows, or null = template defaults
+    locked: false,       // when true, dynamic slots are read-only in the editor
+    mappings: {}         // 'slotKey::field' -> columnName  (slotKey = 'g:'+gid | 'el:'+id | 'clicktag')
+  }
 };
 state.activeCanvasId = state.canvases[0].id;
 
@@ -225,7 +237,8 @@ function pushHistory() {
     selectedElementId: state.selectedElementId,
     layerSelection: state.layerSelection,
     guides: state.guides,
-    linkGroups: state.linkGroups
+    linkGroups: state.linkGroups,
+    dataMerge: state.dataMerge
   });
   if (historyIndex >= 0 && history[historyIndex] === snapshot) return;
   history.splice(historyIndex + 1);
@@ -368,6 +381,7 @@ function restoreSnapshot(snapStr) {
   state.layerSelection = snap.layerSelection || [];
   state.guides = snap.guides || [];
   state.linkGroups = snap.linkGroups || {};
+  if (snap.dataMerge) state.dataMerge = snap.dataMerge;
   state.editingElementId = null;
   render();
 }
@@ -1167,6 +1181,8 @@ function render(skipProps = false) {
   renderLayers();
   renderLinkControl();
   renderFrameControls();
+  if (typeof renderVersionSwitcher === 'function') renderVersionSwitcher();
+  if (typeof renderPreviewVersionBar === 'function') renderPreviewVersionBar();
   updatePreviewZoomNotice();
   const szBtn = document.getElementById('btn-toggle-safezones');
   if (szBtn) szBtn.classList.toggle('active', !!state.showSafezones);
@@ -1328,8 +1344,10 @@ function createCanvasActions(c) {
     const zip = new JSZip();
     const projName = state.projectName || 'Ad';
     const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
-    await addCanvasAssetsToZip(c, zip);
-    zip.file('index.html', generateExportHTML(c, zip));
+    await dmRunExport(dmActiveRowForOutput(), async () => {
+      await addCanvasAssetsToZip(c, zip);
+      zip.file('index.html', generateExportHTML(c, zip));
+    });
     const content = await zip.generateAsync({ type: 'blob' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(content);
@@ -2012,6 +2030,37 @@ function elementNode(el, canvasCtx) {
   }
   if (el.locked) d.style.pointerEvents = 'none';
 
+  // Data-merge overlay: when a version is active, dynamic-flagged fields display the
+  // active row's value (non-destructively — the element keeps its template default).
+  const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+  const dText = _dm.text !== undefined ? _dm.text : el.text;
+  const dColor = _dm.color !== undefined ? _dm.color : el.color;
+  const dBg = _dm.bg !== undefined ? _dm.bg : el.bg;
+  const dAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+  const _isDynSlot = !!(el.dynamic && Object.keys(el.dynamic).some(k => el.dynamic[k])) ||
+    (typeof dmFieldActive === 'function' && dmFieldsForType(el.type).some(f => dmFieldActive(el, f)));
+  // Show the dynamic-data badge only on the currently selected element — not on its
+  // linked siblings (we never multi-select across canvases, so this stays single). The
+  // badge sits just above the element's top-right, outside the selection outline, and
+  // gains a link icon next to the bolt when the element belongs to a link group.
+  // Two independent indicators on the selected element: a chain when it belongs to a link
+  // group, and a bolt when it carries dynamic data. Either can show without the other.
+  const _selForDm = (state.layerSelection && state.layerSelection.includes(el.id)) || state.selectedElementId === el.id;
+  if (_selForDm && (_isDynSlot || el.linkGroupId)) {
+    const badge = document.createElement('div');
+    badge.className = 'dm-badge';
+    let icons = '';
+    if (el.linkGroupId) {
+      // Filled chain glyph so it matches the bolt's solid silhouette (same visual weight).
+      icons += '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>';
+    }
+    if (_isDynSlot) {
+      icons += '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+    }
+    badge.innerHTML = icons;
+    d.appendChild(badge);
+  }
+
   const editing = state.editingElementId === el.id;
   if (editing) d.classList.add('editing');
 
@@ -2025,7 +2074,7 @@ function elementNode(el, canvasCtx) {
       const ed = document.createElement('div');
       ed.className = 'editable';
       ed.contentEditable = 'true';
-      applyColorToText(ed, el.color);
+      applyColorToText(ed, dColor);
       ed.style.fontSize = el.fontSize + 'px';
       ed.style.fontWeight = el.weight;
       ed.style.fontFamily = el.fontFamily || 'Arial';
@@ -2036,7 +2085,7 @@ function elementNode(el, canvasCtx) {
       ed.style.outline = 'none';
       ed.style.whiteSpace = 'pre-wrap';
       ed.style.wordBreak = 'break-word';
-      ed.innerText = el.text;
+      ed.innerText = dText;
       wireInlineEdit(ed, el, 'text');
       d.appendChild(ed);
     } else {
@@ -2055,8 +2104,8 @@ function elementNode(el, canvasCtx) {
       textBlock.style.lineHeight = getResolvedLineHeight(el);
 
       const span = document.createElement(el.htmlTag || 'span');
-      span.innerText = el.text;
-      applyColorToText(span, el.color);
+      span.innerText = dText;
+      applyColorToText(span, dColor);
       span.style.fontSize = el.fontSize + 'px';
       span.style.fontWeight = el.weight;
       span.style.fontFamily = el.fontFamily || 'Arial';
@@ -2087,7 +2136,7 @@ function elementNode(el, canvasCtx) {
     d.classList.add('shape-rect');
     d.style.borderRadius = (el.radius || 0) + 'px';
     const fill = document.createElement('div');
-    fill.style.cssText = `position:absolute;inset:0;background:${el.color};border-radius:${el.radius || 0}px;opacity:${(el.opacity !== undefined ? el.opacity : 100) / 100};pointer-events:none;`;
+    fill.style.cssText = `position:absolute;inset:0;background:${dColor};border-radius:${el.radius || 0}px;opacity:${(el.opacity !== undefined ? el.opacity : 100) / 100};pointer-events:none;`;
     d.appendChild(fill);
     const stroke = strokeOverlayNode(el);
     if (stroke) d.appendChild(stroke);
@@ -2095,7 +2144,7 @@ function elementNode(el, canvasCtx) {
     d.classList.add('shape-circle');
     d.style.borderRadius = '50%';
     const fill = document.createElement('div');
-    fill.style.cssText = `position:absolute;inset:0;background:${el.color};border-radius:50%;opacity:${(el.opacity !== undefined ? el.opacity : 100) / 100};pointer-events:none;`;
+    fill.style.cssText = `position:absolute;inset:0;background:${dColor};border-radius:50%;opacity:${(el.opacity !== undefined ? el.opacity : 100) / 100};pointer-events:none;`;
     d.appendChild(fill);
     const stroke = strokeOverlayNode(el);
     if (stroke) d.appendChild(stroke);
@@ -2104,13 +2153,13 @@ function elementNode(el, canvasCtx) {
     const fillOpacity = (el.opacity !== undefined ? el.opacity : 100) / 100;
     const fill = document.createElement('div');
     fill.style.cssText = `position:absolute;inset:0;opacity:${fillOpacity};pointer-events:none;`;
-    fill.innerHTML = `<svg viewBox="0 0 578.52 556.76" width="100%" height="100%" preserveAspectRatio="none"><path fill="${el.color}" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg>`;
+    fill.innerHTML = `<svg viewBox="0 0 578.52 556.76" width="100%" height="100%" preserveAspectRatio="none"><path fill="${dColor}" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg>`;
     d.appendChild(fill);
     const stroke = strokeOverlayNode(el);
     if (stroke) d.appendChild(stroke);
   } else if (el.type === 'button') {
     d.classList.add('button');
-    d.style.color = el.color;
+    d.style.color = dColor;
     d.style.fontSize = el.fontSize + 'px';
     d.style.fontFamily = el.fontFamily || 'Arial';
     d.style.borderRadius = (el.radius || 0) + 'px';
@@ -2124,13 +2173,13 @@ function elementNode(el, canvasCtx) {
     // Fill goes on a dedicated absolute layer so its opacity is independent of
     // the text and the stroke overlay.
     const fill = document.createElement('div');
-    fill.style.cssText = `position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${(el.opacity !== undefined ? el.opacity : 100) / 100};pointer-events:none;`;
+    fill.style.cssText = `position:absolute;inset:0;background:${dBg};border-radius:${el.radius || 0}px;opacity:${(el.opacity !== undefined ? el.opacity : 100) / 100};pointer-events:none;`;
     d.appendChild(fill);
     if (editing) {
       const ed = document.createElement('span');
       ed.className = 'editable';
       ed.contentEditable = 'true';
-      applyColorToText(ed, el.color);
+      applyColorToText(ed, dColor);
       ed.style.fontSize = el.fontSize + 'px';
       ed.style.fontFamily = el.fontFamily || 'Arial';
       ed.style.fontWeight = el.weight || '600';
@@ -2143,13 +2192,13 @@ function elementNode(el, canvasCtx) {
       // position:relative makes the text stack above the absolute fill child,
       // since positioned elements paint after non-positioned ones by default.
       ed.style.position = 'relative';
-      ed.innerText = el.text;
+      ed.innerText = dText;
       wireInlineEdit(ed, el, 'text');
       d.appendChild(ed);
     } else {
       const span = document.createElement('span');
-      span.innerText = el.text;
-      applyColorToText(span, el.color);
+      span.innerText = dText;
+      applyColorToText(span, dColor);
       span.style.fontWeight = el.weight || '600';
       span.style.position = 'relative';
       d.appendChild(span);
@@ -2158,9 +2207,9 @@ function elementNode(el, canvasCtx) {
     if (stroke) d.appendChild(stroke);
   } else if (el.type === 'image') {
     d.classList.add('image');
-    if (el.assetId) {
+    if (dAssetId) {
       const img = document.createElement('img');
-      img.src = state.assets[el.assetId] || el.assetId;
+      img.src = state.assets[dAssetId] || dAssetId;
       d.appendChild(img);
     } else {
       d.style.background = 'repeating-linear-gradient(45deg, #1f2330, #1f2330 6px, #272c3a 6px, #272c3a 12px)';
@@ -2201,6 +2250,14 @@ function elementNode(el, canvasCtx) {
 
     // Enter inline edit for text/button
     if (el.type === 'text' || el.type === 'button') {
+      // Data lock: a dynamic text slot is read-only while locked — select but don't edit.
+      if (state.dataMerge && state.dataMerge.locked && typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'text')) {
+        state.activeCanvasId = canvasCtx.id;
+        state.selectedElementId = el.id;
+        state.layerSelection = [el.id];
+        render(true);
+        return;
+      }
       state.activeCanvasId = canvasCtx.id;
       state.selectedElementId = el.id;
       state.editingElementId = el.id;
@@ -2225,7 +2282,14 @@ function elementNode(el, canvasCtx) {
 
 function wireInlineEdit(ed, el, key) {
   const commit = () => {
-    el[key] = ed.innerText;
+    // (A) Edit-in-place: when a version is active and this field is dynamic, the typed
+    // value writes back to the active row's cell (unless the Data lock is on), leaving
+    // the template default untouched. Otherwise it edits the element directly.
+    if (typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, key)) {
+      if (!state.dataMerge.locked) dmWriteCell(el, key, ed.innerText);
+    } else {
+      el[key] = ed.innerText;
+    }
     state.editingElementId = null;
     render();
   };
@@ -2257,9 +2321,13 @@ function wireInlineEdit(ed, el, key) {
     }
   });
   ed.addEventListener('input', () => {
-    el[key] = ed.innerText;
+    // A field that is a dynamic slot must never write the template here: when unlocked
+    // the cell write happens on commit; when locked it's read-only (write nothing).
+    const isDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, key);
+    if (!isDyn) el[key] = ed.innerText;
     if (el.type === 'button' && el.autoHug) {
-      el.width = measureButtonWidth(el);
+      const probe = isDyn ? Object.assign({}, el, { text: ed.innerText }) : el;
+      el.width = measureButtonWidth(probe);
       const wrapper = ed.closest('.el');
       if (wrapper) wrapper.style.width = el.width + 'px';
     }
@@ -4795,10 +4863,36 @@ function renderProps() {
 
   f.push(`</div>`);
 
+  // ---- Dynamic Data (data-merge / versioning) ----
+  if (typeof dmFieldsForType === 'function') {
+    const dmFields = dmFieldsForType(el.type);
+    if (dmFields.length) {
+      f.push(`<div class="panel-section"><h3>Dynamic Data</h3>`);
+      f.push(`<div class="prop-row" style="font-size:10px;color:var(--text-muted);margin:-2px 0 8px;line-height:1.4;">Mark fields that vary per version. Bind them to a sheet column in <b>Data &amp; Versions</b>.</div>`);
+      dmFields.forEach(field => {
+        const on = !!(el.dynamic && el.dynamic[field]);
+        f.push(`<div class="checkbox-row"><input type="checkbox" class="dm-control dm-field-chk" data-dm-field="${field}" ${on ? 'checked' : ''}/><label>${DM_FIELD_LABEL[field] || field}</label></div>`);
+      });
+      if (el.linkGroupId) {
+        f.push(`<div class="prop-row" style="font-size:10px;color:var(--accent-light);margin-top:4px;line-height:1.4;">Linked element — these toggles apply to every size in the link group.</div>`);
+      }
+      f.push(`<button class="btn ghost dm-control" id="dm-open-from-props" style="margin-top:10px;width:100%;font-size:11px;">Open Data &amp; Versions…</button>`);
+      f.push(`</div>`);
+    }
+  }
+
   propsEl.innerHTML = `<div class="panel-section"><h3>Properties</h3>${f.join('')}`;
 
   const updateProp = (k, val) => {
     if (!k) return;
+    // (A) Edit-in-place for panel-edited dynamic fields (color/bg): route to the active
+    // version's cell rather than the template, when a single dynamic element is selected.
+    const dmField = (k === 'color' || k === 'bg') ? k : null;
+    if (dmField && (!state.layerSelection || state.layerSelection.length <= 1) &&
+        typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, dmField)) {
+      if (!state.dataMerge.locked) { dmWriteCell(el, dmField, val); render(true); }
+      return;
+    }
     const c = getActiveCanvas();
     if (state.layerSelection && state.layerSelection.length > 1 && c) {
       c.elements.filter(e => state.layerSelection.includes(e.id)).forEach(selEl => {
@@ -4834,6 +4928,7 @@ function renderProps() {
   };
 
   propsEl.querySelectorAll('input, select, textarea').forEach((inp) => {
+    if (inp.classList.contains('dm-control')) return; // dynamic-data controls wired separately
     inp.addEventListener('input', () => {
       let val = inp.type === 'number' ? (inp.value === '' ? undefined : Number(inp.value)) : (inp.type === 'checkbox' ? inp.checked : inp.value);
       if (inp.type === 'number' && inp.value !== '' && val !== undefined) {
@@ -4885,6 +4980,19 @@ function renderProps() {
       });
     }
   });
+
+  // Dynamic-data controls (data-merge). Toggling a field flag propagates across the
+  // element's link group so a logical slot stays consistent across all sizes.
+  propsEl.querySelectorAll('.dm-field-chk').forEach((chk) => {
+    chk.addEventListener('change', () => {
+      dmToggleField(el, chk.dataset.dmField, chk.checked);
+      pushHistory();
+      renderProps();
+      render(true);
+    });
+  });
+  const dmOpenBtn = propsEl.querySelector('#dm-open-from-props');
+  if (dmOpenBtn) dmOpenBtn.addEventListener('click', () => openDataPanel());
 
 
 
@@ -5120,7 +5228,17 @@ function renderProps() {
       const id = 'img_' + uid();
       if (!state.assets) state.assets = {};
       state.assets[id] = fr.result;
-      el.assetId = id;
+      if (!state.assetNames) state.assetNames = {};
+      state.assetNames[id] = f.name;
+      const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
+      if (_imgDyn) {
+        // Dynamic image slot: write to the active version's cell, or do nothing when
+        // locked (read-only) — never overwrite the template default.
+        if (!state.dataMerge.locked) dmWriteCell(el, 'image', id);
+        else { alert('Data lock is on — unlock to change this version’s image.'); }
+      } else {
+        el.assetId = id;
+      }
       if (!el.name || el.name.startsWith('Image')) el.name = f.name;
       el.isCompressed = false;
       delete el.webpQuality;
@@ -5971,10 +6089,11 @@ async function exportCanvasAsZip(c) {
   const zip = new JSZip();
   const projName = state.projectName || 'Ad';
   const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
-  
-  await addCanvasAssetsToZip(c, zip);
 
-  zip.file('index.html', generateExportHTML(c, zip));
+  await dmRunExport(dmActiveRowForOutput(), async () => {
+    await addCanvasAssetsToZip(c, zip);
+    zip.file('index.html', generateExportHTML(c, zip));
+  });
   const content = await zip.generateAsync({ type: 'blob' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(content);
@@ -6032,7 +6151,20 @@ function clearCanvasFrame(c) {
   render();
 }
 
+// When a data version is active, all generated output (live preview iframes, single
+// exports, weight estimates) reflects that version — baked transiently then restored.
+// This is synchronous and self-balancing: dmBakeRow saves whatever is currently on the
+// element and restores it, so it nests safely inside an export that already baked the
+// same row (dmRunExport sets activeVersion to the row it's exporting).
 function generateExportHTML(targetCanvas, zipRef, isImageExport = false) {
+  const dm = state.dataMerge;
+  const idx = (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
+  if (idx == null) return _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport);
+  const restore = dmBakeRow(idx);
+  try { return _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport); }
+  finally { restore(); }
+}
+function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   const c = targetCanvas || getActiveCanvas();
   if (!c) return '';
   const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -7265,8 +7397,12 @@ function openExportModal() {
   }).join('');
 
   const bodyHTML = `
-    <div style="margin-bottom: 16px; display: flex; gap: 8px;">
+    <div style="margin-bottom: 16px; display: flex; gap: 8px; align-items:center;">
       <button class="btn primary" id="btn-export-selected">Export Selected (ZIP)</button>
+      ${(state.dataMerge && state.dataMerge.rows && state.dataMerge.rows.length)
+        ? `<button class="btn" id="btn-export-versions">Export All Versions (${state.dataMerge.rows.length})</button>
+           <span style="font-size:10px;color:var(--text-muted);">one folder per row</span>`
+        : ''}
     </div>
     <table style="width:100%; text-align:left; border-collapse:collapse; font-size:13px; color:var(--text-main);">
       <thead>
@@ -7292,25 +7428,31 @@ function openExportModal() {
     chks.forEach(chk => chk.checked = e.target.checked);
   });
 
+  const verBtn = modalBg.querySelector('#btn-export-versions');
+  if (verBtn) verBtn.addEventListener('click', () => dmExportAllVersions());
+
   modalBg.querySelector('#btn-export-selected').addEventListener('click', async () => {
     if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
 
     const selectedIds = Array.from(chks).filter(c => c.checked).map(c => c.dataset.cid);
     if (selectedIds.length === 0) { alert('No ads selected.'); return; }
 
+    // If a data version is active, export reflects it (WYSIWYG).
     const zip = new JSZip();
-    for (const cid of selectedIds) {
-      const c = state.canvases.find(x => x.id === cid);
-      const adZip = new JSZip();
-      await addCanvasAssetsToZip(c, adZip);
-      const html = generateExportHTML(c, adZip);
-      const projName = state.projectName || 'Ad';
-      const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    await dmRunExport(dmActiveRowForOutput(), async () => {
+      for (const cid of selectedIds) {
+        const c = state.canvases.find(x => x.id === cid);
+        const adZip = new JSZip();
+        await addCanvasAssetsToZip(c, adZip);
+        const html = generateExportHTML(c, adZip);
+        const projName = state.projectName || 'Ad';
+        const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
 
-      adZip.file('index.html', html);
-      const adContent = await adZip.generateAsync({ type: 'blob' });
-      zip.file(`${safeName}_${c.width}x${c.height}.zip`, adContent);
-    }
+        adZip.file('index.html', html);
+        const adContent = await adZip.generateAsync({ type: 'blob' });
+        zip.file(`${safeName}_${c.width}x${c.height}.zip`, adContent);
+      }
+    });
 
     const content = await zip.generateAsync({ type: 'blob' });
 
@@ -7385,12 +7527,12 @@ function queueSizeUpdate() {
       if (hasExt) errors.push('Contains external URLs (Google Ads requires local assets)');
 
       const zip = new JSZip();
-      
-      // Pre-fetch for validation zip size
-      await addCanvasAssetsToZip(c, zip);
 
-      const htmlCode = generateExportHTML(c, zip);
-      zip.file('index.html', htmlCode);
+      // Pre-fetch for validation zip size (reflecting the active data version, if any).
+      await dmRunExport(dmActiveRowForOutput(), async () => {
+        await addCanvasAssetsToZip(c, zip);
+        zip.file('index.html', generateExportHTML(c, zip));
+      });
       const blob = await zip.generateAsync({ type: 'blob' });
       const kb = (blob.size / 1024).toFixed(1);
 
@@ -7548,7 +7690,19 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
           <li style="margin-bottom:6px;"><b>Project Settings &amp; Settings:</b> Edit project name / ClickTag in <b>File → Project Settings</b>; app-level preferences (theme, rulers, snapping, Crop to Canvas) live in <b>File → Settings</b>.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">9. Exporting & Google Ads Validation</h2>
+        <h2 style="color:var(--accent-light); margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">9. Data &amp; Versions ✨ (Dynamic Creative)</h2>
+        <p>Design <b>one</b> template, then mail-merge a spreadsheet of data into it to produce a finished ad set per row — perfect for running the same banner set across many RMIT courses. Open it from <b>File → Data &amp; Versions…</b> or the <b>Data</b> button in the top bar.</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:10px;">
+          <li style="margin-bottom:8px;"><b>1 · Mark what's dynamic:</b> Select an element and, in the <b>Dynamic Data</b> section of the Properties panel, tick the fields that should vary per version — <i>Text</i> &amp; <i>Color</i> on text, plus <i>Background</i> on buttons, <i>Image</i> on images, or fill <i>Color</i> on shapes. A small dot marks dynamic elements on the canvas. Unmarked elements are never touched by the merge.</li>
+          <li style="margin-bottom:8px;"><b>Slots &amp; link groups:</b> A dynamic field becomes a <b>slot</b>. If the element belongs to a Link Group, the slot covers the <b>whole group</b> — so one binding fills that element on every size at once. Toggling a field on a linked element automatically applies it to all its siblings, and your link-group sync settings are never altered.</li>
+          <li style="margin-bottom:8px;"><b>2 · Load your sheet:</b> In the panel, <b>Import CSV</b> (or add columns/rows by hand). Map each spreadsheet column to a slot's field, choose the <b>★ key column</b> (used to name exported folders), and optionally bind a column to the <b>ClickTag</b> exit URL. The whole sheet is stored inside the <code>.cook</code> project, auto-saves with it, and can be exported back to CSV for the team to edit.</li>
+          <li style="margin-bottom:8px;"><b>3 · Switch versions live:</b> Pick a row from the <b>Version</b> dropdown in the top bar to preview it on the canvas — in both editing and preview modes. Substitution is <b>non-destructive</b>: your template defaults are never overwritten, and choosing "Template (no version)" returns to them.</li>
+          <li style="margin-bottom:8px;"><b>Edit-in-place &amp; Data lock:</b> While a version is active, editing a dynamic slot on the canvas (typing into text, recolouring, swapping an image) writes back to <b>that row's cell</b> rather than the template. Click the <b>lock</b> button next to the dropdown to make dynamic slots read-only so you can review versions without nudging the data.</li>
+          <li style="margin-bottom:8px;"><b>4 · Export every version:</b> In the Export dialog, <b>Export All Versions</b> generates one folder per row (named from the key column), each containing the full Google-Ads-compliant ZIP set, through the standard export pipeline.</li>
+        </ul>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Image columns should reference an asset filename already used in the project (or a full URL). Frames need no special handling — a frame-1 and frame-2 headline are simply two differently-named slots.</p>
+
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">10. Exporting & Google Ads Validation</h2>
         <p>Export ready-to-run HTML5 ad packages tailored for Google Ads compliance:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:8px;">
           <li style="margin-bottom:6px;"><b>ClickTag Configuration:</b> Set target redirects globally or override individual click destinations per canvas.</li>
@@ -7563,6 +7717,18 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v1.5.0',
+    date: 'May 2026',
+    items: [
+      'Data & Versions (dynamic creative): bind named element “slots” to spreadsheet columns and generate one finished ad set per row — ideal for spinning up the same banner set across many RMIT courses. Open it from File → Data & Versions or the Data button in the top bar.',
+      'Per-element dynamic opt-in: a new “Dynamic Data” section in the Properties panel lets you mark exactly which fields vary per version (text & colour on text, + background on buttons, image on images, fill colour on shapes). Toggles propagate across a link group, so one logical slot stays consistent on every size.',
+      'Composable with link groups: a slot maps to its link group when one exists (one binding fans across all sizes) or to a single element otherwise — without ever altering your link-group sync settings.',
+      'Version switcher in the top bar applies the selected row live in both editing and preview, non-destructively — your template defaults are never overwritten.',
+      'Edit-in-place: changing a dynamic slot on the canvas while a version is active writes back to that row’s cell. A new Data lock button makes dynamic slots read-only so you can review versions without nudging the data.',
+      'ClickTag is bindable per version, and “Export All Versions” produces one folder per row (named from your chosen key column) through the standard Google-Ads export pipeline. The data sheet is stored inside the .cook project (auto-saves & travels) and can be imported/exported as CSV.'
+    ]
+  },
   {
     version: 'v1.4.1',
     date: 'May 2026',
@@ -7890,7 +8056,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v1.4.1';
+  const currentVersion = 'v1.5.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -8802,6 +8968,520 @@ window.addEventListener('beforeunload', () => {
     if (!_autosaveSuspended) writeAutosave();
   }
 });
+
+// ============================================================================
+// Data Merge / Versioning
+// ----------------------------------------------------------------------------
+// Bind named element "slots" to spreadsheet columns so one template produces a
+// finished ad set per row. A slot maps to a link group when the element is
+// grouped (so one binding fans across all sizes), else to the single element.
+// Substitution is non-destructive: elements always hold their template default;
+// the active version is overlaid at render and baked transiently at export.
+// ============================================================================
+function dmEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+const DM_FIELD_LABEL = { text: 'Text', color: 'Color', bg: 'Background', image: 'Image' };
+
+function dmFieldsForType(type) {
+  switch (type) {
+    case 'text': return ['text', 'color'];
+    case 'button': return ['text', 'color', 'bg'];
+    case 'image': return ['image'];
+    case 'rect': case 'circle': case 'pixel': return ['color'];
+    default: return ['text', 'color'];
+  }
+}
+
+function dmSlotKey(el) {
+  return el.linkGroupId ? ('g:' + el.linkGroupId) : ('el:' + el.id);
+}
+
+function dmSlotName(el) {
+  if (el.linkGroupId && state.linkGroups && state.linkGroups[el.linkGroupId]) {
+    return state.linkGroups[el.linkGroupId].name || baseLayerLabel(el);
+  }
+  return el.customName || baseLayerLabel(el);
+}
+
+// Resolve a sheet cell's image reference to something usable as an <img> src /
+// asset id: an existing asset id, a filename match, or a direct URL / data URI.
+function dmResolveImage(val) {
+  if (!val) return null;
+  if (state.assets && state.assets[val]) return val;
+  if (state.assetNames) {
+    const lc = String(val).toLowerCase();
+    for (const [aid, name] of Object.entries(state.assetNames)) {
+      if (name === val || String(name).toLowerCase() === lc) return aid;
+    }
+  }
+  return val; // direct URL / data: / packaged path, or unresolved (validation flags it)
+}
+
+// Does the element's link group sync the property behind this dynamic field?
+// (so version values flow to every linked sibling exactly like normal link sync).
+function dmGroupSyncsField(el, field) {
+  if (!el.linkGroupId) return false;
+  const lg = state.linkGroups && state.linkGroups[el.linkGroupId];
+  if (!lg || !lg.syncProperties) return false;
+  const s = lg.syncProperties;
+  if (field === 'text') return !!s.text;
+  if (field === 'image') return !!s.image;
+  if (field === 'bg') return !!s.fill;                 // button fill
+  if (field === 'color') {
+    if (el.type === 'button') return !!s.textColor;    // button text colour
+    if (el.type === 'text') return !!s.color;          // text colour
+    return !!s.fill;                                   // shape fill
+  }
+  return false;
+}
+
+// A field is "active" for an element when a column is mapped to its slot AND the
+// element either opts in directly (its own dynamic flag) or inherits via a link
+// group that syncs that property. The latter means flagging the source alone is
+// enough — linked siblings follow, no per-sibling flagging required.
+function dmFieldActive(el, field) {
+  if (!state.dataMerge.mappings[dmSlotKey(el) + '::' + field]) return false;
+  if (el.dynamic && el.dynamic[field]) return true;
+  return dmGroupSyncsField(el, field);
+}
+
+function dmOverridesForRow(el, rowIdx) {
+  const out = {};
+  const dm = state.dataMerge;
+  if (!dm || !dm.enabled || rowIdx == null) return out;
+  const row = dm.rows[rowIdx];
+  if (!row) return out;
+  const sk = dmSlotKey(el);
+  for (const field of dmFieldsForType(el.type)) {
+    if (!dmFieldActive(el, field)) continue;
+    const col = dm.mappings[sk + '::' + field];
+    const val = row[col];
+    if (val == null || val === '') continue;
+    if (field === 'image') out.assetId = dmResolveImage(val);
+    else out[field] = val;
+  }
+  return out;
+}
+
+function dmDisplay(el) {
+  const dm = state.dataMerge;
+  if (!dm || !dm.enabled || dm.activeVersion == null) return {};
+  return dmOverridesForRow(el, dm.activeVersion);
+}
+
+function dmIsDynamicEditable(el, field) {
+  const dm = state.dataMerge;
+  if (!dm || !dm.enabled || dm.activeVersion == null) return false;
+  return dmFieldActive(el, field);
+}
+
+function dmWriteCell(el, field, value) {
+  const dm = state.dataMerge;
+  const col = dm.mappings[dmSlotKey(el) + '::' + field];
+  if (!col) return false;
+  const row = dm.rows[dm.activeVersion];
+  if (!row) return false;
+  row[col] = value;
+  return true;
+}
+
+// Toggle a dynamic field flag; propagate across the link group so the logical
+// slot stays consistent on every size.
+function dmToggleField(el, field, on) {
+  const apply = (t) => {
+    if (on) { (t.dynamic || (t.dynamic = {}))[field] = true; }
+    else if (t.dynamic) { delete t.dynamic[field]; if (!Object.keys(t.dynamic).length) delete t.dynamic; }
+  };
+  apply(el);
+  if (el.linkGroupId) {
+    state.canvases.forEach(c => c.elements.forEach(t => { if (t !== el && t.linkGroupId === el.linkGroupId) apply(t); }));
+  }
+}
+
+// Collapse every dynamic-flagged element into a list of slots (group = one slot).
+function dmDiscoverSlots() {
+  const slots = []; const seen = {};
+  state.canvases.forEach(c => c.elements.forEach(el => {
+    if (!el.dynamic) return;
+    const fields = Object.keys(el.dynamic).filter(f => el.dynamic[f]);
+    if (!fields.length) return;
+    const sk = dmSlotKey(el);
+    if (!seen[sk]) {
+      seen[sk] = { slotKey: sk, type: el.type, name: dmSlotName(el), fields: new Set(), count: 0, grouped: !!el.linkGroupId };
+      slots.push(seen[sk]);
+    }
+    fields.forEach(f => seen[sk].fields.add(f));
+    seen[sk].count++;
+  }));
+  slots.forEach(s => { s.fields = Array.from(s.fields); });
+  return slots;
+}
+
+// ---- CSV ----
+function dmParseCSV(text) {
+  const rows = []; let row = []; let cur = ''; let inQ = false;
+  text = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // Allow tab-delimited paste too (auto-detect on the header line).
+  const delim = (text.split('\n')[0] || '').indexOf('\t') > -1 && (text.split('\n')[0] || '').indexOf(',') === -1 ? '\t' : ',';
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else inQ = false; }
+      else cur += ch;
+    } else if (ch === '"') { inQ = true; }
+    else if (ch === delim) { row.push(cur); cur = ''; }
+    else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => !(r.length === 1 && r[0].trim() === ''));
+}
+
+function dmCsvCell(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+
+function dmToCSV() {
+  const dm = state.dataMerge;
+  const lines = [dm.columns.map(dmCsvCell).join(',')];
+  dm.rows.forEach(r => lines.push(dm.columns.map(c => dmCsvCell(r[c])).join(',')));
+  return lines.join('\n');
+}
+
+function dmImportCSV(text) {
+  const matrix = dmParseCSV(text);
+  if (!matrix.length) { alert('No rows found in the file.'); return false; }
+  const headers = matrix[0].map(h => h.trim()).filter(h => h !== '');
+  if (!headers.length) { alert('No column headers found in the first row.'); return false; }
+  const rows = matrix.slice(1).map(r => { const o = {}; headers.forEach((h, idx) => o[h] = r[idx] != null ? r[idx] : ''); return o; });
+  const dm = state.dataMerge;
+  dm.columns = headers;
+  dm.rows = rows;
+  if (!dm.keyColumn || !headers.includes(dm.keyColumn)) dm.keyColumn = headers[0] || null;
+  Object.keys(dm.mappings).forEach(k => { if (!headers.includes(dm.mappings[k])) delete dm.mappings[k]; });
+  dm.enabled = true;
+  if (rows.length) { if (dm.activeVersion == null || dm.activeVersion >= rows.length) dm.activeVersion = 0; }
+  else dm.activeVersion = null;
+  return true;
+}
+
+function dmImportFile(onDone) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.csv,.tsv,.txt';
+  input.onchange = () => {
+    const f = input.files[0]; if (!f) return;
+    const fr = new FileReader();
+    fr.onload = () => { if (dmImportCSV(fr.result)) { pushHistory(); render(); if (onDone) onDone(); } };
+    fr.readAsText(f);
+  };
+  input.click();
+}
+
+function dmExportCSV() {
+  const blob = new Blob([dmToCSV()], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (state.projectName || 'data').replace(/[^a-zA-Z0-9_-]/g, '_') + '-versions.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function dmSetActiveVersion(v) {
+  state.dataMerge.activeVersion = (v === '' || v == null) ? null : Number(v);
+  pushHistory();
+  render();
+}
+
+function dmToggleLock() {
+  state.dataMerge.locked = !state.dataMerge.locked;
+  pushHistory();
+  renderVersionSwitcher();
+}
+
+function renderVersionSwitcher() {
+  const wrap = document.getElementById('version-switcher');
+  const sel = document.getElementById('version-select');
+  if (!wrap || !sel) return;
+  const dm = state.dataMerge;
+  if (!dm || !dm.enabled || !dm.rows.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
+  sel.innerHTML = '<option value="">— Template (no version) —</option>' +
+    dm.rows.map((r, i) => `<option value="${i}">${dmEsc(r[keyCol] || ('Row ' + (i + 1)))}</option>`).join('');
+  sel.value = dm.activeVersion == null ? '' : String(dm.activeVersion);
+  const lockBtn = document.getElementById('btn-data-lock');
+  if (lockBtn) {
+    if (dm.locked) {
+      lockBtn.style.background = 'var(--accent-base)';
+      lockBtn.style.color = '#fff';
+      lockBtn.style.border = '1px solid var(--accent-base)';
+      lockBtn.style.boxShadow = '0 0 0 2px rgba(124,92,255,0.35)';
+    } else {
+      lockBtn.style.background = '';
+      lockBtn.style.color = '';
+      lockBtn.style.border = '';
+      lockBtn.style.boxShadow = '';
+    }
+    lockBtn.title = dm.locked ? 'Data lock ON — dynamic slots are read-only (click to unlock)' : 'Data lock — make dynamic slots read-only';
+    // Swap the padlock glyph open/closed so the state reads at a glance.
+    lockBtn.innerHTML = dm.locked
+      ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+      : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+  }
+}
+
+// Floating version selector shown during single-canvas and full preview, so you can
+// flip versions and watch the rendered ad update without leaving preview.
+function renderPreviewVersionBar() {
+  const dm = state.dataMerge;
+  const inPreview = !!(state.isPreviewMode || state.singlePreviewId);
+  let bar = document.getElementById('preview-version-bar');
+  const show = inPreview && dm && dm.enabled && dm.rows.length;
+  if (!show) { if (bar) bar.style.display = 'none'; return; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'preview-version-bar';
+    bar.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1000000;display:flex;align-items:center;gap:8px;background:#15171f;border:1px solid #2a2f3e;border-radius:8px;padding:8px 12px;box-shadow:0 8px 24px rgba(0,0,0,.55);';
+    bar.innerHTML = '<span style="font-size:11px;color:#9aa1b6;font-weight:600;">Version</span>' +
+      '<select id="preview-version-select" style="background:#0f131b;border:1px solid #272c3a;color:#fff;border-radius:4px;padding:5px 8px;font-size:12px;outline:none;font-family:inherit;max-width:240px;"></select>';
+    document.body.appendChild(bar);
+    bar.querySelector('#preview-version-select').addEventListener('change', (e) => dmSetActiveVersion(e.target.value));
+  }
+  bar.style.display = 'flex';
+  const sel = bar.querySelector('#preview-version-select');
+  const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
+  sel.innerHTML = '<option value="">— Template (no version) —</option>' +
+    dm.rows.map((r, i) => `<option value="${i}">${dmEsc(r[keyCol] || ('Row ' + (i + 1)))}</option>`).join('');
+  sel.value = dm.activeVersion == null ? '' : String(dm.activeVersion);
+}
+
+// Temporarily bake a row's values into elements (+clickTag) for export; returns a
+// restore function that puts the template defaults back.
+function dmBakeRow(rowIdx) {
+  const saved = [];
+  const savedClick = state.clickTag;
+  state.canvases.forEach(c => c.elements.forEach(el => {
+    const ov = dmOverridesForRow(el, rowIdx);
+    const keys = Object.keys(ov);
+    if (keys.length) {
+      const orig = {};
+      keys.forEach(k => { orig[k] = el[k]; el[k] = ov[k]; });
+      saved.push([el, orig]);
+    }
+  }));
+  const ctCol = state.dataMerge.mappings['clicktag::url'];
+  if (ctCol) { const v = state.dataMerge.rows[rowIdx] && state.dataMerge.rows[rowIdx][ctCol]; if (v) state.clickTag = v; }
+  return () => { saved.forEach(([el, orig]) => Object.assign(el, orig)); state.clickTag = savedClick; };
+}
+
+// Run an async export block with a row baked into the elements (covering the asset-
+// bundling step). It also points activeVersion at the row so the synchronous bake
+// inside generateExportHTML targets the same row (nested = balanced). activeVersion is
+// restored afterwards so the editor's current selection is untouched.
+async function dmRunExport(rowIdx, fn) {
+  const dm = state.dataMerge;
+  const savedActive = dm.activeVersion;
+  if (rowIdx != null) dm.activeVersion = rowIdx;
+  const restore = (dm.enabled && dm.activeVersion != null) ? dmBakeRow(dm.activeVersion) : null;
+  try { return await fn(); }
+  finally { if (restore) restore(); dm.activeVersion = savedActive; }
+}
+function dmActiveRowForOutput() {
+  const dm = state.dataMerge;
+  return (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
+}
+
+async function dmExportAllVersions() {
+  if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
+  const dm = state.dataMerge;
+  if (!dm.rows.length) { alert('No versions to export. Import a data sheet first.'); return; }
+  const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
+  const master = new JSZip();
+  const safeProj = (state.projectName || 'Ad').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const used = {};
+  for (let i = 0; i < dm.rows.length; i++) {
+    await dmRunExport(i, async () => {
+      let folder = String(dm.rows[i][keyCol] || ('version_' + (i + 1))).replace(/[^a-zA-Z0-9_-]/g, '_') || ('version_' + (i + 1));
+      used[folder] = (used[folder] || 0) + 1;
+      if (used[folder] > 1) folder += '_' + used[folder];
+      const verFolder = master.folder(folder);
+      for (const c of state.canvases) {
+        const adZip = new JSZip();
+        await addCanvasAssetsToZip(c, adZip);
+        const html = generateExportHTML(c, adZip);
+        adZip.file('index.html', html);
+        const adBlob = await adZip.generateAsync({ type: 'blob' });
+        verFolder.file(`${safeProj}_${c.width}x${c.height}.zip`, adBlob);
+      }
+    });
+  }
+  const content = await master.generateAsync({ type: 'blob' });
+  const suggested = `${safeProj}_all_versions.zip`;
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({ types: [{ description: 'Exported Ads ZIP', accept: { 'application/zip': ['.zip'] } }], suggestedName: suggested });
+      const w = await handle.createWritable(); await w.write(content); await w.close();
+    } catch (e) { if (e.name !== 'AbortError') console.error('Version export failed:', e); }
+  } else {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = suggested; a.click(); URL.revokeObjectURL(a.href);
+  }
+}
+
+// ---- Column / row mutations ----
+function dmAddColumn(name) {
+  name = (name || '').trim();
+  const dm = state.dataMerge;
+  if (!name) return;
+  if (dm.columns.includes(name)) { alert('A column named "' + name + '" already exists.'); return; }
+  dm.columns.push(name);
+  dm.rows.forEach(r => { if (r[name] === undefined) r[name] = ''; });
+  if (!dm.keyColumn) dm.keyColumn = name;
+}
+function dmDeleteColumn(name) {
+  const dm = state.dataMerge;
+  dm.columns = dm.columns.filter(c => c !== name);
+  dm.rows.forEach(r => delete r[name]);
+  Object.keys(dm.mappings).forEach(k => { if (dm.mappings[k] === name) delete dm.mappings[k]; });
+  if (dm.keyColumn === name) dm.keyColumn = dm.columns[0] || null;
+}
+function dmAddRow() {
+  const dm = state.dataMerge;
+  const o = {}; dm.columns.forEach(c => o[c] = '');
+  dm.rows.push(o);
+  dm.enabled = true;
+}
+function dmDeleteRow(i) {
+  const dm = state.dataMerge;
+  dm.rows.splice(i, 1);
+  if (dm.activeVersion === i) dm.activeVersion = null;
+  else if (dm.activeVersion != null && dm.activeVersion > i) dm.activeVersion--;
+}
+
+// ---- Data panel modal ----
+function openDataPanel() {
+  openModal('Data &amp; Versions', '<div id="dm-panel"></div>', false);
+  const bg = document.body.lastElementChild;
+  dmRenderPanel(bg);
+}
+
+function dmRenderPanel(bg) {
+  const panel = bg.querySelector('#dm-panel');
+  if (!panel) return;
+  const dm = state.dataMerge;
+  const slots = dmDiscoverSlots();
+  const cellStyle = 'width:100%;background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;';
+  const selStyle = 'background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;min-width:140px;';
+  const thStyle = 'padding:6px 8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;text-align:left;white-space:nowrap;';
+  const colOptions = (sel) => ['<option value="">— none —</option>'].concat(dm.columns.map(c => `<option value="${dmEsc(c)}" ${c === sel ? 'selected' : ''}>${dmEsc(c)}</option>`)).join('');
+
+  // Mapping rows
+  let mapRows = '';
+  slots.forEach(s => s.fields.forEach(field => {
+    const key = s.slotKey + '::' + field;
+    mapRows += `<tr>
+      <td style="padding:4px 12px 4px 0;font-size:12px;color:var(--text-main);">${dmEsc(s.name)}
+        <span style="color:var(--text-muted);font-size:10px;">· ${DM_FIELD_LABEL[field] || field}${s.grouped ? ` · ${s.count} sizes` : ''}</span></td>
+      <td style="padding:4px 0;"><select class="dm-map" data-mapkey="${key}" style="${selStyle}">${colOptions(dm.mappings[key])}</select></td>
+    </tr>`;
+  }));
+  mapRows += `<tr>
+    <td style="padding:4px 12px 4px 0;font-size:12px;color:var(--text-main);">ClickTag <span style="color:var(--text-muted);font-size:10px;">· exit URL</span></td>
+    <td style="padding:4px 0;"><select class="dm-map" data-mapkey="clicktag::url" style="${selStyle}">${colOptions(dm.mappings['clicktag::url'])}</select></td>
+  </tr>`;
+
+  const mapSection = slots.length
+    ? `<table style="border-collapse:collapse;">${mapRows}</table>`
+    : `<div style="font-size:11px;color:var(--text-muted);line-height:1.5;">No dynamic slots yet. Select an element on the canvas and tick fields under <b>Dynamic Data</b> in the Properties panel to make them vary per version.<br><br><table style="border-collapse:collapse;">${mapRows}</table></div>`;
+
+  // Data grid
+  const gridHead = `<tr>
+    <th style="${thStyle}width:28px;"></th>` +
+    dm.columns.map(c => `<th style="${thStyle}">
+      <span class="dm-keycol" data-col="${dmEsc(c)}" title="Click to set as naming key" style="cursor:pointer;">${dmEsc(c)} ${c === dm.keyColumn ? '<span style="color:var(--accent-light);" title="Used to name exported folders">★</span>' : ''}</span>
+      <button class="dm-delcol" data-col="${dmEsc(c)}" title="Delete column" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;line-height:1;margin-left:4px;">×</button>
+    </th>`).join('') +
+    `<th style="${thStyle}width:28px;"></th></tr>`;
+  const gridBody = dm.rows.map((r, i) => `<tr data-row="${i}" style="${dm.activeVersion === i ? 'background:rgba(124,92,255,.12);' : ''}">
+    <td style="padding:3px 6px;border-bottom:1px solid #15171f;"><button class="dm-viewrow" data-row="${i}" title="Preview this version on the canvas" style="background:none;border:none;color:${dm.activeVersion === i ? 'var(--accent-light)' : 'var(--text-muted)'};cursor:pointer;font-size:13px;">${dm.activeVersion === i ? '●' : '○'}</button></td>` +
+    dm.columns.map(c => `<td style="padding:3px 6px;border-bottom:1px solid #15171f;"><input class="dm-cell" data-row="${i}" data-col="${dmEsc(c)}" value="${dmEsc(r[c] || '')}" style="${cellStyle}min-width:120px;"/></td>`).join('') +
+    `<td style="padding:3px 6px;border-bottom:1px solid #15171f;"><button class="dm-delrow" data-row="${i}" title="Delete row" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;">×</button></td></tr>`).join('');
+
+  const gridSection = dm.columns.length
+    ? `<div style="overflow:auto;max-height:300px;border:1px solid #1f2330;border-radius:6px;">
+         <table style="border-collapse:collapse;width:100%;font-size:11px;color:var(--text-main);"><thead>${gridHead}</thead><tbody>${gridBody}</tbody></table>
+       </div>`
+    : `<div style="font-size:11px;color:var(--text-muted);">No data yet — import a CSV or add a column to begin.</div>`;
+
+  panel.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+      <button class="btn" id="dm-import">Import CSV…</button>
+      <button class="btn" id="dm-export" ${dm.columns.length ? '' : 'disabled'}>Export CSV</button>
+      <button class="btn" id="dm-addcol">+ Column</button>
+      <button class="btn" id="dm-addrow" ${dm.columns.length ? '' : 'disabled'}>+ Row</button>
+      <div style="flex:1;"></div>
+      <label class="checkbox-row" style="display:flex;align-items:center;gap:6px;font-size:11px;"><input type="checkbox" id="dm-enabled" ${dm.enabled ? 'checked' : ''}/> Enable merge</label>
+      <button class="btn primary" id="dm-export-versions" ${dm.rows.length ? '' : 'disabled'}>Export All Versions (${dm.rows.length})</button>
+    </div>
+
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin:0 0 8px;">Column → Slot Mapping</h3>
+    ${mapSection}
+
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin:18px 0 8px;">Versions (${dm.rows.length} row${dm.rows.length === 1 ? '' : 's'}) · ● = active preview · ★ = name key</h3>
+    ${gridSection}
+
+    <div style="margin-top:12px;font-size:10px;color:var(--text-muted);line-height:1.5;">
+      Image columns should hold an asset filename already used in this project (or a full URL). Editing a dynamic slot on the canvas while a version is active writes back to that row${dm.locked ? ' — currently <b style="color:var(--accent-light);">locked</b> (read-only)' : ''}.
+    </div>`;
+
+  dmWirePanel(bg);
+}
+
+function dmWirePanel(bg) {
+  const reRender = () => { renderVersionSwitcher(); render(); dmRenderPanel(bg); };
+  const q = (sel) => bg.querySelector(sel);
+  const all = (sel) => bg.querySelectorAll(sel);
+
+  if (q('#dm-import')) q('#dm-import').onclick = () => dmImportFile(() => reRender());
+  if (q('#dm-export')) q('#dm-export').onclick = () => dmExportCSV();
+  if (q('#dm-addcol')) q('#dm-addcol').onclick = () => { const n = prompt('New column name:'); if (n) { dmAddColumn(n); pushHistory(); reRender(); } };
+  if (q('#dm-addrow')) q('#dm-addrow').onclick = () => { dmAddRow(); pushHistory(); reRender(); };
+  if (q('#dm-export-versions')) q('#dm-export-versions').onclick = () => dmExportAllVersions();
+  if (q('#dm-enabled')) q('#dm-enabled').onchange = (e) => { state.dataMerge.enabled = e.target.checked; pushHistory(); reRender(); };
+
+  all('.dm-map').forEach(sel => sel.onchange = () => {
+    const k = sel.dataset.mapkey;
+    if (sel.value) state.dataMerge.mappings[k] = sel.value;
+    else delete state.dataMerge.mappings[k];
+    pushHistory();
+    render();
+  });
+
+  all('.dm-keycol').forEach(s => s.onclick = () => { state.dataMerge.keyColumn = s.dataset.col; pushHistory(); reRender(); });
+  all('.dm-delcol').forEach(b => b.onclick = () => { if (confirm(`Delete column "${b.dataset.col}"?`)) { dmDeleteColumn(b.dataset.col); pushHistory(); reRender(); } });
+  all('.dm-delrow').forEach(b => b.onclick = () => { dmDeleteRow(Number(b.dataset.row)); pushHistory(); reRender(); });
+  all('.dm-viewrow').forEach(b => b.onclick = () => {
+    const i = Number(b.dataset.row);
+    state.dataMerge.activeVersion = (state.dataMerge.activeVersion === i) ? null : i;
+    state.dataMerge.enabled = true;
+    pushHistory(); reRender();
+  });
+
+  all('.dm-cell').forEach(inp => {
+    inp.oninput = () => {
+      const row = state.dataMerge.rows[Number(inp.dataset.row)];
+      if (row) row[inp.dataset.col] = inp.value;
+      render();
+      renderVersionSwitcher();
+    };
+    inp.onchange = () => pushHistory();
+  });
+}
+
+document.getElementById('menu-file-data')?.addEventListener('click', openDataPanel);
+document.getElementById('btn-open-data')?.addEventListener('click', openDataPanel);
+document.getElementById('version-select')?.addEventListener('change', (e) => dmSetActiveVersion(e.target.value));
+document.getElementById('btn-data-lock')?.addEventListener('click', dmToggleLock);
 
 (async function initApp() {
   let restored = false;
