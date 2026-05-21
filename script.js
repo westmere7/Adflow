@@ -48,6 +48,8 @@
   }
 })();
 
+const urlSizeCache = {};
+
 const uid = () => Math.random().toString(36).slice(2, 8);
 
 const isLineHeightAuto = (el) => {
@@ -1987,6 +1989,10 @@ function elementNode(el, canvasCtx) {
   // selected elements themselves, which already show a selection outline.
   if (el.linkGroupId && el.linkGroupId === _highlightGid && !(state.layerSelection && state.layerSelection.includes(el.id))) {
     d.classList.add('link-highlight');
+    const lg = state.linkGroups && state.linkGroups[el.linkGroupId];
+    if (lg && lg.liveLink) {
+      d.classList.add('link-highlight-live');
+    }
   }
   d.style.left = el.x + 'px';
   d.style.top = el.y + 'px';
@@ -2985,6 +2991,211 @@ canvasArea.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 // ============================================================================
+function openValidatorDetails(initialCanvas) {
+  const modalId = `val-modal-${Date.now()}`;
+  
+  const generateModalContent = (focusedCanvasId) => {
+    let sidebarHtml = '';
+    state.canvases.forEach((c, index) => {
+      const isFocused = c.id === focusedCanvasId;
+      const hasErrors = c._valErrors && c._valErrors.length > 0;
+      const statusIcon = hasErrors ? '⚠️' : '✓';
+      const statusColor = hasErrors ? '#f97316' : '#10b981';
+      
+      let itemBg = 'transparent';
+      let itemColor = 'var(--text-main)';
+      let itemFontWeight = 'normal';
+      let itemBorder = '1px solid transparent';
+      
+      if (isFocused) {
+        itemBg = 'var(--accent-dark)';
+        itemColor = 'var(--text-bright)';
+        itemFontWeight = 'bold';
+        itemBorder = '1px solid var(--accent-base)';
+      }
+      
+      const kbText = c._valKb ? `${c._valKb}KB` : 'calc...';
+      
+      sidebarHtml += `
+        <button class="val-sidebar-item" data-canvas-id="${c.id}" style="
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 12px;
+          border-radius: 6px;
+          border: ${itemBorder};
+          background: ${itemBg};
+          color: ${itemColor};
+          cursor: pointer;
+          font-size: 12px;
+          width: 100%;
+          text-align: left;
+          font-weight: ${itemFontWeight};
+          transition: all 0.2s ease;
+          margin-bottom: 4px;
+        " onmouseover="if(!this.classList.contains('active')) this.style.background='var(--bg-input)'" onmouseout="if(!this.classList.contains('active')) this.style.background='${itemBg}'">
+          <span>${index + 1}. ${c.width}×${c.height}</span>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+            <span style="opacity: 0.85;">${kbText}</span>
+            <span style="color:${statusColor}; font-weight: bold;">${statusIcon}</span>
+          </div>
+        </button>
+      `;
+    });
+    
+    const focusedCanvas = state.canvases.find(c => c.id === focusedCanvasId) || initialCanvas;
+    const errors = focusedCanvas._valErrors || [];
+    const limitKb = state.adSizeLimit || 150;
+    
+    const sizeExceeded = focusedCanvas._valKb && parseFloat(focusedCanvas._valKb) > limitKb;
+    const clickTagValue = state.clickTag ? state.clickTag.trim() : '';
+    let clickTagValid = false;
+    let clickTagMsg = 'Missing clickTag URL';
+    if (clickTagValue) {
+      try {
+        const url = new URL(clickTagValue);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          clickTagMsg = 'Must start with http:// or https://';
+        } else if (!url.hostname.includes('.') || url.hostname.split('.').pop().length < 2) {
+          clickTagMsg = 'Must have a valid domain extension';
+        } else {
+          clickTagValid = true;
+          clickTagMsg = clickTagValue;
+        }
+      } catch (e) {
+        clickTagMsg = 'Invalid URL format';
+      }
+    }
+    
+    let imageElements = focusedCanvas.elements.filter(el => el.type === 'image');
+    let missingAssets = [];
+    let externalAssets = [];
+    
+    imageElements.forEach(el => {
+      let src = state.assets[el.assetId] || el.assetId;
+      if (!src) {
+        missingAssets.push(el.name || `Image Layer (${el.id})`);
+      } else if (src.startsWith('http://') || src.startsWith('https://')) {
+        externalAssets.push(el.name || `Image Layer (${el.id})`);
+      } else if (!state.assets[el.assetId] && !src.startsWith('data/Elements/')) {
+        missingAssets.push(el.name || `Image Layer (${el.id})`);
+      }
+    });
+
+    const isSizePassed = !sizeExceeded && focusedCanvas._valKb;
+    const isClickTagPassed = clickTagValid;
+    const isAssetsPassed = externalAssets.length === 0;
+    const isMissingPassed = missingAssets.length === 0;
+    
+    const criteriaHTML = `
+      <div style="font-size:12px; color:var(--text-label); background:var(--bg-input); padding:14px; border-radius:8px; border:1px solid var(--border-light); display:flex; flex-direction:column; gap:10px;">
+        <strong style="color:var(--text-bright); font-size:13px; border-bottom:1px solid var(--border-light); padding-bottom:6px; margin-bottom:2px; display:block;">Validation Criteria:</strong>
+        
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px;">
+          <div style="flex:1; min-width:0;">
+            <span style="font-weight:600; color:var(--text-main); display:block;">ZIP File Size Limit</span>
+            <span style="font-size:11px; opacity:0.8;">The compressed package must be under ${limitKb}KB. Current: ${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'Calculating...'}</span>
+          </div>
+          <span style="color:${isSizePassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">${isSizePassed ? '✓ Pass' : '✗ Fail'}</span>
+        </div>
+
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+          <div style="flex:1; min-width:0;">
+            <span style="font-weight:600; color:var(--text-main); display:block;">clickTag URL Validation</span>
+            <span style="font-size:11px; opacity:0.8; word-break:break-all;">URL: <span style="font-family:monospace; color:${clickTagValid ? 'var(--accent-light)' : '#ef4444'};">${clickTagMsg}</span></span>
+          </div>
+          <span style="color:${isClickTagPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">${isClickTagPassed ? '✓ Pass' : '✗ Fail'}</span>
+        </div>
+
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+          <div style="flex:1; min-width:0;">
+            <span style="font-weight:600; color:var(--text-main); display:block;">Local Asset Requirements</span>
+            <span style="font-size:11px; opacity:0.8;">All asset files must be bundled locally inside the zip. External assets are forbidden.</span>
+            ${externalAssets.length > 0 ? `<span style="display:block; color:#ef4444; font-size:11px; margin-top:4px;">External files: ${externalAssets.join(', ')}</span>` : ''}
+          </div>
+          <span style="color:${isAssetsPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">${isAssetsPassed ? '✓ Pass' : '✗ Fail'}</span>
+        </div>
+
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+          <div style="flex:1; min-width:0;">
+            <span style="font-weight:600; color:var(--text-main); display:block;">Broken Asset Check</span>
+            <span style="font-size:11px; opacity:0.8;">All image layers must have valid source files.</span>
+            ${missingAssets.length > 0 ? `<span style="display:block; color:#ef4444; font-size:11px; margin-top:4px;">Missing source: ${missingAssets.join(', ')}</span>` : ''}
+          </div>
+          <span style="color:${isMissingPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">${isMissingPassed ? '✓ Pass' : '✗ Fail'}</span>
+        </div>
+      </div>
+    `;
+    
+    const errorsHTML = errors.length > 0 ? `
+      <div style="font-size:12px; color:#ef4444; background:rgba(239, 68, 68, 0.08); padding:14px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.2); display:flex; flex-direction:column; gap:6px;">
+        <strong style="display:flex; align-items:center; gap:6px; font-size:13px;">
+          <span>⚠️</span> Issues Found (${errors.length})
+        </strong>
+        <ul style="margin:0; padding-left:18px; line-height:1.5; display:flex; flex-direction:column; gap:4px;">
+          ${errors.map(err => `<li>${err}</li>`).join('')}
+        </ul>
+      </div>
+    ` : `
+      <div style="font-size:12px; color:#10b981; background:rgba(16, 185, 129, 0.08); padding:14px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.2); display:flex; flex-direction:column; gap:6px;">
+        <strong style="display:flex; align-items:center; gap:6px; font-size:13px;">
+          <span>✓</span> All validation checks passed!
+        </strong>
+        <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to the specified file size limit and Google Ad specs.</p>
+      </div>
+    `;
+    
+    return `
+      <div id="${modalId}" style="display:flex; gap:20px; min-height:420px; height: 100%;">
+        <div style="width:230px; border-right:1px solid var(--border-light); padding-right:16px; display:flex; flex-direction:column; gap:4px; max-height:480px; overflow-y:auto;">
+          <div style="font-size:10px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; padding-left:4px;">Canvases</div>
+          ${sidebarHtml}
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto; max-height:480px; padding-right:4px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px;">
+            <h3 style="margin:0; font-size:15px; font-weight:600; color:var(--text-bright);">${focusedCanvas.width} × ${focusedCanvas.height} Details</h3>
+            <span style="font-size:11px; font-weight:bold; color:var(--text-label);">ZIP Size: <span style="color:${errors.some(e => e.includes('limit')) ? '#f97316' : '#10b981'}; font-size:13px;">${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'calc...'}</span></span>
+          </div>
+          ${errorsHTML}
+          ${criteriaHTML}
+        </div>
+      </div>
+    `;
+  };
+
+  openModal(`Validation Dashboard`, generateModalContent(initialCanvas.id), false);
+  
+  const modalEl = document.querySelector('.modal-bg:last-child .modal');
+  if (modalEl) {
+    modalEl.style.width = '760px';
+    modalEl.style.maxWidth = '95vw';
+  }
+
+  const setupModalListeners = (modalEl, currentId) => {
+    const buttons = modalEl.querySelectorAll('.val-sidebar-item');
+    buttons.forEach(btn => {
+      const canvasId = btn.dataset.canvasId;
+      if (canvasId === currentId) {
+        btn.classList.add('active');
+      }
+      btn.onclick = () => {
+        const modalContainer = document.getElementById(modalId);
+        if (modalContainer) {
+          const parent = modalContainer.parentElement;
+          parent.innerHTML = generateModalContent(canvasId);
+          const newContainer = parent.querySelector(`#${modalId}`);
+          setupModalListeners(newContainer, canvasId);
+        }
+      };
+    });
+  };
+
+  const modalContainer = document.getElementById(modalId);
+  if (modalContainer) {
+    setupModalListeners(modalContainer.parentElement, initialCanvas.id);
+  }
+}
+
 // Left panel — Canvases list
 // ============================================================================
 function renderCanvasesList() {
@@ -2997,22 +3208,101 @@ function renderCanvasesList() {
 
     let sizeHtml = '';
     let warnHtml = '';
+    
+    const hasSelection = c.id === state.activeCanvasId && state.layerSelection && state.layerSelection.length > 0;
+
     if (c._valKb) {
       const color = (c._valErrors && c._valErrors.length > 0) ? '#ef4444' : '#10b981';
-      sizeHtml = `<span id="val-size-${c.id}" style="color:${color}; font-size:9px; font-weight:bold; transition: color 0.2s;">${c._valKb}KB</span>`;
-      if (c._valErrors && c._valErrors.length > 0) {
-        warnHtml = `<span id="val-warn-${c.id}"><span class="val-warn-icon" style="cursor:pointer; color:#ef4444;" title="Click for details" data-err-canvas="${c.id}">⚠️</span></span>`;
+      if (hasSelection) {
+        let combinedSize = 0;
+        c.elements.forEach(el => {
+          if (state.layerSelection.includes(el.id)) {
+            combinedSize += getElementSizeKB(el);
+          }
+        });
+        sizeHtml = `
+          <span id="val-size-${c.id}" style="font-size:10px; font-weight:bold; display:inline-flex; align-items:center; transition: color 0.2s;">
+            <span style="color:var(--text-label); display:inline-flex; align-items:center;">
+              <span>${combinedSize.toFixed(1)}</span>
+              <span style="margin: 0 6px;">/</span>
+            </span>
+            <span style="color:${color};">${c._valKb}KB</span>
+          </span>
+        `;
       } else {
-        warnHtml = `<span id="val-warn-${c.id}"><span style="color:#10b981;" title="Passed checks">✓</span></span>`;
+        sizeHtml = `<span id="val-size-${c.id}" style="color:${color}; font-size:10px; font-weight:bold; transition: color 0.2s;">${c._valKb}KB</span>`;
       }
     } else {
-      sizeHtml = `<span id="val-size-${c.id}" style="color:var(--text-muted); font-size:9px; font-weight:bold; opacity: 0.5;">calc...</span>`;
-      warnHtml = `<span id="val-warn-${c.id}"></span>`;
+      if (hasSelection) {
+        let combinedSize = 0;
+        c.elements.forEach(el => {
+          if (state.layerSelection.includes(el.id)) {
+            combinedSize += getElementSizeKB(el);
+          }
+        });
+        sizeHtml = `
+          <span id="val-size-${c.id}" style="font-size:10px; font-weight:bold; display:inline-flex; align-items:center; opacity: 0.5;">
+            <span style="color:var(--text-label); display:inline-flex; align-items:center;">
+              <span>${combinedSize.toFixed(1)}</span>
+              <span style="margin: 0 6px;">/</span>
+            </span>
+            <span style="color:var(--text-muted);">calc...</span>
+          </span>
+        `;
+      } else {
+        sizeHtml = `<span id="val-size-${c.id}" style="color:var(--text-muted); font-size:10px; font-weight:bold; opacity: 0.5;">calc...</span>`;
+      }
       if (!window._valInitRun) {
         window._valInitRun = true;
         setTimeout(() => queueSizeUpdate(), 200);
       }
     }
+
+    let btnBg = 'rgba(90, 97, 120, 0.15)';
+    let btnColor = 'var(--text-muted)';
+    let btnBgHover = 'rgba(90, 97, 120, 0.3)';
+    let btnText = '✓';
+    let btnTitle = 'Calculating validation status...';
+
+    if (c._valKb) {
+      const hasErrors = c._valErrors && c._valErrors.length > 0;
+      if (hasErrors) {
+        btnBg = 'rgba(249, 115, 22, 0.15)';
+        btnColor = '#f97316';
+        btnBgHover = 'rgba(249, 115, 22, 0.3)';
+        btnText = '⚠️';
+        btnTitle = 'Validation warnings found. Click to open validator dashboard.';
+      } else {
+        btnBg = 'rgba(16, 185, 129, 0.15)';
+        btnColor = '#10b981';
+        btnBgHover = 'rgba(16, 185, 129, 0.3)';
+        btnText = '✓';
+        btnTitle = 'All validation checks passed. Click to open validator dashboard.';
+      }
+    }
+
+    warnHtml = `
+      <span id="val-warn-${c.id}">
+        <button class="val-status-btn" style="
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 26px;
+          height: 18px;
+          border: none;
+          border-radius: 4px;
+          background: ${btnBg};
+          color: ${btnColor};
+          cursor: pointer;
+          font-size: 10px;
+          font-weight: bold;
+          padding: 0;
+          transition: all 0.2s ease;
+        " onmouseover="this.style.background='${btnBgHover}'" onmouseout="this.style.background='${btnBg}'" title="${btnTitle}">
+          ${btnText}
+        </button>
+      </span>
+    `;
 
     div.innerHTML = `
       <div style="flex:1; display:flex; flex-direction:row; align-items:center; gap:8px; overflow:hidden;">
@@ -3024,31 +3314,11 @@ function renderCanvasesList() {
       </div>
     `;
 
-    const warnIcon = div.querySelector('.val-warn-icon');
-    if (warnIcon) {
-      warnIcon.addEventListener('click', (e) => {
+    const statusBtn = div.querySelector('.val-status-btn');
+    if (statusBtn) {
+      statusBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const errors = c._valErrors || [];
-        const criteriaHTML = `
-              <div style="font-size:12px; color:var(--text-label); margin-bottom:12px;">
-                <strong style="color:var(--text-main);">Google Ad Requirements:</strong>
-                <ul style="margin-top:6px; padding-left:20px; line-height:1.5;">
-                  <li>ZIP file size must be 150KB or smaller.</li>
-                  <li>Must contain a valid clickTag URL (http/https).</li>
-                  <li>All assets must be local (no external URLs).</li>
-                  <li>No missing or broken assets.</li>
-                </ul>
-              </div>
-            `;
-        const errorsHTML = `
-              <div style="font-size:12px; color:#ef4444; background:rgba(239, 68, 68, 0.1); padding:12px; border-radius:6px; border:1px solid rgba(239, 68, 68, 0.2);">
-                <strong style="display:block; margin-bottom:8px;">Found Issues:</strong>
-                <ul style="margin:0; padding-left:20px; line-height:1.5;">
-                  ${errors.map(err => `<li>${err}</li>`).join('')}
-                </ul>
-              </div>
-            `;
-        openModal(`Validation: ${c.width}x${c.height}`, criteriaHTML + errorsHTML, false);
+        openValidatorDetails(c);
       });
     }
 
@@ -3061,6 +3331,13 @@ function renderCanvasesList() {
     canvasesListEl.appendChild(div);
   });
 }
+
+document.getElementById('btn-validator-dashboard-trigger').addEventListener('click', () => {
+  const activeCanvas = getActiveCanvas();
+  if (activeCanvas) {
+    openValidatorDetails(activeCanvas);
+  }
+});
 
 document.getElementById('btn-add-canvas').addEventListener('click', (e) => {
   let popup = document.getElementById('canvas-size-popup');
@@ -3497,10 +3774,17 @@ function renderLinkControl() {
     // Hovering a group row highlights its members across all canvases (visual only).
     row.addEventListener('mouseenter', () => {
       const gid = row.dataset.groupId;
-      document.querySelectorAll(`.el[data-link-group="${gid}"]`).forEach(el => el.classList.add('link-highlight-hover'));
+      const lg = state.linkGroups && state.linkGroups[gid];
+      document.querySelectorAll(`.el[data-link-group="${gid}"]`).forEach(el => {
+        el.classList.add('link-highlight-hover');
+        if (lg && lg.liveLink) {
+          el.classList.add('link-highlight-hover-live');
+        }
+      });
     });
     row.addEventListener('mouseleave', () => {
       document.querySelectorAll('.el.link-highlight-hover').forEach(el => el.classList.remove('link-highlight-hover'));
+      document.querySelectorAll('.el.link-highlight-hover-live').forEach(el => el.classList.remove('link-highlight-hover-live'));
     });
     row.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
@@ -5645,6 +5929,7 @@ async function addCanvasAssetsToZip(c, zip) {
         const resp = await fetch(el.assetId);
         if (resp.ok) {
           const blob = await resp.blob();
+          urlSizeCache[el.assetId] = blob.size / 1024;
           const filename = el.assetId.split('/').pop();
           zip.file(`assets/${filename}`, blob);
         }
@@ -7849,6 +8134,45 @@ function openModal(title, body, isCode) {
       URL.revokeObjectURL(a.href);
     };
   }
+}
+
+function getImageSizeKBSync(url) {
+  if (!url || typeof url !== 'string') return 0;
+  if (url.startsWith('data:')) {
+    const base64Part = url.split(',')[1];
+    if (!base64Part) return 0;
+    const stringLength = base64Part.length;
+    const sizeInBytes = Math.round((stringLength * 3) / 4) - (base64Part.endsWith('==') ? 2 : base64Part.endsWith('=') ? 1 : 0);
+    return sizeInBytes / 1024;
+  }
+  return 0;
+}
+
+function getElementSizeKB(el) {
+  if (!el) return 0;
+  if (el.type === 'image') {
+    const src = (el.assetId && state.assets && state.assets[el.assetId]) || el.assetId;
+    if (!src) return 0;
+    if (src.startsWith('data:')) {
+      return getImageSizeKBSync(src);
+    }
+    if (urlSizeCache[src] !== undefined) {
+      return urlSizeCache[src];
+    }
+    // Asynchronously fetch and cache it so it updates next render
+    fetch(src).then(resp => {
+      if (resp.ok) return resp.blob();
+    }).then(blob => {
+      if (blob) {
+        urlSizeCache[src] = blob.size / 1024;
+        renderCanvasesList();
+      }
+    }).catch(err => {
+      console.error('Failed to fetch asset size in getElementSizeKB', src, err);
+    });
+    return 0;
+  }
+  return 0;
 }
 
 // WebP Image Compression Utilities

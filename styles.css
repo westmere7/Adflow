@@ -3142,3 +3142,42 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
       outline: calc(2px / var(--z, 1)) dashed var(--accent-light);
       outline-offset: calc(1px / var(--z, 1));
     }
+
+    /* Live Link Mode - Marching Ants Animation */
+    @keyframes marching-ants {
+      0% {
+        background-position: 0 0, 0 100%, 0 0, 100% 0;
+      }
+      100% {
+        background-position: calc(20px / var(--z, 1)) 0, calc(-20px / var(--z, 1)) 100%, 0 calc(-20px / var(--z, 1)), 100% calc(20px / var(--z, 1));
+      }
+    }
+
+    .el.link-highlight-live,
+    .el.link-highlight-hover-live {
+      outline: none !important;
+    }
+
+    .el.link-highlight-live::after,
+    .el.link-highlight-hover-live::after {
+      content: '';
+      position: absolute;
+      inset: calc(-1.5px / var(--z, 1));
+      pointer-events: none;
+      border-radius: inherit;
+      z-index: 100000;
+      
+      background-image: 
+        linear-gradient(90deg, var(--accent-light) 50%, transparent 50%),
+        linear-gradient(90deg, var(--accent-light) 50%, transparent 50%),
+        linear-gradient(0deg, var(--accent-light) 50%, transparent 50%),
+        linear-gradient(0deg, var(--accent-light) 50%, transparent 50%);
+      background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+      background-size: 
+        calc(10px / var(--z, 1)) calc(2px / var(--z, 1)),
+        calc(10px / var(--z, 1)) calc(2px / var(--z, 1)),
+        calc(2px / var(--z, 1)) calc(10px / var(--z, 1)),
+        calc(2px / var(--z, 1)) calc(10px / var(--z, 1));
+      background-position: 0 0, 0 100%, 0 0, 100% 0;
+      animation: marching-ants 0.8s linear infinite;
+    }
