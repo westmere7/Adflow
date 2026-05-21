@@ -1233,6 +1233,10 @@ function applyColorToText(node, colorVal) {
 }
 
 function render(skipProps = false) {
+  if (state.commitRenderTimer) {
+    clearTimeout(state.commitRenderTimer);
+    state.commitRenderTimer = null;
+  }
   _highlightGid = computeHighlightLinkGroupId();
   // Live-link mode propagation
   if (state.layerSelection && state.layerSelection.length > 0) {
@@ -2398,18 +2402,26 @@ function elementNode(el, canvasCtx) {
 
 function wireInlineEdit(ed, el, key) {
   const commit = () => {
-    // (A) Edit-in-place: when a version is active and this field is dynamic, the typed
-    // value writes back to the active row's cell (unless the Data lock is on), leaving
-    // the template default untouched. Otherwise it edits the element directly.
-    if (typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, key)) {
-      if (!state.dataMerge.locked) dmWriteCell(el, key, ed.innerText);
-    } else {
-      el[key] = ed.innerText;
+    ed.removeEventListener('blur', commit);
+    const isDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, key);
+    const oldVal = isDyn ? (state.dataMerge.rows[state.dataMerge.activeVersion]?.[state.dataMerge.mappings[dmSlotKey(el) + '::' + key]] || '') : el[key];
+    const newVal = ed.innerText;
+    if (oldVal !== newVal) {
+      if (isDyn) {
+        if (!state.dataMerge.locked) dmWriteCell(el, key, newVal);
+      } else {
+        el[key] = newVal;
+      }
+      pushHistory();
     }
     state.editingElementId = null;
-    render();
+    state.commitRenderTimer = setTimeout(() => {
+      state.commitRenderTimer = null;
+      render(true);
+    }, 0);
   };
   const cancel = () => {
+    ed.removeEventListener('blur', commit);
     state.editingElementId = null;
     render();
   };
@@ -4651,8 +4663,22 @@ function renderProps() {
   }
 
   const f = [];
+  const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+  const dText = _dm.text !== undefined ? _dm.text : el.text;
+  const dColor = _dm.color !== undefined ? _dm.color : el.color;
+  const dBg = _dm.bg !== undefined ? _dm.bg : el.bg;
+  const dAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+
+  const isFieldDisabled = (field) => {
+    return !!(state.dataMerge && state.dataMerge.locked && typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, field));
+  };
+
   const num = (key, label, def = '') => `<div class="prop-row"><label>${label}</label><input type="number" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
-  const txt = (key, label) => `<div class="prop-row"><label>${label}</label><input type="text" data-k="${key}" value="${(el[key] || '').replace(/"/g, '&quot;')}" /></div>`;
+  const txt = (key, label) => {
+    const val = (key === 'text' && dText !== undefined) ? dText : el[key];
+    const isDisabled = isFieldDisabled(key);
+    return `<div class="prop-row"><label>${label}</label><input type="text" data-k="${key}" value="${(val || '').replace(/"/g, '&quot;')}" ${isDisabled ? 'disabled' : ''} /></div>`;
+  };
   const numIcon = (key, svgIcon, tooltip, def = '') => `
     <div class="prop-row-compact" title="${tooltip}">
       ${svgIcon}
@@ -4665,23 +4691,30 @@ function renderProps() {
   const hIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M5 2h14M5 22h14M12 6v12M8 10l4-4 4 4M8 14l4 4 4-4"/></svg>`;
   const rIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M18 18H6L16 8"/><path d="M13 18a7 7 0 0 0-2-5"/></svg>`;
 
-  const col = (key, label) => `
+  const col = (key, label) => {
+    const val = (key === 'color' && dColor !== undefined) ? dColor : ((key === 'bg' && dBg !== undefined) ? dBg : el[key]);
+    const isDisabled = isFieldDisabled(key);
+    return `
     <div class="prop-row">
       <label>${label}</label>
       <div style="display:flex; gap:6px; align-items:center;">
-        <button class="cp-trigger" data-k="${key}" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el[key]) || '#000'}"></button>
-        ${hexInputBox(key, el[key])}
+        <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
+        ${hexInputBox(key, val, '', isDisabled)}
       </div>
     </div>`;
+  };
 
-  const colOpac = (key, label) => `
+  const colOpac = (key, label) => {
+    const val = (key === 'color' && dColor !== undefined) ? dColor : ((key === 'bg' && dBg !== undefined) ? dBg : el[key]);
+    const isDisabled = isFieldDisabled(key);
+    return `
     <div class="prop-row">
       <div style="display:flex; align-items:end; gap:8px; width:100%;">
         <div class="prop-row" style="margin:0; flex:1; min-width:0;">
           <label>${label}</label>
           <div style="display:flex; gap:6px; align-items:center;">
-            <button class="cp-trigger" data-k="${key}" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el[key]) || '#000'}"></button>
-            ${hexInputBox(key, el[key])}
+            <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
+            ${hexInputBox(key, val, '', isDisabled)}
           </div>
         </div>
         <div class="prop-row" style="margin:0; width:78px; flex-shrink:0;">
@@ -4690,6 +4723,7 @@ function renderProps() {
         </div>
       </div>
     </div>`;
+  };
 
   const alignElOptions = [
     { id: 'left', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="4" y1="2" x2="4" y2="22"/><rect x="8" y="10" width="12" height="4" rx="1"/></svg>' },
@@ -4722,11 +4756,10 @@ function renderProps() {
   const getWeightsForFont = (fnt) => fontWeights[fnt] || ['100', '200', '300', '400', '500', '600', '700', '800', '900'];
 
   if (el.type === 'text') {
-    f.push(`<div class="prop-row"><label>Text</label><textarea data-k="text" rows="2">${el.text}</textarea></div>`);
+    const textDisabled = isFieldDisabled('text');
+    f.push(`<div class="prop-row"><label>Text</label><textarea data-k="text" rows="2" ${textDisabled ? 'disabled' : ''}>${esc(dText)}</textarea></div>`);
 
     // Resolve computed size for display
-    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
-    const dText = _dm.text !== undefined ? _dm.text : el.text;
     const computedFontSize = el.autoSize ? calculateAutoSize(el, dText) : (el.fontSize || 14);
 
     // Line 1: Font and Weight
@@ -4895,9 +4928,10 @@ function renderProps() {
     f.push(strokeSection());
   }
   if (el.type === 'image') {
-    f.push(`<div class="prop-row"><label>Upload image</label><input type="file" accept="image/*" id="img-upload" /></div>`);
+    const imgDisabled = isFieldDisabled('image');
+    f.push(`<div class="prop-row"><label>Upload image</label><input type="file" accept="image/*" id="img-upload" ${imgDisabled ? 'disabled' : ''} /></div>`);
     const isVector = (el.name && el.name.toLowerCase().endsWith('.svg')) || 
-                     (el.assetId && state.assets && state.assets[el.assetId] && state.assets[el.assetId].startsWith('data:image/svg+xml'));
+                     (dAssetId && state.assets && state.assets[dAssetId] && state.assets[dAssetId].startsWith('data:image/svg+xml'));
     if (el.name) {
       f.push(`<div class="prop-row" style="margin-top:-6px;"><label style="font-size:10px; color:var(--text-main); margin:0;">File: ${esc(el.name)}</label></div>`);
       if (!isVector) {
@@ -4911,7 +4945,7 @@ function renderProps() {
         </div>`);
       }
     }
-    const src = el.assetId ? ((state.assets && state.assets[el.assetId]) || el.assetId) : '';
+    const src = dAssetId ? ((state.assets && state.assets[dAssetId]) || dAssetId) : '';
     if (src) {
       f.push(`<div class="prop-row"><label>Preview</label><img src="${src}" style="max-width:100%;border-radius:4px;border:1px solid #272c3a;" /></div>`);
     }
@@ -5087,9 +5121,9 @@ function renderProps() {
 
   const updateProp = (k, val) => {
     if (!k) return;
-    // (A) Edit-in-place for panel-edited dynamic fields (color/bg): route to the active
+    // (A) Edit-in-place for panel-edited dynamic fields (color/bg/text): route to the active
     // version's cell rather than the template, when a single dynamic element is selected.
-    const dmField = (k === 'color' || k === 'bg') ? k : null;
+    const dmField = (k === 'color' || k === 'bg' || k === 'text') ? k : null;
     if (dmField && (!state.layerSelection || state.layerSelection.length <= 1) &&
         typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, dmField)) {
       if (!state.dataMerge.locked) { dmWriteCell(el, dmField, val); render(true); }
@@ -9323,6 +9357,13 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 document.addEventListener('mousedown', (e) => {
+  if (state.editingElementId) {
+    const activeEd = document.querySelector('.editable');
+    if (activeEd && !activeEd.contains(e.target)) {
+      activeEd.blur();
+    }
+  }
+
   const menu = document.getElementById('ctx-menu');
   if (menu && menu.style.display === 'flex' && !menu.contains(e.target)) {
     menu.style.display = 'none';
