@@ -228,6 +228,80 @@ function measureButtonWidth(el) {
   return Math.ceil(textW) + (el.paddingLR || 16) * 2;
 }
 
+let measureDiv = null;
+function getMeasureDiv() {
+  if (!measureDiv) {
+    measureDiv = document.createElement('div');
+    measureDiv.style.position = 'absolute';
+    measureDiv.style.visibility = 'hidden';
+    measureDiv.style.top = '-9999px';
+    measureDiv.style.left = '-9999px';
+    measureDiv.style.whiteSpace = 'pre-wrap';
+    measureDiv.style.wordBreak = 'break-word';
+    measureDiv.style.boxSizing = 'border-box';
+    document.body.appendChild(measureDiv);
+  }
+  return measureDiv;
+}
+
+function measureTextFits(el, text, fontSize) {
+  const m = getMeasureDiv();
+  m.innerHTML = '';
+  m.style.width = el.width + 'px';
+  
+  const textBlock = document.createElement('div');
+  textBlock.style.textAlign = el.textAlign || 'left';
+  textBlock.style.width = '100%';
+  textBlock.style.fontSize = fontSize + 'px';
+  textBlock.style.lineHeight = getResolvedLineHeight(el);
+  
+  const span = document.createElement(el.htmlTag || 'span');
+  span.innerText = text;
+  span.style.fontSize = fontSize + 'px';
+  span.style.fontWeight = el.weight || '400';
+  span.style.fontFamily = el.fontFamily || 'Arial';
+  span.style.lineHeight = getResolvedLineHeight(el);
+  span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
+  span.style.wordBreak = 'break-word';
+  
+  if (el.hasBg) {
+    const lr = el.bgPadL !== undefined ? el.bgPadL : 8;
+    const tb = el.bgPadV !== undefined ? el.bgPadV : 4;
+    span.style.display = 'inline';
+    span.style.padding = `${tb}px ${lr}px`;
+    span.style.setProperty('box-decoration-break', 'clone');
+    span.style.setProperty('-webkit-box-decoration-break', 'clone');
+  }
+  
+  textBlock.appendChild(span);
+  m.appendChild(textBlock);
+  
+  const rect = textBlock.getBoundingClientRect();
+  const fitsHeight = rect.height <= el.height;
+  const fitsWidth = textBlock.scrollWidth <= el.width;
+  
+  return fitsHeight && fitsWidth;
+}
+
+function calculateAutoSize(el, text) {
+  if (!text) return 4;
+  let low = 4;
+  let high = el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72);
+  if (high < low) high = low;
+  let best = low;
+  
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    if (measureTextFits(el, text, mid)) {
+      best = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+  return best;
+}
+
 
 
 function pushHistory() {
@@ -566,6 +640,10 @@ function applyLinkSync(sourceEl, targetEl, group) {
     const syncFontSize = sync.fontSize !== undefined ? sync.fontSize : sync.font;
     if (syncFontSize) {
       if (sourceEl.fontSize !== undefined) targetEl.fontSize = sourceEl.fontSize;
+      if (sourceEl.autoSize !== undefined) targetEl.autoSize = sourceEl.autoSize;
+      else delete targetEl.autoSize;
+      if (sourceEl.maxFontSize !== undefined) targetEl.maxFontSize = sourceEl.maxFontSize;
+      else delete targetEl.maxFontSize;
     }
     if (sync.color) {
       if (sourceEl.color !== undefined) targetEl.color = sourceEl.color;
@@ -597,6 +675,8 @@ function applyLinkSync(sourceEl, targetEl, group) {
     if (sync.transform) {
       targetEl.width = sourceEl.width;
       targetEl.height = sourceEl.height;
+      if (sourceEl.lockRatio !== undefined) targetEl.lockRatio = sourceEl.lockRatio;
+      else delete targetEl.lockRatio;
     }
     if (targetEl.type === 'button' && targetEl.autoHug) {
       targetEl.width = measureButtonWidth(targetEl);
@@ -608,6 +688,8 @@ function applyLinkSync(sourceEl, targetEl, group) {
     if (sync.transform) {
       targetEl.width = sourceEl.width;
       targetEl.height = sourceEl.height;
+      if (sourceEl.lockRatio !== undefined) targetEl.lockRatio = sourceEl.lockRatio;
+      else delete targetEl.lockRatio;
     }
     if (sync.rotation) {
       if (sourceEl.rotation !== undefined) targetEl.rotation = sourceEl.rotation;
@@ -628,6 +710,8 @@ function applyLinkSync(sourceEl, targetEl, group) {
     if (sync.transform) {
       targetEl.width = sourceEl.width;
       targetEl.height = sourceEl.height;
+      if (sourceEl.lockRatio !== undefined) targetEl.lockRatio = sourceEl.lockRatio;
+      else delete targetEl.lockRatio;
     }
   }
 
@@ -2070,12 +2154,15 @@ function elementNode(el, canvasCtx) {
     d.style.flexDirection = 'column';
     const vAlignMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
     d.style.justifyContent = vAlignMap[el.verticalAlign || 'top'];
+    
+    const computedFontSize = el.autoSize ? calculateAutoSize(el, dText) : (el.fontSize || 14);
+
     if (editing) {
       const ed = document.createElement('div');
       ed.className = 'editable';
       ed.contentEditable = 'true';
       applyColorToText(ed, dColor);
-      ed.style.fontSize = el.fontSize + 'px';
+      ed.style.fontSize = computedFontSize + 'px';
       ed.style.fontWeight = el.weight;
       ed.style.fontFamily = el.fontFamily || 'Arial';
       ed.style.lineHeight = getResolvedLineHeight(el);
@@ -2100,13 +2187,13 @@ function elementNode(el, canvasCtx) {
       textBlock.style.width = '100%';
       // Prevent the div's strut (inherited body font-size ~16px) from being taller
       // than the actual text content and pushing it downward. Match the span's values.
-      textBlock.style.fontSize = el.fontSize + 'px';
+      textBlock.style.fontSize = computedFontSize + 'px';
       textBlock.style.lineHeight = getResolvedLineHeight(el);
 
       const span = document.createElement(el.htmlTag || 'span');
       span.innerText = dText;
       applyColorToText(span, dColor);
-      span.style.fontSize = el.fontSize + 'px';
+      span.style.fontSize = computedFontSize + 'px';
       span.style.fontWeight = el.weight;
       span.style.fontFamily = el.fontFamily || 'Arial';
       span.style.lineHeight = getResolvedLineHeight(el);
@@ -2330,6 +2417,13 @@ function wireInlineEdit(ed, el, key) {
       el.width = measureButtonWidth(probe);
       const wrapper = ed.closest('.el');
       if (wrapper) wrapper.style.width = el.width + 'px';
+    }
+    if (el.type === 'text' && el.autoSize) {
+      const probe = isDyn ? Object.assign({}, el, { text: ed.innerText }) : el;
+      const size = calculateAutoSize(probe, ed.innerText);
+      ed.style.fontSize = size + 'px';
+      const sizeInput = propsEl.querySelector('[data-k="fontSize"]');
+      if (sizeInput) sizeInput.value = size;
     }
   });
   // don't let mouse-drag inside the editor move the element
@@ -2747,10 +2841,11 @@ function onResizeMouseDown(e, el, corner) {
     let ldx = dx * cos - dy * sin;
     let ldy = dx * sin + dy * cos;
 
-    // Shift = lock aspect ratio. For corners, sync the smaller delta to the
+    // Shift or lockRatio = lock aspect ratio. For corners, sync the smaller delta to the
     // dominant one along the original aspect.
     const aspect = o.h / o.w;
-    if (ev.shiftKey && ['nw', 'ne', 'sw', 'se'].includes(corner) && o.w > 0 && o.h > 0) {
+    const isLocked = ev.shiftKey || el.lockRatio;
+    if (isLocked && ['nw', 'ne', 'sw', 'se'].includes(corner) && o.w > 0 && o.h > 0) {
       const signSame = (corner === 'se' || corner === 'nw') ? 1 : -1;
       if (Math.abs(ldx / o.w) > Math.abs(ldy / o.h)) {
         ldy = signSame * ldx * aspect;
@@ -2768,9 +2863,9 @@ function onResizeMouseDown(e, el, corner) {
     if (corner === 'w') { el.x = o.x + ldx; el.width = Math.max(10, o.w - ldx); }
     if (corner === 'e') { el.width = Math.max(10, o.w + ldx); }
 
-    // Shift on an edge handle: scale the perpendicular axis proportionally,
+    // Shift or lockRatio on an edge handle: scale the perpendicular axis proportionally,
     // anchored at the center of that axis so the box grows symmetrically.
-    if (ev.shiftKey && o.w > 0 && o.h > 0) {
+    if (isLocked && o.w > 0 && o.h > 0) {
       if (corner === 'e' || corner === 'w') {
         const newH = Math.max(10, el.width * aspect);
         el.y = o.y + (o.h - newH) / 2;
@@ -2830,7 +2925,8 @@ function onMultiResizeMouseDown(e, elements, bb, corner) {
     let nbb = { ...obb };
 
     const aspect = obb.h / obb.w;
-    if (ev.shiftKey && ['nw', 'ne', 'sw', 'se'].includes(corner) && obb.w > 0 && obb.h > 0) {
+    const isLocked = ev.shiftKey || elements.some(el => el.lockRatio);
+    if (isLocked && ['nw', 'ne', 'sw', 'se'].includes(corner) && obb.w > 0 && obb.h > 0) {
       const signSame = (corner === 'se' || corner === 'nw') ? 1 : -1;
       if (Math.abs(dx / obb.w) > Math.abs(dy / obb.h)) {
         dy = signSame * dx * aspect;
@@ -2848,7 +2944,7 @@ function onMultiResizeMouseDown(e, elements, bb, corner) {
     if (corner === 'w') { nbb.x = obb.x + dx; nbb.w = Math.max(10, obb.w - dx); }
     if (corner === 'e') { nbb.w = Math.max(10, obb.w + dx); }
 
-    if (ev.shiftKey && obb.w > 0 && obb.h > 0) {
+    if (isLocked && obb.w > 0 && obb.h > 0) {
       if (corner === 'e' || corner === 'w') {
         const newH = Math.max(10, nbb.w * aspect);
         nbb.y = obb.y + (obb.h - newH) / 2;
@@ -4354,8 +4450,8 @@ function renderProps() {
 
   // Hex-copy button helpers — used by every hex color input across the app.
   const HEX_COPY_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-  const hexCopyBtn = (k) => `<button class="hex-copy" data-target-k="${k}" title="Copy hex" tabindex="-1" style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:2px; color:var(--text-muted); display:flex; align-items:center;">${HEX_COPY_SVG}</button>`;
-  const hexInputBox = (key, value, inputId = '') => `<div style="position:relative; flex:1; min-width:0;"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />${hexCopyBtn(key)}</div>`;
+  const hexCopyBtn = (k, disabled = false) => `<button class="hex-copy" data-target-k="${k}" title="Copy hex" tabindex="-1" ${disabled ? 'disabled' : ''} style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:2px; color:var(--text-muted); display:flex; align-items:center;">${HEX_COPY_SVG}</button>`;
+  const hexInputBox = (key, value, inputId = '', disabled = false) => `<div style="position:relative; flex:1; min-width:0;"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" ${disabled ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />${hexCopyBtn(key, disabled)}</div>`;
 
   if (!el) {
     if (!c) { propsEl.innerHTML = '<div class="panel-section"><h3>Properties</h3><div class="prop-empty">No canvas.</div></div>'; return; }
@@ -4518,6 +4614,18 @@ function renderProps() {
   const f = [];
   const num = (key, label, def = '') => `<div class="prop-row"><label>${label}</label><input type="number" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
   const txt = (key, label) => `<div class="prop-row"><label>${label}</label><input type="text" data-k="${key}" value="${(el[key] || '').replace(/"/g, '&quot;')}" /></div>`;
+  const numIcon = (key, svgIcon, tooltip, def = '') => `
+    <div class="prop-row-compact" title="${tooltip}">
+      ${svgIcon}
+      <input type="number" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" />
+    </div>`;
+
+  const xIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m18 8 4 4-4 4M6 8l-4 4 4 4M2 12h20"/></svg>`;
+  const yIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m8 18 4 4 4-4M8 6l4-4 4 4M12 2v20"/></svg>`;
+  const wIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M2 5v14M22 5v14M6 12h12M10 8l-4 4 4 4M14 8l4 4-4 4"/></svg>`;
+  const hIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M5 2h14M5 22h14M12 6v12M8 10l4-4 4 4M8 14l4 4 4-4"/></svg>`;
+  const rIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="16 3 21 8 16 13"/></svg>`;
+
   const col = (key, label) => `
     <div class="prop-row">
       <label>${label}</label>
@@ -4526,18 +4634,21 @@ function renderProps() {
         ${hexInputBox(key, el[key])}
       </div>
     </div>`;
+
   const colOpac = (key, label) => `
-    <div class="prop-row" style="display:flex; gap:10px;">
-      <div style="flex:1; min-width:0;">
-        <label>${label}</label>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <button class="cp-trigger" data-k="${key}" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el[key]) || '#000'}"></button>
-          ${hexInputBox(key, el[key])}
+    <div class="prop-row">
+      <div style="display:flex; align-items:end; gap:8px; width:100%;">
+        <div class="prop-row" style="margin:0; flex:1; min-width:0;">
+          <label>${label}</label>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button class="cp-trigger" data-k="${key}" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el[key]) || '#000'}"></button>
+            ${hexInputBox(key, el[key])}
+          </div>
         </div>
-      </div>
-      <div style="width:78px; flex-shrink:0;">
-        <label>Opacity %</label>
-        <input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
+        <div class="prop-row" style="margin:0; width:78px; flex-shrink:0;">
+          <label>Opacity %</label>
+          <input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
+        </div>
       </div>
     </div>`;
 
@@ -4552,9 +4663,15 @@ function renderProps() {
   const alignElHtml = alignElOptions.map(a => `<button class="align-btn action-el-align" data-align="${a.id}" title="Align ${a.id}">${a.icon}</button>`).join('');
 
   f.push(`<div class="prop-row"><div class="align-group" style="justify-content:space-between; width:100%;">${alignElHtml}</div></div>`);
-  f.push(`<div class="prop-row"><div class="prop-grid-2">${num('x', 'X')}${num('y', 'Y')}</div></div>`);
-  f.push(`<div class="prop-row"><div class="prop-grid-2">${num('width', 'W')}${num('height', 'H')}</div></div>`);
-  f.push(`<div class="prop-row"><div class="prop-grid-2">${num('rotation', 'Rotation', 0)}</div></div>`);
+  f.push(`<div class="prop-row" style="margin-bottom:6px;"><div class="prop-grid-2">${numIcon('x', xIcon, 'X Position')}${numIcon('y', yIcon, 'Y Position')}</div></div>`);
+  f.push(`<div class="prop-row" style="margin-bottom:6px;"><div class="prop-grid-2">${numIcon('width', wIcon, 'Width')}${numIcon('height', hIcon, 'Height')}</div></div>`);
+  f.push(`<div class="prop-row" style="margin-bottom:6px;">
+    <div class="checkbox-row">
+      <input type="checkbox" data-k="lockRatio" ${el.lockRatio ? 'checked' : ''} />
+      <label>Lock Ratio</label>
+    </div>
+  </div>`);
+  f.push(`<div class="prop-row" style="margin-bottom:6px;"><div class="prop-grid-2">${numIcon('rotation', rIcon, 'Rotation', 0)}</div></div>`);
 
   const FONT_OPTIONS = ['Arial', 'Helvetica Neue LT Pro', 'Museo', 'Times New Roman', 'Verdana', 'Tahoma'];
   const fontWeights = {
@@ -4566,23 +4683,44 @@ function renderProps() {
   if (el.type === 'text') {
     f.push(`<div class="prop-row"><label>Text</label><textarea data-k="text" rows="2">${el.text}</textarea></div>`);
 
+    // Resolve computed size for display
+    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+    const dText = _dm.text !== undefined ? _dm.text : el.text;
+    const computedFontSize = el.autoSize ? calculateAutoSize(el, dText) : (el.fontSize || 14);
 
+    // Line 1: Font and Weight
+    f.push(`<div class="prop-row">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+        <div class="prop-row" style="margin:0"><label>Font</label>
+          <select data-k="fontFamily">
+            ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
+          </select>
+        </div>
+        <div class="prop-row" style="margin:0"><label>Weight</label>
+          <select data-k="weight">
+            ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${w === el.weight ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>`);
 
-    f.push(`<div class="prop-row"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
-      <div class="prop-row" style="margin:0"><label>Font</label>
-        <select data-k="fontFamily">
-          ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
-        </select>
+    // Line 2: Size & Auto & Max size
+    f.push(`<div class="prop-row">
+      <div style="display:flex; align-items:end; gap:8px; width:100%;">
+        <div class="prop-row" style="margin:0; flex:1;">
+          <label>Size</label>
+          <input type="number" data-k="fontSize" value="${computedFontSize}" ${el.autoSize ? 'disabled' : ''} style="width:100%;" />
+        </div>
+        <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
+          <input type="checkbox" data-k="autoSize" ${el.autoSize ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
+          <span>Auto</span>
+        </div>
+        <div class="prop-row" style="margin:0; flex:1;">
+          <label>Max size</label>
+          <input type="number" data-k="maxFontSize" value="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" ${!el.autoSize ? 'disabled' : ''} style="width:100%;" />
+        </div>
       </div>
-      <div class="prop-row" style="margin:0"><label>Weight</label>
-        <select data-k="weight">
-          ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${w === el.weight ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
-        </select>
-      </div>
-      <div class="prop-row" style="margin:0"><label>Size</label>
-        <input type="number" data-k="fontSize" value="${el.fontSize}" />
-      </div>
-    </div></div>`);
+    </div>`);
 
     f.push(colOpac('color', 'Color'));
 
@@ -4604,30 +4742,33 @@ function renderProps() {
           </div>
         </div>`);
 
-    // Text background — checkbox toggles a sub-panel of color/opacity/padding/coverage.
-    f.push(`<div class="prop-row"><div class="checkbox-row"><input type="checkbox" data-k="hasBg" ${el.hasBg ? 'checked' : ''}/><label>Background</label></div></div>`);
-    if (el.hasBg) {
-      // BG color column shrunk so "Opacity %" label fits on one line without wrapping.
-      f.push(`<div class="prop-row" style="display:flex; gap:10px;">
-            <div style="flex:1; min-width:0;">
-              <label>BG Color</label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <button class="cp-trigger" data-k="bg" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el.bg || '#000000') || '#000'}"></button>
-                ${hexInputBox('bg', el.bg || '#000000')}
-              </div>
-            </div>
-            <div style="width:78px; flex-shrink:0;">
-              <label>Opacity %</label>
-              <input type="number" data-k="bgOpacity" value="${el.bgOpacity !== undefined ? el.bgOpacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
-            </div>
-          </div>`);
-      // L/R pad, T/B pad, Coverage — three compact columns on a single row.
-      f.push(`<div class="prop-row" style="display:flex; gap:6px;">
-            <div style="flex:1; min-width:0;"><label>L/R Pad</label><input type="number" data-k="bgPadL" value="${el.bgPadL !== undefined ? el.bgPadL : 8}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
-            <div style="flex:1; min-width:0;"><label>T/B Pad</label><input type="number" data-k="bgPadV" value="${el.bgPadV !== undefined ? el.bgPadV : 4}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
-            <div style="flex:1; min-width:0;"><label>Cover %</label><input type="number" data-k="bgCoverage" value="${el.bgCoverage !== undefined ? el.bgCoverage : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
-          </div>`);
-    }
+    // Text background — color, toggle (BG), and opacity on one line.
+    f.push(`<div class="prop-row">
+      <div style="display:flex; align-items:end; gap:8px; width:100%;">
+        <div class="prop-row" style="margin:0; flex:1; min-width:0;">
+          <label>BG Color</label>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button class="cp-trigger" data-k="bg" ${!el.hasBg ? 'disabled' : ''} style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el.bg || '#000000') || '#000'}"></button>
+            ${hexInputBox('bg', el.bg || '#000000', '', !el.hasBg)}
+          </div>
+        </div>
+        <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
+          <input type="checkbox" data-k="hasBg" ${el.hasBg ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
+          <span>BG</span>
+        </div>
+        <div class="prop-row" style="margin:0; width:78px; flex-shrink:0;">
+          <label>Opacity %</label>
+          <input type="number" data-k="bgOpacity" value="${el.bgOpacity !== undefined ? el.bgOpacity : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
+        </div>
+      </div>
+    </div>`);
+
+    // L/R pad, T/B pad, Coverage — three compact columns on a single row.
+    f.push(`<div class="prop-row" style="display:flex; gap:6px;">
+      <div style="flex:1; min-width:0;"><label>L/R Pad</label><input type="number" data-k="bgPadL" value="${el.bgPadL !== undefined ? el.bgPadL : 8}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+      <div style="flex:1; min-width:0;"><label>T/B Pad</label><input type="number" data-k="bgPadV" value="${el.bgPadV !== undefined ? el.bgPadV : 4}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+      <div style="flex:1; min-width:0;"><label>Cover %</label><input type="number" data-k="bgCoverage" value="${el.bgCoverage !== undefined ? el.bgCoverage : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+    </div>`);
   }
 
   if (el.type === 'text' || el.type === 'button') {
@@ -4699,7 +4840,7 @@ function renderProps() {
         <input type="number" data-k="fontSize" value="${el.fontSize}" />
       </div>
     </div></div>`);
-    f.push(colOpac('bg', 'Background'));
+    f.push(colOpac('bg', 'BG'));
     f.push(col('color', 'Text color'));
     // Radius + Padding L/R share a row.
     f.push(`<div class="prop-row" style="display:flex; gap:6px;">
@@ -4897,21 +5038,63 @@ function renderProps() {
     if (state.layerSelection && state.layerSelection.length > 1 && c) {
       c.elements.filter(e => state.layerSelection.includes(e.id)).forEach(selEl => {
         if (k === 'text' && selEl.id !== el.id) return; // Don't copy specific text content across elements
-        if (['fontFamily', 'fontSize', 'weight', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'verticalAlign'].includes(k) && selEl.type !== 'text' && selEl.type !== 'button') return;
-        if (val === undefined) {
-          delete selEl[k];
+        if (['fontFamily', 'fontSize', 'weight', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'verticalAlign', 'autoSize', 'maxFontSize'].includes(k) && selEl.type !== 'text' && selEl.type !== 'button') return;
+        
+        if (k === 'width' && selEl.lockRatio && val !== undefined) {
+          const prevW = selEl.width || 0;
+          const prevH = selEl.height || 0;
+          if (prevW > 0 && prevH > 0) {
+            selEl.width = val;
+            selEl.height = Math.round(val * (prevH / prevW));
+          } else {
+            selEl.width = val;
+          }
+        } else if (k === 'height' && selEl.lockRatio && val !== undefined) {
+          const prevW = selEl.width || 0;
+          const prevH = selEl.height || 0;
+          if (prevW > 0 && prevH > 0) {
+            selEl.height = val;
+            selEl.width = Math.round(val * (prevW / prevH));
+          } else {
+            selEl.height = val;
+          }
         } else {
-          selEl[k] = val;
+          if (val === undefined) {
+            delete selEl[k];
+          } else {
+            selEl[k] = val;
+          }
         }
+        
         if (selEl.type === 'button' && selEl.autoHug) {
           selEl.width = measureButtonWidth(selEl);
         }
       });
     } else {
-      if (val === undefined) {
-        delete el[k];
+      if (k === 'width' && el.lockRatio && val !== undefined) {
+        const prevW = el.width || 0;
+        const prevH = el.height || 0;
+        if (prevW > 0 && prevH > 0) {
+          el.width = val;
+          el.height = Math.round(val * (prevH / prevW));
+        } else {
+          el.width = val;
+        }
+      } else if (k === 'height' && el.lockRatio && val !== undefined) {
+        const prevW = el.width || 0;
+        const prevH = el.height || 0;
+        if (prevW > 0 && prevH > 0) {
+          el.height = val;
+          el.width = Math.round(val * (prevW / prevH));
+        } else {
+          el.height = val;
+        }
       } else {
-        el[k] = val;
+        if (val === undefined) {
+          delete el[k];
+        } else {
+          el[k] = val;
+        }
       }
       if (el.type === 'button' && el.autoHug) {
         el.width = measureButtonWidth(el);
@@ -4925,6 +5108,16 @@ function renderProps() {
     const min = inp.min !== '' ? Number(inp.min) : -Infinity;
     const max = inp.max !== '' ? Number(inp.max) : Infinity;
     return Math.min(max, Math.max(min, n));
+  };
+
+  const syncLockRatio = (changedKey) => {
+    if (!el.lockRatio) return;
+    const sibKey = changedKey === 'width' ? 'height' : changedKey === 'height' ? 'width' : null;
+    if (!sibKey) return;
+    const sibInp = propsEl.querySelector(`[data-k="${sibKey}"]`);
+    if (sibInp && document.activeElement !== sibInp) {
+      sibInp.value = el[sibKey] !== undefined ? el[sibKey] : '';
+    }
   };
 
   propsEl.querySelectorAll('input, select, textarea').forEach((inp) => {
@@ -4942,6 +5135,7 @@ function renderProps() {
         if (!val.startsWith('#') && val.length > 0 && !val.includes('gradient')) val = '#' + val;
       }
       updateProp(inp.dataset.k, val);
+      syncLockRatio(inp.dataset.k);
       propsEl.querySelectorAll(`[data-k="${inp.dataset.k}"]`).forEach(otherInp => {
         if (otherInp !== inp) {
           if (otherInp.classList.contains('cp-trigger')) {
@@ -4959,7 +5153,7 @@ function renderProps() {
     });
     inp.addEventListener('change', () => {
       pushHistory();
-      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'lineHeightAuto') renderProps();
+      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio') renderProps();
     });
     if (inp.type === 'number') {
       inp.addEventListener('wheel', (e) => {
@@ -4975,6 +5169,7 @@ function renderProps() {
         const rounded = decimals ? parseFloat(next.toFixed(decimals)) : next;
         inp.value = clampNum(inp, rounded);
         updateProp(inp.dataset.k, Number(inp.value));
+        syncLockRatio(inp.dataset.k);
         clearTimeout(inp.wheelHistTimer);
         inp.wheelHistTimer = setTimeout(() => pushHistory(), 400);
       });
@@ -6286,13 +6481,19 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         }
       }
       const resolvedLH = getResolvedLineHeight(el);
+      const autoAttrs = el.autoSize
+        ? ` class="auto-size-text" data-max-size="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" data-width="${el.width}" data-height="${el.height}"`
+        : '';
+      const blockClass = el.autoSize ? ' class="auto-size-block"' : '';
+      const spanClass = el.autoSize ? ' class="auto-size-span"' : '';
+
       const innerSpan = el.hasBg
-        ? `<span${bgDataAttrs} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:break-word;${bgStyle}">${content}</span>`
-        : `<span style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:break-word;">${content}</span>`;
+        ? `<span${bgDataAttrs}${spanClass} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:break-word;${bgStyle}">${content}</span>`
+        : `<span${spanClass} style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:break-word;">${content}</span>`;
       // font-size + line-height on the wrapper div eliminates the inherited body strut
       // (browser default ~16px * normal) which would push small-font text downward.
-      const inner = `<div style="text-align:${ta};width:100%;font-size:${el.fontSize}px;line-height:${resolvedLH};">${innerSpan}</div>`;
-      return `    <div style="${wrapStyle}">${openDivs}<div style="display:flex;flex-direction:column;justify-content:${jc};width:100%;height:100%;">${inner}</div>${closeDivs}</div>`;
+      const inner = `<div${blockClass} style="text-align:${ta};width:100%;font-size:${el.fontSize}px;line-height:${resolvedLH};">${innerSpan}</div>`;
+      return `    <div style="${wrapStyle}"${autoAttrs}>${openDivs}<div style="display:flex;flex-direction:column;justify-content:${jc};width:100%;height:100%;">${inner}</div>${closeDivs}</div>`;
     }
     if (el.type === 'rect') {
       return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
@@ -6515,7 +6716,80 @@ ${elsTop}
     
     ${setupTextLineBgs.toString()}
 
+    function adjustAutoSizes() {
+      document.querySelectorAll('.auto-size-text').forEach(function(wrapper) {
+        var maxFontSize = parseFloat(wrapper.getAttribute('data-max-size')) || 72;
+        var targetWidth = parseFloat(wrapper.getAttribute('data-width')) || wrapper.offsetWidth;
+        var targetHeight = parseFloat(wrapper.getAttribute('data-height')) || wrapper.offsetHeight;
+        
+        var block = wrapper.querySelector('.auto-size-block');
+        var span = wrapper.querySelector('.auto-size-span');
+        if (!block || !span) return;
+        
+        var hiddenAncestors = [];
+        var parent = wrapper.parentElement;
+        while (parent && parent !== document.body) {
+          var display = window.getComputedStyle(parent).display;
+          if (display === 'none') {
+            hiddenAncestors.push({
+              element: parent,
+              prevDisplay: parent.style.display,
+              prevVisibility: parent.style.visibility,
+              prevPosition: parent.style.position
+            });
+            parent.style.setProperty('display', 'block', 'important');
+            parent.style.setProperty('visibility', 'hidden', 'important');
+            parent.style.setProperty('position', 'absolute', 'important');
+          }
+          parent = parent.parentElement;
+        }
+        
+        var low = 4;
+        var high = maxFontSize;
+        var best = low;
+        
+        while (low <= high) {
+          var mid = Math.floor((low + high) / 2);
+          block.style.fontSize = mid + 'px';
+          span.style.fontSize = mid + 'px';
+          
+          var rect = block.getBoundingClientRect();
+          var fitsHeight = rect.height <= targetHeight;
+          var fitsWidth = block.scrollWidth <= targetWidth;
+          
+          if (fitsHeight && fitsWidth) {
+            best = mid;
+            low = mid + 1;
+          } else {
+            high = mid - 1;
+          }
+        }
+        
+        block.style.fontSize = best + 'px';
+        span.style.fontSize = best + 'px';
+        
+        hiddenAncestors.forEach(function(item) {
+          if (item.prevDisplay) {
+            item.element.style.display = item.prevDisplay;
+          } else {
+            item.element.style.removeProperty('display');
+          }
+          if (item.prevVisibility) {
+            item.element.style.visibility = item.prevVisibility;
+          } else {
+            item.element.style.removeProperty('visibility');
+          }
+          if (item.prevPosition) {
+            item.element.style.position = item.prevPosition;
+          } else {
+            item.element.style.removeProperty('position');
+          }
+        });
+      });
+    }
+
     window.addEventListener('load', function () {
+      adjustAutoSizes();
       if (frames.length > 1) {
         setTimeout(nextFrame, frames[0].duration * 1000);
       }

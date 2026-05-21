@@ -1532,6 +1532,51 @@ body.theme-navy {
 
     }
 
+    .prop-row-compact {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      padding: 2px 6px;
+      transition: border-color 0.15s ease-in-out;
+      box-sizing: border-box;
+      height: 24px;
+    }
+
+    .prop-row-compact:focus-within {
+      border-color: var(--accent-base);
+    }
+
+    .prop-row-compact input[type="number"] {
+      border: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      outline: none !important;
+      width: 100% !important;
+      color: var(--text-main) !important;
+      font-size: 11px !important;
+      margin: 0 !important;
+      height: 100% !important;
+    }
+
+    .prop-row-compact svg {
+      color: var(--text-muted);
+      transition: color 0.15s ease-in-out;
+      flex-shrink: 0;
+    }
+
+    .prop-row-compact:focus-within svg {
+      color: var(--text-bright);
+    }
+
+    .cp-trigger:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+
 
 
     .prop-empty {
