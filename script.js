@@ -393,13 +393,29 @@ function setSaveStatus(status) {
   const el = document.getElementById('save-status');
   if (!el) return;
   const map = {
-    saved:   { text: 'All changes saved', dot: 'var(--accent-light)', color: 'var(--text-muted)' },
-    unsaved: { text: 'Unsaved changes',   dot: '#eab308',             color: 'var(--text-label)' },
-    saving:  { text: 'Saving…',           dot: '#38bdf8',             color: 'var(--text-label)' },
-    error:   { text: 'Auto-save failed',  dot: '#ef4444',             color: '#ef4444' },
+    saved: {
+      text: 'All changes saved',
+      color: 'var(--text-muted)',
+      icon: `<svg class="save-icon saved" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="margin-right: 6px; flex-shrink: 0; animation: save-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);"><path d="M20 6 9 17l-5-5"/></svg>`
+    },
+    unsaved: {
+      text: 'Unsaved changes',
+      color: 'var(--text-label)',
+      icon: `<svg class="save-icon unsaved" viewBox="0 0 24 24" width="13" height="13" style="margin-right: 6px; flex-shrink: 0; display: inline-block; vertical-align: middle;"><circle cx="12" cy="12" r="4" fill="#f59e0b" style="animation: save-dot-pulse 1.5s ease-in-out infinite; transform-origin: center;" /><circle cx="12" cy="12" r="9" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="4 3" style="animation: save-spin 10s linear infinite; transform-origin: center;" /></svg>`
+    },
+    saving: {
+      text: 'Saving…',
+      color: 'var(--text-label)',
+      icon: `<svg class="save-icon saving" viewBox="0 0 24 24" width="13" height="13" style="margin-right: 6px; flex-shrink: 0; display: inline-block; vertical-align: middle;"><circle cx="12" cy="12" r="9" stroke="rgba(56, 189, 248, 0.2)" stroke-width="2" fill="none" /><circle cx="12" cy="12" r="9" stroke="#38bdf8" stroke-width="2" fill="none" stroke-linecap="round" stroke-dasharray="28 28" style="animation: save-spin 0.8s linear infinite; transform-origin: center;" /></svg>`
+    },
+    error: {
+      text: 'Auto-save failed',
+      color: '#ef4444',
+      icon: `<svg class="save-icon error" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="margin-right: 6px; flex-shrink: 0; animation: save-shake 0.4s ease;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
+    }
   };
   const m = map[status] || map.saved;
-  el.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${m.dot};margin-right:6px;vertical-align:middle;"></span>${m.text}`;
+  el.innerHTML = `${m.icon}${m.text}`;
   el.style.color = m.color;
 }
 
@@ -540,6 +556,7 @@ function autoLinkElements() {
           defaultSync.text = true;
           defaultSync.font = true;
           defaultSync.color = true;
+          defaultSync.background = true;
           defaultSync.opacity = true;
           defaultSync.inAnim = true;
           defaultSync.effect = true;
@@ -648,7 +665,9 @@ function applyLinkSync(sourceEl, targetEl, group) {
     if (sync.color) {
       if (sourceEl.color !== undefined) targetEl.color = sourceEl.color;
       else delete targetEl.color;
-      
+    }
+    const syncBackground = sync.background !== undefined ? sync.background : sync.color;
+    if (syncBackground) {
       const bgProps = ['bg', 'hasBg', 'textBgColor', 'animateBg', 'timeOffset'];
       bgProps.forEach(p => {
         if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
@@ -677,6 +696,10 @@ function applyLinkSync(sourceEl, targetEl, group) {
       targetEl.height = sourceEl.height;
       if (sourceEl.lockRatio !== undefined) targetEl.lockRatio = sourceEl.lockRatio;
       else delete targetEl.lockRatio;
+      if (sourceEl.aspectRatio !== undefined) targetEl.aspectRatio = sourceEl.aspectRatio;
+      else delete targetEl.aspectRatio;
+      if (sourceEl.autoHug !== undefined) targetEl.autoHug = sourceEl.autoHug;
+      else delete targetEl.autoHug;
     }
     if (targetEl.type === 'button' && targetEl.autoHug) {
       targetEl.width = measureButtonWidth(targetEl);
@@ -690,6 +713,8 @@ function applyLinkSync(sourceEl, targetEl, group) {
       targetEl.height = sourceEl.height;
       if (sourceEl.lockRatio !== undefined) targetEl.lockRatio = sourceEl.lockRatio;
       else delete targetEl.lockRatio;
+      if (sourceEl.aspectRatio !== undefined) targetEl.aspectRatio = sourceEl.aspectRatio;
+      else delete targetEl.aspectRatio;
     }
     if (sync.rotation) {
       if (sourceEl.rotation !== undefined) targetEl.rotation = sourceEl.rotation;
@@ -712,6 +737,8 @@ function applyLinkSync(sourceEl, targetEl, group) {
       targetEl.height = sourceEl.height;
       if (sourceEl.lockRatio !== undefined) targetEl.lockRatio = sourceEl.lockRatio;
       else delete targetEl.lockRatio;
+      if (sourceEl.aspectRatio !== undefined) targetEl.aspectRatio = sourceEl.aspectRatio;
+      else delete targetEl.aspectRatio;
     }
   }
 
@@ -763,6 +790,7 @@ function createAndLinkGroup(name) {
     defaultSync.text = true;
     defaultSync.font = true;
     defaultSync.color = true;
+    defaultSync.background = true;
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
     defaultSync.effect = true;
@@ -874,6 +902,7 @@ function autoAddAndLink(srcEl) {
       defaultSync.text = true;
       defaultSync.font = true;
       defaultSync.color = true;
+      defaultSync.background = true;
       defaultSync.opacity = true;
       defaultSync.inAnim = true;
       defaultSync.effect = true;
@@ -2877,7 +2906,7 @@ function onResizeMouseDown(e, el, corner) {
       }
     }
 
-    if (el.type === 'button' && el.autoHug && Math.abs(ldx) > 2) {
+    if (el.type === 'button' && el.autoHug && (Math.abs(ldx) > 2 || Math.abs(ldy) > 2)) {
       el.autoHug = false;
     }
 
@@ -2966,6 +2995,9 @@ function onMultiResizeMouseDown(e, elements, bb, corner) {
       el.width = Math.round(Math.max(2, o.w * scaleX));
       el.height = Math.round(Math.max(2, o.h * scaleY));
       if (o.fs) el.fontSize = Math.max(8, Math.round(o.fs * Math.min(scaleX, scaleY)));
+      if (el.type === 'button' && el.autoHug && (Math.abs(el.width - o.w) > 2 || Math.abs(el.height - o.h) > 2)) {
+        el.autoHug = false;
+      }
     });
     render(true);
   };
@@ -3712,6 +3744,7 @@ function renderLinkControl() {
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} /> Font settings</label>
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fontSize" ${(sync.fontSize !== undefined ? sync.fontSize : sync.font) ? 'checked' : ''} /> Font size</label>
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} /> Colors</label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="background" ${(sync.background !== undefined ? sync.background : sync.color) ? 'checked' : ''} /> Background</label>
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
@@ -3834,7 +3867,7 @@ function renderLinkControl() {
           
           const cat = group.category;
           let keys = [];
-          if (cat === 'text') keys = ['text', 'font', 'fontSize', 'color', 'opacity', 'inAnim', 'effect'];
+          if (cat === 'text') keys = ['text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'button') keys = ['text', 'textColor', 'fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'image') keys = ['image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
           else if (cat === 'shape') keys = ['fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
@@ -4457,8 +4490,13 @@ function renderProps() {
     if (!c) { propsEl.innerHTML = '<div class="panel-section"><h3>Properties</h3><div class="prop-empty">No canvas.</div></div>'; return; }
     // show canvas properties when no element is selected
     propsEl.innerHTML = `
-      <div class="panel-section">
-        <h3>Canvas Settings</h3>
+      <div class="panel-section" id="panel-section-canvas-settings">
+        <h3 class="panel-header-collapsible" id="header-canvas-settings" style="cursor: pointer; user-select: none;">
+          <span>Canvas Settings</span>
+          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </h3>
         <div class="prop-row">
           <label>Dimensions</label>
           <div class="prop-grid-2">
@@ -4608,6 +4646,7 @@ function renderProps() {
     if (typeof syncColorPickerWithSelection === 'function') {
       syncColorPickerWithSelection(null, c);
     }
+    initCollapsiblePanels();
     return;
   }
 
@@ -4624,7 +4663,7 @@ function renderProps() {
   const yIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m8 18 4 4 4-4M8 6l4-4 4 4M12 2v20"/></svg>`;
   const wIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M2 5v14M22 5v14M6 12h12M10 8l-4 4 4 4M14 8l4 4-4 4"/></svg>`;
   const hIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M5 2h14M5 22h14M12 6v12M8 10l4-4 4 4M8 14l4 4 4-4"/></svg>`;
-  const rIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="16 3 21 8 16 13"/></svg>`;
+  const rIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M18 18H6L16 8"/><path d="M13 18a7 7 0 0 0-2-5"/></svg>`;
 
   const col = (key, label) => `
     <div class="prop-row">
@@ -4666,12 +4705,14 @@ function renderProps() {
   f.push(`<div class="prop-row" style="margin-bottom:6px;"><div class="prop-grid-2">${numIcon('x', xIcon, 'X Position')}${numIcon('y', yIcon, 'Y Position')}</div></div>`);
   f.push(`<div class="prop-row" style="margin-bottom:6px;"><div class="prop-grid-2">${numIcon('width', wIcon, 'Width')}${numIcon('height', hIcon, 'Height')}</div></div>`);
   f.push(`<div class="prop-row" style="margin-bottom:6px;">
-    <div class="checkbox-row">
-      <input type="checkbox" data-k="lockRatio" ${el.lockRatio ? 'checked' : ''} />
-      <label>Lock Ratio</label>
+    <div class="prop-grid-2">
+      ${numIcon('rotation', rIcon, 'Rotation', 0)}
+      <div class="checkbox-row" style="height:24px; align-items:center;">
+        <input type="checkbox" data-k="lockRatio" ${el.lockRatio ? 'checked' : ''} />
+        <label>Lock Ratio</label>
+      </div>
     </div>
   </div>`);
-  f.push(`<div class="prop-row" style="margin-bottom:6px;"><div class="prop-grid-2">${numIcon('rotation', rIcon, 'Rotation', 0)}</div></div>`);
 
   const FONT_OPTIONS = ['Arial', 'Helvetica Neue LT Pro', 'Museo', 'Times New Roman', 'Verdana', 'Tahoma'];
   const fontWeights = {
@@ -4879,7 +4920,13 @@ function renderProps() {
 
   // Animation section
   f.push(`</div>`); // end of properties section
-  f.push(`<div class="panel-section"><h3>Animation</h3>`);
+  f.push(`<div class="panel-section" id="panel-section-animation">
+    <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none;">
+      <span>Animation</span>
+      <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    </h3>`);
   f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>IN TRANSITIONS</label></div>`);
 
   const animOptions = [
@@ -5008,7 +5055,13 @@ function renderProps() {
   if (typeof dmFieldsForType === 'function') {
     const dmFields = dmFieldsForType(el.type);
     if (dmFields.length) {
-      f.push(`<div class="panel-section"><h3>Dynamic Data</h3>`);
+      f.push(`<div class="panel-section" id="panel-section-dynamic-data">
+        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none;">
+          <span>Dynamic Data</span>
+          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </h3>`);
       f.push(`<div class="prop-row" style="font-size:10px;color:var(--text-muted);margin:-2px 0 8px;line-height:1.4;">Mark fields that vary per version. Bind them to a sheet column in <b>Data &amp; Versions</b>.</div>`);
       dmFields.forEach(field => {
         const on = !!(el.dynamic && el.dynamic[field]);
@@ -5022,7 +5075,15 @@ function renderProps() {
     }
   }
 
-  propsEl.innerHTML = `<div class="panel-section"><h3>Properties</h3>${f.join('')}`;
+  propsEl.innerHTML = `
+    <div class="panel-section" id="panel-section-properties">
+      <h3 class="panel-header-collapsible" id="header-properties" style="cursor: pointer; user-select: none;">
+        <span>Properties</span>
+        <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </h3>
+      ${f.join('')}`;
 
   const updateProp = (k, val) => {
     if (!k) return;
@@ -5040,23 +5101,39 @@ function renderProps() {
         if (k === 'text' && selEl.id !== el.id) return; // Don't copy specific text content across elements
         if (['fontFamily', 'fontSize', 'weight', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'verticalAlign', 'autoSize', 'maxFontSize'].includes(k) && selEl.type !== 'text' && selEl.type !== 'button') return;
         
-        if (k === 'width' && selEl.lockRatio && val !== undefined) {
-          const prevW = selEl.width || 0;
-          const prevH = selEl.height || 0;
-          if (prevW > 0 && prevH > 0) {
-            selEl.width = val;
-            selEl.height = Math.round(val * (prevH / prevW));
+        if ((k === 'width' || k === 'height') && selEl.type === 'button') {
+          selEl.autoHug = false;
+        }
+
+        if (k === 'lockRatio') {
+          if (val) {
+            selEl.aspectRatio = (selEl.width && selEl.height) ? (selEl.width / selEl.height) : 1;
           } else {
-            selEl.width = val;
+            delete selEl.aspectRatio;
           }
-        } else if (k === 'height' && selEl.lockRatio && val !== undefined) {
-          const prevW = selEl.width || 0;
-          const prevH = selEl.height || 0;
-          if (prevW > 0 && prevH > 0) {
-            selEl.height = val;
-            selEl.width = Math.round(val * (prevW / prevH));
+        }
+
+        if (k === 'width' && selEl.lockRatio) {
+          if (val === undefined || val === '') {
+            delete selEl.width;
+            delete selEl.height;
           } else {
+            if (!selEl.aspectRatio) {
+              selEl.aspectRatio = (selEl.width && selEl.height) ? (selEl.width / selEl.height) : 1;
+            }
+            selEl.width = val;
+            selEl.height = Math.max(1, Math.round(val / selEl.aspectRatio));
+          }
+        } else if (k === 'height' && selEl.lockRatio) {
+          if (val === undefined || val === '') {
+            delete selEl.width;
+            delete selEl.height;
+          } else {
+            if (!selEl.aspectRatio) {
+              selEl.aspectRatio = (selEl.width && selEl.height) ? (selEl.width / selEl.height) : 1;
+            }
             selEl.height = val;
+            selEl.width = Math.max(1, Math.round(val * selEl.aspectRatio));
           }
         } else {
           if (val === undefined) {
@@ -5071,23 +5148,39 @@ function renderProps() {
         }
       });
     } else {
-      if (k === 'width' && el.lockRatio && val !== undefined) {
-        const prevW = el.width || 0;
-        const prevH = el.height || 0;
-        if (prevW > 0 && prevH > 0) {
-          el.width = val;
-          el.height = Math.round(val * (prevH / prevW));
+      if ((k === 'width' || k === 'height') && el.type === 'button') {
+        el.autoHug = false;
+      }
+
+      if (k === 'lockRatio') {
+        if (val) {
+          el.aspectRatio = (el.width && el.height) ? (el.width / el.height) : 1;
         } else {
-          el.width = val;
+          delete el.aspectRatio;
         }
-      } else if (k === 'height' && el.lockRatio && val !== undefined) {
-        const prevW = el.width || 0;
-        const prevH = el.height || 0;
-        if (prevW > 0 && prevH > 0) {
-          el.height = val;
-          el.width = Math.round(val * (prevW / prevH));
+      }
+
+      if (k === 'width' && el.lockRatio) {
+        if (val === undefined || val === '') {
+          delete el.width;
+          delete el.height;
         } else {
+          if (!el.aspectRatio) {
+            el.aspectRatio = (el.width && el.height) ? (el.width / el.height) : 1;
+          }
+          el.width = val;
+          el.height = Math.max(1, Math.round(val / el.aspectRatio));
+        }
+      } else if (k === 'height' && el.lockRatio) {
+        if (val === undefined || val === '') {
+          delete el.width;
+          delete el.height;
+        } else {
+          if (!el.aspectRatio) {
+            el.aspectRatio = (el.width && el.height) ? (el.width / el.height) : 1;
+          }
           el.height = val;
+          el.width = Math.max(1, Math.round(val * el.aspectRatio));
         }
       } else {
         if (val === undefined) {
@@ -5099,6 +5192,10 @@ function renderProps() {
       if (el.type === 'button' && el.autoHug) {
         el.width = measureButtonWidth(el);
       }
+    }
+    if ((k === 'width' || k === 'height') && (el.type === 'button' || (state.layerSelection && state.layerSelection.length > 1 && c && c.elements.filter(e => state.layerSelection.includes(e.id)).some(selEl => selEl.type === 'button')))) {
+      const autoHugInp = propsEl.querySelector('input[data-k="autoHug"]');
+      if (autoHugInp) autoHugInp.checked = false;
     }
     render(true);
   };
@@ -5455,6 +5552,7 @@ function renderProps() {
   if (typeof syncColorPickerWithSelection === 'function') {
     syncColorPickerWithSelection(el, null);
   }
+  initCollapsiblePanels();
 }
 
 // ============================================================================
@@ -5844,6 +5942,9 @@ canvasArea.addEventListener('drop', async (e) => {
 // Keyboard shortcuts
 // ============================================================================
 window.addEventListener('keydown', (e) => {
+  if (e.key === 'Alt') {
+    e.preventDefault();
+  }
   // never intercept while typing in an input/textarea
   const t = e.target;
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
@@ -6178,6 +6279,9 @@ window.addEventListener('paste', (e) => {
 });
 
 document.addEventListener('keyup', (e) => {
+  if (e.key === 'Alt') {
+    e.preventDefault();
+  }
   if (e.code === 'Space') {
     isSpaceDown = false;
     isPanning = false;
@@ -6885,7 +6989,7 @@ function detectElementRole(el, canvas) {
 function syncDefaultsForRole(role, cat) {
   // Baseline: content + appearance; keep layout (transform) and font-size independent.
   const s = { opacity: true, inAnim: true, effect: true, transform: false };
-  if (cat === 'text') { s.text = true; s.font = true; s.fontSize = false; s.color = true; }
+  if (cat === 'text') { s.text = true; s.font = true; s.fontSize = false; s.color = true; s.background = true; }
   else if (cat === 'button') { s.text = true; s.textColor = true; s.fill = true; s.stroke = true; }
   else if (cat === 'image') { s.image = true; s.rotation = true; }
   else if (cat === 'shape') { s.fill = true; s.stroke = true; }
@@ -7912,8 +8016,8 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
         <p>Link Groups are the engine behind the multi-canvas workflow, binding sibling elements across canvases.</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
           <li style="margin-bottom:8px;"><b>Auto-Link:</b> Click <b>Auto-Link</b> in the sidebar to scan all canvases and group matching elements by layer name and type. Toggle <b>Selected only</b> to match against just the currently selected layer.</li>
-          <li style="margin-bottom:8px;"><b>Manual Linking:</b> Right-click an element → <b>Link Group</b> to join an existing group (the "Linked to…" entries at the top show current membership), or create a new group from the Link panel.</li>
-          <li style="margin-bottom:8px;"><b>Sync Properties:</b> Define exactly which properties sync within a group — <i>Text content</i>, <i>Font settings</i> (family/weight/spacing/alignment), the new standalone <i>Font size</i>, <i>Colors &amp; Fill</i>, <i>Stroke</i>, <i>Transform (Width/Height)</i>, <i>Opacity</i>, <i>IN Animations</i>, and <i>Effects</i>. Splitting Font size from Font settings lets you keep one typeface across canvases while each size keeps its own scale.</li>
+          <li style="margin-bottom:8px;"><b>Manual Linking:</b> Right-click an element → <b>Link Group</b> to join an existing group (which lists existing groups as "Linked to: [Name]" if the element is already part of the group, or "Link to: [Name]" otherwise), or create a new group from the Link panel.</li>
+          <li style="margin-bottom:8px;"><b>Sync Properties:</b> Define exactly which properties sync within a group — <i>Text content</i>, <i>Font settings</i> (family/weight/spacing/alignment), the standalone <i>Font size</i>, <i>Colors</i> (text color), <i>Background</i> (text background color &amp; settings), <i>Colors &amp; Fill</i>, <i>Stroke</i>, <i>Transform (Width/Height)</i>, <i>Opacity</i>, <i>IN Animations</i>, and <i>Effects</i>. Splitting Font size from Font settings lets you keep one typeface across canvases while each size keeps its own scale.</li>
           <li style="margin-bottom:8px;"><b>Live-Link Mode (Real-time Sync):</b> Toggle the lightning-bolt icon in the Link Groups panel (or the <b>Live-link mode</b> checkbox under Sync Properties). When active, any edit — moving, resizing, editing text, changing colour — propagates to all siblings instantly.</li>
           <li style="margin-bottom:8px;"><b>Manual Push:</b> With Live-link off, broadcast changes on demand via <b>Push changes to group</b> in the context menu or the side-panel button.</li>
         </ul>
@@ -8950,7 +9054,9 @@ document.addEventListener('contextmenu', (e) => {
       const groups = Object.values(state.linkGroups || {}).filter(g => g.category === cat);
       if (groups.length > 0) {
         groups.forEach(g => {
-          html += `<div class="ctx-item ctx-link-to-existing" data-group-id="${g.id}" style="white-space:nowrap;">Linked to: ${g.name}</div>`;
+          const isMember = linkedEl.some(x => x.linkGroupId === g.id);
+          const prefix = isMember ? 'Linked to' : 'Link to';
+          html += `<div class="ctx-item ctx-link-to-existing" data-group-id="${g.id}" style="white-space:nowrap;">${prefix}: ${g.name}</div>`;
         });
         html += `<div class="ctx-divider"></div>`;
       }
@@ -9757,11 +9863,35 @@ document.getElementById('btn-open-data')?.addEventListener('click', openDataPane
 document.getElementById('version-select')?.addEventListener('change', (e) => dmSetActiveVersion(e.target.value));
 document.getElementById('btn-data-lock')?.addEventListener('click', dmToggleLock);
 
+function initCollapsiblePanels() {
+  document.querySelectorAll('.panel-header-collapsible').forEach(header => {
+    if (header.dataset.collapsibleInit === 'true') return;
+    header.dataset.collapsibleInit = 'true';
+    
+    const parentSection = header.closest('.panel-section');
+    if (!parentSection) return;
+    
+    const keyAttr = header.id || header.innerText.trim().toLowerCase().replace(/\s+/g, '-');
+    const storageKey = `panel-collapsed-${keyAttr}`;
+    const isCollapsed = localStorage.getItem(storageKey) === 'true';
+    
+    if (isCollapsed) {
+      parentSection.classList.add('collapsed');
+    }
+    
+    header.addEventListener('click', () => {
+      const currentlyCollapsed = parentSection.classList.toggle('collapsed');
+      localStorage.setItem(storageKey, currentlyCollapsed ? 'true' : 'false');
+    });
+  });
+}
+
 (async function initApp() {
   let restored = false;
   try { restored = await restoreAutosave(); } catch (e) { console.warn(e); }
   updateRecentProjectsMenu();
   render();
+  initCollapsiblePanels();
   checkVersionUpdate();
   queueSizeUpdate();
   setTimeout(() => {
