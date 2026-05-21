@@ -1326,6 +1326,7 @@ function createCanvasActions(c) {
     const zip = new JSZip();
     const projName = state.projectName || 'Ad';
     const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    await addCanvasAssetsToZip(c, zip);
     zip.file('index.html', generateExportHTML(c, zip));
     const content = await zip.generateAsync({ type: 'blob' });
     const a = document.createElement('a');
@@ -5566,14 +5567,9 @@ document.addEventListener('keyup', (e) => {
 // ============================================================================
 // Export — Google-Ads-friendly HTML5 (active canvas)
 // ============================================================================
-// Shared single-canvas exporters — used by both the Canvas Properties panel buttons
-// and the canvas right-click context menu so the two paths can't drift apart.
-async function exportCanvasAsZip(c) {
-  if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
-  const zip = new JSZip();
-  const projName = state.projectName || 'Ad';
-  const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
-  
+// Helper to pre-fetch all image and font assets and add them to a ZIP file.
+async function addCanvasAssetsToZip(c, zip) {
+  // 1. Pack image assets
   for (const el of c.elements) {
     if (el.type === 'image' && el.assetId && el.assetId.startsWith('data/Elements/')) {
       try {
@@ -5583,9 +5579,48 @@ async function exportCanvasAsZip(c) {
           const filename = el.assetId.split('/').pop();
           zip.file(`assets/${filename}`, blob);
         }
-      } catch (err) { console.error('Failed to prefetch', el.assetId); }
+      } catch (err) {
+        console.error('Failed to prefetch image asset', el.assetId, err);
+      }
     }
   }
+
+  // 2. Pack font assets if used
+  const usedFonts = new Set(c.elements.map(e => e.fontFamily).filter(Boolean));
+  const fontsToFetch = [];
+  if (usedFonts.has('Museo')) {
+    fontsToFetch.push('Museo300-Regular.woff2');
+    fontsToFetch.push('Museo500-Regular.woff2');
+    fontsToFetch.push('Museo700-Regular.woff2');
+  }
+  if (usedFonts.has('Helvetica Neue LT Pro')) {
+    fontsToFetch.push('helveticaneueltpro_lt.woff2');
+    fontsToFetch.push('helveticaneueltpro_roman.woff2');
+    fontsToFetch.push('helveticaneueltpro.woff2');
+  }
+
+  for (const fontFile of fontsToFetch) {
+    try {
+      const resp = await fetch(`data/fonts/${fontFile}`);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        zip.file(`assets/${fontFile}`, blob);
+      }
+    } catch (err) {
+      console.error('Failed to prefetch font asset', fontFile, err);
+    }
+  }
+}
+
+// Shared single-canvas exporters — used by both the Canvas Properties panel buttons
+// and the canvas right-click context menu so the two paths can't drift apart.
+async function exportCanvasAsZip(c) {
+  if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
+  const zip = new JSZip();
+  const projName = state.projectName || 'Ad';
+  const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+  
+  await addCanvasAssetsToZip(c, zip);
 
   zip.file('index.html', generateExportHTML(c, zip));
   const content = await zip.generateAsync({ type: 'blob' });
@@ -5844,15 +5879,16 @@ function generateExportHTML(targetCanvas, zipRef, isImageExport = false) {
   // Only include @font-face rules for fonts actually used in this canvas
   const usedFonts = new Set(c.elements.map(e => e.fontFamily).filter(Boolean));
   const fontFaceRules = [];
+  const fontPrefix = zipRef ? 'assets/' : 'data/fonts/';
   if (usedFonts.has('Museo')) {
-    fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('data/fonts/Museo300-Regular.otf') format('opentype'); font-weight: 300; }`);
-    fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('data/fonts/Museo500-Regular.otf') format('opentype'); font-weight: 500; }`);
-    fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('data/fonts/Museo700-Regular.otf') format('opentype'); font-weight: 700; }`);
+    fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo300-Regular.woff2') format('woff2'); font-weight: 300; }`);
+    fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo500-Regular.woff2') format('woff2'); font-weight: 500; }`);
+    fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo700-Regular.woff2') format('woff2'); font-weight: 700; }`);
   }
   if (usedFonts.has('Helvetica Neue LT Pro')) {
-    fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('data/fonts/helveticaneueltpro_lt.otf') format('opentype'); font-weight: 300; }`);
-    fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('data/fonts/helveticaneueltpro_roman.otf') format('opentype'); font-weight: 400; }`);
-    fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('data/fonts/helveticaneueltpro.otf') format('opentype'); font-weight: 500; }`);
+    fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro_lt.woff2') format('woff2'); font-weight: 300; }`);
+    fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro_roman.woff2') format('woff2'); font-weight: 400; }`);
+    fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro.woff2') format('woff2'); font-weight: 500; }`);
   }
 
   return `<!DOCTYPE html>
@@ -6904,6 +6940,7 @@ function openExportModal() {
     for (const cid of selectedIds) {
       const c = state.canvases.find(x => x.id === cid);
       const adZip = new JSZip();
+      await addCanvasAssetsToZip(c, adZip);
       const html = generateExportHTML(c, adZip);
       const projName = state.projectName || 'Ad';
       const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -6988,18 +7025,7 @@ function queueSizeUpdate() {
       const zip = new JSZip();
       
       // Pre-fetch for validation zip size
-      for (const el of c.elements) {
-        if (el.type === 'image' && el.assetId && el.assetId.startsWith('data/Elements/')) {
-          try {
-            const resp = await fetch(el.assetId);
-            if (resp.ok) {
-              const blob = await resp.blob();
-              const filename = el.assetId.split('/').pop();
-              zip.file(`assets/${filename}`, blob);
-            }
-          } catch (e) {}
-        }
-      }
+      await addCanvasAssetsToZip(c, zip);
 
       const htmlCode = generateExportHTML(c, zip);
       zip.file('index.html', htmlCode);

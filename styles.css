@@ -87,37 +87,37 @@ body.theme-navy {
 }
     @font-face {
       font-family: 'Museo';
-      src: url('data/fonts/Museo300-Regular.otf') format('opentype');
+      src: url('data/fonts/Museo300-Regular.woff2') format('woff2');
       font-weight: 300;
     }
 
     @font-face {
       font-family: 'Museo';
-      src: url('data/fonts/Museo500-Regular.otf') format('opentype');
+      src: url('data/fonts/Museo500-Regular.woff2') format('woff2');
       font-weight: 500;
     }
 
     @font-face {
       font-family: 'Museo';
-      src: url('data/fonts/Museo700-Regular.otf') format('opentype');
+      src: url('data/fonts/Museo700-Regular.woff2') format('woff2');
       font-weight: 700;
     }
 
     @font-face {
       font-family: 'Helvetica Neue LT Pro';
-      src: url('data/fonts/helveticaneueltpro_lt.otf') format('opentype');
+      src: url('data/fonts/helveticaneueltpro_lt.woff2') format('woff2');
       font-weight: 300;
     }
 
     @font-face {
       font-family: 'Helvetica Neue LT Pro';
-      src: url('data/fonts/helveticaneueltpro_roman.otf') format('opentype');
+      src: url('data/fonts/helveticaneueltpro_roman.woff2') format('woff2');
       font-weight: 400;
     }
 
     @font-face {
       font-family: 'Helvetica Neue LT Pro';
-      src: url('data/fonts/helveticaneueltpro.otf') format('opentype');
+      src: url('data/fonts/helveticaneueltpro.woff2') format('woff2');
       font-weight: 500;
     }
 

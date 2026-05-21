@@ -1,6 +1,10 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.32 (Current) - May 2026
+v1.3.33 (Current) - May 2026
+- Converted brand and editor fonts (Museo & Helvetica Neue LT Pro) to WOFF2 format to optimize loading speed and package weight.
+- Fully packaged used fonts into exported ZIP bundles to ensure they render correctly when deployed or previewed on hosting websites.
+
+v1.3.32 - May 2026
 - Disabled the confirmation pop-up alert when adding/cloning elements to other canvases and linking them.
 
 v1.3.31 - May 2026
