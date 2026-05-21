@@ -5567,6 +5567,50 @@ document.addEventListener('keyup', (e) => {
 // ============================================================================
 // Export — Google-Ads-friendly HTML5 (active canvas)
 // ============================================================================
+// Helper to identify exactly which brand fonts and weights are required for a canvas.
+function getRequiredFonts(c) {
+  const req = {
+    museo: new Set(),
+    helvetica: new Set()
+  };
+
+  c.elements.forEach(el => {
+    if (el.hidden) return;
+    if (el.type !== 'text' && el.type !== 'button') return;
+    
+    const ff = el.fontFamily;
+    if (!ff) return;
+
+    // Resolve weight
+    let weight = 400; // default for text
+    if (el.weight !== undefined && el.weight !== null && el.weight !== '') {
+      weight = Number(el.weight);
+    } else if (el.type === 'button') {
+      weight = 600; // default for button
+    }
+
+    if (ff === 'Museo') {
+      if (weight <= 300) {
+        req.museo.add(300);
+      } else if (weight >= 600) {
+        req.museo.add(700);
+      } else {
+        req.museo.add(500);
+      }
+    } else if (ff === 'Helvetica Neue LT Pro') {
+      if (weight <= 300) {
+        req.helvetica.add(300);
+      } else if (weight === 400) {
+        req.helvetica.add(400);
+      } else {
+        req.helvetica.add(500);
+      }
+    }
+  });
+
+  return req;
+}
+
 // Helper to pre-fetch all image and font assets and add them to a ZIP file.
 async function addCanvasAssetsToZip(c, zip) {
   // 1. Pack image assets
@@ -5585,19 +5629,17 @@ async function addCanvasAssetsToZip(c, zip) {
     }
   }
 
-  // 2. Pack font assets if used
-  const usedFonts = new Set(c.elements.map(e => e.fontFamily).filter(Boolean));
+  // 2. Pack font assets (only those actually used by active text/button elements)
+  const req = getRequiredFonts(c);
   const fontsToFetch = [];
-  if (usedFonts.has('Museo')) {
-    fontsToFetch.push('Museo300-Regular.woff2');
-    fontsToFetch.push('Museo500-Regular.woff2');
-    fontsToFetch.push('Museo700-Regular.woff2');
-  }
-  if (usedFonts.has('Helvetica Neue LT Pro')) {
-    fontsToFetch.push('helveticaneueltpro_lt.woff2');
-    fontsToFetch.push('helveticaneueltpro_roman.woff2');
-    fontsToFetch.push('helveticaneueltpro.woff2');
-  }
+
+  if (req.museo.has(300)) fontsToFetch.push('Museo300-Regular.woff2');
+  if (req.museo.has(500)) fontsToFetch.push('Museo500-Regular.woff2');
+  if (req.museo.has(700)) fontsToFetch.push('Museo700-Regular.woff2');
+
+  if (req.helvetica.has(300)) fontsToFetch.push('helveticaneueltpro_lt.woff2');
+  if (req.helvetica.has(400)) fontsToFetch.push('helveticaneueltpro_roman.woff2');
+  if (req.helvetica.has(500)) fontsToFetch.push('helveticaneueltpro.woff2');
 
   for (const fontFile of fontsToFetch) {
     try {
@@ -5876,18 +5918,28 @@ function generateExportHTML(targetCanvas, zipRef, isImageExport = false) {
     clickAreasHTML = `<a class="clickArea" href="javascript:void(0);" style="position:absolute;inset:0;z-index:9999;display:block;"></a>`;
   }
 
-  // Only include @font-face rules for fonts actually used in this canvas
-  const usedFonts = new Set(c.elements.map(e => e.fontFamily).filter(Boolean));
+  // Only include @font-face rules for fonts and weights actually used in this canvas
+  const req = getRequiredFonts(c);
   const fontFaceRules = [];
   const fontPrefix = zipRef ? 'assets/' : 'data/fonts/';
-  if (usedFonts.has('Museo')) {
+
+  if (req.museo.has(300)) {
     fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo300-Regular.woff2') format('woff2'); font-weight: 300; }`);
+  }
+  if (req.museo.has(500)) {
     fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo500-Regular.woff2') format('woff2'); font-weight: 500; }`);
+  }
+  if (req.museo.has(700)) {
     fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo700-Regular.woff2') format('woff2'); font-weight: 700; }`);
   }
-  if (usedFonts.has('Helvetica Neue LT Pro')) {
+
+  if (req.helvetica.has(300)) {
     fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro_lt.woff2') format('woff2'); font-weight: 300; }`);
+  }
+  if (req.helvetica.has(400)) {
     fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro_roman.woff2') format('woff2'); font-weight: 400; }`);
+  }
+  if (req.helvetica.has(500)) {
     fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro.woff2') format('woff2'); font-weight: 500; }`);
   }
 

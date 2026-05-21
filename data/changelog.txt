@@ -1,6 +1,9 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.33 (Current) - May 2026
+v1.3.34 (Current) - May 2026
+- Optimized font embedding to selectively package only the specific font families and weights used by the text and button elements of each canvas (e.g. only packaging Museo 700 if Museo 300/500 are not used), minimizing export bundle sizes.
+
+v1.3.33 - May 2026
 - Converted brand and editor fonts (Museo & Helvetica Neue LT Pro) to WOFF2 format to optimize loading speed and package weight.
 - Fully packaged used fonts into exported ZIP bundles to ensure they render correctly when deployed or previewed on hosting websites.
 
