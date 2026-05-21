@@ -14,9 +14,9 @@ The standout feature of RMIT Display Studio is its **Multi-Canvas Orchestration*
 
 To avoid duplicate, manual updates across different canvases, you use **Link Groups**:
 - **Auto-Link Matching Elements**: Pressing **Auto-Link** automatically scans all canvases and groups elements with the same layer name and category/type. Toggle **Selected only** to scan and group matches targeting only the currently selected layer.
-- **Granular Sync Properties**: Choose exactly which properties should sync for a group (e.g., sync only text content, but keep different font sizes; or sync font, colors, animations, and opacity while keeping independent dimensions).
+- **Granular Sync Properties**: Choose exactly which properties should sync for a group. Text content and styling are separated cleanly: the `"Colors"` sync property focuses strictly on text color, while a dedicated `"Background"` sync property manages text backgrounds (background color, visibility, animation padding, and coverage settings), allowing you to sync font settings while keeping different text backgrounds per layout.
 - **Live-Link Mode (Real-Time Sync)**: Enable the lightning bolt toggle on any group, and any modification you make to an element (dragging, resizing, editing text inline, or changing properties in the sidebar panel) will immediately propagate to all sibling elements on other canvases in real time.
-- **Contextual Actions**: Right-click elements to manage link settings, or use **Push changes to group** in the main context menu to broadcast updates manually when Live-link is off.
+- **Contextual Actions**: Right-click elements to manage link settings, showing dynamic `Linked to: [GroupName]` and `Link to: [GroupName]` labels based on membership status. Or use **Push changes to group** in the main context menu to broadcast updates manually when Live-link is off.
 
 ---
 
@@ -41,7 +41,7 @@ Design **one** template, then data-merge a spreadsheet into it to produce a fini
 - **Slots compose with Link Groups** — a dynamic field becomes a *slot*. If the element is in a Link Group, the slot covers the **whole group**, so one binding fills that element on every size at once. Toggling a field on a linked element applies it to all siblings automatically — and your link-group sync settings are never altered.
 - **Bind columns → slots** — import a CSV (or build the sheet inline), map each column to a slot's field, pick the **★ key column** that names exported folders, and optionally bind a column to the **ClickTag** exit URL. The sheet is stored inside the `.cook` project (auto-saves and travels with it) and can be exported back to CSV for the team to edit.
 - **Live, non-destructive version switching** — pick a row from the top-bar **Version** dropdown to preview it on the canvas in both editing and preview modes. Your template defaults are never overwritten; "Template (no version)" returns to them.
-- **Edit-in-place + Data lock** — while a version is active, editing a dynamic slot on the canvas writes back to **that row's cell**, not the template. A **Data lock** toggle makes dynamic slots read-only so you can review versions without nudging the data.
+- **Edit-in-place + Data lock** — while a version is active and the Data Lock is OFF, editing a dynamic slot (either inline on the canvas or via the properties panel) writes back directly to **that row's cell** in the version record. Toggling the **Data lock** to ON makes all dynamic inputs and textareas read-only, preventing accidental changes to version data.
 - **Batch export** — **Export All Versions** produces one folder per row (named from the key column), each holding the full Google Ads-compliant ZIP set, through the standard export pipeline.
 
 Frames need no special handling — a frame-1 and frame-2 headline are simply two differently-named slots, so multi-frame ads merge correctly out of the box.
@@ -68,6 +68,7 @@ Frames need no special handling — a frame-1 and frame-2 headline are simply tw
 - **Supported Entities**: Text, Images, SVGs, Rectangles, Circles, and Buttons.
 - **Typography Integration**: Embedded RMIT brand fonts (Museo, Helvetica Neue) and precise text controls (line-height, letter-spacing).
 - **Brand Element Library**: Built-in repository of pre-approved SVG assets (logos, Cricos text) that bypass manual file management and dynamically bundle on export.
+- **WebP Compression Tool**: Built-in visual image compressor that allows converting and compressing uploaded PNG/JPEG images directly into WebP. Offers custom quality adjustments (10% - 100%) and a real-time output size preview (KB) to fit ad package weight constraints.
 - **Layer System**: Illustrator-style layer reordering, grouping, isolation modes, and lock/hide toggles.
 - **Layer Persistence**: Designate elements to the "Top" or "Bottom" layer to persist them across all animation frames (ideal for static CTA buttons or backgrounds).
 
@@ -80,12 +81,14 @@ Frames need no special handling — a frame-1 and frame-2 headline are simply tw
 ### Advanced Styling & Color
 - **Advanced Color Engine**: Dual-mode color picker supporting solid HEX values, native Eyedropper sampling (Chromium), and dynamic linear gradients with multi-stop mapping.
 - **Custom Properties Panel**: Contextual right-side panel that exposes deep styling controls for active selections.
+- **Collapsible Panel Sections**: Simplify your workspace by collapsing or expanding the left panels (Add Element, Layers) and right properties sidebar sections (Canvas Settings, Properties, Animation, Dynamic Data) via their interactive headers, preserving states in `localStorage` across page reloads.
 - **Hover States**: Built-in CSS hover configurations for interactive elements.
 
 ### Alignment & Precision
 - **Snapping Engine**: Magnetic snapping to canvas boundaries, element centers, and custom alignment guides.
 - **Rulers & Guides**: Draggable viewport rulers for creating pixel-perfect layout guides.
 - **Keyboard Precision**: Nudge elements via arrow keys (1px/10px increments). Aspect ratio locking and constrained dragging via keyboard modifiers.
+- **Alt-Key Override**: Intercepts default browser ALT menu navigation to prevent layout interruption when using ALT key modifiers (e.g. ALT+drag to clone elements, ALT+resize for proportional font resizing).
 
 ### Export & Validation Pipeline
 - **Google Ads Compliance**: Automatically generates self-contained `.zip` files validated against Google's HTML5 ad network requirements.
