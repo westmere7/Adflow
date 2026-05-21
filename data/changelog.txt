@@ -1,11 +1,17 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.3.34 (Current) - May 2026
-- Optimized font embedding to selectively package only the specific font families and weights used by the text and button elements of each canvas (e.g. only packaging Museo 700 if Museo 300/500 are not used), minimizing export bundle sizes.
+v1.4.1 (Current) - May 2026
+- Converted brand and editor fonts (Museo & Helvetica Neue LT Pro) to highly compressed WOFF2 format to optimize loading speed.
+- Implemented selective font packaging, bundling only the specific font families and weights used by the text and button elements of each canvas (e.g. only packaging Museo 700 if Museo 300/500 are not used), minimizing export bundle sizes.
+- Added a WebP image compression function for non-vector uploaded images inside the workspace, allowing quality customization via slider with real-time file size previews. Previously compressed images grey out the option to avoid duplicate compression.
 
-v1.3.33 - May 2026
-- Converted brand and editor fonts (Museo & Helvetica Neue LT Pro) to WOFF2 format to optimize loading speed and package weight.
-- Fully packaged used fonts into exported ZIP bundles to ensure they render correctly when deployed or previewed on hosting websites.
+v1.4.0 - May 2026
+- Auto-resize from selected (AI): build your entire size set in one click. It reads every element on the selected canvas, detects each one’s role (heading, subheading, button, logo, shape, background image, or generic), then clears the other canvases and re-places + re-sizes matching elements using per-format layout presets.
+- Auto-resize automatically links every propagated element into its own group with role-aware sync defaults — content and appearance stay in sync across canvases while position, dimensions and font-size remain independent per format.
+- Added a dedicated "Font size" sync property for text link groups, split out from "Font settings" — you can now sync the typeface across canvases while keeping per-canvas sizes.
+- Added seamless local auto-save: projects are continuously persisted to the browser (IndexedDB) and restored on reload, with a live save-status indicator (All changes saved / Saving… / Unsaved) in the top bar. Manual .cook saving is unchanged.
+- New Project wizard now lets you pick which canvas sizes to include, the project name, the default canvas background colour, and a configurable maximum ad weight (KB) that drives the live size-validation warnings.
+- Cleaned up the Tools panel — removed the permanent highlight on the Auto-resize and Toggle Safezones buttons (the AI badge stays).
 
 v1.3.32 - May 2026
 - Disabled the confirmation pop-up alert when adding/cloning elements to other canvases and linking them.

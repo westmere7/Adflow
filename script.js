@@ -4362,11 +4362,24 @@ function renderProps() {
   }
   if (el.type === 'image') {
     f.push(`<div class="prop-row"><label>Upload image</label><input type="file" accept="image/*" id="img-upload" /></div>`);
+    const isVector = (el.name && el.name.toLowerCase().endsWith('.svg')) || 
+                     (el.assetId && state.assets && state.assets[el.assetId] && state.assets[el.assetId].startsWith('data:image/svg+xml'));
     if (el.name) {
       f.push(`<div class="prop-row" style="margin-top:-6px;"><label style="font-size:10px; color:var(--text-main); margin:0;">File: ${esc(el.name)}</label></div>`);
+      if (!isVector) {
+        const btnStyle = el.isCompressed 
+          ? 'background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); cursor:not-allowed;'
+          : 'background:var(--accent-base); color:var(--text-bright); border:none; cursor:pointer;';
+        f.push(`<div class="prop-row" style="margin-top:4px; margin-bottom:8px;">
+          <button id="btn-webp-compress" class="btn" style="width:100%; padding:6px 12px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; text-align:center; display:block; ${btnStyle}" ${el.isCompressed ? 'disabled' : ''}>
+            ${el.isCompressed ? '✓ Compressed' : 'Compress to WebP'}
+          </button>
+        </div>`);
+      }
     }
-    if (el.assetId && state.assets[el.assetId]) {
-      f.push(`<div class="prop-row"><label>Preview</label><img src="${state.assets[el.assetId]}" style="max-width:100%;border-radius:4px;border:1px solid #272c3a;" /></div>`);
+    const src = el.assetId ? ((state.assets && state.assets[el.assetId]) || el.assetId) : '';
+    if (src) {
+      f.push(`<div class="prop-row"><label>Preview</label><img src="${src}" style="max-width:100%;border-radius:4px;border:1px solid #272c3a;" /></div>`);
     }
     f.push(`<div class="prop-row"><label>Opacity %</label><input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>`);
   }
@@ -4821,14 +4834,26 @@ function renderProps() {
     const fr = new FileReader();
     fr.onload = () => {
       const id = 'img_' + uid();
+      if (!state.assets) state.assets = {};
       state.assets[id] = fr.result;
       el.assetId = id;
       if (!el.name || el.name.startsWith('Image')) el.name = f.name;
+      el.isCompressed = false;
+      delete el.webpQuality;
       pushHistory();
       render();
     };
     fr.readAsDataURL(f);
   });
+
+  const btnCompress = propsEl.querySelector('#btn-webp-compress');
+  if (btnCompress) {
+    btnCompress.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openWebpCompressionModal(el);
+    };
+  }
 
   if (typeof syncColorPickerWithSelection === 'function') {
     syncColorPickerWithSelection(el, null);
@@ -7254,6 +7279,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 const CHANGELOG_DATA = [
   {
+    version: 'v1.4.1',
+    date: 'May 2026',
+    items: [
+      'Converted brand and editor fonts (Museo & Helvetica Neue LT Pro) to highly compressed WOFF2 format to optimize loading speed.',
+      'Implemented selective font packaging, bundling only the specific font families and weights used by the text and button elements of each canvas (e.g. only packaging Museo 700 if Museo 300/500 are not used), minimizing export bundle sizes.',
+      'Added a WebP image compression function for non-vector uploaded images inside the workspace, allowing quality customization via slider with real-time file size previews. Previously compressed images grey out the option to avoid duplicate compression.'
+    ]
+  },
+  {
     version: 'v1.4.0',
     date: 'May 2026',
     items: [
@@ -7571,7 +7605,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v1.4.0';
+  const currentVersion = 'v1.4.1';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -7641,7 +7675,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.4.0</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.4.1</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -7697,7 +7731,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.4.0</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.4.1</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -7815,6 +7849,162 @@ function openModal(title, body, isCode) {
       URL.revokeObjectURL(a.href);
     };
   }
+}
+
+// WebP Image Compression Utilities
+async function getImageSizeKB(url) {
+  if (!url || typeof url !== 'string') return '0.0';
+  if (url.startsWith('data:')) {
+    const base64Part = url.split(',')[1];
+    if (!base64Part) return '0.0';
+    const stringLength = base64Part.length;
+    const sizeInBytes = Math.round((stringLength * 3) / 4) - (base64Part.endsWith('==') ? 2 : base64Part.endsWith('=') ? 1 : 0);
+    return (sizeInBytes / 1024).toFixed(1);
+  } else {
+    try {
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        return (blob.size / 1024).toFixed(1);
+      }
+    } catch (err) {
+      console.error('Failed to fetch image size for', url, err);
+    }
+    return '0.0';
+  }
+}
+
+function compressImageToWebP(dataUrl, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    if (!dataUrl || typeof dataUrl !== 'string') {
+      reject(new Error('Invalid image data URL'));
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      try {
+        const webpDataUrl = canvas.toDataURL('image/webp', quality);
+        resolve(webpDataUrl);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = (err) => reject(err);
+    img.src = dataUrl;
+  });
+}
+
+function openWebpCompressionModal(el) {
+  const originalDataUrl = (el.assetId && state.assets && state.assets[el.assetId]) || el.assetId;
+  if (!originalDataUrl) return;
+
+  const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `
+    <div class="modal" style="width:480px;">
+      <div class="modal-head">
+        <h2>WebP Image Compression</h2>
+        <button class="btn" id="webp-close">Close</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+        <div style="display:flex; gap:12px; align-items:center; background:rgba(255,255,255,0.03); padding:10px; border-radius:6px;">
+          <img id="webp-preview-img" src="${originalDataUrl}" style="width:80px; height:80px; object-fit:contain; border:1px solid var(--border-light); border-radius:4px; background:#12131a;" />
+          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
+            <div style="font-size:12px; font-weight:600; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(el.name)}</div>
+            <div style="font-size:11px; color:var(--text-muted);">
+              Original size: <span id="webp-original-size" style="font-weight:600; color:var(--text-bright);">Calculating...</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted);">
+              Compressed size: <span id="webp-compressed-size" style="font-weight:600; color:var(--accent-light);">Calculating...</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Compression Quality</label>
+            <span id="webp-quality-display" style="font-size:12px; font-weight:700; color:var(--accent-light);">80%</span>
+          </div>
+          <input type="range" id="webp-quality-slider" min="10" max="100" value="80" style="width:100%; cursor:pointer; accent-color:var(--accent-base);" />
+        </div>
+      </div>
+      <div class="modal-foot" style="justify-content:flex-end; gap: 8px; display: flex;">
+        <button class="btn" id="webp-btn-cancel">Cancel</button>
+        <button class="btn primary" id="webp-btn-apply">Apply Compression</button>
+      </div>
+    </div>`;
+  
+  document.body.appendChild(bg);
+
+  const previewImg = bg.querySelector('#webp-preview-img');
+  const origSizeDisplay = bg.querySelector('#webp-original-size');
+  const sizeDisplay = bg.querySelector('#webp-compressed-size');
+  const qualityDisplay = bg.querySelector('#webp-quality-display');
+  const slider = bg.querySelector('#webp-quality-slider');
+
+  let currentCompressedDataUrl = originalDataUrl;
+
+  // Load original size asynchronously
+  getImageSizeKB(originalDataUrl).then(size => {
+    origSizeDisplay.textContent = size + ' KB';
+  });
+
+  const updateCompression = async () => {
+    const quality = parseInt(slider.value, 10) / 100;
+    try {
+      const compressed = await compressImageToWebP(originalDataUrl, quality);
+      previewImg.src = compressed;
+      const compSize = await getImageSizeKB(compressed);
+      sizeDisplay.textContent = compSize + ' KB';
+      currentCompressedDataUrl = compressed;
+    } catch (err) {
+      console.error(err);
+      sizeDisplay.textContent = 'Error';
+    }
+  };
+
+  // Run initial compression calculation asynchronously
+  updateCompression();
+
+  slider.oninput = () => {
+    qualityDisplay.textContent = slider.value + '%';
+  };
+  slider.onchange = async () => {
+    sizeDisplay.textContent = 'Calculating...';
+    await updateCompression();
+  };
+
+  const closeFn = () => {
+    bg.remove();
+    document.removeEventListener('keydown', escHandler);
+  };
+  const escHandler = (e) => { if (e.key === 'Escape') closeFn(); };
+  document.addEventListener('keydown', escHandler);
+
+  bg.querySelector('#webp-close').onclick = closeFn;
+  bg.querySelector('#webp-btn-cancel').onclick = closeFn;
+  bg.querySelector('#webp-btn-apply').onclick = () => {
+    let id = el.assetId;
+    if (!id || !id.startsWith('img_')) {
+      id = 'img_' + uid();
+      el.assetId = id;
+    }
+    if (!state.assets) state.assets = {};
+    state.assets[id] = currentCompressedDataUrl;
+    el.isCompressed = true;
+    el.webpQuality = parseInt(slider.value, 10);
+    pushHistory();
+    render();
+    renderProps();
+    closeFn();
+  };
 }
 
 // ============================================================================
