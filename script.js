@@ -2401,16 +2401,31 @@ function elementNode(el, canvasCtx) {
 }
 
 function wireInlineEdit(ed, el, key) {
+  const isDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, key);
+  const originalVal = isDyn ? (state.dataMerge.rows[state.dataMerge.activeVersion]?.[state.dataMerge.mappings[dmSlotKey(el) + '::' + key]] || '') : el[key];
+  const originalWidth = el.width;
+
   const commit = () => {
     ed.removeEventListener('blur', commit);
-    const isDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, key);
-    const oldVal = isDyn ? (state.dataMerge.rows[state.dataMerge.activeVersion]?.[state.dataMerge.mappings[dmSlotKey(el) + '::' + key]] || '') : el[key];
+    const isDynNow = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, key);
     const newVal = ed.innerText;
-    if (oldVal !== newVal) {
-      if (isDyn) {
+    if (originalVal !== newVal) {
+      if (isDynNow) {
         if (!state.dataMerge.locked) dmWriteCell(el, key, newVal);
       } else {
         el[key] = newVal;
+      }
+      if (el.linkGroupId) {
+        const group = state.linkGroups?.[el.linkGroupId];
+        if (group && group.liveLink) {
+          state.canvases.forEach(c => {
+            c.elements.forEach(targetEl => {
+              if (targetEl.linkGroupId === el.linkGroupId && targetEl.id !== el.id) {
+                applyLinkSync(el, targetEl, group);
+              }
+            });
+          });
+        }
       }
       pushHistory();
     }
@@ -2422,6 +2437,13 @@ function wireInlineEdit(ed, el, key) {
   };
   const cancel = () => {
     ed.removeEventListener('blur', commit);
+    const isDynNow = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, key);
+    if (!isDynNow) {
+      el[key] = originalVal;
+      if (el.type === 'button' && el.autoHug) {
+        el.width = originalWidth;
+      }
+    }
     state.editingElementId = null;
     render();
   };
