@@ -2376,6 +2376,19 @@ function elementNode(el, canvasCtx) {
         state.selectedElementId = el.id;
         state.layerSelection = [el.id];
         render(true);
+        showCanvasNotification('This element is a dynamic slot and editing is locked.', {
+          type: 'warning',
+          button: {
+            text: 'Unlock data edit',
+            onClick: () => {
+              state.dataMerge.locked = false;
+              pushHistory();
+              renderVersionSwitcher();
+              render();
+              showCanvasNotification('Data editing unlocked');
+            }
+          }
+        });
         return;
       }
       state.activeCanvasId = canvasCtx.id;
@@ -4517,8 +4530,8 @@ function renderProps() {
 
   // Hex-copy button helpers — used by every hex color input across the app.
   const HEX_COPY_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-  const hexCopyBtn = (k, disabled = false) => `<button class="hex-copy" data-target-k="${k}" title="Copy hex" tabindex="-1" ${disabled ? 'disabled' : ''} style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:2px; color:var(--text-muted); display:flex; align-items:center;">${HEX_COPY_SVG}</button>`;
-  const hexInputBox = (key, value, inputId = '', disabled = false) => `<div style="position:relative; flex:1; min-width:0;"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" ${disabled ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />${hexCopyBtn(key, disabled)}</div>`;
+  const hexCopyBtn = (k, disabled = false) => `<button class="hex-copy" data-target-k="${k}" title="Copy hex" tabindex="-1" ${disabled ? 'disabled style="pointer-events:none;"' : ''} style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:2px; color:var(--text-muted); display:flex; align-items:center;">${HEX_COPY_SVG}</button>`;
+  const hexInputBox = (key, value, inputId = '', disabled = false) => `<div style="position:relative; flex:1; min-width:0; ${disabled ? 'pointer-events:none;' : ''}"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" ${disabled ? 'disabled style="pointer-events:none;"' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />${hexCopyBtn(key, disabled)}</div>`;
 
   if (!el) {
     if (!c) { propsEl.innerHTML = '<div class="panel-section"><h3>Properties</h3><div class="prop-empty">No canvas.</div></div>'; return; }
@@ -4699,7 +4712,7 @@ function renderProps() {
   const txt = (key, label) => {
     const val = (key === 'text' && dText !== undefined) ? dText : el[key];
     const isDisabled = isFieldDisabled(key);
-    return `<div class="prop-row"><label>${label}</label><input type="text" data-k="${key}" value="${(val || '').replace(/"/g, '&quot;')}" ${isDisabled ? 'disabled' : ''} /></div>`;
+    return `<div class="prop-row" ${isDisabled ? 'data-locked-field="true"' : ''}><label>${label}</label><input type="text" data-k="${key}" value="${(val || '').replace(/"/g, '&quot;')}" ${isDisabled ? 'disabled style="pointer-events:none;"' : ''} /></div>`;
   };
   const numIcon = (key, svgIcon, tooltip, def = '') => `
     <div class="prop-row-compact" title="${tooltip}">
@@ -4717,9 +4730,9 @@ function renderProps() {
     const val = (key === 'color' && dColor !== undefined) ? dColor : ((key === 'bg' && dBg !== undefined) ? dBg : el[key]);
     const isDisabled = isFieldDisabled(key);
     return `
-    <div class="prop-row">
+    <div class="prop-row" ${isDisabled ? 'data-locked-field="true"' : ''}>
       <label>${label}</label>
-      <div style="display:flex; gap:6px; align-items:center;">
+      <div style="display:flex; gap:6px; align-items:center; ${isDisabled ? 'pointer-events:none;' : ''}">
         <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
         ${hexInputBox(key, val, '', isDisabled)}
       </div>
@@ -4730,11 +4743,11 @@ function renderProps() {
     const val = (key === 'color' && dColor !== undefined) ? dColor : ((key === 'bg' && dBg !== undefined) ? dBg : el[key]);
     const isDisabled = isFieldDisabled(key);
     return `
-    <div class="prop-row">
+    <div class="prop-row" ${isDisabled ? 'data-locked-field="true"' : ''}>
       <div style="display:flex; align-items:end; gap:8px; width:100%;">
         <div class="prop-row" style="margin:0; flex:1; min-width:0;">
           <label>${label}</label>
-          <div style="display:flex; gap:6px; align-items:center;">
+          <div style="display:flex; gap:6px; align-items:center; ${isDisabled ? 'pointer-events:none;' : ''}">
             <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
             ${hexInputBox(key, val, '', isDisabled)}
           </div>
@@ -4779,7 +4792,7 @@ function renderProps() {
 
   if (el.type === 'text') {
     const textDisabled = isFieldDisabled('text');
-    f.push(`<div class="prop-row"><label>Text</label><textarea data-k="text" rows="2" ${textDisabled ? 'disabled' : ''}>${esc(dText)}</textarea></div>`);
+    f.push(`<div class="prop-row" ${textDisabled ? 'data-locked-field="true"' : ''}><label>Text</label><textarea data-k="text" rows="2" ${textDisabled ? 'disabled style="pointer-events:none;"' : ''}>${esc(dText)}</textarea></div>`);
 
     // Resolve computed size for display
     const computedFontSize = el.autoSize ? calculateAutoSize(el, dText) : (el.fontSize || 14);
@@ -4951,7 +4964,7 @@ function renderProps() {
   }
   if (el.type === 'image') {
     const imgDisabled = isFieldDisabled('image');
-    f.push(`<div class="prop-row"><label>Upload image</label><input type="file" accept="image/*" id="img-upload" ${imgDisabled ? 'disabled' : ''} /></div>`);
+    f.push(`<div class="prop-row" ${imgDisabled ? 'data-locked-field="true"' : ''}><label>Upload image</label><input type="file" accept="image/*" id="img-upload" ${imgDisabled ? 'disabled style="pointer-events:none;"' : ''} /></div>`);
     const isVector = (el.name && el.name.toLowerCase().endsWith('.svg')) || 
                      (dAssetId && state.assets && state.assets[dAssetId] && state.assets[dAssetId].startsWith('data:image/svg+xml'));
     if (el.name) {
@@ -9529,8 +9542,18 @@ function dmWriteCell(el, field, value) {
   if (!col) return false;
   const row = dm.rows[dm.activeVersion];
   if (!row) return false;
-  row[col] = value;
-  return true;
+
+  const originalVal = row[col];
+  if (originalVal !== value) {
+    row[col] = value;
+    if (originalVal !== undefined && originalVal !== null && String(originalVal).trim() !== '') {
+      const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
+      const versionName = row[keyCol] || ('Row ' + (dm.activeVersion + 1));
+      showCanvasNotification(`Version "${versionName}" updated`);
+    }
+    return true;
+  }
+  return false;
 }
 
 // Toggle a dynamic field flag; propagate across the link group so the logical
@@ -9643,6 +9666,7 @@ function dmToggleLock() {
   state.dataMerge.locked = !state.dataMerge.locked;
   pushHistory();
   renderVersionSwitcher();
+  render();
 }
 
 function renderVersionSwitcher() {
@@ -9825,8 +9849,13 @@ function dmRenderPanel(bg) {
   let mapRows = '';
   slots.forEach(s => s.fields.forEach(field => {
     const key = s.slotKey + '::' + field;
+    const linkIcon = s.grouped ? `
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-left:4px; color:var(--accent-light);" title="Link Group">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </svg>` : '';
     mapRows += `<tr>
-      <td style="padding:4px 12px 4px 0;font-size:12px;color:var(--text-main);">${dmEsc(s.name)}
+      <td style="padding:4px 12px 4px 0;font-size:12px;color:var(--text-main);">${dmEsc(s.name)}${linkIcon}
         <span style="color:var(--text-muted);font-size:10px;">· ${DM_FIELD_LABEL[field] || field}${s.grouped ? ` · ${s.count} sizes` : ''}</span></td>
       <td style="padding:4px 0;"><select class="dm-map" data-mapkey="${key}" style="${selStyle}">${colOptions(dm.mappings[key])}</select></td>
     </tr>`;
@@ -9928,6 +9957,25 @@ document.getElementById('menu-file-data')?.addEventListener('click', openDataPan
 document.getElementById('btn-open-data')?.addEventListener('click', openDataPanel);
 document.getElementById('version-select')?.addEventListener('change', (e) => dmSetActiveVersion(e.target.value));
 document.getElementById('btn-data-lock')?.addEventListener('click', dmToggleLock);
+
+propsEl?.addEventListener('click', (e) => {
+  const lockedRow = e.target.closest('[data-locked-field="true"]');
+  if (lockedRow) {
+    showCanvasNotification('This element is a dynamic slot and editing is locked.', {
+      type: 'warning',
+      button: {
+        text: 'Unlock data edit',
+        onClick: () => {
+          state.dataMerge.locked = false;
+          pushHistory();
+          renderVersionSwitcher();
+          render();
+          showCanvasNotification('Data editing unlocked');
+        }
+      }
+    });
+  }
+});
 
 function initCollapsiblePanels() {
   document.querySelectorAll('.panel-header-collapsible').forEach(header => {
@@ -10459,4 +10507,98 @@ function syncColorPickerWithSelection(el, c) {
     }
     document.getElementById('cp-hex-input').value = isSolidValue ? val.replace(/^#/, '') : '';
   }
+}
+
+function showCanvasNotification(message, options = {}) {
+  let toast = document.getElementById('canvas-toast-msg');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'canvas-toast-msg';
+    toast.className = 'canvas-notification';
+    document.body.appendChild(toast);
+  }
+
+  // Clone node to reset all event listeners
+  const newToast = toast.cloneNode(false);
+  toast.parentNode.replaceChild(newToast, toast);
+  toast = newToast;
+
+  // Set class name with type support
+  toast.className = 'canvas-notification';
+  if (options.type) {
+    toast.classList.add(options.type);
+  }
+
+  // Predefined SVG icons for standard types
+  const successIcon = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+  `;
+  const warningIcon = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+      <line x1="12" y1="9" x2="12" y2="13"></line>
+      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+  `;
+  const infoIcon = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="16" x2="12" y2="12"></line>
+      <line x1="12" y1="8" x2="12.01" y2="8"></line>
+    </svg>
+  `;
+  const errorIcon = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="15" y1="9" x2="9" y2="15"></line>
+      <line x1="9" y1="9" x2="15" y2="15"></line>
+    </svg>
+  `;
+
+  let iconHtml = options.icon || '';
+  if (!iconHtml) {
+    if (options.type === 'warning') iconHtml = warningIcon;
+    else if (options.type === 'error') iconHtml = errorIcon;
+    else if (options.type === 'info') iconHtml = infoIcon;
+    else iconHtml = successIcon;
+  }
+
+  let buttonHtml = '';
+  if (options.button) {
+    buttonHtml = `<button class="toast-btn">${options.button.text}</button>`;
+  }
+
+  toast.innerHTML = `
+    <span class="icon">${iconHtml}</span>
+    <span>${message}</span>
+    ${buttonHtml}
+  `;
+
+  // Attach interactive button click event
+  if (options.button && options.button.onClick) {
+    const btn = toast.querySelector('.toast-btn');
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        options.button.onClick(e);
+        toast.classList.remove('show');
+      });
+    }
+  }
+
+  toast.classList.remove('show');
+  void toast.offsetWidth; // Force reflow
+  toast.classList.add('show');
+
+  if (window.canvasNotificationTimeout) {
+    clearTimeout(window.canvasNotificationTimeout);
+  }
+
+  const duration = options.duration || (options.button ? 6000 : 2500);
+  window.canvasNotificationTimeout = setTimeout(() => {
+    toast.classList.remove('show');
+  }, duration);
 }

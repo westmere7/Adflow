@@ -3363,3 +3363,83 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 .save-icon {
   transform-origin: center;
 }
+
+.canvas-notification {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translate(-50%, -20px);
+  z-index: 100000;
+  pointer-events: none;
+  visibility: hidden;
+  background: rgba(30, 27, 75, 0.85); /* Dark Indigo theme-aware styling */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(124, 92, 255, 0.3);
+  color: #f1f5f9;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, visibility 0.3s;
+}
+
+.canvas-notification.show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.canvas-notification.warning {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+.canvas-notification.warning .icon {
+  color: #f59e0b;
+}
+
+.canvas-notification.error {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+.canvas-notification.error .icon {
+  color: #ef4444;
+}
+
+.canvas-notification.info {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+.canvas-notification.info .icon {
+  color: #3b82f6;
+}
+
+.canvas-notification .toast-btn {
+  background: var(--accent-base);
+  color: #fff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 0.2s, transform 0.1s;
+  outline: none;
+}
+.canvas-notification .toast-btn:hover {
+  background: var(--accent-hover);
+}
+.canvas-notification .toast-btn:active {
+  transform: scale(0.95);
+}
+
+.canvas-notification .icon {
+  color: #a78bfa;
+  display: flex;
+  align-items: center;
+}
+
