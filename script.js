@@ -3260,7 +3260,7 @@ function openValidatorDetails(initialCanvas) {
       const kbText = c._valKb ? `${c._valKb}KB` : 'calc...';
       
       sidebarHtml += `
-        <button class="val-sidebar-item" data-canvas-id="${c.id}" style="
+        <button class="val-sidebar-item" data-canvas-id="${c.id}" title="View validation results for canvas ${c.width}×${c.height}" style="
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -3719,25 +3719,25 @@ function renderLinkControl() {
   html += `
     <div style="margin-bottom: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--bg-input);">
       <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; width:100%; box-sizing:border-box;">
-        <button id="lnk-btn-autolink" class="btn" style="flex:1; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-dark); background: rgba(124, 92, 255, 0.05); color: var(--accent-light); box-sizing:border-box;">
+        <button id="lnk-btn-autolink" class="btn" title="Automatically link matching layers across canvases by name and type" style="flex:1; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-dark); background: rgba(124, 92, 255, 0.05); color: var(--accent-light); box-sizing:border-box;">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
           </svg>
           Auto-Link
         </button>
-        <div style="display:flex; align-items:center; gap:4px; flex-shrink:0; white-space:nowrap;">
-          <input type="checkbox" id="lnk-opt-selected-only" style="margin:0; cursor:pointer;" ${state.autoLinkSelectedOnly ? 'checked' : ''} />
-          <label for="lnk-opt-selected-only" style="font-size:11px; color:var(--text-muted); cursor:pointer; user-select:none;">Selected only</label>
+        <div style="display:flex; align-items:center; gap:4px; flex-shrink:0; white-space:nowrap;" title="Only auto-link elements that are currently selected">
+          <input type="checkbox" id="lnk-opt-selected-only" style="margin:0; cursor:pointer;" ${state.autoLinkSelectedOnly ? 'checked' : ''} title="Only auto-link elements that are currently selected" />
+          <label for="lnk-opt-selected-only" style="font-size:11px; color:var(--text-muted); cursor:pointer; user-select:none;" title="Only auto-link elements that are currently selected">Selected only</label>
         </div>
       </div>
   `;
 
   if (activeEl) {
     html += `
-      <button id="lnk-btn-autoadd" class="btn" style="width:100%; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-dark); background: rgba(124, 92, 255, 0.05); color: var(--accent-light); margin-bottom: 8px; box-sizing:border-box;">
+      <button id="lnk-btn-autoadd" class="btn" title="Distribute this element to other canvases and link them together" style="width:100%; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-dark); background: rgba(124, 92, 255, 0.05); color: var(--accent-light); margin-bottom: 8px; box-sizing:border-box;">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-        Add to canvases and link
+        Distribute & Link
       </button>
     `;
   }
@@ -3760,16 +3760,16 @@ function renderLinkControl() {
         const existingGroups = Object.values(state.linkGroups).filter(g => g.category === cat);
         if (existingGroups.length > 0) {
           html += `<div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
-            <select id="lnk-select-group" style="width:100%; background:var(--bg-panel); border:1px solid var(--bg-input); color:var(--text-main); font-size:11px; padding:6px; border-radius:4px; outline:none; box-sizing:border-box;">
+            <select id="lnk-select-group" title="Select an existing link group to join" style="width:100%; background:var(--bg-panel); border:1px solid var(--bg-input); color:var(--text-main); font-size:11px; padding:6px; border-radius:4px; outline:none; box-sizing:border-box;">
               ${existingGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
             </select>
-            <button id="lnk-btn-join" class="btn" style="width:100%; font-size:11px; padding:6px 12px; margin-top:2px; box-sizing:border-box;">Link to Selected Group</button>
+            <button id="lnk-btn-join" class="btn" title="Add selected elements to the selected link group" style="width:100%; font-size:11px; padding:6px 12px; margin-top:2px; box-sizing:border-box;">Link to Selected Group</button>
           </div>`;
         }
 
         html += `<div style="display:flex; gap:6px; align-items:center; margin-top:8px;">
-          <input type="text" id="lnk-new-name" placeholder="New group name..." style="flex:1; min-width:0; background:var(--bg-panel); border:1px solid var(--bg-input); color:var(--text-main); font-size:11px; padding:6px; border-radius:4px; outline:none; box-sizing:border-box;" />
-          <button id="lnk-btn-create" class="btn primary" style="font-size:11px; padding:6px 12px; white-space:nowrap; box-sizing:border-box;">Create Link</button>
+          <input type="text" id="lnk-new-name" placeholder="New group name..." title="Name for the new link group" style="flex:1; min-width:0; background:var(--bg-panel); border:1px solid var(--bg-input); color:var(--text-main); font-size:11px; padding:6px; border-radius:4px; outline:none; box-sizing:border-box;" />
+          <button id="lnk-btn-create" class="btn primary" title="Create a new link group for the selected elements" style="font-size:11px; padding:6px 12px; white-space:nowrap; box-sizing:border-box;">Create Link</button>
         </div>`;
 
       } else if (groupIds.length === 1) {
@@ -3782,65 +3782,65 @@ function renderLinkControl() {
           html += `<div style="padding-top:4px;">`;
           html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
             <div style="font-size:10px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em;">Sync Properties</div>
-            <button id="lnk-toggle-all-props" style="background:none; border:none; color:var(--accent-light); font-size:10px; cursor:pointer; padding:0; text-decoration:underline;">${anyChecked ? 'Unselect all' : 'Select all'}</button>
+            <button id="lnk-toggle-all-props" title="Select or deselect all sync properties" style="background:none; border:none; color:var(--accent-light); font-size:10px; cursor:pointer; padding:0; text-decoration:underline;">${anyChecked ? 'Unselect all' : 'Select all'}</button>
           </div>`;
           
           if (cat === 'text') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} /> Text content</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} /> Font settings</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fontSize" ${(sync.fontSize !== undefined ? sync.fontSize : sync.font) ? 'checked' : ''} /> Font size</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} /> Colors</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="background" ${(sync.background !== undefined ? sync.background : sync.color) ? 'checked' : ''} /> Background</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+              <label title="Sync text content across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} title="Sync text content across linked elements" /> Text content</label>
+              <label title="Sync font family and weight settings across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} title="Sync font family and weight settings across linked elements" /> Font settings</label>
+              <label title="Sync font size across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fontSize" ${(sync.fontSize !== undefined ? sync.fontSize : sync.font) ? 'checked' : ''} title="Sync font size across linked elements" /> Font size</label>
+              <label title="Sync text color across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} title="Sync text color across linked elements" /> Colors</label>
+              <label title="Sync text background properties across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="background" ${(sync.background !== undefined ? sync.background : sync.color) ? 'checked' : ''} title="Sync text background properties across linked elements" /> Background</label>
+              <label title="Sync opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync opacity across linked elements" /> Opacity</label>
+              <label title="Sync entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync entry transition animation across linked elements" /> IN Animation</label>
+              <label title="Sync continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync continuous effect across linked elements" /> Effects</label>
             </div>`;
           } else if (cat === 'button') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} /> Button text</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="textColor" ${sync.textColor ? 'checked' : ''} /> Button text color</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} /> Fill</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} /> Stroke</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Transform (W+H)</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+              <label title="Sync button label text across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} title="Sync button label text across linked elements" /> Button text</label>
+              <label title="Sync button text color across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="textColor" ${sync.textColor ? 'checked' : ''} title="Sync button text color across linked elements" /> Button text color</label>
+              <label title="Sync button background fill across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} title="Sync button background fill across linked elements" /> Fill</label>
+              <label title="Sync button stroke properties across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} title="Sync button stroke properties across linked elements" /> Stroke</label>
+              <label title="Sync button width and height across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} title="Sync button width and height across linked elements" /> Transform (W+H)</label>
+              <label title="Sync button opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync button opacity across linked elements" /> Opacity</label>
+              <label title="Sync button entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync button entry transition animation across linked elements" /> IN Animation</label>
+              <label title="Sync button continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync button continuous effect across linked elements" /> Effects</label>
             </div>`;
           } else if (cat === 'image') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="image" ${sync.image ? 'checked' : ''} /> Image asset</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Transform (W+H)</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="rotation" ${sync.rotation ? 'checked' : ''} /> Rotation</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+              <label title="Sync image asset across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="image" ${sync.image ? 'checked' : ''} title="Sync image asset across linked elements" /> Image asset</label>
+              <label title="Sync image width and height across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} title="Sync image width and height across linked elements" /> Transform (W+H)</label>
+              <label title="Sync image opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync image opacity across linked elements" /> Opacity</label>
+              <label title="Sync image rotation angle across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="rotation" ${sync.rotation ? 'checked' : ''} title="Sync image rotation angle across linked elements" /> Rotation</label>
+              <label title="Sync image entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync image entry transition animation across linked elements" /> IN Animation</label>
+              <label title="Sync image continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync image continuous effect across linked elements" /> Effects</label>
             </div>`;
           } else if (cat === 'shape') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} /> Color</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} /> Stroke</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Transform (W+H)</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
-              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+              <label title="Sync shape fill color across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} title="Sync shape fill color across linked elements" /> Color</label>
+              <label title="Sync shape stroke properties across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} title="Sync shape stroke properties across linked elements" /> Stroke</label>
+              <label title="Sync shape width and height across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} title="Sync shape width and height across linked elements" /> Transform (W+H)</label>
+              <label title="Sync shape opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync shape opacity across linked elements" /> Opacity</label>
+              <label title="Sync shape entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync shape entry transition animation across linked elements" /> IN Animation</label>
+              <label title="Sync shape continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync shape continuous effect across linked elements" /> Effects</label>
             </div>`;
           }
           html += `</div>`;
           
           html += `<div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--bg-input); display:flex; align-items:center; margin-bottom:6px;">
-            <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-bright); font-weight:500; cursor:pointer;" title="Sync changes instantly across all canvases">
-              <input type="checkbox" id="lnk-live-toggle" ${group.liveLink ? 'checked' : ''} />
+            <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-bright); font-weight:500; cursor:pointer;" title="Sync changes instantly across all canvases as you edit">
+              <input type="checkbox" id="lnk-live-toggle" title="Sync changes instantly across all canvases as you edit" ${group.liveLink ? 'checked' : ''} />
               Live-link mode
             </label>
           </div>`;
 
-          html += `<button id="lnk-btn-push" class="btn primary" style="width:100%; font-size:11px; padding:6px 12px; font-weight:600; margin-top:8px; box-sizing:border-box;">Push Changes to Group</button>`;
-          html += `<button id="lnk-btn-unlink" class="btn" style="width:100%; font-size:11px; padding:6px 12px; margin-top:4px; box-sizing:border-box;">Unlink Selected</button>`;
+          html += `<button id="lnk-btn-push" class="btn primary" title="Force push properties from selection to all other members in the group" style="width:100%; font-size:11px; padding:6px 12px; font-weight:600; margin-top:8px; box-sizing:border-box;">Push Changes to Group</button>`;
+          html += `<button id="lnk-btn-unlink" class="btn" title="Remove selected element(s) from link groups" style="width:100%; font-size:11px; padding:6px 12px; margin-top:4px; box-sizing:border-box;">Unlink Selected</button>`;
         }
       } else {
         html += `<div style="font-size: 11px; color:#ef4444; width:100%; box-sizing:border-box;">Selection contains multiple link groups.</div>`;
-        html += `<button id="lnk-btn-unlink-all" class="btn" style="width:100%; font-size:11px; padding:6px 12px; margin-top:4px; box-sizing:border-box;">Unlink All</button>`;
+        html += `<button id="lnk-btn-unlink-all" class="btn" title="Remove selected element(s) from link groups" style="width:100%; font-size:11px; padding:6px 12px; margin-top:4px; box-sizing:border-box;">Unlink All</button>`;
       }
     } else {
       html += `<div style="padding: 8px; border: 1px dashed var(--bg-input); border-radius: 4px; margin-bottom: 12px; font-size: 11px; color:#ef4444; background:rgba(239, 68, 68, 0.05); text-align:center;">Cannot link different types of elements.</div>`;
@@ -4550,7 +4550,7 @@ function renderProps() {
   // Hex-copy button helpers — used by every hex color input across the app.
   const HEX_COPY_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
   const hexCopyBtn = (k, disabled = false) => `<button class="hex-copy" data-target-k="${k}" title="Copy hex" tabindex="-1" ${disabled ? 'disabled style="pointer-events:none;"' : ''} style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:2px; color:var(--text-muted); display:flex; align-items:center;">${HEX_COPY_SVG}</button>`;
-  const hexInputBox = (key, value, inputId = '', disabled = false) => `<div style="position:relative; flex:1; min-width:0; ${disabled ? 'pointer-events:none;' : ''}"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" ${disabled ? 'disabled style="pointer-events:none;"' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />${hexCopyBtn(key, disabled)}</div>`;
+  const hexInputBox = (key, value, inputId = '', disabled = false) => `<div style="position:relative; flex:1; min-width:0; ${disabled ? 'pointer-events:none;' : ''}"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" title="Hex color code" ${disabled ? 'disabled style="pointer-events:none;"' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />${hexCopyBtn(key, disabled)}</div>`;
 
   if (!el) {
     if (!c) { propsEl.innerHTML = '<div class="panel-section"><h3>Properties</h3><div class="prop-empty">No canvas.</div></div>'; return; }
@@ -4566,32 +4566,32 @@ function renderProps() {
         <div class="prop-row">
           <label>Dimensions</label>
           <div class="prop-grid-2">
-            <input type="number" id="c-w" value="${c.width}" />
-            <input type="number" id="c-h" value="${c.height}" />
+            <input type="number" id="c-w" value="${c.width}" title="Canvas Width (px)" />
+            <input type="number" id="c-h" value="${c.height}" title="Canvas Height (px)" />
           </div>
         </div>
         <div class="prop-row" style="margin-top:12px;">
           <label>Background Color</label>
           <div style="display:flex; gap:6px; align-items:center;">
-            <button class="cp-trigger" data-k="canvas-bg" id="c-bg-color" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(c.bgColor) || '#000'}"></button>
+            <button class="cp-trigger" data-k="canvas-bg" id="c-bg-color" title="Choose canvas background color" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(c.bgColor) || '#000'}"></button>
             ${hexInputBox('canvas-bg', c.bgColor, 'c-bg-color-hex')}
           </div>
         </div>
         <div class="prop-row" style="margin-top:4px;">
           <div class="checkbox-row">
-            <input type="checkbox" id="c-bg-apply-all" ${state.bgApplyAll !== false ? 'checked' : ''} />
-            <label>Apply to all canvases</label>
+            <input type="checkbox" id="c-bg-apply-all" title="Apply background color to all canvas sizes" ${state.bgApplyAll !== false ? 'checked' : ''} />
+            <label for="c-bg-apply-all" title="Apply background color to all canvas sizes">Apply to all canvases</label>
           </div>
         </div>
         <div class="prop-row" style="margin-top:12px;">
           <div class="checkbox-row">
-            <input type="checkbox" id="c-full-click" ${c.fullClickArea !== false ? 'checked' : ''} />
-            <label>Use entire canvas as click area</label>
+            <input type="checkbox" id="c-full-click" title="Make the entire canvas clickable (landing page redirect)" ${c.fullClickArea !== false ? 'checked' : ''} />
+            <label for="c-full-click" title="Make the entire canvas clickable (landing page redirect)">Use entire canvas as click area</label>
           </div>
         </div>
 
         <div class="prop-row" style="margin-top:16px; display:flex; flex-direction:column; gap:8px;">
-          <button id="c-btn-preview" style="
+          <button id="c-btn-preview" title="Toggle preview mode for this canvas" style="
             width:100%; padding:8px 12px; border-radius:6px; border:none; cursor:pointer;
             background:var(--accent-base); color:#fff; font-size:12px; font-weight:600;
             font-family:inherit; display:flex; align-items:center; justify-content:center; gap:6px;
@@ -4601,7 +4601,7 @@ function renderProps() {
             Preview
           </button>
           <div style="display:flex; gap:6px;">
-            <button id="c-btn-dl-zip" style="
+            <button id="c-btn-dl-zip" title="Download this size as a zip package containing HTML and assets" style="
               flex:1; padding:7px 0; border-radius:6px; border:1px solid #272c3a; cursor:pointer;
               background:var(--bg-input); color:var(--text-main); font-size:11px; font-weight:500;
               font-family:inherit; display:flex; align-items:center; justify-content:center; gap:4px;
@@ -4610,7 +4610,7 @@ function renderProps() {
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Download ZIP
             </button>
-            <button id="c-btn-dl-img" style="
+            <button id="c-btn-dl-img" title="Download a PNG snapshot of the current canvas" style="
               flex:1; padding:7px 0; border-radius:6px; border:1px solid #272c3a; cursor:pointer;
               background:var(--bg-input); color:var(--text-main); font-size:11px; font-weight:500;
               font-family:inherit; display:flex; align-items:center; justify-content:center; gap:4px;
@@ -4727,16 +4727,60 @@ function renderProps() {
     return !!(state.dataMerge && state.dataMerge.locked && typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, field));
   };
 
-  const num = (key, label, def = '') => `<div class="prop-row"><label>${label}</label><input type="number" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
+  const propTooltips = {
+    // Canvas dimensions
+    'c-w': 'Canvas Width (px)',
+    'c-h': 'Canvas Height (px)',
+    // Standard properties
+    'x': 'X position in pixels',
+    'y': 'Y position in pixels',
+    'width': 'Width in pixels',
+    'height': 'Height in pixels',
+    'rotation': 'Rotation in degrees',
+    'radius': 'Corner radius in pixels',
+    // Text properties
+    'fontSize': 'Font size in pixels',
+    'maxFontSize': 'Maximum font size when using Auto-size',
+    'lineHeight': 'Line height multiplier',
+    'letterSpacing': 'Letter spacing in pixels',
+    'bgPadL': 'Left and Right padding in pixels',
+    'bgPadV': 'Top and Bottom padding in pixels',
+    'bgCoverage': 'Width percentage of text background coverage',
+    'bgOpacity': 'Text background opacity percentage',
+    // Shape properties
+    'strokeOpacity': 'Stroke opacity percentage',
+    'strokeWidth': 'Stroke thickness in pixels',
+    'strokeDash': 'Stroke dash length in pixels',
+    'strokeGap': 'Stroke gap length in pixels',
+    // Button properties
+    'paddingLR': 'Button horizontal padding in pixels',
+    // Image properties
+    'opacity': 'Opacity percentage',
+    // Animation properties
+    'animDuration': 'Animation duration in seconds',
+    'animDelay': 'Animation start delay in seconds',
+    'zoomFrom': 'Animation zoom starting scale percentage',
+    'bgOffset': 'Delay offset for background block animation in seconds',
+    // Effect properties
+    'effDuration': 'Effect cycle duration in seconds',
+    'effDelay': 'Effect start delay in seconds',
+    'panDist': 'Pan translation distance in pixels',
+    'zoomTarget': 'Zoom peak scale percentage',
+    'effSpeed': 'Effect speed percentage',
+    'effOnce': 'Run the effect cycle only once',
+    'effEase': 'Apply smooth ease in/out curve'
+  };
+
+  const num = (key, label, def = '') => `<div class="prop-row"><label>${label}</label><input type="number" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" title="${propTooltips[key] || label}" /></div>`;
   const txt = (key, label) => {
     const val = (key === 'text' && dText !== undefined) ? dText : el[key];
     const isDisabled = isFieldDisabled(key);
-    return `<div class="prop-row" ${isDisabled ? 'data-locked-field="true"' : ''}><label>${label}</label><input type="text" data-k="${key}" value="${(val || '').replace(/"/g, '&quot;')}" ${isDisabled ? 'disabled style="pointer-events:none;"' : ''} /></div>`;
+    return `<div class="prop-row" ${isDisabled ? 'data-locked-field="true"' : ''}><label>${label}</label><input type="text" data-k="${key}" value="${(val || '').replace(/"/g, '&quot;')}" title="${propTooltips[key] || label}" ${isDisabled ? 'disabled style="pointer-events:none;"' : ''} /></div>`;
   };
   const numIcon = (key, svgIcon, tooltip, def = '') => `
     <div class="prop-row-compact" title="${tooltip}">
       ${svgIcon}
-      <input type="number" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" />
+      <input type="number" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" title="${tooltip}" />
     </div>`;
 
   const xIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m18 8 4 4-4 4M6 8l-4 4 4 4M2 12h20"/></svg>`;
@@ -4748,11 +4792,12 @@ function renderProps() {
   const col = (key, label) => {
     const val = (key === 'color' && dColor !== undefined) ? dColor : ((key === 'bg' && dBg !== undefined) ? dBg : el[key]);
     const isDisabled = isFieldDisabled(key);
+    const triggerTitle = `Choose ${label.toLowerCase()} color`;
     return `
     <div class="prop-row" ${isDisabled ? 'data-locked-field="true"' : ''}>
       <label>${label}</label>
       <div style="display:flex; gap:6px; align-items:center; ${isDisabled ? 'pointer-events:none;' : ''}">
-        <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
+        <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} title="${triggerTitle}" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
         ${hexInputBox(key, val, '', isDisabled)}
       </div>
     </div>`;
@@ -4761,19 +4806,21 @@ function renderProps() {
   const colOpac = (key, label) => {
     const val = (key === 'color' && dColor !== undefined) ? dColor : ((key === 'bg' && dBg !== undefined) ? dBg : el[key]);
     const isDisabled = isFieldDisabled(key);
+    const triggerTitle = `Choose ${label.toLowerCase()} color`;
+    const opacityTitle = `${label} opacity percentage`;
     return `
     <div class="prop-row" ${isDisabled ? 'data-locked-field="true"' : ''}>
       <div style="display:flex; align-items:end; gap:8px; width:100%;">
         <div class="prop-row" style="margin:0; flex:1; min-width:0;">
           <label>${label}</label>
           <div style="display:flex; gap:6px; align-items:center; ${isDisabled ? 'pointer-events:none;' : ''}">
-            <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
+            <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} title="${triggerTitle}" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
             ${hexInputBox(key, val, '', isDisabled)}
           </div>
         </div>
         <div class="prop-row" style="margin:0; width:78px; flex-shrink:0;">
           <label>Opacity %</label>
-          <input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
+          <input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" title="${opacityTitle}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
         </div>
       </div>
     </div>`;
@@ -4787,7 +4834,8 @@ function renderProps() {
     { id: 'middle', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="2" y1="12" x2="22" y2="12"/><rect x="10" y="6" width="4" height="12" rx="1"/></svg>' },
     { id: 'bottom', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="2" y1="20" x2="22" y2="20"/><rect x="10" y="4" width="4" height="12" rx="1"/></svg>' }
   ];
-  const alignElHtml = alignElOptions.map(a => `<button class="align-btn action-el-align" data-align="${a.id}" title="Align ${a.id}">${a.icon}</button>`).join('');
+  const elAlignTitles = { left: 'Align Left', center: 'Align Horizontal Center', right: 'Align Right', top: 'Align Top', middle: 'Align Vertical Center', bottom: 'Align Bottom' };
+  const alignElHtml = alignElOptions.map(a => `<button class="align-btn action-el-align" data-align="${a.id}" title="${elAlignTitles[a.id]}">${a.icon}</button>`).join('');
 
   f.push(`<div class="prop-row"><div class="align-group" style="justify-content:space-between; width:100%;">${alignElHtml}</div></div>`);
   f.push(`<div class="prop-row" style="margin-bottom:6px;"><div class="prop-grid-2">${numIcon('x', xIcon, 'X Position')}${numIcon('y', yIcon, 'Y Position')}</div></div>`);
@@ -4796,8 +4844,8 @@ function renderProps() {
     <div class="prop-grid-2">
       ${numIcon('rotation', rIcon, 'Rotation', 0)}
       <div class="checkbox-row" style="height:24px; align-items:center;">
-        <input type="checkbox" data-k="lockRatio" ${el.lockRatio ? 'checked' : ''} />
-        <label>Lock Ratio</label>
+        <input type="checkbox" data-k="lockRatio" id="prop-lock-ratio" title="Maintain aspect ratio when resizing" ${el.lockRatio ? 'checked' : ''} />
+        <label for="prop-lock-ratio" title="Maintain aspect ratio when resizing">Lock Ratio</label>
       </div>
     </div>
   </div>`);
@@ -4820,12 +4868,12 @@ function renderProps() {
     f.push(`<div class="prop-row">
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
         <div class="prop-row" style="margin:0"><label>Font</label>
-          <select data-k="fontFamily">
+          <select data-k="fontFamily" title="Font Family">
             ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
           </select>
         </div>
         <div class="prop-row" style="margin:0"><label>Weight</label>
-          <select data-k="weight">
+          <select data-k="weight" title="Font Weight">
             ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${w === el.weight ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
           </select>
         </div>
@@ -4836,16 +4884,16 @@ function renderProps() {
     f.push(`<div class="prop-row">
       <div style="display:flex; align-items:end; gap:8px; width:100%;">
         <div class="prop-row" style="margin:0; flex:1;">
-          <label>Size</label>
-          <input type="number" data-k="fontSize" value="${computedFontSize}" ${el.autoSize ? 'disabled' : ''} style="width:100%;" />
+          <label for="prop-font-size">Size</label>
+          <input type="number" data-k="fontSize" id="prop-font-size" value="${computedFontSize}" ${el.autoSize ? 'disabled' : ''} style="width:100%;" title="Font Size (px)" />
         </div>
         <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
-          <input type="checkbox" data-k="autoSize" ${el.autoSize ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
-          <span>Auto</span>
+          <input type="checkbox" data-k="autoSize" id="prop-auto-size" title="Auto-scale text size to fit boundary" ${el.autoSize ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
+          <label for="prop-auto-size" title="Auto-scale text size to fit boundary" style="cursor:pointer; margin:0;">Auto</label>
         </div>
         <div class="prop-row" style="margin:0; flex:1;">
-          <label>Max size</label>
-          <input type="number" data-k="maxFontSize" value="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" ${!el.autoSize ? 'disabled' : ''} style="width:100%;" />
+          <label for="prop-max-font-size">Max size</label>
+          <input type="number" data-k="maxFontSize" id="prop-max-font-size" value="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" ${!el.autoSize ? 'disabled' : ''} style="width:100%;" title="Maximum font size when using Auto-size" />
         </div>
       </div>
     </div>`);
@@ -4856,16 +4904,16 @@ function renderProps() {
     f.push(`<div class="prop-row" id="prop-spacing-row">
           <div style="display:flex; align-items:end; gap:8px; width:100%;">
             <div class="prop-row" style="margin:0; flex:1;">
-              <label>Leading</label>
-              <input type="number" step="0.1" min="0.1" data-k="lineHeight" value="${el.lineHeight !== undefined ? el.lineHeight : '1.2'}" ${autoChecked ? 'disabled' : ''} style="width:100%;" />
+              <label for="prop-line-height">Leading</label>
+              <input type="number" step="0.1" min="0.1" data-k="lineHeight" id="prop-line-height" value="${el.lineHeight !== undefined ? el.lineHeight : '1.2'}" ${autoChecked ? 'disabled' : ''} style="width:100%;" title="Line height multiplier" />
             </div>
             <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
-              <input type="checkbox" data-k="lineHeightAuto" ${autoChecked ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
-              <span>Auto</span>
+              <input type="checkbox" data-k="lineHeightAuto" id="prop-line-height-auto" title="Auto-calculate line height based on size" ${autoChecked ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
+              <label for="prop-line-height-auto" title="Auto-calculate line height based on size" style="cursor:pointer; margin:0;">Auto</label>
             </div>
             <div class="prop-row" style="margin:0; flex:1;">
-              <label>Tracking</label>
-              <input type="number" data-k="letterSpacing" value="${el.letterSpacing !== undefined ? el.letterSpacing : 0}" style="width:100%;" />
+              <label for="prop-letter-spacing">Tracking</label>
+              <input type="number" data-k="letterSpacing" id="prop-letter-spacing" value="${el.letterSpacing !== undefined ? el.letterSpacing : 0}" style="width:100%;" title="Letter spacing in pixels" />
             </div>
           </div>
         </div>`);
@@ -4876,26 +4924,26 @@ function renderProps() {
         <div class="prop-row" style="margin:0; flex:1; min-width:0;">
           <label>BG Color</label>
           <div style="display:flex; gap:6px; align-items:center;">
-            <button class="cp-trigger" data-k="bg" ${!el.hasBg ? 'disabled' : ''} style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el.bg || '#000000') || '#000'}"></button>
+            <button class="cp-trigger" data-k="bg" ${!el.hasBg ? 'disabled' : ''} title="Choose text background color" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el.bg || '#000000') || '#000'}"></button>
             ${hexInputBox('bg', el.bg || '#000000', '', !el.hasBg)}
           </div>
         </div>
         <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
-          <input type="checkbox" data-k="hasBg" ${el.hasBg ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
-          <span>BG</span>
+          <input type="checkbox" data-k="hasBg" id="prop-has-bg" title="Enable text background" ${el.hasBg ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
+          <label for="prop-has-bg" title="Enable text background" style="cursor:pointer; margin:0;">BG</label>
         </div>
         <div class="prop-row" style="margin:0; width:78px; flex-shrink:0;">
-          <label>Opacity %</label>
-          <input type="number" data-k="bgOpacity" value="${el.bgOpacity !== undefined ? el.bgOpacity : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
+          <label for="prop-bg-opacity">Opacity %</label>
+          <input type="number" data-k="bgOpacity" id="prop-bg-opacity" value="${el.bgOpacity !== undefined ? el.bgOpacity : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Text background opacity percentage" />
         </div>
       </div>
     </div>`);
 
     // L/R pad, T/B pad, Coverage — three compact columns on a single row.
     f.push(`<div class="prop-row" style="display:flex; gap:6px;">
-      <div style="flex:1; min-width:0;"><label>L/R Pad</label><input type="number" data-k="bgPadL" value="${el.bgPadL !== undefined ? el.bgPadL : 8}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
-      <div style="flex:1; min-width:0;"><label>T/B Pad</label><input type="number" data-k="bgPadV" value="${el.bgPadV !== undefined ? el.bgPadV : 4}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
-      <div style="flex:1; min-width:0;"><label>Cover %</label><input type="number" data-k="bgCoverage" value="${el.bgCoverage !== undefined ? el.bgCoverage : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+      <div style="flex:1; min-width:0;"><label for="prop-bg-pad-l">L/R Pad</label><input type="number" data-k="bgPadL" id="prop-bg-pad-l" value="${el.bgPadL !== undefined ? el.bgPadL : 8}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Left and Right padding in pixels" /></div>
+      <div style="flex:1; min-width:0;"><label for="prop-bg-pad-v">T/B Pad</label><input type="number" data-k="bgPadV" id="prop-bg-pad-v" value="${el.bgPadV !== undefined ? el.bgPadV : 4}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Top and Bottom padding in pixels" /></div>
+      <div style="flex:1; min-width:0;"><label for="prop-bg-coverage">Cover %</label><input type="number" data-k="bgCoverage" id="prop-bg-coverage" value="${el.bgCoverage !== undefined ? el.bgCoverage : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Width percentage of text background coverage" /></div>
     </div>`);
   }
 
@@ -4905,13 +4953,15 @@ function renderProps() {
       { id: 'center', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="3" y1="6" x2="21" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>' },
       { id: 'right', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>' }
     ];
-    const alignHtml = alignOptions.map(a => `<button class="align-btn ${el.textAlign === a.id ? 'active' : ''}" data-align="${a.id}" title="${a.id}" style="padding:4px 0;">${a.icon}</button>`).join('');
+    const alignTitles = { left: 'Align text left', center: 'Align text center', right: 'Align text right' };
+    const alignHtml = alignOptions.map(a => `<button class="align-btn ${el.textAlign === a.id ? 'active' : ''}" data-align="${a.id}" title="${alignTitles[a.id]}" style="padding:4px 0;">${a.icon}</button>`).join('');
     const vAlignOptions = [
       { id: 'top', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="4" y1="4" x2="20" y2="4"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="14" x2="16" y2="14"/></svg>' },
       { id: 'middle', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="4" y1="12" x2="20" y2="12"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="17" x2="16" y2="17"/></svg>' },
       { id: 'bottom', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="4" y1="20" x2="20" y2="20"/><line x1="8" y1="15" x2="16" y2="15"/><line x1="8" y1="10" x2="16" y2="10"/></svg>' }
     ];
-    const vAlignHtml = vAlignOptions.map(a => `<button class="valign-btn align-btn ${el.verticalAlign === a.id ? 'active' : ''}" data-valign="${a.id}" title="${a.id}" style="padding:4px 0;">${a.icon}</button>`).join('');
+    const vAlignTitles = { top: 'Vertical align top', middle: 'Vertical align middle', bottom: 'Vertical align bottom' };
+    const vAlignHtml = vAlignOptions.map(a => `<button class="valign-btn align-btn ${el.verticalAlign === a.id ? 'active' : ''}" data-valign="${a.id}" title="${vAlignTitles[a.id]}" style="padding:4px 0;">${a.icon}</button>`).join('');
 
     f.push(`<div class="prop-row"><label>Alignment</label>
       <div style="display:flex; flex-direction:column; gap:6px; flex:1;">
@@ -4931,19 +4981,19 @@ function renderProps() {
           <div style="flex:1; min-width:0;">
             <label>Stroke Color</label>
             <div style="display:flex; gap:6px; align-items:center;">
-              <button class="cp-trigger" data-k="strokeColor" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:transparent; box-shadow:inset 0 0 0 4px ${getBgStyle(el.strokeColor || '#ffffff') || '#fff'};"></button>
+              <button class="cp-trigger" data-k="strokeColor" title="Choose stroke color" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:transparent; box-shadow:inset 0 0 0 4px ${getBgStyle(el.strokeColor || '#ffffff') || '#fff'};"></button>
               ${hexInputBox('strokeColor', el.strokeColor || '#ffffff')}
             </div>
           </div>
           <div style="width:78px; flex-shrink:0;">
-            <label>Opacity %</label>
-            <input type="number" data-k="strokeOpacity" value="${el.strokeOpacity !== undefined ? el.strokeOpacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
+            <label for="prop-stroke-opacity">Opacity %</label>
+            <input type="number" data-k="strokeOpacity" id="prop-stroke-opacity" value="${el.strokeOpacity !== undefined ? el.strokeOpacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke opacity percentage" />
           </div>
         </div>`;
     h += `<div class="prop-row" style="display:flex; gap:6px;">
-          <div style="flex:1; min-width:0;"><label>Thickness</label><input type="number" data-k="strokeWidth" value="${sw}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
-          <div style="flex:1; min-width:0;"><label>Dash</label><input type="number" data-k="strokeDash" value="${el.strokeDash !== undefined ? el.strokeDash : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
-          <div style="flex:1; min-width:0;"><label>Gap</label><input type="number" data-k="strokeGap" value="${el.strokeGap !== undefined ? el.strokeGap : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-stroke-width">Thickness</label><input type="number" data-k="strokeWidth" id="prop-stroke-width" value="${sw}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke thickness in pixels" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-stroke-dash">Dash</label><input type="number" data-k="strokeDash" id="prop-stroke-dash" value="${el.strokeDash !== undefined ? el.strokeDash : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke dash length in pixels" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-stroke-gap">Gap</label><input type="number" data-k="strokeGap" id="prop-stroke-gap" value="${el.strokeGap !== undefined ? el.strokeGap : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke gap length in pixels" /></div>
         </div>`;
     return h;
   };
@@ -4955,35 +5005,41 @@ function renderProps() {
     f.push(txt('text', 'Label'));
     f.push(`<div class="prop-row"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
       <div class="prop-row" style="margin:0"><label>Font</label>
-        <select data-k="fontFamily">
+        <select data-k="fontFamily" title="Button Font Family">
           ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
         </select>
       </div>
       <div class="prop-row" style="margin:0"><label>Weight</label>
-        <select data-k="weight">
+        <select data-k="weight" title="Button Font Weight">
           ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${w === el.weight ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
         </select>
       </div>
       <div class="prop-row" style="margin:0"><label>Size</label>
-        <input type="number" data-k="fontSize" value="${el.fontSize}" />
+        <input type="number" data-k="fontSize" value="${el.fontSize}" title="Button Font Size" />
       </div>
     </div></div>`);
     f.push(colOpac('bg', 'BG'));
     f.push(col('color', 'Text color'));
     // Radius + Padding L/R share a row.
     f.push(`<div class="prop-row" style="display:flex; gap:6px;">
-          <div style="flex:1; min-width:0;"><label>Radius</label><input type="number" data-k="radius" value="${el.radius !== undefined ? el.radius : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
-          <div style="flex:1; min-width:0;"><label>Padding L/R</label><input type="number" data-k="paddingLR" value="${el.paddingLR !== undefined ? el.paddingLR : 16}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-radius">Radius</label><input type="number" data-k="radius" id="prop-radius" value="${el.radius !== undefined ? el.radius : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button corner radius in pixels" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-padding-lr">Padding L/R</label><input type="number" data-k="paddingLR" id="prop-padding-lr" value="${el.paddingLR !== undefined ? el.paddingLR : 16}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button horizontal padding in pixels" /></div>
         </div>`);
     f.push(`<div class="prop-row" style="display:flex; gap:16px;">
-          <div class="checkbox-row"><input type="checkbox" data-k="autoHug" ${el.autoHug ? 'checked' : ''}/><label>Hug</label></div>
-          <div class="checkbox-row"><input type="checkbox" data-k="isClickArea" ${el.isClickArea ? 'checked' : ''}/><label>Clicktag</label></div>
+          <div class="checkbox-row">
+            <input type="checkbox" data-k="autoHug" id="prop-auto-hug" title="Auto-scale button width to hug text content" ${el.autoHug ? 'checked' : ''}/>
+            <label for="prop-auto-hug" title="Auto-scale button width to hug text content" style="cursor:pointer;">Hug</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" data-k="isClickArea" id="prop-is-click-area" title="Make this button the main click-through area" ${el.isClickArea ? 'checked' : ''}/>
+            <label for="prop-is-click-area" title="Make this button the main click-through area" style="cursor:pointer;">Clicktag</label>
+          </div>
         </div>`);
     f.push(strokeSection());
   }
   if (el.type === 'image') {
     const imgDisabled = isFieldDisabled('image');
-    f.push(`<div class="prop-row" ${imgDisabled ? 'data-locked-field="true"' : ''}><label>Upload image</label><input type="file" accept="image/*" id="img-upload" ${imgDisabled ? 'disabled style="pointer-events:none;"' : ''} /></div>`);
+    f.push(`<div class="prop-row" ${imgDisabled ? 'data-locked-field="true"' : ''}><label for="img-upload">Upload image</label><input type="file" accept="image/*" id="img-upload" title="Upload an image file" ${imgDisabled ? 'disabled style="pointer-events:none;"' : ''} /></div>`);
     const isVector = (el.name && el.name.toLowerCase().endsWith('.svg')) || 
                      (dAssetId && state.assets && state.assets[dAssetId] && state.assets[dAssetId].startsWith('data:image/svg+xml'));
     if (el.name) {
@@ -4993,7 +5049,7 @@ function renderProps() {
           ? 'background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); cursor:not-allowed;'
           : 'background:var(--accent-base); color:var(--text-bright); border:none; cursor:pointer;';
         f.push(`<div class="prop-row" style="margin-top:4px; margin-bottom:8px;">
-          <button id="btn-webp-compress" class="btn" style="width:100%; padding:6px 12px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; text-align:center; display:block; ${btnStyle}" ${el.isCompressed ? 'disabled' : ''}>
+          <button id="btn-webp-compress" class="btn" title="Compress image to WebP format to reduce file size" style="width:100%; padding:6px 12px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; text-align:center; display:block; ${btnStyle}" ${el.isCompressed ? 'disabled' : ''}>
             ${el.isCompressed ? '✓ Compressed' : 'Compress to WebP'}
           </button>
         </div>`);
@@ -5003,7 +5059,7 @@ function renderProps() {
     if (src) {
       f.push(`<div class="prop-row"><label>Preview</label><img src="${src}" style="max-width:100%;border-radius:4px;border:1px solid #272c3a;" /></div>`);
     }
-    f.push(`<div class="prop-row"><label>Opacity %</label><input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>`);
+    f.push(`<div class="prop-row"><label for="prop-opacity">Opacity %</label><input type="number" data-k="opacity" id="prop-opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Opacity percentage" /></div>`);
   }
 
   // Animation section
@@ -5033,7 +5089,7 @@ function renderProps() {
   }
 
   f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
-    ${animOptions.map(o => `<button class="align-btn anim-btn ${o.val === (el.animType || 'none') ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;">${o.label}</button>`).join('')}
+    ${animOptions.map(o => `<button class="align-btn anim-btn ${o.val === (el.animType || 'none') ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Transition: ${o.label}">${o.label}</button>`).join('')}
   </div>`);
 
   // Seconds inputs use step=0.1 so wheel-scroll and arrow keys nudge by 0.1.
@@ -5047,11 +5103,11 @@ function renderProps() {
   if (hasFadeToggle || el.animType === 'zoom-in') {
     let extraProps = '';
     if (el.animType === 'zoom-in') {
-      extraProps += `<div style="flex:1; min-width:0;"><label>Zoom From (%)</label><input type="number" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : 110}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" /></div>`;
+      extraProps += `<div style="flex:1; min-width:0;"><label>Zoom From (%)</label><input type="number" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : 110}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Animation zoom starting scale percentage" /></div>`;
     }
     if (hasFadeToggle) {
       const fadeChecked = el.animFade !== false ? 'checked' : '';
-      extraProps += `<div style="flex:1; display:flex; align-items:center; margin-top:0px;"><div class="checkbox-row"><input type="checkbox" data-k="animFade" ${fadeChecked}/><label>Fade</label></div></div>`;
+      extraProps += `<div style="flex:1; display:flex; align-items:center; margin-top:0px;"><div class="checkbox-row"><input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during movement transition" ${fadeChecked}/><label for="prop-anim-fade" title="Fade in element during movement transition" style="cursor:pointer;">Fade</label></div></div>`;
     }
     f.push(`<div class="prop-row" style="display:flex; gap:16px; margin-bottom:12px;">${extraProps}</div>`);
   }
@@ -5061,19 +5117,19 @@ function renderProps() {
     if (el.animateBg) {
       animTextBgRow = `
         <div class="checkbox-row" style="align-self: end; margin-bottom: 4px;">
-          <input type="checkbox" data-k="animateBg" ${el.animateBg ? 'checked' : ''}/>
-          <label>Animate text BG</label>
+          <input type="checkbox" data-k="animateBg" id="prop-animate-bg" title="Animate text background block alongside typing animation" ${el.animateBg ? 'checked' : ''}/>
+          <label for="prop-animate-bg" title="Animate text background block alongside typing animation" style="cursor:pointer;">Animate text BG</label>
         </div>
         <div class="prop-row" style="margin: 0;">
-          <label style="text-transform: none;">Time offset</label>
-          <input type="number" step="0.1" data-k="bgOffset" value="${el.bgOffset !== undefined ? el.bgOffset : 0}" />
+          <label for="prop-bg-offset" style="text-transform: none;">Time offset</label>
+          <input type="number" step="0.1" data-k="bgOffset" id="prop-bg-offset" value="${el.bgOffset !== undefined ? el.bgOffset : 0}" title="Delay offset for background block animation in seconds" />
         </div>
       `;
     } else {
       animTextBgRow = `
         <div class="checkbox-row" style="align-self: center; margin-top: 4px;">
-          <input type="checkbox" data-k="animateBg" ${el.animateBg ? 'checked' : ''}/>
-          <label>Animate text BG</label>
+          <input type="checkbox" data-k="animateBg" id="prop-animate-bg" title="Animate text background block alongside typing animation" ${el.animateBg ? 'checked' : ''}/>
+          <label for="prop-animate-bg" title="Animate text background block alongside typing animation" style="cursor:pointer;">Animate text BG</label>
         </div>
         <div></div>
       `;
@@ -5095,7 +5151,7 @@ function renderProps() {
     { val: 'zoom', label: 'Zoom' }
   ];
   f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:16px;">
-    ${effectOptions.map(o => `<button class="align-btn eff-btn ${o.val === (el.effectType || 'none') ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;">${o.label}</button>`).join('')}
+    ${effectOptions.map(o => `<button class="align-btn eff-btn ${o.val === (el.effectType || 'none') ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Effect: ${o.label}">${o.label}</button>`).join('')}
   </div>`);
 
   if (el.effectType && el.effectType !== 'none') {
@@ -5105,7 +5161,7 @@ function renderProps() {
       ${num('effDelay', 'Delay (s)', 0)}
       ${num('panDist', 'Distance (px)', 50)}
       <div class="prop-row" style="margin:0"><label>Direction</label>
-        <select data-k="panDir">
+        <select data-k="panDir" title="Pan translation direction">
           <option value="R" ${el.panDir === 'R' ? 'selected' : ''}>Right</option>
           <option value="L" ${el.panDir === 'L' ? 'selected' : ''}>Left</option>
           <option value="U" ${el.panDir === 'U' ? 'selected' : ''}>Up</option>
@@ -5114,8 +5170,8 @@ function renderProps() {
       </div>
     </div>
     <div style="display:flex; gap:16px; margin-top:8px;">
-      <div class="checkbox-row"><input type="checkbox" data-k="effEase" ${el.effEase !== false ? 'checked' : ''}/><label>Ease</label></div>
-      <div class="checkbox-row"><input type="checkbox" data-k="effOnce" ${el.effOnce ? 'checked' : ''}/><label>Perform once</label></div>
+      <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
+      <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once" title="Run the effect cycle only once" ${el.effOnce ? 'checked' : ''}/><label for="prop-eff-once" title="Run the effect cycle only once" style="cursor:pointer;">Perform once</label></div>
     </div>
     </div>`);
     } else if (el.effectType === 'zoom') {
@@ -5125,8 +5181,8 @@ function renderProps() {
       ${num('zoomTarget', 'Target (%)', 150)}
     </div>
     <div style="display:flex; gap:16px; margin-top:8px;">
-      <div class="checkbox-row"><input type="checkbox" data-k="effEase" ${el.effEase !== false ? 'checked' : ''}/><label>Ease</label></div>
-      <div class="checkbox-row"><input type="checkbox" data-k="effOnce" ${el.effOnce ? 'checked' : ''}/><label>Perform once</label></div>
+      <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease-zoom" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease-zoom" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
+      <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once-zoom" title="Run the effect cycle only once" ${el.effOnce ? 'checked' : ''}/><label for="prop-eff-once-zoom" title="Run the effect cycle only once" style="cursor:pointer;">Perform once</label></div>
     </div>
     </div>`);
     } else {
@@ -5154,13 +5210,14 @@ function renderProps() {
       const checkboxRows = [];
       dmFields.forEach(field => {
         const on = !!(el.dynamic && el.dynamic[field]);
-        checkboxRows.push(`<div class="checkbox-row"><input type="checkbox" class="dm-control dm-field-chk" data-dm-field="${field}" ${on ? 'checked' : ''}/><label>${DM_FIELD_LABEL[field] || field}</label></div>`);
+        const id = `dm-chk-${field}-${el.id}`;
+        checkboxRows.push(`<div class="checkbox-row"><input type="checkbox" id="${id}" class="dm-control dm-field-chk" data-dm-field="${field}" title="Toggle dynamic data binding for ${DM_FIELD_LABEL[field] || field}" ${on ? 'checked' : ''}/><label for="${id}" title="Toggle dynamic data binding for ${DM_FIELD_LABEL[field] || field}" style="cursor:pointer;">${DM_FIELD_LABEL[field] || field}</label></div>`);
       });
       dynamicHtml += `<div class="prop-row" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:8px;">${checkboxRows.join('')}</div>`;
       if (el.linkGroupId) {
         dynamicHtml += `<div class="prop-row" style="font-size:10px;color:var(--accent-light);margin-top:4px;line-height:1.4;">Linked element — these toggles apply to every size in the link group.</div>`;
       }
-      dynamicHtml += `<button class="btn primary dm-control" id="dm-open-from-props" style="margin-top:10px;width:100%;font-size:11px;">Open Data &amp; Versions…</button>`;
+      dynamicHtml += `<button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="margin-top:10px;width:100%;font-size:11px;">Open Data &amp; Versions…</button>`;
       dynamicHtml += `</div>`;
     }
   }
@@ -7703,8 +7760,8 @@ function openNewProjectDialog() {
   bg.className = 'modal-bg';
 
   const presetRows = PRESET_SIZES.map((p, i) => `
-    <label class="np-row" style="display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:6px; cursor:pointer;">
-      <input type="checkbox" class="np-canvas" data-idx="${i}" checked style="margin:0;" />
+    <label class="np-row" style="display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:6px; cursor:pointer;" title="Toggle canvas size ${p.width} × ${p.height}">
+      <input type="checkbox" class="np-canvas" data-idx="${i}" checked style="margin:0;" title="Toggle canvas size ${p.width} × ${p.height}" />
       <span style="font-size:12px; color:var(--text-main);">${p.name}</span>
       <span style="font-size:11px; color:var(--text-muted); margin-left:auto;">${p.width} × ${p.height}</span>
     </label>`).join('');
@@ -7713,42 +7770,42 @@ function openNewProjectDialog() {
     <div class="modal" style="max-width:480px;">
       <div class="modal-head">
         <h2>New Project</h2>
-        <button class="btn" id="np-close">Close</button>
+        <button class="btn" id="np-close" title="Close dialog">Close</button>
       </div>
       <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project name</label>
-          <input type="text" id="np-name" value="${(state.projectName || 'RMIT_Ad').replace(/"/g, '&quot;')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="text" id="np-name" value="${(state.projectName || 'RMIT_Ad').replace(/"/g, '&quot;')}" title="Enter the name for the new project" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
-          <input type="url" id="np-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="url" id="np-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" title="Default exit/landing page URL for all canvases" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:flex; justify-content:space-between; margin-bottom:6px;">
             <span>Canvases</span>
-            <span id="np-canvas-toggle" style="cursor:pointer; color:var(--accent-light); text-transform:none; letter-spacing:0;">Toggle all</span>
+            <span id="np-canvas-toggle" style="cursor:pointer; color:var(--accent-light); text-transform:none; letter-spacing:0;" title="Select or deselect all preset canvas sizes">Toggle all</span>
           </label>
           <div style="border:1px solid #272c3a; border-radius:6px; padding:4px;">${presetRows}</div>
         </div>
         <div style="display:flex; gap:14px;">
           <div style="flex:1;">
             <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
-            <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+            <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
           </div>
           <div style="flex:1;">
             <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Default background</label>
             <div style="display:flex; align-items:center; gap:8px;">
-              <input type="color" id="np-bg" value="${(state.defaultBg || '#0f172a')}" style="width:36px; height:32px; padding:0; border:1px solid #272c3a; border-radius:4px; background:none; cursor:pointer;" />
-              <input type="text" id="np-bg-hex" value="${(state.defaultBg || '#0f172a').replace(/^#/, '').toUpperCase()}" maxlength="6" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; text-transform:uppercase;" />
+              <input type="color" id="np-bg" value="${(state.defaultBg || '#0f172a')}" title="Choose default canvas background color" style="width:36px; height:32px; padding:0; border:1px solid #272c3a; border-radius:4px; background:none; cursor:pointer;" />
+              <input type="text" id="np-bg-hex" value="${(state.defaultBg || '#0f172a').replace(/^#/, '').toUpperCase()}" maxlength="6" title="Hex color code for canvas background" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; text-transform:uppercase;" />
             </div>
           </div>
         </div>
         <p style="margin:0; font-size:11px; color:var(--text-muted); line-height:1.5;">This replaces your current project. Your existing work is auto-saved — save a <strong>.cook</strong> file first if you want a separate backup.</p>
       </div>
       <div class="modal-foot">
-        <button class="btn" id="np-cancel">Cancel</button>
-        <button class="btn primary" id="np-create">Create Project</button>
+        <button class="btn" id="np-cancel" title="Cancel and keep current project">Cancel</button>
+        <button class="btn primary" id="np-create" title="Create a new project with the selected configurations">Create Project</button>
       </div>
     </div>`;
 
@@ -7800,25 +7857,25 @@ function openProjectSettingsDialog() {
     <div class="modal" style="max-width:400px;">
       <div class="modal-head">
         <h2>Project Settings</h2>
-        <button class="btn" id="ps-close">Close</button>
+        <button class="btn" id="ps-close" title="Close settings">Close</button>
       </div>
       <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project Name</label>
-          <input type="text" id="ps-name" value="${(state.projectName || 'RMIT_Ad').replace(/"/g, '&quot;')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="text" id="ps-name" value="${(state.projectName || 'RMIT_Ad').replace(/"/g, '&quot;')}" title="Enter the name for the project" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
-          <input type="url" id="ps-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="url" id="ps-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" title="Default exit/landing page URL for all canvases" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
-          <input type="number" id="ps-size-limit" value="${state.adSizeLimit || 150}" min="1" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="number" id="ps-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
       </div>
       <div class="modal-foot">
-        <button class="btn" id="ps-cancel">Cancel</button>
-        <button class="btn primary" id="ps-save">Save Settings</button>
+        <button class="btn" id="ps-cancel" title="Cancel changes">Cancel</button>
+        <button class="btn primary" id="ps-save" title="Save and apply project settings">Save Settings</button>
       </div>
     </div>`;
 
@@ -7856,7 +7913,7 @@ function openExportModal() {
     const fullName = `${projName}_${c.width}x${c.height}`;
     return `
       <tr data-cid="${c.id}">
-        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;"><input type="checkbox" class="export-chk" data-cid="${c.id}" checked /></td>
+        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;"><input type="checkbox" class="export-chk" data-cid="${c.id}" checked title="Select this canvas size for export" /></td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${fullName}</td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.width}x${c.height}</td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330; color:${kb > 150 ? '#ef4444' : '#c7ccdb'}">${kb} KB</td>
@@ -7867,16 +7924,16 @@ function openExportModal() {
 
   const bodyHTML = `
     <div style="margin-bottom: 16px; display: flex; gap: 8px; align-items:center;">
-      <button class="btn primary" id="btn-export-selected">Export Selected (ZIP)</button>
+      <button class="btn primary" id="btn-export-selected" title="Export selected canvases as individual zip packages inside a main zip">Export Selected (ZIP)</button>
       ${(state.dataMerge && state.dataMerge.rows && state.dataMerge.rows.length)
-        ? `<button class="btn" id="btn-export-versions">Export All Versions (${state.dataMerge.rows.length})</button>
+        ? `<button class="btn" id="btn-export-versions" title="Generate and export all data versions for the selected configurations">Export All Versions (${state.dataMerge.rows.length})</button>
            <span style="font-size:10px;color:var(--text-muted);">one folder per row</span>`
         : ''}
     </div>
     <table style="width:100%; text-align:left; border-collapse:collapse; font-size:13px; color:var(--text-main);">
       <thead>
         <tr>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;width:30px;"><input type="checkbox" id="chk-all" checked /></th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;width:30px;"><input type="checkbox" id="chk-all" checked title="Select/deselect all canvas sizes" /></th>
           <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Name</th>
           <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Size</th>
           <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Est. Weight</th>
@@ -8262,8 +8319,8 @@ const CHANGELOG_DATA = [
     items: [
       'Added a "Clear everything" button to the TOOLs section to reset all canvases, selections, and link groups.',
       'Cleaned up the element context menu by grouping Remove Link, Push Changes, and Delete Group actions inside the Link Group submenu.',
-      'Added "Add to canvases and link" as a direct context menu action under the Link Group submenu.',
-      'Renamed the link-group panel button to "Auto-Link" and the canvas element cloning action to "Add to canvases and link".',
+      'Added "Distribute & Link" as a direct context menu action under the Link Group submenu.',
+      'Renamed the link-group panel button to "Auto-Link" and the canvas element cloning action to "Distribute & Link".',
       'Ensured cloned elements are automatically centered on target canvases.',
       'Synchronized link group icons to match the exact SVGs of the corresponding Layer list item types.',
       'Highlighted active link group rows in the sidebar when any of their elements are selected.'
@@ -8731,14 +8788,14 @@ function openModal(title, body, isCode) {
     <div class="modal">
       <div class="modal-head">
         <h2>${title}</h2>
-        <button class="btn" id="modal-close">Close</button>
+        <button class="btn" id="modal-close" title="Close dialog">Close</button>
       </div>
       <div class="modal-body">
         ${isCode ? `<textarea id="modal-text" spellcheck="false"></textarea>` : `<div>${body}</div>`}
       </div>
       <div class="modal-foot">
-        ${isCode ? `<button class="btn" id="modal-copy">Copy</button>
-                    <button class="btn primary" id="modal-download">Download .html</button>` : ''}
+        ${isCode ? `<button class="btn" id="modal-copy" title="Copy code to clipboard">Copy</button>
+                    <button class="btn primary" id="modal-download" title="Download as HTML file">Download .html</button>` : ''}
       </div>
     </div>`;
   document.body.appendChild(bg);
@@ -8870,11 +8927,11 @@ function openWebpCompressionModal(el) {
     <div class="modal" style="width:480px;">
       <div class="modal-head">
         <h2>WebP Image Compression</h2>
-        <button class="btn" id="webp-close">Close</button>
+        <button class="btn" id="webp-close" title="Close dialog">Close</button>
       </div>
       <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
         <div style="display:flex; gap:12px; align-items:center; background:rgba(255,255,255,0.03); padding:10px; border-radius:6px;">
-          <img id="webp-preview-img" src="${originalDataUrl}" style="width:80px; height:80px; object-fit:contain; border:1px solid var(--border-light); border-radius:4px; background:#12131a;" />
+          <img id="webp-preview-img" src="${originalDataUrl}" title="WebP compression preview" style="width:80px; height:80px; object-fit:contain; border:1px solid var(--border-light); border-radius:4px; background:#12131a;" />
           <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
             <div style="font-size:12px; font-weight:600; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(el.name)}</div>
             <div style="font-size:11px; color:var(--text-muted);">
@@ -8891,12 +8948,12 @@ function openWebpCompressionModal(el) {
             <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Compression Quality</label>
             <span id="webp-quality-display" style="font-size:12px; font-weight:700; color:var(--accent-light);">80%</span>
           </div>
-          <input type="range" id="webp-quality-slider" min="10" max="100" value="80" style="width:100%; cursor:pointer; accent-color:var(--accent-base);" />
+          <input type="range" id="webp-quality-slider" min="10" max="100" value="80" style="width:100%; cursor:pointer; accent-color:var(--accent-base);" title="Adjust compression quality percentage" />
         </div>
       </div>
       <div class="modal-foot" style="justify-content:flex-end; gap: 8px; display: flex;">
-        <button class="btn" id="webp-btn-cancel">Cancel</button>
-        <button class="btn primary" id="webp-btn-apply">Apply Compression</button>
+        <button class="btn" id="webp-btn-cancel" title="Cancel image compression">Cancel</button>
+        <button class="btn primary" id="webp-btn-apply" title="Apply compression and replace image with WebP version">Apply Compression</button>
       </div>
     </div>`;
   
@@ -9154,7 +9211,7 @@ document.addEventListener('contextmenu', (e) => {
 
       html += `
           <div class="ctx-item" id="ctx-link-new" style="white-space:nowrap;">Create New Group...</div>
-          <div class="ctx-item" id="ctx-link-autoadd" style="white-space:nowrap;">Add to canvases and link</div>`;
+          <div class="ctx-item" id="ctx-link-autoadd" style="white-space:nowrap;">Distribute & Link</div>`;
 
       if (hasLink) {
         html += `<div class="ctx-divider"></div>`;
@@ -10377,6 +10434,7 @@ function renderPalettes() {
     const s = document.createElement('div');
     s.className = 'cp-swatch';
     s.style.background = hex;
+    s.title = `Apply color ${hex}`;
     s.addEventListener('click', () => {
       iroPicker.color.set(hex);
       document.getElementById('cp-hex-input').value = hex.replace(/^#/, '');

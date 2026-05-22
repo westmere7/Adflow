@@ -33,8 +33,8 @@ v1.3.28 - May 2026
 v1.3.27 - May 2026
 - Added a "Clear everything" button to the TOOLs section to reset all canvases, selections, and link groups.
 - Cleaned up the element context menu by grouping Remove Link, Push Changes, and Delete Group actions inside the Link Group submenu.
-- Added "Add to canvases and link" as a direct context menu action under the Link Group submenu.
-- Renamed the link-group panel button to "Auto-Link" and the canvas element cloning action to "Add to canvases and link".
+- Added "Distribute & Link" as a direct context menu action under the Link Group submenu.
+- Renamed the link-group panel button to "Auto-Link" and the canvas element cloning action to "Distribute & Link".
 - Ensured cloned elements are automatically centered on target canvases.
 - Synchronized link group icons to match the exact SVGs of the corresponding Layer list item types.
 - Highlighted active link group rows in the sidebar when any of their elements are selected.

@@ -21,7 +21,7 @@
 
     <!-- ============== TOP BAR ============== -->
     <div class="topbar">
-      <div class="menu-item hamburger" style="margin-right: 8px; padding: 4px; display:flex; align-items:center;">
+      <div class="menu-item hamburger" title="Main Menu" style="margin-right: 8px; padding: 4px; display:flex; align-items:center;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -80,7 +80,7 @@
         <label>Frame</label>
         <button class="btn ghost icon" id="btn-prev-frame" title="Previous Frame"
           style="padding:4px 6px;margin-right:-2px">&lsaquo;</button>
-        <select id="frame-select"
+        <select id="frame-select" title="Current Frame"
           style="background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;width:80px;"></select>
         <button class="btn ghost icon" id="btn-next-frame" title="Next Frame"
           style="padding:4px 6px;margin-left:-2px">&rsaquo;</button>
@@ -88,15 +88,15 @@
         <button class="btn ghost icon" id="btn-add-frame" title="Add Frame" style="padding:4px 6px">+</button>
         <button class="btn ghost icon" id="btn-remove-frame" title="Remove Frame" style="padding:4px 6px">-</button>
         <label style="margin-left:8px">Duration (s)</label>
-        <input type="number" id="frame-duration" value="2" min="0.1" step="0.1"
+        <input type="number" id="frame-duration" title="Frame Duration (seconds)" value="2" min="0.1" step="0.1"
           onkeydown="if(['e','E','+','-'].includes(event.key)) event.preventDefault();"
           style="width:60px;background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;" />
         <div class="checkbox-row" style="margin-left:12px; display:flex; align-items:center; gap:4px;">
-          <input type="checkbox" id="project-loop-ad" style="margin:0;" />
-          <label for="project-loop-ad" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer;">Loop</label>
+          <input type="checkbox" id="project-loop-ad" title="Loop animation in preview/export" style="margin:0;" />
+          <label for="project-loop-ad" title="Loop animation in preview/export" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer;">Loop</label>
         </div>
         <label style="margin-left:8px" id="frame-transition-label">Transition</label>
-        <select id="frame-transition"
+        <select id="frame-transition" title="Frame Transition Type"
           style="background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;width:90px;">
           <option value="none">None</option>
           <option value="fade">Fade</option>
@@ -114,8 +114,8 @@
           style="width:60px;background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;margin-left:4px;" />
         <label style="margin-left:4px" id="frame-transition-duration-label">seconds</label>
         <div class="checkbox-row" id="frame-transition-fade-row" style="margin-left:8px; display:flex; align-items:center; gap:4px;">
-          <input type="checkbox" id="frame-transition-fade" style="margin:0;" />
-          <label for="frame-transition-fade" id="frame-transition-fade-label" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer;">Add Fade</label>
+          <input type="checkbox" id="frame-transition-fade" title="Add a fade transition alongside movement" style="margin:0;" />
+          <label for="frame-transition-fade" id="frame-transition-fade-label" title="Add a fade transition alongside movement" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer;">Add Fade</label>
         </div>
       </div>
       <div class="spacer"></div>
@@ -130,8 +130,8 @@
       </span>
       <span id="zoom-level-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Reset Zoom">Zoom 100%</span>
       <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v1.5.0</span>
-      <button class="btn" id="btn-preview">Preview</button>
-      <button class="btn primary" id="btn-export-top">Export</button>
+      <button class="btn" id="btn-preview" title="Preview the interactive banner animation">Preview</button>
+      <button class="btn primary" id="btn-export-top" title="Export banner to HTML package">Export</button>
       <span id="save-status" style="font-weight: 500; font-size: 11px; color: var(--text-muted); user-select: none; width: 140px; min-width: 140px; flex-shrink: 0; display: inline-flex; align-items: center; white-space: nowrap;" title="Your work auto-saves to this browser"><svg class="save-icon saved" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="margin-right: 6px; flex-shrink: 0;"><path d="M20 6 9 17l-5-5"/></svg>All changes saved</span>
     </div>
 
@@ -176,39 +176,39 @@
               </svg>
             </h3>
             <div class="add-grid">
-              <button class="add-btn" data-add="text">
+              <button class="add-btn" data-add="text" title="Add text layer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M4 7V5h16v2M9 19h6M12 5v14" />
                 </svg>Text
               </button>
-              <button class="add-btn" data-add="image">
+              <button class="add-btn" data-add="image" title="Add image layer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="3" width="18" height="18" rx="2" />
                   <circle cx="9" cy="9" r="2" />
                   <path d="m21 15-3.5-3.5L11 18" />
                 </svg>Image
               </button>
-              <button class="add-btn" data-add="rect">
+              <button class="add-btn" data-add="rect" title="Add rectangle layer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="4" y="4" width="16" height="16" rx="2" />
                 </svg>Rectangle
               </button>
-              <button class="add-btn" data-add="circle">
+              <button class="add-btn" data-add="circle" title="Add circle layer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="12" cy="12" r="8" />
                 </svg>Circle
               </button>
-              <button class="add-btn" data-add="button">
+              <button class="add-btn" data-add="button" title="Add CTA button layer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="8" width="18" height="8" rx="4" />
                 </svg>Button
               </button>
-              <button class="add-btn" id="btn-add-brand">
+              <button class="add-btn" id="btn-add-brand" title="Open Brand Elements library">
                 <svg viewBox="0 0 578.52 556.76" fill="currentColor" style="width: 16px; height: 16px;">
                   <path d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/>
                 </svg>Brand Elements
               </button>
-              <button class="add-btn" data-add="background">
+              <button class="add-btn" data-add="background" title="Add canvas background layer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="2" y="2" width="20" height="20" rx="4" />
                   <line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="2 2" />
@@ -284,14 +284,14 @@
 
   <div id="color-picker-modal" class="cp-modal" style="display:none;">
     <div class="cp-header">
-      <button class="cp-tab active" data-tab="solid">Solid</button>
-      <button class="cp-tab" data-tab="gradient">Gradient</button>
+      <button class="cp-tab active" data-tab="solid" title="Use solid color">Solid</button>
+      <button class="cp-tab" data-tab="gradient" title="Use gradient color">Gradient</button>
     </div>
     <div class="cp-body">
       <div id="cp-iro-container" style="display:flex; justify-content:center; margin-bottom:12px;"></div>
       <div class="cp-row">
         <div style="position:relative; flex:1; display:flex; align-items:center;">
-          <input type="text" id="cp-hex-input" class="cp-input" style="width:100%; padding-right:24px;" />
+          <input type="text" id="cp-hex-input" class="cp-input" title="Hex color code" style="width:100%; padding-right:24px;" />
           <button id="cp-hex-copy" style="position:absolute; right:4px; background:none; border:none; color:var(--text-muted); cursor:pointer; padding:2px; display:flex; align-items:center; outline:none;" title="Copy hex">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -315,11 +315,11 @@
         <div class="cp-row" style="margin-top:8px; gap:8px; align-items:flex-end;">
           <div style="flex:1; min-width:0;">
             <label style="font-size:10px; color:var(--text-label); display:block; margin-bottom:3px;">Angle</label>
-            <input type="number" id="cp-grad-angle" class="cp-input" value="90" style="width:100%;" />
+            <input type="number" id="cp-grad-angle" class="cp-input" title="Gradient angle in degrees" value="90" style="width:100%;" />
           </div>
           <div style="flex:1; min-width:0;">
             <label style="font-size:10px; color:var(--text-label); display:block; margin-bottom:3px;">Opacity %</label>
-            <input type="number" id="cp-grad-opacity" class="cp-input" value="100" min="0" max="100" style="width:100%;" />
+            <input type="number" id="cp-grad-opacity" class="cp-input" title="Stop opacity percentage" value="100" min="0" max="100" style="width:100%;" />
           </div>
           <button id="cp-grad-reverse" class="cp-btn" title="Reverse gradient" style="padding:0 10px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
@@ -331,7 +331,7 @@
         <div
           style="font-size:10px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; display:flex; justify-content:space-between;">
           <span>Saved Palette</span>
-          <button id="cp-add-swatch"
+          <button id="cp-add-swatch" title="Save current color to palette"
             style="background:none;border:none;color:var(--accent-base);cursor:pointer;font-size:16px;line-height:10px;">+</button>
         </div>
         <div id="cp-swatches" class="cp-swatch-grid"></div>
