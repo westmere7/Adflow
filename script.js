@@ -183,6 +183,7 @@ const state = {
   activeCanvasId: null,
   selectedElementId: null,
   layerSelection: [],
+  zoom: 0.6,
   editingElementId: null,      // inline-edit (text) mode
   isolatedGroupId: null,
   assets: {
@@ -1366,7 +1367,7 @@ function render(skipProps = false) {
 
   document.querySelector('.app').classList.toggle('preview-lock', !!(state.isPreviewMode || state.singlePreviewId));
   // workspace sizing
-  const z = state.zoom || 1;
+  const z = state.zoom || 0.6;
   workspaceEl.style.zoom = z;
   workspaceEl.style.setProperty('--z', z);
 
@@ -1470,7 +1471,7 @@ function centerWorkspace() {
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
 
-  const z = state.zoom || 1;
+  const z = state.zoom || 0.6;
   const area = document.getElementById('canvas-area');
   const targetScrollLeft = centerX * z - area.clientWidth / 2;
   const targetScrollTop = centerY * z - area.clientHeight / 2;
@@ -1487,7 +1488,7 @@ function centerWorkspace() {
 let _viewAnimToken = 0;
 function animateViewTo(targetZoom, focusX, focusY, duration = 350, onComplete) {
   const area = document.getElementById('canvas-area');
-  const startZoom = state.zoom || 1;
+  const startZoom = state.zoom || 0.6;
   const startScrollLeft = area.scrollLeft;
   const startScrollTop = area.scrollTop;
   const targetScrollLeft = Math.max(0, focusX * targetZoom - area.clientWidth / 2);
@@ -1522,7 +1523,7 @@ function zoomToCanvas(c) {
   const fitZoomY = (area.clientHeight - padding) / c.height;
   const newZoom = Math.min(fitZoomX, fitZoomY, 2.5);
 
-  state.zoom = Math.max(0.1, newZoom);
+  state.zoom = Math.max(0.6, newZoom);
   render();
 
   const centerX = c.workspaceX + c.width / 2;
@@ -3497,10 +3498,10 @@ canvasArea.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (state.isPreviewMode) return;
 
-  const oldZoom = state.zoom || 1;
+  const oldZoom = state.zoom || 0.6;
   const zoomSpeed = e.deltaMode === 1 ? 0.05 : 0.002;
   let newZoom = oldZoom - e.deltaY * zoomSpeed;
-  newZoom = Math.max(0.1, Math.min(newZoom, 5));
+  newZoom = Math.max(0.6, Math.min(newZoom, 5));
 
   if (newZoom === oldZoom) return;
 
@@ -7529,7 +7530,7 @@ function allCanvasesCenter() {
 document.getElementById('zoom-level-display')?.addEventListener('click', () => {
   if (state.canvases.length === 0) return;
   const { x, y } = allCanvasesCenter();
-  animateViewTo(1, x, y);
+  animateViewTo(0.6, x, y);
 });
 
 document.getElementById('app-version-display')?.addEventListener('click', () => {
@@ -7729,7 +7730,7 @@ document.getElementById('btn-preview').addEventListener('click', () => {
   const area = document.getElementById('canvas-area');
   state.prePreviewScrollLeft = area.scrollLeft;
   state.prePreviewScrollTop = area.scrollTop;
-  state.prePreviewZoom = state.zoom || 1;
+  state.prePreviewZoom = state.zoom || 0.6;
   // Hide the side panels NOW (preview-active expands canvas-area to full viewport).
   // animateViewTo captures area.clientWidth — if we don't expand first, it computes a
   // target for the editor's narrower viewport and the canvases end up skewed left.
@@ -8236,7 +8237,7 @@ function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, clickTag 
   state.clipboard = null;
   // Drop user-uploaded assets; keep the bundled RMIT logo data-url if present.
   state.assets = state.assets && state.assets.rmit_logo ? { rmit_logo: state.assets.rmit_logo } : {};
-  state.zoom = 1;
+  state.zoom = 0.6;
 
   history.length = 0;
   historyIndex = -1;
@@ -8246,7 +8247,7 @@ function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, clickTag 
     const ca = document.getElementById('canvas-area');
     if (ca && ca.scrollTo && state.canvases.length > 0) {
       const { x, y } = allCanvasesCenter();
-      const z = state.zoom || 1;
+      const z = state.zoom || 0.6;
       const targetScrollLeft = Math.max(0, x * z - ca.clientWidth / 2);
       const targetScrollTop = Math.max(0, y * z - ca.clientHeight / 2);
       ca.scrollTo({ left: targetScrollLeft, top: targetScrollTop, behavior: 'instant' });
