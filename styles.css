@@ -3443,3 +3443,12 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
   align-items: center;
 }
 
+.layer-hover-outline {
+  position: absolute;
+  border: calc(1.5px / var(--z, 1)) dashed #22d3ee; /* Distinct dashed cyan outline */
+  pointer-events: none;
+  z-index: 1000000;
+  box-shadow: 0 0 3px rgba(34, 211, 238, 0.3);
+  border-radius: 1px;
+}
+

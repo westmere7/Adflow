@@ -4211,6 +4211,20 @@ function renderLayers() {
       `;
 
       div.addEventListener('mouseenter', () => {
+        const activeCanvasNode = document.querySelector(`.canvas-frame[data-canvas-id="${state.activeCanvasId}"] .canvas`);
+        if (activeCanvasNode) {
+          activeCanvasNode.querySelectorAll('.layer-hover-outline').forEach(n => n.remove());
+          const hoverOutline = document.createElement('div');
+          hoverOutline.className = 'layer-hover-outline';
+          hoverOutline.style.left = (el.x - 1.5) + 'px';
+          hoverOutline.style.top = (el.y - 1.5) + 'px';
+          hoverOutline.style.width = (el.width + 3) + 'px';
+          hoverOutline.style.height = (el.height + 3) + 'px';
+          hoverOutline.style.transform = `rotate(${el.rotation || 0}deg)`;
+          hoverOutline.style.transformOrigin = 'center';
+          activeCanvasNode.appendChild(hoverOutline);
+        }
+
         const nameSpan = div.querySelector('.layer-name');
         if (nameSpan.contentEditable === 'true') return;
         if (nameSpan.scrollWidth > nameSpan.clientWidth) {
@@ -4227,6 +4241,11 @@ function renderLayers() {
         }
       });
       div.addEventListener('mouseleave', () => {
+        const activeCanvasNode = document.querySelector(`.canvas-frame[data-canvas-id="${state.activeCanvasId}"] .canvas`);
+        if (activeCanvasNode) {
+          activeCanvasNode.querySelectorAll('.layer-hover-outline').forEach(n => n.remove());
+        }
+
         const nameSpan = div.querySelector('.layer-name');
         if (nameSpan.dataset.scrollInterval) {
           clearInterval(nameSpan.dataset.scrollInterval);
