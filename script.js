@@ -5086,30 +5086,33 @@ function renderProps() {
   f.push(`</div>`);
 
   // ---- Dynamic Data (data-merge / versioning) ----
+  let dynamicHtml = '';
   if (typeof dmFieldsForType === 'function') {
     const dmFields = dmFieldsForType(el.type);
     if (dmFields.length) {
-      f.push(`<div class="panel-section" id="panel-section-dynamic-data">
+      dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data">
         <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none;">
           <span>Dynamic Data</span>
           <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
-        </h3>`);
-      f.push(`<div class="prop-row" style="font-size:10px;color:var(--text-muted);margin:-2px 0 8px;line-height:1.4;">Mark fields that vary per version. Bind them to a sheet column in <b>Data &amp; Versions</b>.</div>`);
+        </h3>`;
+      const checkboxRows = [];
       dmFields.forEach(field => {
         const on = !!(el.dynamic && el.dynamic[field]);
-        f.push(`<div class="checkbox-row"><input type="checkbox" class="dm-control dm-field-chk" data-dm-field="${field}" ${on ? 'checked' : ''}/><label>${DM_FIELD_LABEL[field] || field}</label></div>`);
+        checkboxRows.push(`<div class="checkbox-row"><input type="checkbox" class="dm-control dm-field-chk" data-dm-field="${field}" ${on ? 'checked' : ''}/><label>${DM_FIELD_LABEL[field] || field}</label></div>`);
       });
+      dynamicHtml += `<div class="prop-row" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:8px;">${checkboxRows.join('')}</div>`;
       if (el.linkGroupId) {
-        f.push(`<div class="prop-row" style="font-size:10px;color:var(--accent-light);margin-top:4px;line-height:1.4;">Linked element — these toggles apply to every size in the link group.</div>`);
+        dynamicHtml += `<div class="prop-row" style="font-size:10px;color:var(--accent-light);margin-top:4px;line-height:1.4;">Linked element — these toggles apply to every size in the link group.</div>`;
       }
-      f.push(`<button class="btn ghost dm-control" id="dm-open-from-props" style="margin-top:10px;width:100%;font-size:11px;">Open Data &amp; Versions…</button>`);
-      f.push(`</div>`);
+      dynamicHtml += `<button class="btn primary dm-control" id="dm-open-from-props" style="margin-top:10px;width:100%;font-size:11px;">Open Data &amp; Versions…</button>`;
+      dynamicHtml += `</div>`;
     }
   }
 
   propsEl.innerHTML = `
+    ${dynamicHtml}
     <div class="panel-section" id="panel-section-properties">
       <h3 class="panel-header-collapsible" id="header-properties" style="cursor: pointer; user-select: none;">
         <span>Properties</span>

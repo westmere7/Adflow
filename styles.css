@@ -1047,6 +1047,26 @@ body.theme-navy {
 
     }
 
+    .panel-section.highlighted {
+
+      background: var(--accent-dark);
+
+      border: 1px solid var(--accent-base);
+
+      border-radius: 8px;
+
+      margin: 12px 14px;
+
+      padding: 0 12px 12px;
+
+    }
+
+    .panel-section.highlighted h3 {
+
+      padding: 12px 12px 8px;
+
+    }
+
 
 
     .panel-header-collapsible {
