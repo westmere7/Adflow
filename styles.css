@@ -3307,6 +3307,18 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
       animation: marching-ants 0.8s linear infinite;
     }
 
+    /* Circles can't use the 4-edge gradient dashes — they clip into broken
+       fragments around the curve. Use a real dashed border, which follows the
+       50% border-radius cleanly. */
+    .el.shape-circle.link-highlight::after,
+    .el.shape-circle.link-highlight-hover::after,
+    .el.shape-circle.link-highlight-live::after,
+    .el.shape-circle.link-highlight-hover-live::after {
+      background: none;
+      animation: none;
+      border: calc(2px / var(--z, 1)) dashed var(--accent-light);
+    }
+
 
 /* Data-merge: a small badge marks the dynamic-data element — a lightning bolt, plus a
    link icon when the element is in a link group. Shown only on the selected element (not

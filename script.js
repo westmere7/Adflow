@@ -166,6 +166,7 @@ function makeElement(type) {
     case 'text': return { ...base, type, text: 'Your headline', fontSize: 22, color: '#ffffff', weight: '700', fontFamily: 'Arial', width: 220, height: 32 };
     case 'rect': return { ...base, type, color: '#7c5cff', width: 120, height: 80, radius: 8 };
     case 'circle': return { ...base, type, color: '#22d3ee', width: 80, height: 80 };
+    case 'line': return { ...base, type, color: '#ffffff', width: 160, height: 3, opacity: 100 };
     case 'pixel': return { ...base, type, color: '#e61e2a', width: 100, height: 100 };
     case 'button': return { ...base, type, text: 'Learn more', fontSize: 14, color: '#ffffff', bg: '#7c5cff', radius: 6, fontFamily: 'Arial', width: 130, height: 40, isClickArea: true };
     case 'image': return { ...base, type, assetId: null, width: 140, height: 90 };
@@ -610,6 +611,12 @@ function autoLinkElements() {
           defaultSync.opacity = true;
           defaultSync.inAnim = true;
           defaultSync.effect = true;
+        } else if (cat === 'line') {
+          defaultSync.color = true;
+          defaultSync.thickness = true;
+          defaultSync.opacity = true;
+          defaultSync.inAnim = true;
+          defaultSync.effect = true;
         }
 
         if (!state.linkGroups) state.linkGroups = {};
@@ -767,6 +774,14 @@ function applyLinkSync(sourceEl, targetEl, group) {
       if (sourceEl.aspectRatio !== undefined) targetEl.aspectRatio = sourceEl.aspectRatio;
       else delete targetEl.aspectRatio;
     }
+  } else if (cat === 'line') {
+    if (sync.color) {
+      if (sourceEl.color !== undefined) targetEl.color = sourceEl.color;
+      else delete targetEl.color;
+    }
+    if (sync.thickness) {
+      if (sourceEl.height !== undefined) targetEl.height = sourceEl.height;
+    }
   }
 
   if (sync.opacity) {
@@ -841,6 +856,12 @@ function createAndLinkGroup(name) {
     defaultSync.fill = true;
     defaultSync.stroke = true;
     defaultSync.transform = true;
+    defaultSync.opacity = true;
+    defaultSync.inAnim = true;
+    defaultSync.effect = true;
+  } else if (cat === 'line') {
+    defaultSync.color = true;
+    defaultSync.thickness = true;
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
     defaultSync.effect = true;
@@ -953,6 +974,12 @@ function autoAddAndLink(srcEl) {
       defaultSync.fill = true;
       defaultSync.stroke = true;
       defaultSync.transform = true;
+      defaultSync.opacity = true;
+      defaultSync.inAnim = true;
+      defaultSync.effect = true;
+    } else if (cat === 'line') {
+      defaultSync.color = true;
+      defaultSync.thickness = true;
       defaultSync.opacity = true;
       defaultSync.inAnim = true;
       defaultSync.effect = true;
@@ -2281,6 +2308,9 @@ function elementNode(el, canvasCtx) {
     d.appendChild(fill);
     const stroke = strokeOverlayNode(el);
     if (stroke) d.appendChild(stroke);
+  } else if (el.type === 'line') {
+    d.classList.add('shape-line');
+    d.style.background = dColor;
   } else if (el.type === 'button') {
     d.classList.add('button');
     d.style.color = dColor;
@@ -2643,6 +2673,32 @@ function selectionOverlay(el) {
   w.style.width = (el.width + 3) + 'px';
   w.style.height = (el.height + 3) + 'px';
   w.style.transform = `rotate(${el.rotation || 0}deg)`;
+
+  // A line is a stroke, not a box: 2 endpoint handles (drag to change length/angle),
+  // the standard rotation handle, and a distinct thickness handle opposite it.
+  if (el.type === 'line') {
+    ['w', 'e'].forEach(end => {
+      const h = document.createElement('div');
+      h.className = 'handle ' + end;
+      h.style.cursor = 'move';
+      h.addEventListener('mousedown', (e) => onLineEndpointMouseDown(e, el, end));
+      w.appendChild(h);
+    });
+    const rotL = document.createElement('div');
+    rotL.className = 'handle rot';
+    rotL.addEventListener('mousedown', (e) => onRotateMouseDown(e, el));
+    w.appendChild(rotL);
+    const thick = document.createElement('div');
+    thick.className = 'handle thickness';
+    thick.title = 'Drag to change line thickness';
+    thick.style.cssText = 'bottom:calc(-20px / var(--z, 1));left:50%;transform:translateX(-50%);border-radius:50%;background:#10b981;cursor:ns-resize;';
+    thick.addEventListener('mousedown', (e) => onLineThicknessMouseDown(e, el));
+    w.appendChild(thick);
+    const lineBadge = createBadge(el);
+    if (lineBadge) w.appendChild(lineBadge);
+    return w;
+  }
+
   ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach(corner => {
     const h = document.createElement('div');
     h.className = 'handle ' + corner;
@@ -2699,6 +2755,83 @@ function onRadiusMouseDown(e, el) {
   }
   window.addEventListener('mousemove', move);
   window.addEventListener('mouseup', up);
+}
+
+// Line endpoint drag — the grabbed end follows the cursor while the opposite end
+// stays pinned, so length (width) and angle (rotation) both update from the two
+// points. Dragging mostly sideways changes length; up/down rotates the line.
+function onLineEndpointMouseDown(e, el, end) {
+  if (isSpaceDown) return;
+  e.stopPropagation();
+  e.preventDefault();
+  const z = state.zoom || 1;
+  const canvasRect = e.target.closest('.canvas').getBoundingClientRect();
+  const o = { x: el.x, y: el.y, w: el.width, h: el.height, rot: el.rotation || 0 };
+  const rad = o.rot * Math.PI / 180;
+  const dir = { x: Math.cos(rad), y: Math.sin(rad) };
+  const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+  // The endpoint that stays put while the other follows the cursor.
+  const anchor = (end === 'e')
+    ? { x: cx - (o.w / 2) * dir.x, y: cy - (o.w / 2) * dir.y }
+    : { x: cx + (o.w / 2) * dir.x, y: cy + (o.w / 2) * dir.y };
+
+  const onMove = (ev) => {
+    const px = (ev.clientX - canvasRect.left) / z;
+    const py = (ev.clientY - canvasRect.top) / z;
+    let len = Math.hypot(px - anchor.x, py - anchor.y);
+    if (len < 4) len = 4;
+    // Axis angle is always measured left-end -> right-end.
+    let ang = Math.atan2(py - anchor.y, px - anchor.x);
+    if (end === 'w') ang += Math.PI;
+    if (ev.shiftKey) ang = Math.round(ang * 180 / Math.PI / 15) * 15 * Math.PI / 180;
+    const nd = { x: Math.cos(ang), y: Math.sin(ang) };
+    const sign = (end === 'e') ? 1 : -1;
+    const ncx = anchor.x + sign * (len / 2) * nd.x;
+    const ncy = anchor.y + sign * (len / 2) * nd.y;
+    el.width = Math.round(len);
+    el.rotation = ((Math.round(ang * 180 / Math.PI) % 360) + 360) % 360;
+    el.x = Math.round(ncx - el.width / 2);
+    el.y = Math.round(ncy - o.h / 2);
+    render();
+  };
+  const onUp = () => {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    if (el.width !== o.w || el.rotation !== o.rot || el.x !== o.x || el.y !== o.y) pushHistory();
+  };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+// Line thickness drag — the bottom handle grows/shrinks `height` symmetrically
+// around the line's center, so the stroke thickens in place.
+function onLineThicknessMouseDown(e, el) {
+  if (isSpaceDown) return;
+  e.stopPropagation();
+  e.preventDefault();
+  const z = state.zoom || 1;
+  const startX = e.clientX, startY = e.clientY;
+  const o = { h: el.height };
+  const cyFixed = el.y + el.height / 2;
+  const rad = (el.rotation || 0) * Math.PI / 180;
+  const cos = Math.cos(-rad), sin = Math.sin(-rad);
+
+  const onMove = (ev) => {
+    const dx = (ev.clientX - startX) / z;
+    const dy = (ev.clientY - startY) / z;
+    const ldy = dx * sin + dy * cos;            // perpendicular (local-y) drag
+    const nh = Math.max(1, Math.round(o.h + 2 * ldy));
+    el.height = nh;
+    el.y = Math.round(cyFixed - nh / 2);
+    render();
+  };
+  const onUp = () => {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    if (el.height !== o.h) pushHistory();
+  };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
 }
 
 // ============================================================================
@@ -3829,7 +3962,7 @@ function renderLinkControl() {
 
           html += `<div style="padding-top:4px;">`;
           html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <div style="font-size:10px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em;">Sync Properties</div>
+            <div style="font-size:10px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em;">Link Properties</div>
             <button id="lnk-toggle-all-props" title="Select or deselect all sync properties" style="background:none; border:none; color:var(--accent-light); font-size:10px; cursor:pointer; padding:0; text-decoration:underline;">${anyChecked ? 'Unselect all' : 'Select all'}</button>
           </div>`;
           
@@ -3872,6 +4005,14 @@ function renderLinkControl() {
               <label title="Sync shape opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync shape opacity across linked elements" /> Opacity</label>
               <label title="Sync shape entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync shape entry transition animation across linked elements" /> IN Animation</label>
               <label title="Sync shape continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync shape continuous effect across linked elements" /> Effects</label>
+            </div>`;
+          } else if (cat === 'line') {
+            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
+              <label title="Sync line color across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} title="Sync line color across linked elements" /> Color</label>
+              <label title="Sync line thickness across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="thickness" ${sync.thickness ? 'checked' : ''} title="Sync line thickness across linked elements" /> Thickness</label>
+              <label title="Sync line opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync line opacity across linked elements" /> Opacity</label>
+              <label title="Sync line entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync line entry transition animation across linked elements" /> IN Animation</label>
+              <label title="Sync line continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync line continuous effect across linked elements" /> Effects</label>
             </div>`;
           }
           html += `</div>`;
@@ -4526,6 +4667,7 @@ function layerIcon(type) {
   if (type === 'circle') return '<circle cx="12" cy="12" r="8"/>';
   if (type === 'pixel') return '<g transform="scale(0.041)"><path d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0" fill="currentColor"/></g>';
   if (type === 'button') return '<rect x="3" y="8" width="18" height="8" rx="4"/>';
+  if (type === 'line') return '<line x1="5" y1="19" x2="19" y2="5"/>';
   return '';
 }
 
@@ -4537,6 +4679,7 @@ function baseLayerLabel(el) {
   if (el.type === 'rect') return 'Rectangle';
   if (el.type === 'circle') return 'Circle';
   if (el.type === 'pixel') return 'RMIT Pixel';
+  if (el.type === 'line') return 'Line';
   return el.type;
 }
 
@@ -4606,9 +4749,9 @@ function renderProps() {
     const dmFields = el ? dmFieldsForType(el.type) : [];
     if (el && dmFields.length) {
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data">
-        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none;">
-          <span>Dynamic Data</span>
-          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
+          <span class="dd-marquee" style="flex:1; min-width:0; overflow:hidden; white-space:nowrap;">Dynamic Data<span style="color:var(--text-main);">: ${esc(layerLabel(el))}</span></span>
+          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="flex-shrink:0; transition: transform 0.2s ease;">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </h3>`;
@@ -4644,7 +4787,7 @@ function renderProps() {
       dynamicHtml += `</div>`;
     } else {
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data">
-        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none;">
+        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
           <span>Dynamic Data</span>
           <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
             <polyline points="6 9 12 15 18 9"></polyline>
@@ -4949,7 +5092,7 @@ function renderProps() {
 
   f.push(`<div class="prop-row"><div class="align-group" style="justify-content:space-between; width:100%;">${alignElHtml}</div></div>`);
   f.push(`<div class="prop-row" style="margin-bottom:6px;"><div class="prop-grid-2">${numIcon('x', xIcon, 'X Position')}${numIcon('y', yIcon, 'Y Position')}</div></div>`);
-  f.push(`<div class="prop-row" style="margin-bottom:6px;"><div class="prop-grid-2">${numIcon('width', wIcon, 'Width')}${numIcon('height', hIcon, 'Height')}</div></div>`);
+  f.push(`<div class="prop-row" style="margin-bottom:6px;"><div class="prop-grid-2">${numIcon('width', wIcon, el.type === 'line' ? 'Length' : 'Width')}${numIcon('height', hIcon, el.type === 'line' ? 'Thickness' : 'Height')}</div></div>`);
   f.push(`<div class="prop-row" style="margin-bottom:6px;">
     <div class="prop-grid-2">
       ${numIcon('rotation', rIcon, 'Rotation', 0)}
@@ -5111,6 +5254,7 @@ function renderProps() {
   if (el.type === 'rect') { f.push(colOpac('color', 'Fill')); f.push(num('radius', 'Radius')); f.push(strokeSection()); }
   if (el.type === 'circle') { f.push(colOpac('color', 'Fill')); f.push(strokeSection()); }
   if (el.type === 'pixel') { f.push(colOpac('color', 'Fill')); f.push(strokeSection()); }
+  if (el.type === 'line') { f.push(colOpac('color', 'Line color')); }
   if (el.type === 'button') {
     f.push(txt('text', 'Label'));
     f.push(`<div class="prop-row"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
@@ -5533,8 +5677,33 @@ function renderProps() {
   const dmOpenBtn = propsEl.querySelector('#dm-open-from-props');
   if (dmOpenBtn) dmOpenBtn.addEventListener('click', () => openDataPanel());
 
-
-
+  // Dynamic Data header carries the element name — marquee-scroll it on hover
+  // when the combined title is too long to fit.
+  const ddHeader = propsEl.querySelector('#header-dynamic-data');
+  const ddMarquee = ddHeader && ddHeader.querySelector('.dd-marquee');
+  if (ddMarquee) {
+    ddHeader.addEventListener('mouseenter', () => {
+      if (ddMarquee.scrollWidth > ddMarquee.clientWidth) {
+        let pos = 0;
+        ddMarquee.dataset.scrollInterval = setInterval(() => {
+          pos += 1;
+          if (pos > ddMarquee.scrollWidth - ddMarquee.clientWidth + 20) {
+            pos = 0;
+            ddMarquee.scrollLeft = 0;
+          } else {
+            ddMarquee.scrollLeft = pos;
+          }
+        }, 30);
+      }
+    });
+    ddHeader.addEventListener('mouseleave', () => {
+      if (ddMarquee.dataset.scrollInterval) {
+        clearInterval(ddMarquee.dataset.scrollInterval);
+        ddMarquee.dataset.scrollInterval = '';
+        ddMarquee.scrollLeft = 0;
+      }
+    });
+  }
 
   propsEl.querySelectorAll('.cp-trigger').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -6849,6 +7018,9 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     if (el.type === 'rect') {
       return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
     }
+    if (el.type === 'line') {
+      return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};"></div>${closeDivs}</div>`;
+    }
     if (el.type === 'circle') {
       return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:50%;opacity:${fillOpacity};"></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
     }
@@ -7240,6 +7412,7 @@ function syncDefaultsForRole(role, cat) {
   else if (cat === 'button') { s.text = true; s.textColor = true; s.fill = true; s.stroke = true; }
   else if (cat === 'image') { s.image = true; s.rotation = true; }
   else if (cat === 'shape') { s.fill = true; s.stroke = true; }
+  else if (cat === 'line') { s.color = true; s.thickness = true; }
   return s;
 }
 
@@ -9350,6 +9523,7 @@ document.addEventListener('contextmenu', (e) => {
     const imageSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>`;
     const rectSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" /></svg>`;
     const circleSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8" /></svg>`;
+    const lineSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="19" x2="19" y2="5" /></svg>`;
     const btnSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="4" /></svg>`;
     const bgSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="4" /><line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="2 2" /></svg>`;
 
@@ -9368,6 +9542,7 @@ document.addEventListener('contextmenu', (e) => {
     html += `<div class="ctx-item" id="ctx-add-image">${svgWrap(imageSvg, 'Add Image')}</div>`;
     html += `<div class="ctx-item" id="ctx-add-rect">${svgWrap(rectSvg, 'Add Rectangle')}</div>`;
     html += `<div class="ctx-item" id="ctx-add-circle">${svgWrap(circleSvg, 'Add Circle')}</div>`;
+    html += `<div class="ctx-item" id="ctx-add-line">${svgWrap(lineSvg, 'Add Line')}</div>`;
     html += `<div class="ctx-item" id="ctx-add-btn">${svgWrap(btnSvg, 'Add Button')}</div>`;
     html += `<div class="ctx-item" id="ctx-add-bg">${svgWrap(bgSvg, 'Add Background')}</div>`;
     html += `<div class="ctx-divider"></div>`;
@@ -9548,6 +9723,7 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-add-image', () => addElement('image'));
   bind('ctx-add-rect', () => addElement('rect'));
   bind('ctx-add-circle', () => addElement('circle'));
+  bind('ctx-add-line', () => addElement('line'));
   bind('ctx-add-btn', () => addElement('button'));
   bind('ctx-add-bg', (e) => showBackgroundDropdown(e));
 
@@ -9636,6 +9812,7 @@ function dmFieldsForType(type) {
     case 'button': return ['text', 'color', 'bg'];
     case 'image': return ['image'];
     case 'rect': case 'circle': case 'pixel': return ['color'];
+    case 'line': return [];
     default: return ['text', 'color'];
   }
 }
