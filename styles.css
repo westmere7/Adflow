@@ -3478,3 +3478,8 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
   border-radius: 1px;
 }
 
+/* Image Preview Hover Overlay */
+.img-preview-container:hover .img-preview-overlay {
+  opacity: 1 !important;
+}
+

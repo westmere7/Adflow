@@ -169,7 +169,7 @@ function makeElement(type) {
     case 'line': return { ...base, type, color: '#ffffff', width: 160, height: 3, opacity: 100 };
     case 'pixel': return { ...base, type, color: '#e61e2a', width: 100, height: 100 };
     case 'button': return { ...base, type, text: 'Learn more', fontSize: 14, color: '#ffffff', bg: '#7c5cff', radius: 6, fontFamily: 'Arial', width: 130, height: 40, isClickArea: true };
-    case 'image': return { ...base, type, assetId: null, width: 140, height: 90 };
+    case 'image': return { ...base, type, assetId: null, width: 140, height: 90, objectFit: 'contain' };
   }
 }
 
@@ -741,6 +741,8 @@ function applyLinkSync(sourceEl, targetEl, group) {
   } else if (cat === 'image') {
     if (sync.image) {
       targetEl.assetId = sourceEl.assetId;
+      if (sourceEl.objectFit !== undefined) targetEl.objectFit = sourceEl.objectFit;
+      else delete targetEl.objectFit;
     }
     if (sync.transform) {
       targetEl.width = sourceEl.width;
@@ -2364,6 +2366,7 @@ function elementNode(el, canvasCtx) {
     if (dAssetId) {
       const img = document.createElement('img');
       img.src = state.assets[dAssetId] || dAssetId;
+      img.style.objectFit = el.objectFit || 'contain';
       d.appendChild(img);
     } else {
       d.style.background = 'repeating-linear-gradient(45deg, #1f2330, #1f2330 6px, #272c3a 6px, #272c3a 12px)';
@@ -5293,12 +5296,34 @@ function renderProps() {
   }
   if (el.type === 'image') {
     const imgDisabled = isFieldDisabled('image');
-    f.push(`<div class="prop-row" ${imgDisabled ? 'data-locked-field="true"' : ''}><label for="img-upload">Upload image</label><input type="file" accept="image/*" id="img-upload" title="Upload an image file" ${imgDisabled ? 'disabled style="pointer-events:none;"' : ''} /></div>`);
+    const src = dAssetId ? ((state.assets && state.assets[dAssetId]) || dAssetId) : '';
     const isVector = (el.name && el.name.toLowerCase().endsWith('.svg')) || 
                      (dAssetId && state.assets && state.assets[dAssetId] && state.assets[dAssetId].startsWith('data:image/svg+xml'));
-    if (el.name) {
-      f.push(`<div class="prop-row" style="margin-top:-6px;"><label style="font-size:10px; color:var(--text-main); margin:0;">File: ${esc(el.name)}</label></div>`);
-      if (!isVector) {
+
+    // Output file input element (hidden if image already uploaded, so we can trigger it via custom UI)
+    const fileInputHtml = `<input type="file" accept="image/*" id="img-upload" title="Upload an image file" style="${src ? 'display:none;' : ''}" ${imgDisabled ? 'disabled style="pointer-events:none;"' : ''} />`;
+
+    if (!src) {
+      // Standard upload row when no image is set yet
+      f.push(`<div class="prop-row" ${imgDisabled ? 'data-locked-field="true"' : ''}>
+        <label for="img-upload">Upload image</label>
+        ${fileInputHtml}
+      </div>`);
+    } else {
+      // Image uploaded / used: hide top button and filename, display preview container with overlay
+      f.push(fileInputHtml);
+      f.push(`<div class="prop-row">
+        <label>Preview</label>
+        <div class="img-preview-container" style="position:relative; width:100%; border-radius:4px; overflow:hidden; border:1px solid #272c3a; background:#12131a; cursor:pointer;">
+          <img src="${src}" style="display:block; width:100%; max-height:160px; object-fit:contain; pointer-events:none;" />
+          <div class="img-preview-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.65); display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s ease; gap:8px;">
+            <button id="overlay-browse-btn" class="btn" style="background:var(--accent-base); color:var(--text-bright); border:none; border-radius:4px; padding:6px 16px; font-size:11px; font-weight:600; cursor:pointer;">Browse...</button>
+            <span class="overlay-filename" style="color:var(--text-muted); font-size:10px; max-width:90%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(el.name || '')}">${esc(el.name || '')}</span>
+          </div>
+        </div>
+      </div>`);
+
+      if (el.name && !isVector) {
         const btnStyle = el.isCompressed 
           ? 'background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); cursor:not-allowed;'
           : 'background:var(--accent-base); color:var(--text-bright); border:none; cursor:pointer;';
@@ -5309,11 +5334,22 @@ function renderProps() {
         </div>`);
       }
     }
-    const src = dAssetId ? ((state.assets && state.assets[dAssetId]) || dAssetId) : '';
-    if (src) {
-      f.push(`<div class="prop-row"><label>Preview</label><img src="${src}" style="max-width:100%;border-radius:4px;border:1px solid #272c3a;" /></div>`);
-    }
-    f.push(`<div class="prop-row"><label for="prop-opacity">Opacity %</label><input type="number" data-k="opacity" id="prop-opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Opacity percentage" /></div>`);
+
+    // Sizing (Fit) and Opacity inline side-by-side
+    f.push(`<div class="prop-row" style="display:flex; gap:6px;">
+      <div style="flex:1; min-width:0;">
+        <label for="prop-object-fit">Fit</label>
+        <select data-k="objectFit" id="prop-object-fit" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="How the image fits within its bounding box">
+          <option value="cover" ${el.objectFit === 'cover' ? 'selected' : ''}>Fill</option>
+          <option value="contain" ${el.objectFit === 'contain' || !el.objectFit ? 'selected' : ''}>Fit</option>
+          <option value="fill" ${el.objectFit === 'fill' ? 'selected' : ''}>Stretch</option>
+        </select>
+      </div>
+      <div style="flex:1; min-width:0;">
+        <label for="prop-opacity">Opacity %</label>
+        <input type="number" data-k="opacity" id="prop-opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Opacity percentage" />
+      </div>
+    </div>`);
   }
 
   // Animation section
@@ -5929,6 +5965,21 @@ function renderProps() {
   });
 
   const upload = propsEl.querySelector('#img-upload');
+  if (upload) {
+    const overlayBrowseBtn = propsEl.querySelector('#overlay-browse-btn');
+    if (overlayBrowseBtn) {
+      overlayBrowseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        upload.click();
+      });
+    }
+    const previewContainer = propsEl.querySelector('.img-preview-container');
+    if (previewContainer) {
+      previewContainer.addEventListener('click', () => {
+        upload.click();
+      });
+    }
+  }
   if (upload) upload.addEventListener('change', (e) => {
     const f = e.target.files[0]; if (!f) return;
     const fr = new FileReader();
@@ -7060,7 +7111,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         const filename = src.split('/').pop();
         src = `assets/${filename}`;
       }
-      return `    <div style="${wrapStyle}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:contain;" alt="" />${closeDivs}</div>`;
+      return `    <div style="${wrapStyle}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
     }
     return '';
   };
