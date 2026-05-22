@@ -206,6 +206,8 @@ const state = {
   clipboard: null,
   linkGroups: {},
   assetNames: {},        // assetId -> original filename (for data-merge image lookup)
+  assetLibrary: [],      // saved reusable elements/groups (Assets panel)
+  assetFolders: [],      // folders organizing the Assets panel (1 level deep)
   // Data-merge / versioning: bind named element "slots" to spreadsheet columns so a
   // single template produces one finished ad set per row (e.g. one per RMIT course).
   dataMerge: {
@@ -1402,6 +1404,7 @@ function render(skipProps = false) {
   renderCanvasesList();
   renderLayers();
   renderLinkControl();
+  renderAssets();
   renderFrameControls();
   if (typeof renderVersionSwitcher === 'function') renderVersionSwitcher();
   if (typeof renderPreviewVersionBar === 'function') renderPreviewVersionBar();
@@ -4467,6 +4470,286 @@ function renderLinkControl() {
 // ============================================================================
 // Layers panel
 // ============================================================================
+// ============================================================================
+// Assets — a per-project library of reusable elements and groups
+// ============================================================================
+// Snapshot the current selection into the asset library. A single grouped
+// element pulls in its whole group. Link-group membership is dropped; per-element
+// dynamic-data flags are kept.
+function saveSelectionAsAsset() {
+  const c = getActiveCanvas();
+  if (!c) return;
+  const ids = (state.layerSelection && state.layerSelection.length)
+    ? state.layerSelection
+    : (state.selectedElementId ? [state.selectedElementId] : []);
+  let els = c.elements.filter(e => ids.includes(e.id));
+  if (!els.length) { alert('Select an element or group first, then save it to Assets.'); return; }
+  if (els.length === 1 && els[0].groupId) {
+    els = c.elements.filter(e => e.groupId === els[0].groupId);
+  }
+  const mp = (state.dataMerge && state.dataMerge.mappings) || {};
+  const snapshot = JSON.parse(JSON.stringify(els)).map((e, i) => {
+    delete e.linkGroupId;
+    // Capture this element's dynamic-data slot bindings — the column mappings live
+    // in state.dataMerge keyed by slot id, not on the element, so they'd be lost.
+    const sk = dmSlotKey(els[i]) + '::';
+    const dmMap = {};
+    Object.keys(mp).forEach(k => { if (k.startsWith(sk)) dmMap[k.slice(sk.length)] = mp[k]; });
+    // Images can't carry dynamic versioning into an asset — an image slot resolves
+    // against the Assets panel, so a dynamic image asset would load recursively.
+    if (e.type === 'image') {
+      if (e.dynamic) delete e.dynamic.image;
+      delete dmMap.image;
+    }
+    if (Object.keys(dmMap).length) e._assetDmMap = dmMap;
+    return e;
+  });
+  const isGroup = snapshot.length > 1;
+  if (!state.assetLibrary) state.assetLibrary = [];
+  state.assetLibrary.push({
+    id: 'as_' + uid(),
+    name: uniqueName(isGroup ? 'Group' : baseLayerLabel(snapshot[0]), (state.assetLibrary || []).map(a => a.name)),
+    kind: isGroup ? 'group' : 'element',
+    iconType: isGroup ? 'group' : snapshot[0].type,
+    elements: snapshot,
+  });
+  pushHistory();
+  render();
+}
+
+// Clone an asset's elements onto a canvas — fresh ids, a fresh group id, no link
+// membership. Dropped at (dropX, dropY) when dragged, else centered on the canvas.
+function placeAsset(assetId, canvasId, dropX, dropY) {
+  const asset = (state.assetLibrary || []).find(a => a.id === assetId);
+  if (!asset) return;
+  const c = state.canvases.find(cv => cv.id === canvasId) || getActiveCanvas();
+  if (!c) return;
+  const src = JSON.parse(JSON.stringify(asset.elements));
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  src.forEach(e => {
+    minX = Math.min(minX, e.x); minY = Math.min(minY, e.y);
+    maxX = Math.max(maxX, e.x + e.width); maxY = Math.max(maxY, e.y + e.height);
+  });
+  const bw = maxX - minX, bh = maxY - minY;
+  const tx = (dropX != null) ? dropX - bw / 2 : (c.width - bw) / 2;
+  const ty = (dropY != null) ? dropY - bh / 2 : (c.height - bh) / 2;
+  const offX = tx - minX, offY = ty - minY;
+  const groupMap = {};
+  const newIds = [];
+  src.forEach(e => {
+    e.id = uid();
+    e.x = Math.round(e.x + offX);
+    e.y = Math.round(e.y + offY);
+    if (e.groupId) {
+      if (!groupMap[e.groupId]) groupMap[e.groupId] = uid();
+      e.groupId = groupMap[e.groupId];
+    }
+    delete e.linkGroupId;
+    // Reconnect the dynamic-data slot bindings captured when the asset was saved,
+    // re-keyed to this freshly-placed element's slot id.
+    if (e._assetDmMap) {
+      if (state.dataMerge) {
+        if (!state.dataMerge.mappings) state.dataMerge.mappings = {};
+        const sk = dmSlotKey(e) + '::';
+        Object.keys(e._assetDmMap).forEach(field => {
+          state.dataMerge.mappings[sk + field] = e._assetDmMap[field];
+        });
+      }
+      delete e._assetDmMap;
+    }
+    if (e.persistent !== 'top' && e.persistent !== 'bottom') e.frameId = state.activeFrameId;
+    c.elements.push(e);
+    newIds.push(e.id);
+  });
+  // A renamed single-element asset stamps its name onto the placed element.
+  if (asset.kind === 'element' && asset.renamed && src[0]) {
+    src[0].customName = asset.name;
+  }
+  state.activeCanvasId = c.id;
+  state.layerSelection = newIds;
+  state.selectedElementId = newIds[newIds.length - 1];
+  state.editingElementId = null;
+  pushHistory();
+  render();
+}
+
+// Auto-numbered unique name — "Name", "Name 2", "Name 3"... so two never collide.
+function uniqueName(base, names) {
+  base = String(base == null ? '' : base).trim() || 'Untitled';
+  const taken = new Set(names.map(n => String(n).toLowerCase()));
+  if (!taken.has(base.toLowerCase())) return base;
+  let n = 2;
+  while (taken.has((base + ' ' + n).toLowerCase())) n++;
+  return base + ' ' + n;
+}
+
+function createAssetFolder() {
+  if (!state.assetFolders) state.assetFolders = [];
+  state.assetFolders.push({
+    id: 'af_' + uid(),
+    name: uniqueName('New Folder', state.assetFolders.map(f => f.name)),
+    collapsed: false,
+  });
+  pushHistory();
+  render();
+}
+
+// Asset library panel — a 1-level folder tree of saved elements/groups. Rows
+// rename inline (double-click); drag an asset onto a canvas to place it, or onto
+// a folder row to move it in (drop on empty space sends it back to top level).
+function renderAssets() {
+  const listEl = document.getElementById('asset-list');
+  if (!listEl) return;
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const lib = state.assetLibrary || [];
+  const folders = state.assetFolders || [];
+  listEl.innerHTML = '';
+  if (!lib.length && !folders.length) {
+    listEl.innerHTML = '<div style="font-size:10px;color:var(--text-muted);padding:6px 2px;font-style:italic;line-height:1.5;">No saved assets yet. Select an element or group and press + to save it.</div>';
+    return;
+  }
+
+  const GROUP_ICON = '<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>';
+  const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></svg>';
+
+  // Inline double-click rename, mirroring the layers / link-group panels.
+  const wireRename = (row, nameSpan, draggableRow, getName, commit) => {
+    row.addEventListener('dblclick', (e) => {
+      if (e.target.closest('button') || e.target.closest('.folder-caret')) return;
+      e.stopPropagation();
+      if (nameSpan.dataset.scrollInterval) {
+        clearInterval(parseInt(nameSpan.dataset.scrollInterval, 10));
+        nameSpan.dataset.scrollInterval = '';
+        nameSpan.scrollLeft = 0;
+      }
+      nameSpan.contentEditable = 'true';
+      if (draggableRow) row.draggable = false;
+      nameSpan.focus();
+      window.getSelection().selectAllChildren(nameSpan);
+      const finish = () => {
+        nameSpan.contentEditable = 'false';
+        if (draggableRow) row.draggable = true;
+        const v = nameSpan.innerText.trim();
+        if (v) { commit(v); pushHistory(); }
+        render();
+      };
+      nameSpan.addEventListener('blur', finish, { once: true });
+      nameSpan.addEventListener('keydown', (ek) => {
+        if (ek.key === 'Enter') { ek.preventDefault(); nameSpan.blur(); }
+        if (ek.key === 'Escape') { ek.preventDefault(); nameSpan.innerText = getName(); nameSpan.blur(); }
+      });
+    });
+  };
+
+  const makeAssetRow = (asset, indented) => {
+    const div = document.createElement('div');
+    div.className = 'layer';
+    div.draggable = true;
+    if (indented) div.style.paddingLeft = '22px';
+    div.title = 'Double-click to rename. Drag onto a canvas to place it, or onto a folder to move it.';
+    const icon = asset.kind === 'group' ? GROUP_ICON : (layerIcon(asset.iconType) || GROUP_ICON);
+    const hasDynamic = (asset.elements || []).some(el =>
+      el._assetDmMap || (el.dynamic && Object.keys(el.dynamic).some(k => el.dynamic[k])));
+    const bolt = hasDynamic
+      ? '<svg viewBox="0 0 24 24" width="12" height="12" style="flex-shrink:0;fill:var(--accent-light);"><title>Contains dynamic data</title><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
+      : '';
+    div.innerHTML = `
+      <svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icon}</svg>
+      <span class="layer-name">${esc(asset.name)}</span>
+      ${bolt}
+      <div class="layer-actions">
+        <button class="icon-btn active" data-act="del" title="Delete asset">${TRASH}</button>
+      </div>`;
+    div.querySelector('[data-act="del"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.assetLibrary = (state.assetLibrary || []).filter(a => a.id !== asset.id);
+      pushHistory();
+      render();
+    });
+    wireRename(div, div.querySelector('.layer-name'), true,
+      () => asset.name,
+      (v) => {
+        asset.name = uniqueName(v, (state.assetLibrary || []).filter(a => a.id !== asset.id).map(a => a.name));
+        asset.renamed = true;
+      });
+    div.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('application/x-asset', asset.id);
+      e.dataTransfer.effectAllowed = 'copyMove';
+    });
+    return div;
+  };
+
+  const makeFolderRow = (folder) => {
+    const div = document.createElement('div');
+    div.className = 'layer';
+    const caretRot = folder.collapsed ? 'transform:rotate(-90deg);' : '';
+    div.innerHTML = `
+      <svg class="folder-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;cursor:pointer;${caretRot}transition:transform .15s;"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h5l2 3h9v11H4z"/></svg>
+      <span class="layer-name" style="font-weight:600;">${esc(folder.name)}</span>
+      <div class="layer-actions">
+        <button class="icon-btn active" data-act="del-folder" title="Delete folder (its assets move out)">${TRASH}</button>
+      </div>`;
+    div.querySelector('.folder-caret').addEventListener('click', (e) => {
+      e.stopPropagation();
+      folder.collapsed = !folder.collapsed;
+      render();
+    });
+    div.querySelector('[data-act="del-folder"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      (state.assetLibrary || []).forEach(a => { if (a.folderId === folder.id) a.folderId = null; });
+      state.assetFolders = (state.assetFolders || []).filter(f => f.id !== folder.id);
+      pushHistory();
+      render();
+    });
+    wireRename(div, div.querySelector('.layer-name'), false,
+      () => folder.name,
+      (v) => { folder.name = uniqueName(v, (state.assetFolders || []).filter(f => f.id !== folder.id).map(f => f.name)); });
+    div.addEventListener('dragover', (e) => {
+      if (e.dataTransfer.types.includes('application/x-asset')) {
+        e.preventDefault();
+        div.style.background = 'var(--accent-dark)';
+      }
+    });
+    div.addEventListener('dragleave', () => { div.style.background = ''; });
+    div.addEventListener('drop', (e) => {
+      div.style.background = '';
+      const aid = e.dataTransfer.getData('application/x-asset');
+      if (!aid) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const a = (state.assetLibrary || []).find(x => x.id === aid);
+      if (a && a.folderId !== folder.id) { a.folderId = folder.id; pushHistory(); render(); }
+    });
+    return div;
+  };
+
+  folders.forEach(folder => {
+    listEl.appendChild(makeFolderRow(folder));
+    if (!folder.collapsed) {
+      lib.filter(a => a.folderId === folder.id).forEach(a => listEl.appendChild(makeAssetRow(a, true)));
+    }
+  });
+  lib.filter(a => !a.folderId || !folders.some(f => f.id === a.folderId))
+     .forEach(a => listEl.appendChild(makeAssetRow(a, false)));
+
+  // Empty list space is a drop target — drop an asset here to move it to top level.
+  listEl.ondragover = (e) => {
+    if (e.dataTransfer.types.includes('application/x-asset')) e.preventDefault();
+  };
+  listEl.ondrop = (e) => {
+    if (e.target !== listEl) return;
+    const aid = e.dataTransfer.getData('application/x-asset');
+    if (!aid) return;
+    e.preventDefault();
+    const a = (state.assetLibrary || []).find(x => x.id === aid);
+    if (a && a.folderId) { a.folderId = null; pushHistory(); render(); }
+  };
+}
+
+document.getElementById('btn-asset-add')?.addEventListener('click', (e) => { e.stopPropagation(); saveSelectionAsAsset(); });
+document.getElementById('btn-asset-folder')?.addEventListener('click', (e) => { e.stopPropagation(); createAssetFolder(); });
+
 function renderLayers() {
   const c = getActiveCanvas();
   if (!c) { layersEl.innerHTML = ''; return; }
@@ -6506,8 +6789,9 @@ function setDropHighlight(canvasEl, on) {
 }
 
 canvasArea.addEventListener('dragover', (e) => {
-  // Layer reorders only carry text/plain — only intercept real file drags
-  if (!e.dataTransfer.types.includes('Files')) return;
+  // Intercept real file drags and Assets-panel drags (layer reorders carry text/plain)
+  const t = e.dataTransfer.types;
+  if (!t.includes('Files') && !t.includes('application/x-asset')) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = 'copy';
   setDropHighlight(e.target.closest('.canvas'), true);
@@ -6518,6 +6802,19 @@ canvasArea.addEventListener('dragleave', (e) => {
 });
 
 canvasArea.addEventListener('drop', async (e) => {
+  // Asset dragged out of the Assets panel onto a canvas.
+  const assetId = e.dataTransfer.getData('application/x-asset');
+  if (assetId) {
+    e.preventDefault();
+    const dropCanvas = e.target.closest('.canvas');
+    setDropHighlight(dropCanvas, false);
+    if (!dropCanvas) return;
+    const z = state.zoom || 1;
+    const r = dropCanvas.getBoundingClientRect();
+    placeAsset(assetId, dropCanvas.parentElement.dataset.canvasId,
+      (e.clientX - r.left) / z, (e.clientY - r.top) / z);
+    return;
+  }
   if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
   e.preventDefault();
   const targetCanvas = e.target.closest('.canvas');
@@ -9773,6 +10070,8 @@ document.addEventListener('contextmenu', (e) => {
     }
 
     html += `<div class="ctx-divider"></div>`;
+    html += `<div class="ctx-item" id="ctx-save-asset">Save to Assets</div>`;
+    html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-delete" style="color:#ef4444">Delete</div>`;
   } else if (canvasNode) {
     state.activeCanvasId = canvasNode.parentElement.dataset.canvasId;
@@ -9914,6 +10213,7 @@ document.addEventListener('contextmenu', (e) => {
       render();
     }
   });
+  bind('ctx-save-asset', () => saveSelectionAsAsset());
   bind('ctx-delete', () => {
     const c = getActiveCanvas();
     if (c && state.layerSelection) {
@@ -10104,6 +10404,17 @@ function dmResolveImage(val) {
     const lc = String(val).toLowerCase();
     for (const [aid, name] of Object.entries(state.assetNames)) {
       if (name === val || String(name).toLowerCase() === lc) return aid;
+    }
+  }
+  // An image saved in the Assets panel, matched by name with the extension ignored.
+  if (state.assetLibrary) {
+    const want = String(val).replace(/\.[a-z0-9]+$/i, '').trim().toLowerCase();
+    for (const asset of state.assetLibrary) {
+      const an = String(asset.name || '').replace(/\.[a-z0-9]+$/i, '').trim().toLowerCase();
+      if (an && an === want) {
+        const imgEl = (asset.elements || []).find(e => e.type === 'image' && e.assetId);
+        if (imgEl) return imgEl.assetId;
+      }
     }
   }
   return val; // direct URL / data: / packaged path, or unresolved (validation flags it)
