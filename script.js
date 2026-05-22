@@ -844,7 +844,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     });
   }
   if (sync.effect) {
-    const effectProps = ['effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget'];
+    const effectProps = ['effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat'];
     effectProps.forEach(p => {
       if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
       else delete targetEl[p];
@@ -1096,6 +1096,7 @@ function pushGroupChanges() {
 
   pushHistory();
   render();
+  showCanvasNotification(`Changes pushed to group "${group.name}"`);
 }
 
 
@@ -1138,6 +1139,7 @@ function pushGroupChangesForId(gid) {
   });
   pushHistory();
   render();
+  showCanvasNotification(`Changes pushed to group "${group.name}"`);
 }
 
 function toggleGroupVisibility(gid) {
@@ -2748,9 +2750,21 @@ function selectionOverlay(el) {
     return w;
   }
 
+  const baseAngles = { n: 0, ne: 45, e: 90, se: 135, s: 180, sw: 225, w: 270, nw: 315 };
+  const cursors = ['ns-resize', 'nesw-resize', 'ew-resize', 'nwse-resize'];
+
   ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach(corner => {
     const h = document.createElement('div');
     h.className = 'handle ' + corner;
+    
+    // Calculate rotated cursor style
+    const rotation = el.rotation || 0;
+    const baseAngle = baseAngles[corner];
+    const finalAngle = (baseAngle + rotation) % 360;
+    const normalizedAngle = (finalAngle + 360) % 180;
+    const index = Math.round(normalizedAngle / 45) % 4;
+    h.style.cursor = cursors[index];
+
     h.addEventListener('mousedown', (e) => onResizeMouseDown(e, el, corner));
     w.appendChild(h);
   });
@@ -3141,6 +3155,30 @@ function onResizeMouseDown(e, el, corner) {
   const rad = (el.rotation || 0) * Math.PI / 180;
   const cos = Math.cos(-rad), sin = Math.sin(-rad);
 
+  const cos_cw = Math.cos(rad);
+  const sin_cw = Math.sin(rad);
+
+  // Find local coordinates of the pinned point (which doesn't move during resize)
+  let lx_pinned, ly_pinned;
+  switch (corner) {
+    case 'se': lx_pinned = 0;   ly_pinned = 0;   break; // NW is pinned
+    case 'sw': lx_pinned = o.w; ly_pinned = 0;   break; // NE is pinned
+    case 'ne': lx_pinned = 0;   ly_pinned = o.h; break; // SW is pinned
+    case 'nw': lx_pinned = o.w; ly_pinned = o.h; break; // SE is pinned
+    case 'n':  lx_pinned = o.w / 2; ly_pinned = o.h; break; // S is pinned
+    case 's':  lx_pinned = o.w / 2; ly_pinned = 0;   break; // N is pinned
+    case 'w':  lx_pinned = o.w; ly_pinned = o.h / 2; break; // E is pinned
+    case 'e':  lx_pinned = 0;   ly_pinned = o.h / 2; break; // W is pinned
+  }
+
+  // Calculate the global coordinates of the pinned point
+  const o_cx = o.x + o.w / 2;
+  const o_cy = o.y + o.h / 2;
+  const lx_rel_init = lx_pinned - o.w / 2;
+  const ly_rel_init = ly_pinned - o.h / 2;
+  const px = o_cx + lx_rel_init * cos_cw - ly_rel_init * sin_cw;
+  const py = o_cy + lx_rel_init * sin_cw + ly_rel_init * cos_cw;
+
   const onMove = (ev) => {
     const dx = (ev.clientX - startX) / z;
     const dy = (ev.clientY - startY) / z;
@@ -3160,26 +3198,28 @@ function onResizeMouseDown(e, el, corner) {
       }
     }
 
-    if (corner === 'se') { el.width = Math.max(10, o.w + ldx); el.height = Math.max(10, o.h + ldy); }
-    if (corner === 'sw') { el.x = o.x + ldx; el.width = Math.max(10, o.w - ldx); el.height = Math.max(10, o.h + ldy); }
-    if (corner === 'ne') { el.y = o.y + ldy; el.width = Math.max(10, o.w + ldx); el.height = Math.max(10, o.h - ldy); }
-    if (corner === 'nw') { el.x = o.x + ldx; el.y = o.y + ldy; el.width = Math.max(10, o.w - ldx); el.height = Math.max(10, o.h - ldy); }
-    if (corner === 'n') { el.y = o.y + ldy; el.height = Math.max(10, o.h - ldy); }
-    if (corner === 's') { el.height = Math.max(10, o.h + ldy); }
-    if (corner === 'w') { el.x = o.x + ldx; el.width = Math.max(10, o.w - ldx); }
-    if (corner === 'e') { el.width = Math.max(10, o.w + ldx); }
+    let newW = o.w;
+    let newH = o.h;
+
+    if (corner === 'se') { newW = o.w + ldx; newH = o.h + ldy; }
+    else if (corner === 'sw') { newW = o.w - ldx; newH = o.h + ldy; }
+    else if (corner === 'ne') { newW = o.w + ldx; newH = o.h - ldy; }
+    else if (corner === 'nw') { newW = o.w - ldx; newH = o.h - ldy; }
+    else if (corner === 'n') { newH = o.h - ldy; }
+    else if (corner === 's') { newH = o.h + ldy; }
+    else if (corner === 'w') { newW = o.w - ldx; }
+    else if (corner === 'e') { newW = o.w + ldx; }
+
+    newW = Math.max(10, newW);
+    newH = Math.max(10, newH);
 
     // Shift or lockRatio on an edge handle: scale the perpendicular axis proportionally,
     // anchored at the center of that axis so the box grows symmetrically.
     if (isLocked && o.w > 0 && o.h > 0) {
       if (corner === 'e' || corner === 'w') {
-        const newH = Math.max(10, el.width * aspect);
-        el.y = o.y + (o.h - newH) / 2;
-        el.height = newH;
+        newH = Math.max(10, newW * aspect);
       } else if (corner === 'n' || corner === 's') {
-        const newW = Math.max(10, el.height / aspect);
-        el.x = o.x + (o.w - newW) / 2;
-        el.width = newW;
+        newW = Math.max(10, newH / aspect);
       }
     }
 
@@ -3189,20 +3229,36 @@ function onResizeMouseDown(e, el, corner) {
 
     if (ev.altKey && (el.type === 'text' || el.type === 'button') && o.fs) {
       const isHorizontalOnly = (corner === 'e' || corner === 'w');
-      const scale = isHorizontalOnly ? (el.width / o.w) : (el.height / o.h);
+      const scale = isHorizontalOnly ? (newW / o.w) : (newH / o.h);
       el.fontSize = Math.max(4, Math.round(o.fs * scale));
     } else if ((el.type === 'text' || el.type === 'button') && o.fs) {
       el.fontSize = o.fs;
     }
 
     if (ev.ctrlKey || ev.metaKey) {
-      el.width = Math.round(el.width / 10) * 10;
-      el.height = Math.round(el.height / 10) * 10;
-      el.x = Math.round(el.x / 10) * 10;
-      el.y = Math.round(el.y / 10) * 10;
+      el.width = Math.round(newW / 10) * 10;
+      el.height = Math.round(newH / 10) * 10;
+
+      let lx_pinned_snap = (lx_pinned === 0) ? 0 : (lx_pinned === o.w ? el.width : el.width / 2);
+      let ly_pinned_snap = (ly_pinned === 0) ? 0 : (ly_pinned === o.h ? el.height : el.height / 2);
+      const lx_rel_snap = lx_pinned_snap - el.width / 2;
+      const ly_rel_snap = ly_pinned_snap - el.height / 2;
+      const cx_snap = px - (lx_rel_snap * cos_cw - ly_rel_snap * sin_cw);
+      const cy_snap = py - (lx_rel_snap * sin_cw + ly_rel_snap * cos_cw);
+      el.x = Math.round((cx_snap - el.width / 2) / 10) * 10;
+      el.y = Math.round((cy_snap - el.height / 2) / 10) * 10;
     } else {
-      el.x = Math.round(el.x); el.y = Math.round(el.y);
-      el.width = Math.round(el.width); el.height = Math.round(el.height);
+      el.width = Math.round(newW);
+      el.height = Math.round(newH);
+
+      let lx_pinned_new = (lx_pinned === 0) ? 0 : (lx_pinned === o.w ? el.width : el.width / 2);
+      let ly_pinned_new = (ly_pinned === 0) ? 0 : (ly_pinned === o.h ? el.height : el.height / 2);
+      const lx_rel_new = lx_pinned_new - el.width / 2;
+      const ly_rel_new = ly_pinned_new - el.height / 2;
+      const cx_new = px - (lx_rel_new * cos_cw - ly_rel_new * sin_cw);
+      const cy_new = py - (lx_rel_new * sin_cw + ly_rel_new * cos_cw);
+      el.x = Math.round(cx_new - el.width / 2);
+      el.y = Math.round(cy_new - el.height / 2);
     }
 
     render();
@@ -3210,7 +3266,7 @@ function onResizeMouseDown(e, el, corner) {
   const onUp = () => {
     window.removeEventListener('mousemove', onMove);
     window.removeEventListener('mouseup', onUp);
-    if (el.width !== o.w || el.height !== o.h) pushHistory();
+    if (el.width !== o.w || el.height !== o.h || el.x !== o.x || el.y !== o.y) pushHistory();
   };
   window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup', onUp);
@@ -5070,7 +5126,9 @@ function renderProps() {
     'zoomTarget': 'Zoom peak scale percentage',
     'effSpeed': 'Effect speed percentage',
     'effOnce': 'Run the effect cycle only once',
-    'effEase': 'Apply smooth ease in/out curve'
+    'effEase': 'Apply smooth ease in/out curve',
+    'spinTarget': 'Target rotation angle in degrees',
+    'spinRepeat': 'Repeat count (minimum 1)'
   };
 
   const num = (key, label, def = '') => `<div class="prop-row"><label>${label}</label><input type="number" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" title="${propTooltips[key] || label}" /></div>`;
@@ -5521,6 +5579,17 @@ function renderProps() {
       <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once-zoom" title="Run the effect cycle only once" ${el.effOnce ? 'checked' : ''}/><label for="prop-eff-once-zoom" title="Run the effect cycle only once" style="cursor:pointer;">Perform once</label></div>
     </div>
     </div>`);
+    } else if (el.effectType === 'spin') {
+      f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
+      ${num('effDuration', 'Duration (s)', 2)}
+      ${num('effDelay', 'Delay (s)', 0)}
+      ${num('spinTarget', 'Target (deg)', 360)}
+      <div class="prop-row"><label>Repeat</label><input type="number" data-k="spinRepeat" min="1" value="${el.spinRepeat !== undefined ? el.spinRepeat : 1}" title="${propTooltips.spinRepeat || 'Repeat count'}" /></div>
+    </div>
+    <div style="display:flex; gap:16px; margin-top:8px;">
+      <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease-spin" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease-spin" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
+    </div>
+    </div>`);
     } else {
       f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
       ${num('effSpeed', 'Speed (%)', 100)}
@@ -5919,6 +5988,11 @@ function renderProps() {
       } else if (val === 'zoom') {
         if (el.zoomTarget === undefined) updateProp('zoomTarget', 150);
         if (el.effDuration === undefined) updateProp('effDuration', 5);
+      } else if (val === 'spin') {
+        if (el.spinTarget === undefined) updateProp('spinTarget', 360);
+        if (el.spinRepeat === undefined) updateProp('spinRepeat', 1);
+        if (el.effDuration === undefined) updateProp('effDuration', 2);
+        if (el.effEase === undefined) updateProp('effEase', true);
       } else if (val !== 'none') {
         if (el.effSpeed === undefined) updateProp('effSpeed', 100);
       }
@@ -5954,6 +6028,13 @@ function renderProps() {
             const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
             const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
             node.style.animation = `eff-zoom ${effDur}s ${ease} 0s ${fill}`;
+          } else if (val === 'spin') {
+            const spinT = nodeEl.spinTarget !== undefined ? nodeEl.spinTarget : 360;
+            node.style.setProperty('--spin-target', spinT + 'deg');
+            const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
+            const repeat = nodeEl.spinRepeat !== undefined ? nodeEl.spinRepeat : 1;
+            const fill = Math.max(1, repeat);
+            node.style.animation = `eff-spin ${effDur}s ${ease} 0s ${fill} both`;
           } else {
             const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
             const speed = Math.max(1, Number(speedStr));
@@ -7025,11 +7106,18 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         if (!isImageExport) effAnims.push(`eff-pan ${effDur}s ${ease} ${effDelay}s ${fill}`);
         effVars = `--pan-x:${px}px; --pan-y:${py}px;`;
       } else if (effType === 'zoom') {
-        const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
+            const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
+            const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+            const fill = el.effOnce ? 'forwards' : 'infinite';
+            if (!isImageExport) effAnims.push(`eff-zoom ${effDur}s ${ease} ${effDelay}s ${fill}`);
+            effVars = `--zoom-target:${zt};`;
+      } else if (effType === 'spin') {
+        const spinT = el.spinTarget !== undefined ? el.spinTarget : 360;
         const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-        const fill = el.effOnce ? 'forwards' : 'infinite';
-        if (!isImageExport) effAnims.push(`eff-zoom ${effDur}s ${ease} ${effDelay}s ${fill}`);
-        effVars = `--zoom-target:${zt};`;
+        const repeat = el.spinRepeat !== undefined ? el.spinRepeat : 1;
+        const fill = Math.max(1, repeat);
+        if (!isImageExport) effAnims.push(`eff-spin ${effDur}s ${ease} ${effDelay}s ${fill} both`);
+        effVars = `--spin-target:${spinT}deg;`;
       } else {
         const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
         const speed = Math.max(1, Number(speedStr));
@@ -7251,7 +7339,7 @@ ${fontFaceRules.join('\n')}
   @keyframes eff-float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
   @keyframes eff-flash { 0%, 50%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
   @keyframes eff-wiggle { 0% { transform: rotate(0deg); } 25% { transform: rotate(-5deg); } 50% { transform: rotate(0deg); } 75% { transform: rotate(5deg); } 100% { transform: rotate(0deg); } }
-  @keyframes eff-spin { 100% { transform: rotate(360deg); } }
+  @keyframes eff-spin { 100% { transform: rotate(var(--spin-target, 360deg)); } }
   @keyframes eff-heartbeat { 0% { transform: scale(1); } 14% { transform: scale(1.3); } 28% { transform: scale(1); } 42% { transform: scale(1.3); } 70% { transform: scale(1); } }
   @keyframes eff-pan { 0% { translate: 0 0; } 100% { translate: var(--pan-x, 0px) var(--pan-y, 0px); } }
   @keyframes eff-zoom { 0% { scale: 1; } 100% { scale: var(--zoom-target, 1.5); } }
@@ -8623,10 +8711,11 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
         <p>Your work is protected automatically, and projects are easy to start, reopen and configure:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
           <li style="margin-bottom:6px;"><b>Seamless auto-save:</b> Every change is continuously persisted to this browser (IndexedDB) and restored when you return — including your zoom and scroll position. The top bar shows a live status: <i>All changes saved</i>, <i>Saving…</i>, or <i>Unsaved changes</i>. No prompt on close.</li>
+          <li style="margin-bottom:6px;"><b>Project History:</b> Undo/redo history is saved directly within the browser session autosave and inside <code>.cook</code> project files, allowing full history recovery upon reopening or importing a project. The history limit is configurable from <b>File → Settings</b> (1 to 50 states, default 10). <i>Warning: Storing history does not persist deleted assets (like images) from a past session. Undoing after reopening a project might result in missing images if those assets were deleted and pruned.</i></li>
           <li style="margin-bottom:6px;"><b>Manual save / open (.cook):</b> <b>File → Save Project</b> (<span class="kbd">⌘ / Ctrl</span>+<span class="kbd">S</span>) writes a portable <b>.cook</b> file (project + embedded assets); <b>Open Project</b> loads <code>.cook</code> (and legacy <code>.zip</code>) back in.</li>
           <li style="margin-bottom:6px;"><b>Open Recent:</b> The File menu lists your last manually-saved projects with timestamps for one-click restore.</li>
           <li style="margin-bottom:6px;"><b>New Project wizard:</b> Choose which canvas sizes to include (all on by default), the project name, ClickTag URL, the default canvas background colour, and a configurable <b>maximum ad weight (KB)</b> used by the live validator.</li>
-          <li style="margin-bottom:6px;"><b>Project Settings &amp; Settings:</b> Edit project name / ClickTag in <b>File → Project Settings</b>; app-level preferences (theme, rulers, snapping, Crop to Canvas) live in <b>File → Settings</b>.</li>
+          <li style="margin-bottom:6px;"><b>Project Settings &amp; Settings:</b> Edit project name / ClickTag in <b>File → Project Settings</b>; app-level preferences (theme, rulers, snapping, Crop to Canvas, and history limit) live in <b>File → Settings</b>.</li>
         </ul>
 
         <h2 style="color:var(--accent-light); margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">9. Data &amp; Versions ✨ (Dynamic Creative)</h2>
@@ -8656,6 +8745,16 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v1.7.0',
+    date: 'May 2026',
+    items: [
+      'Added options to save undo/redo history within the .cook project file and the IndexedDB autosave, allowing full project history recovery upon session reload or project file import.',
+      'Introduced a "History & Saving" settings section, allowing users to configure the saved history limit (1 to 50 entries, defaulting to 10).',
+      'Added a prominent warning in the settings panel regarding deleted image and assets persistence across sessions to prevent missing references when undoing past deletions.',
+      'Synchronized versioning strings across Settings headers, About dialogs, and Update checks.'
+    ]
+  },
   {
     version: 'v1.6.0',
     date: 'May 2026',
@@ -9007,7 +9106,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v1.6.0';
+  const currentVersion = 'v1.7.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -9077,7 +9176,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.4.1</span>
+            <span style="font-size:11px; color:var(--text-muted);">v1.7.0</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -9133,7 +9232,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.6.0</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.7.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

@@ -1,6 +1,12 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.6.0 (Current) - May 2026
+v1.7.0 (Current) - May 2026
+- Added options to save undo/redo history within the .cook project file and the IndexedDB autosave, allowing full project history recovery upon session reload or project file import.
+- Introduced a "History & Saving" settings section, allowing users to configure the saved history limit (1 to 50 entries, defaulting to 10).
+- Added a prominent warning in the settings panel regarding deleted image and assets persistence across sessions to prevent missing references when undoing past deletions.
+- Synchronized versioning strings across Settings headers, About dialogs, and Update checks.
+
+v1.6.0 - May 2026
 - Refined saving indicators with a simpler, cleaner floppy disk icon and status indicators (check mark for saved, rotating circle for saving, amber dot for unsaved, and cross for error) positioned before the Preview button with a fixed width to prevent layout shifting.
 - Decoupled Link Group and Dynamic Data indicator badges from element wrappers, aligning them statically with the active selection outline to prevent them from animating or scaling with elements.
 - Show slot dropdowns directly in the Properties menu for quick binding next to the checkboxes, with dropdowns grayed out when unchecked.
