@@ -3311,7 +3311,7 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 /* Data-merge: a small badge marks the dynamic-data element — a lightning bolt, plus a
    link icon when the element is in a link group. Shown only on the selected element (not
    its linked siblings) and floated just above the top-right, outside the outline. */
-.el .dm-badge {
+.selection-outline .dm-badge {
   position: absolute;
   bottom: calc(100% + 7px / var(--z, 1));
   right: 0;
@@ -3322,7 +3322,7 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
   pointer-events: none;
   z-index: 100001;
 }
-.el .dm-badge svg {
+.selection-outline .dm-badge svg {
   width: calc(13px / var(--z, 1));
   height: calc(13px / var(--z, 1));
   display: block;
@@ -3331,12 +3331,21 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 
 /* Dynamic save-status styling and animations */
 #save-status {
-  width: 140px;
-  min-width: 140px;
+  width: 32px;
+  min-width: 32px;
+  height: 24px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 6px;
   white-space: nowrap;
+  margin-right: 12px;
+}
+
+@keyframes save-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.85); opacity: 0.6; }
 }
 
 @keyframes save-pop {
@@ -3360,8 +3369,13 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
   40%, 80% { transform: translateX(2px); }
 }
 
-.save-icon {
+.save-icon, .status-indicator {
   transform-origin: center;
+  flex-shrink: 0;
+}
+
+.status-indicator.loading {
+  animation: save-spin 1s linear infinite;
 }
 
 .canvas-notification {

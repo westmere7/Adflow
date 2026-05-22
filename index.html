@@ -121,18 +121,31 @@
       <div class="spacer"></div>
       <span id="version-switcher" style="display:none; align-items:center; gap:6px; margin-right:16px;">
         <label style="font-size:11px;color:var(--text-muted);">Version</label>
+        <button class="btn ghost icon" id="btn-version-prev" title="Previous Version" style="padding:4px 6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
         <select id="version-select" title="Active data version"
           style="background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;max-width:170px;"></select>
+        <button class="btn ghost icon" id="btn-version-next" title="Next Version" style="padding:4px 6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
         <button class="btn ghost icon" id="btn-data-lock" title="Data lock — make dynamic slots read-only" style="padding:4px 6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </button>
-        <button class="btn ghost" id="btn-open-data" title="Open Data &amp; Versions panel" style="padding:4px 8px;font-size:11px;">Data &amp; Versions</button>
       </span>
       <span id="zoom-level-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Reset Zoom">Zoom 100%</span>
-      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v1.5.0</span>
+      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v1.6.0</span>
+      <span id="save-status" title="Your work auto-saves to this browser">
+        <svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+          <path d="M17 21v-8H7v8"/>
+        </svg>
+        <svg class="status-indicator" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; display: block;">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </span>
       <button class="btn" id="btn-preview" title="Preview the interactive banner animation">Preview</button>
       <button class="btn primary" id="btn-export-top" title="Export banner to HTML package">Export</button>
-      <span id="save-status" style="font-weight: 500; font-size: 11px; color: var(--text-muted); user-select: none; width: 140px; min-width: 140px; flex-shrink: 0; display: inline-flex; align-items: center; white-space: nowrap;" title="Your work auto-saves to this browser"><svg class="save-icon saved" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="margin-right: 6px; flex-shrink: 0;"><path d="M20 6 9 17l-5-5"/></svg>All changes saved</span>
     </div>
 
     <!-- ============== WORKSPACES ============== -->

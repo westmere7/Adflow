@@ -392,31 +392,58 @@ function setSaveStatus(status) {
   _saveStatus = status;
   const el = document.getElementById('save-status');
   if (!el) return;
+
+  const getSimpleFloppy = (color, anim = '') => `
+    <svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="${anim}; width: 14px; height: 14px; display: block;">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+      <path d="M17 21v-8H7v8"/>
+    </svg>
+  `;
+
   const map = {
     saved: {
-      text: 'All changes saved',
-      color: 'var(--text-muted)',
-      icon: `<svg class="save-icon saved" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="margin-right: 6px; flex-shrink: 0; animation: save-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);"><path d="M20 6 9 17l-5-5"/></svg>`
+      tooltip: 'All changes saved to local storage',
+      html: `
+        ${getSimpleFloppy('#10b981')}
+        <svg class="status-indicator" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; display: block; animation: save-pop 0.3s ease;">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      `
     },
     unsaved: {
-      text: 'Unsaved changes',
-      color: 'var(--text-label)',
-      icon: `<svg class="save-icon unsaved" viewBox="0 0 24 24" width="13" height="13" style="margin-right: 6px; flex-shrink: 0; display: inline-block; vertical-align: middle;"><circle cx="12" cy="12" r="4" fill="#f59e0b" style="animation: save-dot-pulse 1.5s ease-in-out infinite; transform-origin: center;" /><circle cx="12" cy="12" r="9" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="4 3" style="animation: save-spin 10s linear infinite; transform-origin: center;" /></svg>`
+      tooltip: 'Unsaved changes',
+      html: `
+        ${getSimpleFloppy('#f59e0b')}
+        <svg class="status-indicator" viewBox="0 0 24 24" fill="#f59e0b" style="width: 12px; height: 12px; display: block;">
+          <circle cx="12" cy="12" r="5"/>
+        </svg>
+      `
     },
     saving: {
-      text: 'Saving…',
-      color: 'var(--text-label)',
-      icon: `<svg class="save-icon saving" viewBox="0 0 24 24" width="13" height="13" style="margin-right: 6px; flex-shrink: 0; display: inline-block; vertical-align: middle;"><circle cx="12" cy="12" r="9" stroke="rgba(56, 189, 248, 0.2)" stroke-width="2" fill="none" /><circle cx="12" cy="12" r="9" stroke="#38bdf8" stroke-width="2" fill="none" stroke-linecap="round" stroke-dasharray="28 28" style="animation: save-spin 0.8s linear infinite; transform-origin: center;" /></svg>`
+      tooltip: 'Saving changes...',
+      html: `
+        ${getSimpleFloppy('#38bdf8')}
+        <svg class="status-indicator loading" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round" style="width: 12px; height: 12px; display: block;">
+          <circle cx="12" cy="12" r="10" stroke="rgba(56, 189, 248, 0.2)"/>
+          <path d="M12 2a10 10 0 0 1 10 10"/>
+        </svg>
+      `
     },
     error: {
-      text: 'Auto-save failed',
-      color: '#ef4444',
-      icon: `<svg class="save-icon error" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="margin-right: 6px; flex-shrink: 0; animation: save-shake 0.4s ease;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
+      tooltip: 'Auto-save failed!',
+      html: `
+        ${getSimpleFloppy('#ef4444', 'animation: save-shake 0.4s ease')}
+        <svg class="status-indicator" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; display: block; animation: save-shake 0.4s ease;">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      `
     }
   };
+
   const m = map[status] || map.saved;
-  el.innerHTML = `${m.icon}${m.text}`;
-  el.style.color = m.color;
+  el.innerHTML = m.html;
+  el.title = m.tooltip;
 }
 
 async function writeAutosave() {
@@ -2154,29 +2181,6 @@ function elementNode(el, canvasCtx) {
   const dColor = _dm.color !== undefined ? _dm.color : el.color;
   const dBg = _dm.bg !== undefined ? _dm.bg : el.bg;
   const dAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
-  const _isDynSlot = !!(el.dynamic && Object.keys(el.dynamic).some(k => el.dynamic[k])) ||
-    (typeof dmFieldActive === 'function' && dmFieldsForType(el.type).some(f => dmFieldActive(el, f)));
-  // Show the dynamic-data badge only on the currently selected element — not on its
-  // linked siblings (we never multi-select across canvases, so this stays single). The
-  // badge sits just above the element's top-right, outside the selection outline, and
-  // gains a link icon next to the bolt when the element belongs to a link group.
-  // Two independent indicators on the selected element: a chain when it belongs to a link
-  // group, and a bolt when it carries dynamic data. Either can show without the other.
-  const _selForDm = (state.layerSelection && state.layerSelection.includes(el.id)) || state.selectedElementId === el.id;
-  if (_selForDm && (_isDynSlot || el.linkGroupId)) {
-    const badge = document.createElement('div');
-    badge.className = 'dm-badge';
-    let icons = '';
-    if (el.linkGroupId) {
-      // Filled chain glyph so it matches the bolt's solid silhouette (same visual weight).
-      icons += '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>';
-    }
-    if (_isDynSlot) {
-      icons += '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
-    }
-    badge.innerHTML = icons;
-    d.appendChild(badge);
-  }
 
   const editing = state.editingElementId === el.id;
   if (editing) d.classList.add('editing');
@@ -2506,6 +2510,26 @@ function wireInlineEdit(ed, el, key) {
   ed.addEventListener('mousedown', (e) => e.stopPropagation());
 }
 
+function createBadge(el) {
+  const _isDynSlot = !!(el.dynamic && Object.keys(el.dynamic).some(k => el.dynamic[k])) ||
+    (typeof dmFieldActive === 'function' && dmFieldsForType(el.type).some(f => dmFieldActive(el, f)));
+  if (_isDynSlot || el.linkGroupId) {
+    const badge = document.createElement('div');
+    badge.className = 'dm-badge';
+    let icons = '';
+    if (el.linkGroupId) {
+      // Filled chain glyph so it matches the bolt's solid silhouette (same visual weight).
+      icons += '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>';
+    }
+    if (_isDynSlot) {
+      icons += '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+    }
+    badge.innerHTML = icons;
+    return badge;
+  }
+  return null;
+}
+
 function multiSelectionOverlay(elements, isGroup = false) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   elements.forEach(el => {
@@ -2537,6 +2561,24 @@ function multiSelectionOverlay(elements, isGroup = false) {
       w.appendChild(childBox);
     });
   }
+
+  // Draw badges for elements inside the multi-selection outline.
+  // Using static badge wrappers positioned relative to the outer bounding box.
+  elements.forEach(el => {
+    const badge = createBadge(el);
+    if (badge) {
+      const badgeWrapper = document.createElement('div');
+      badgeWrapper.style.position = 'absolute';
+      badgeWrapper.style.left = (el.x - minX) + 'px';
+      badgeWrapper.style.top = (el.y - minY) + 'px';
+      badgeWrapper.style.width = el.width + 'px';
+      badgeWrapper.style.height = el.height + 'px';
+      badgeWrapper.style.transform = `rotate(${el.rotation || 0}deg)`;
+      badgeWrapper.style.pointerEvents = 'none';
+      badgeWrapper.appendChild(badge);
+      w.appendChild(badgeWrapper);
+    }
+  });
 
   ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach(corner => {
     const h = document.createElement('div');
@@ -2621,6 +2663,12 @@ function selectionOverlay(el) {
     radHandle.style.top = `calc(${r}px + 4px / var(--z, 1))`;
     radHandle.addEventListener('mousedown', (e) => onRadiusMouseDown(e, el));
     w.appendChild(radHandle);
+  }
+
+  // Draw badge for single element selection outline
+  const badge = createBadge(el);
+  if (badge) {
+    w.appendChild(badge);
   }
 
   return w;
@@ -4552,10 +4600,69 @@ function renderProps() {
   const hexCopyBtn = (k, disabled = false) => `<button class="hex-copy" data-target-k="${k}" title="Copy hex" tabindex="-1" ${disabled ? 'disabled style="pointer-events:none;"' : ''} style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:2px; color:var(--text-muted); display:flex; align-items:center;">${HEX_COPY_SVG}</button>`;
   const hexInputBox = (key, value, inputId = '', disabled = false) => `<div style="position:relative; flex:1; min-width:0; ${disabled ? 'pointer-events:none;' : ''}"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" title="Hex color code" ${disabled ? 'disabled style="pointer-events:none;"' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />${hexCopyBtn(key, disabled)}</div>`;
 
+  // ---- Dynamic Data (data-merge / versioning) ----
+  let dynamicHtml = '';
+  if (typeof dmFieldsForType === 'function') {
+    const dmFields = el ? dmFieldsForType(el.type) : [];
+    if (el && dmFields.length) {
+      dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data">
+        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none;">
+          <span>Dynamic Data</span>
+          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </h3>`;
+      const checkboxRows = [];
+      const dm = state.dataMerge;
+      const sk = dmSlotKey(el);
+      dmFields.forEach(field => {
+        const on = !!(el.dynamic && el.dynamic[field]);
+        const id = `dm-chk-${field}-${el.id}`;
+        const key = sk + '::' + field;
+        const currentMapping = (dm && dm.mappings) ? (dm.mappings[key] || '') : '';
+        const colOptions = ['<option value="">— none —</option>'].concat(
+          (dm && dm.columns ? dm.columns : []).map(c => `<option value="${esc(c)}" ${c === currentMapping ? 'selected' : ''}>${esc(c)}</option>`)
+        ).join('');
+
+        checkboxRows.push(`
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; width:100%;">
+            <div class="checkbox-row" style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; margin-right:4px;">
+              <input type="checkbox" id="${id}" class="dm-control dm-field-chk" data-dm-field="${field}" title="Toggle dynamic data binding for ${DM_FIELD_LABEL[field] || field}" ${on ? 'checked' : ''}/>
+              <label for="${id}" title="Toggle dynamic data binding for ${DM_FIELD_LABEL[field] || field}" style="cursor:pointer; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:500;">${DM_FIELD_LABEL[field] || field}</label>
+            </div>
+            <select class="dm-control dm-field-select" data-dm-field="${field}" title="Column header map for ${DM_FIELD_LABEL[field] || field}" style="width:130px; flex-shrink:0; padding:3px 4px; font-size:11px; outline:none; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; font-family:inherit; transition:opacity 0.2s;" ${on ? '' : 'disabled'}>
+              ${colOptions}
+            </select>
+          </div>
+        `);
+      });
+      dynamicHtml += `<div class="prop-row" style="display:flex; flex-direction:column; gap:2px; margin-bottom:8px; width:100%;">${checkboxRows.join('')}</div>`;
+      if (el.linkGroupId) {
+        dynamicHtml += `<div class="prop-row" style="font-size:10px;color:var(--accent-light);margin-top:4px;line-height:1.4;">Linked element — these toggles apply to every size in the link group.</div>`;
+      }
+      dynamicHtml += `<button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="margin-top:10px;width:100%;font-size:11px;">Open Data &amp; Versions…</button>`;
+      dynamicHtml += `</div>`;
+    } else {
+      dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data">
+        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none;">
+          <span>Dynamic Data</span>
+          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </h3>
+        <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.4; margin-bottom:10px;">
+          Connect layer properties (text, image, colors) to a spreadsheet to generate multiple version variants of this banner set automatically.
+        </div>
+        <button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="width:100%;font-size:11px;">Open Data &amp; Versions…</button>
+      </div>`;
+    }
+  }
+
   if (!el) {
     if (!c) { propsEl.innerHTML = '<div class="panel-section"><h3>Properties</h3><div class="prop-empty">No canvas.</div></div>'; return; }
     // show canvas properties when no element is selected
     propsEl.innerHTML = `
+      ${dynamicHtml}
       <div class="panel-section" id="panel-section-canvas-settings">
         <h3 class="panel-header-collapsible" id="header-canvas-settings" style="cursor: pointer; user-select: none;">
           <span>Canvas Settings</span>
@@ -4708,6 +4815,9 @@ function renderProps() {
         btnDlImg.disabled = false;
       });
     }
+
+    const dmOpenBtn = propsEl.querySelector('#dm-open-from-props');
+    if (dmOpenBtn) dmOpenBtn.addEventListener('click', () => openDataPanel());
 
     if (typeof syncColorPickerWithSelection === 'function') {
       syncColorPickerWithSelection(null, c);
@@ -5195,33 +5305,6 @@ function renderProps() {
 
   f.push(`</div>`);
 
-  // ---- Dynamic Data (data-merge / versioning) ----
-  let dynamicHtml = '';
-  if (typeof dmFieldsForType === 'function') {
-    const dmFields = dmFieldsForType(el.type);
-    if (dmFields.length) {
-      dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data">
-        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none;">
-          <span>Dynamic Data</span>
-          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </h3>`;
-      const checkboxRows = [];
-      dmFields.forEach(field => {
-        const on = !!(el.dynamic && el.dynamic[field]);
-        const id = `dm-chk-${field}-${el.id}`;
-        checkboxRows.push(`<div class="checkbox-row"><input type="checkbox" id="${id}" class="dm-control dm-field-chk" data-dm-field="${field}" title="Toggle dynamic data binding for ${DM_FIELD_LABEL[field] || field}" ${on ? 'checked' : ''}/><label for="${id}" title="Toggle dynamic data binding for ${DM_FIELD_LABEL[field] || field}" style="cursor:pointer;">${DM_FIELD_LABEL[field] || field}</label></div>`);
-      });
-      dynamicHtml += `<div class="prop-row" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:8px;">${checkboxRows.join('')}</div>`;
-      if (el.linkGroupId) {
-        dynamicHtml += `<div class="prop-row" style="font-size:10px;color:var(--accent-light);margin-top:4px;line-height:1.4;">Linked element — these toggles apply to every size in the link group.</div>`;
-      }
-      dynamicHtml += `<button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="margin-top:10px;width:100%;font-size:11px;">Open Data &amp; Versions…</button>`;
-      dynamicHtml += `</div>`;
-    }
-  }
-
   propsEl.innerHTML = `
     ${dynamicHtml}
     <div class="panel-section" id="panel-section-properties">
@@ -5425,10 +5508,26 @@ function renderProps() {
   // element's link group so a logical slot stays consistent across all sizes.
   propsEl.querySelectorAll('.dm-field-chk').forEach((chk) => {
     chk.addEventListener('change', () => {
+      if (!el) return;
       dmToggleField(el, chk.dataset.dmField, chk.checked);
       pushHistory();
       renderProps();
       render(true);
+    });
+  });
+  propsEl.querySelectorAll('.dm-field-select').forEach((sel) => {
+    sel.addEventListener('change', () => {
+      if (!el) return;
+      const field = sel.dataset.dmField;
+      const k = dmSlotKey(el) + '::' + field;
+      if (sel.value) {
+        state.dataMerge.mappings[k] = sel.value;
+      } else {
+        delete state.dataMerge.mappings[k];
+      }
+      pushHistory();
+      render(true);
+      renderProps();
     });
   });
   const dmOpenBtn = propsEl.querySelector('#dm-open-from-props');
@@ -8244,6 +8343,18 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 const CHANGELOG_DATA = [
   {
+    version: 'v1.6.0',
+    date: 'May 2026',
+    items: [
+      'Refined saving indicators with a simpler, cleaner floppy disk icon and status indicators (check mark for saved, rotating circle for saving, amber dot for unsaved, and cross for error) positioned before the Preview button with a fixed width to prevent layout shifting.',
+      'Decoupled Link Group and Dynamic Data indicator badges from element wrappers, aligning them statically with the active selection outline to prevent them from animating or scaling with elements.',
+      'Show slot dropdowns directly in the Properties menu for quick binding next to the checkboxes, with dropdowns grayed out when unchecked.',
+      'Added version cycle arrows in the top bar to easily cycle through active data versions.',
+      'Persistent Dynamic Data panel in the properties sidebar, showing a general description and setup button even when no element is selected.',
+      'Global rename of "Add to canvases and link" to "Distribute & Link" for clarity.'
+    ]
+  },
+  {
     version: 'v1.5.0',
     date: 'May 2026',
     items: [
@@ -8582,7 +8693,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v1.5.0';
+  const currentVersion = 'v1.6.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -8708,7 +8819,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.4.1</span>
+              <span style="font-size:11px; color:var(--text-muted);">v1.6.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -10029,9 +10140,37 @@ function dmWirePanel(bg) {
   });
 }
 
+function cycleVersion(dir) {
+  const dm = state.dataMerge;
+  if (!dm || !dm.enabled || !dm.rows.length) return;
+  const L = dm.rows.length;
+  let current = dm.activeVersion; // null or number
+  let next;
+  if (dir === 'prev') {
+    if (current === null) {
+      next = L - 1;
+    } else if (current === 0) {
+      next = null;
+    } else {
+      next = current - 1;
+    }
+  } else {
+    if (current === null) {
+      next = 0;
+    } else if (current === L - 1) {
+      next = null;
+    } else {
+      next = current + 1;
+    }
+  }
+  dmSetActiveVersion(next);
+}
+
 document.getElementById('menu-file-data')?.addEventListener('click', openDataPanel);
 document.getElementById('btn-open-data')?.addEventListener('click', openDataPanel);
 document.getElementById('version-select')?.addEventListener('change', (e) => dmSetActiveVersion(e.target.value));
+document.getElementById('btn-version-prev')?.addEventListener('click', () => cycleVersion('prev'));
+document.getElementById('btn-version-next')?.addEventListener('click', () => cycleVersion('next'));
 document.getElementById('btn-data-lock')?.addEventListener('click', dmToggleLock);
 
 propsEl?.addEventListener('click', (e) => {
