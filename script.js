@@ -201,6 +201,7 @@ const state = {
   showSafezones: false,
   adSizeLimit: 150,      // max exported ad weight in KB (IAB display-ad standard)
   defaultBg: '#0f172a',  // default background for newly created canvases
+  savedHistoryLimit: 10,
   clipboard: null,
   linkGroups: {},
   assetNames: {},        // assetId -> original filename (for data-merge image lookup)
@@ -322,6 +323,35 @@ function pushHistory() {
   else historyIndex++;
   queueSizeUpdate();
   scheduleAutosave();
+}
+
+function getCappedHistory(limit) {
+  const l = limit !== undefined ? limit : (state.savedHistoryLimit || 10);
+  if (history.length <= l) {
+    return {
+      history: [...history],
+      historyIndex: historyIndex
+    };
+  }
+
+  // Choose a sliding window of size `l` around historyIndex
+  let start = historyIndex - Math.floor(l / 2);
+  if (start < 0) {
+    start = 0;
+  }
+  let end = start + l - 1;
+  if (end >= history.length) {
+    end = history.length - 1;
+    start = end - l + 1;
+    if (start < 0) start = 0;
+  }
+
+  const slicedHistory = history.slice(start, end + 1);
+  const newIndex = historyIndex - start;
+  return {
+    history: slicedHistory,
+    historyIndex: newIndex
+  };
 }
 
 // ============================================================================
@@ -450,7 +480,14 @@ function setSaveStatus(status) {
 async function writeAutosave() {
   try {
     setSaveStatus('saving');
-    await _idbPut(AUTOSAVE_KEY, { savedAt: Date.now(), state: buildStateSnapshot() });
+    const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 10;
+    const capped = getCappedHistory(limit);
+    await _idbPut(AUTOSAVE_KEY, { 
+      savedAt: Date.now(), 
+      state: buildStateSnapshot(),
+      history: capped.history,
+      historyIndex: capped.historyIndex
+    });
     setSaveStatus('saved');
   } catch (e) {
     console.warn('Auto-save failed:', e);
@@ -471,6 +508,15 @@ async function restoreAutosave() {
     const rec = await _idbGet(AUTOSAVE_KEY);
     if (rec && rec.state && Array.isArray(rec.state.canvases) && rec.state.canvases.length) {
       Object.assign(state, rec.state);
+      if (rec.history && Array.isArray(rec.history) && rec.history.length > 0) {
+        history.length = 0;
+        history.push(...rec.history);
+        historyIndex = rec.historyIndex !== undefined ? rec.historyIndex : history.length - 1;
+      } else {
+        history.length = 0;
+        historyIndex = -1;
+        pushHistory();
+      }
       return true;
     }
   } catch (e) { console.warn('Auto-save restore failed:', e); }
@@ -7625,6 +7671,12 @@ async function saveProjectAsCook() {
     exportState.viewScrollTop = ca.scrollTop;
   }
 
+  // Embed the capped history stack and index
+  const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 10;
+  const capped = getCappedHistory(limit);
+  exportState.history = capped.history;
+  exportState.historyIndex = capped.historyIndex;
+
   const imgFolder = zip.folder('images');
   for (const [assetId, dataUrl] of Object.entries(exportState.assets || {})) {
     if (dataUrl.startsWith('data:')) {
@@ -7764,10 +7816,29 @@ function loadProjectFromState(loadedState) {
   state.editingElementId = null;
   state.isolatedGroupId = null;
 
+  // Extract history data and clean loadedState to prevent polluting global state
+  let restoredHistory = null;
+  let restoredHistoryIndex = -1;
+  if (loadedState.history) {
+    restoredHistory = loadedState.history;
+    restoredHistoryIndex = loadedState.historyIndex;
+    loadedState = JSON.parse(JSON.stringify(loadedState));
+    delete loadedState.history;
+    delete loadedState.historyIndex;
+  }
+
   Object.assign(state, JSON.parse(JSON.stringify(loadedState)));
-  history.length = 0;
-  historyIndex = -1;
-  pushHistory();
+  
+  if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
+    history.length = 0;
+    history.push(...restoredHistory);
+    historyIndex = restoredHistoryIndex !== undefined ? restoredHistoryIndex : history.length - 1;
+  } else {
+    history.length = 0;
+    historyIndex = -1;
+    pushHistory();
+  }
+
   render();
   if (loadedState.viewScrollLeft !== undefined) {
     setTimeout(() => {
@@ -7787,6 +7858,17 @@ async function loadProjectFromBlob(file) {
 
   const jsonStr = await projFile.async('string');
   const loadedState = JSON.parse(jsonStr);
+
+  // Extract history data and clean loadedState to prevent polluting global state
+  let restoredHistory = null;
+  let restoredHistoryIndex = -1;
+  if (loadedState.history) {
+    restoredHistory = loadedState.history;
+    restoredHistoryIndex = loadedState.historyIndex;
+    delete loadedState.history;
+    delete loadedState.historyIndex;
+  }
+
   const newAssets = {};
   if (loadedState.assets) {
     for (const [assetId, path] of Object.entries(loadedState.assets)) {
@@ -7805,9 +7887,17 @@ async function loadProjectFromBlob(file) {
   }
   Object.assign(state, loadedState);
   state.assets = newAssets || {};
-  history.length = 0;
-  historyIndex = -1;
-  pushHistory();
+
+  if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
+    history.length = 0;
+    history.push(...restoredHistory);
+    historyIndex = restoredHistoryIndex !== undefined ? restoredHistoryIndex : history.length - 1;
+  } else {
+    history.length = 0;
+    historyIndex = -1;
+    pushHistory();
+  }
+
   render();
   if (loadedState.viewScrollLeft !== undefined) {
     setTimeout(() => {
@@ -9066,6 +9156,23 @@ function openSettings() {
               <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Theme</h3>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">${themeBtns}</div>
             </section>
+            <section>
+              <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">History & Saving</h3>
+              <div style="display:flex; flex-direction:column; gap:8px; padding:4px 10px;">
+                <label style="display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-main); cursor:pointer;">
+                  <span>Save History Limit:</span>
+                  <input type="number" id="set-history-limit" value="${state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 10}" min="1" max="50" style="width:55px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 6px; font-family:inherit; font-size:12px;" />
+                </label>
+                <div style="font-size:10px; color:#f59e0b; line-height:1.4; display:flex; align-items:flex-start; gap:6px; margin-top:2px;">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0; margin-top:1px;">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <span>Warning: Storing history does not persist deleted assets (like images) from a past session. Undoing after reopening a project might result in missing images if those assets were deleted and pruned.</span>
+                </div>
+              </div>
+            </section>
           </div>
         </div>`;
 
@@ -9097,6 +9204,15 @@ function openSettings() {
   bind('set-snap-el', 'snapToElements');
   bind('set-snap-cv', 'snapToCanvas');
   bind('set-snap-gd', 'snapToGuides');
+
+  bg.querySelector('#set-history-limit').addEventListener('change', (e) => {
+    let val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 1) val = 1;
+    if (val > 50) val = 50;
+    e.target.value = val;
+    state.savedHistoryLimit = val;
+    scheduleAutosave();
+  });
 
   bg.querySelectorAll('.settings-theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
