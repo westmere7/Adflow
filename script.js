@@ -1579,29 +1579,24 @@ function renderFrameControls() {
   const fadeRow = document.getElementById('frame-transition-fade-row');
   const fadeChk = document.getElementById('frame-transition-fade');
   const fadeLabel = document.getElementById('frame-transition-fade-label');
+  const transGroup = document.getElementById('transition-control-group');
   if (transSelect && transLabel && currentFrame) {
     if (state.frames.length > 0 && state.frames[0].id === currentFrame.id) {
-      transSelect.style.display = 'none';
       transLabel.style.display = 'none';
-      if (transDur) transDur.style.display = 'none';
-      if (transDurLabel) transDurLabel.style.display = 'none';
-      if (fadeRow) fadeRow.style.display = 'none';
+      if (transGroup) transGroup.style.display = 'none';
     } else {
-      transSelect.style.display = 'inline-block';
       transLabel.style.display = 'inline-block';
+      if (transGroup) transGroup.style.display = 'inline-flex';
       transSelect.value = currentFrame.transition || 'fade';
+      transSelect.disabled = false;
+      transSelect.style.opacity = '1';
       if (transDur) {
-        transDur.style.display = 'inline-block';
         if (document.activeElement !== transDur) transDur.value = currentFrame.transitionDuration || 0.5;
-        transDur.style.visibility = (transSelect.value === 'none') ? 'hidden' : 'visible';
+        const showDur = transSelect.value !== 'none';
+        transDur.style.display = showDur ? '' : 'none';
         transDur.disabled = false;
         transDur.style.opacity = '1';
-        transSelect.disabled = false;
-        transSelect.style.opacity = '1';
-        if (transDurLabel) {
-          transDurLabel.style.display = 'inline-block';
-          transDurLabel.style.visibility = transDur.style.visibility;
-        }
+        if (transDurLabel) transDurLabel.style.display = showDur ? '' : 'none';
       }
       // Add Fade checkbox: hide when no transition; gray out when transition is
       // 'fade' (the fade flag is meaningless — fade is the transition).
@@ -9637,7 +9632,7 @@ function renderVersionSwitcher() {
       lockBtn.style.background = 'var(--accent-base)';
       lockBtn.style.color = '#fff';
       lockBtn.style.border = '1px solid var(--accent-base)';
-      lockBtn.style.boxShadow = '0 0 0 2px rgba(124,92,255,0.35)';
+      lockBtn.style.boxShadow = '0 0 0 2px var(--accent-glow)';
     } else {
       lockBtn.style.background = '';
       lockBtn.style.color = '';

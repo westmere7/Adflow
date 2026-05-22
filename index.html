@@ -21,48 +21,37 @@
 
     <!-- ============== TOP BAR ============== -->
     <div class="topbar">
-      <div class="menu-item hamburger" style="margin-right: 8px; padding: 4px; display:flex; align-items:center;">
+      <div class="menu-item hamburger">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <line x1="3" y1="12" x2="21" y2="12"></line>
           <line x1="3" y1="6" x2="21" y2="6"></line>
           <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
-        <div class="dropdown" style="top: 100%; left: 0; min-width: 200px; padding: 8px 0;">
-          <div
-            style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
-            File</div>
+        <div class="dropdown menu-dropdown">
+          <div class="dropdown-label">File</div>
           <div class="dropdown-item" id="menu-file-new">New Project…</div>
           <div class="dropdown-item" id="menu-file-open">Open Project...</div>
-          <div class="dropdown-item" id="menu-file-save">Save Project <span class="kbd"
-              style="background:transparent;border:none;padding:0">Ctrl+S</span></div>
+          <div class="dropdown-item" id="menu-file-save">Save Project <span class="kbd-hint">Ctrl+S</span></div>
           <div class="dropdown-item" id="menu-project-settings">Project Settings…</div>
           <div class="dropdown-item" id="menu-file-export">Export HTML</div>
           <div class="dropdown-item" id="menu-file-data">Data &amp; Versions…</div>
-          <div class="dropdown-item has-sub" id="menu-file-recent" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <div class="dropdown-item has-sub" id="menu-file-recent">
             <span>Open Recent</span>
-            <span style="font-size: 8px; color: var(--text-muted);">▶</span>
+            <span class="sub-arrow">▶</span>
             <div class="sub-dropdown" id="recent-projects-list" style="max-height: 250px; overflow-y: auto; min-width: 180px;">
               <div class="dropdown-item" style="color:var(--text-muted); cursor:default; pointer-events:none;">(No recent projects)</div>
             </div>
           </div>
           <div class="dropdown-divider"></div>
-          <div
-            style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
-            Edit</div>
-          <div class="dropdown-item" id="menu-edit-undo">Undo <span class="kbd"
-              style="background:transparent;border:none;padding:0">Ctrl+Z</span></div>
-          <div class="dropdown-item" id="menu-edit-redo">Redo <span class="kbd"
-              style="background:transparent;border:none;padding:0">Ctrl+Y</span></div>
+          <div class="dropdown-label">Edit</div>
+          <div class="dropdown-item" id="menu-edit-undo">Undo <span class="kbd-hint">Ctrl+Z</span></div>
+          <div class="dropdown-item" id="menu-edit-redo">Redo <span class="kbd-hint">Ctrl+Y</span></div>
           <div class="dropdown-divider"></div>
-          <div
-            style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
-            View</div>
+          <div class="dropdown-label">View</div>
           <div class="dropdown-item" id="menu-view-clear-guides">Clear All Guides</div>
           <div class="dropdown-divider"></div>
-          <div
-            style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
-            Help</div>
+          <div class="dropdown-label">Help</div>
           <div class="dropdown-item" id="menu-help-shortcuts">Shortcuts</div>
           <div class="dropdown-item" id="menu-help-documentation">Documentation</div>
           <div class="dropdown-divider"></div>
@@ -70,69 +59,76 @@
           <div class="dropdown-item" id="menu-about">About</div>
         </div>
       </div>
-      <div class="title" style="display:flex; align-items:center;">
-        <img src="data/Elements/AdCookerLogo.svg" alt="RMIT Display Studio" style="height:24px;" />
+      <div class="title">
+        <img src="data/Elements/AdCookerLogo.svg" alt="RMIT Display Studio" />
       </div>
-      <div class="spacer" style="flex:0 0 24px"></div>
-      <div
-        style="display:flex;align-items:center;gap:6px;margin-right:24px;border-right:1px solid #1f2330;padding-right:24px;"
-        id="frame-controls-container">
+
+      <div class="topbar-divider"></div>
+
+      <div id="frame-controls-container">
         <label>Frame</label>
-        <button class="btn ghost icon" id="btn-prev-frame" title="Previous Frame"
-          style="padding:4px 6px;margin-right:-2px">&lsaquo;</button>
-        <select id="frame-select"
-          style="background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;width:80px;"></select>
-        <button class="btn ghost icon" id="btn-next-frame" title="Next Frame"
-          style="padding:4px 6px;margin-left:-2px">&rsaquo;</button>
-        <div style="width:4px"></div>
-        <button class="btn ghost icon" id="btn-add-frame" title="Add Frame" style="padding:4px 6px">+</button>
-        <button class="btn ghost icon" id="btn-remove-frame" title="Remove Frame" style="padding:4px 6px">-</button>
-        <label style="margin-left:8px">Duration (s)</label>
-        <input type="number" id="frame-duration" value="2" min="0.1" step="0.1"
-          onkeydown="if(['e','E','+','-'].includes(event.key)) event.preventDefault();"
-          style="width:60px;background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;" />
-        <div class="checkbox-row" style="margin-left:12px; display:flex; align-items:center; gap:4px;">
-          <input type="checkbox" id="project-loop-ad" style="margin:0;" />
-          <label for="project-loop-ad" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer;">Loop</label>
+        <div class="control-group">
+          <button class="btn ghost icon" id="btn-prev-frame" title="Previous Frame">&lsaquo;</button>
+          <select id="frame-select"></select>
+          <button class="btn ghost icon" id="btn-next-frame" title="Next Frame">&rsaquo;</button>
         </div>
-        <label style="margin-left:8px" id="frame-transition-label">Transition</label>
-        <select id="frame-transition"
-          style="background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;width:90px;">
-          <option value="none">None</option>
-          <option value="fade">Fade</option>
-          <option value="slide-left">Slide Left</option>
-          <option value="slide-right">Slide Right</option>
-          <option value="slide-up">Slide Up</option>
-          <option value="slide-down">Slide Down</option>
-          <option value="swipe-left">Swipe Left</option>
-          <option value="swipe-right">Swipe Right</option>
-          <option value="swipe-up">Swipe Up</option>
-          <option value="swipe-down">Swipe Down</option>
-        </select>
-        <input type="number" id="frame-transition-duration" title="Transition Duration (s)" value="0.5" min="0.1"
-          step="0.1" onkeydown="if(['e','E','+','-'].includes(event.key)) event.preventDefault();"
-          style="width:60px;background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;margin-left:4px;" />
-        <label style="margin-left:4px" id="frame-transition-duration-label">seconds</label>
-        <div class="checkbox-row" id="frame-transition-fade-row" style="margin-left:8px; display:flex; align-items:center; gap:4px;">
-          <input type="checkbox" id="frame-transition-fade" style="margin:0;" />
-          <label for="frame-transition-fade" id="frame-transition-fade-label" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer;">Add Fade</label>
+        <div class="control-group">
+          <button class="btn ghost icon" id="btn-add-frame" title="Add Frame">+</button>
+          <button class="btn ghost icon" id="btn-remove-frame" title="Remove Frame">&minus;</button>
+        </div>
+        <label>Duration</label>
+        <div class="control-group">
+          <input type="number" id="frame-duration" value="2" min="0.1" step="0.1"
+            onkeydown="if(['e','E','+','-'].includes(event.key)) event.preventDefault();" />
+          <span class="duration-suffix">s</span>
+          <label class="checkbox-row"><input type="checkbox" id="project-loop-ad" /><span>Loop</span></label>
+        </div>
+        <label id="frame-transition-label">Transition</label>
+        <div class="control-group" id="transition-control-group">
+          <select id="frame-transition">
+            <option value="none">None</option>
+            <option value="fade">Fade</option>
+            <option value="slide-left">Slide Left</option>
+            <option value="slide-right">Slide Right</option>
+            <option value="slide-up">Slide Up</option>
+            <option value="slide-down">Slide Down</option>
+            <option value="swipe-left">Swipe Left</option>
+            <option value="swipe-right">Swipe Right</option>
+            <option value="swipe-up">Swipe Up</option>
+            <option value="swipe-down">Swipe Down</option>
+          </select>
+          <input type="number" id="frame-transition-duration" title="Transition Duration (s)" value="0.5" min="0.1"
+            step="0.1" onkeydown="if(['e','E','+','-'].includes(event.key)) event.preventDefault();" />
+          <span class="duration-suffix" id="frame-transition-duration-label">s</span>
+          <label class="checkbox-row" id="frame-transition-fade-row"><input type="checkbox" id="frame-transition-fade" /><span id="frame-transition-fade-label">Fade</span></label>
         </div>
       </div>
+
       <div class="spacer"></div>
-      <span id="version-switcher" style="display:none; align-items:center; gap:6px; margin-right:16px;">
-        <label style="font-size:11px;color:var(--text-muted);">Version</label>
-        <select id="version-select" title="Active data version"
-          style="background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;max-width:170px;"></select>
-        <button class="btn ghost icon" id="btn-data-lock" title="Data lock — make dynamic slots read-only" style="padding:4px 6px;">
+
+      <span id="version-switcher">
+        <label>Version</label>
+        <select id="version-select" title="Active data version"></select>
+        <button class="btn ghost icon" id="btn-data-lock" title="Data lock — make dynamic slots read-only">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </button>
-        <button class="btn ghost" id="btn-open-data" title="Open Data &amp; Versions panel" style="padding:4px 8px;font-size:11px;">Data &amp; Versions</button>
+        <button class="btn ghost" id="btn-open-data" title="Open Data &amp; Versions panel">Data</button>
       </span>
-      <span id="zoom-level-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Reset Zoom">Zoom 100%</span>
-      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v1.5.0</span>
-      <button class="btn" id="btn-preview">Preview</button>
-      <button class="btn primary" id="btn-export-top">Export</button>
-      <span id="save-status" style="font-weight: 500; font-size: 11px; color: var(--text-muted); user-select: none; width: 140px; min-width: 140px; flex-shrink: 0; display: inline-flex; align-items: center; white-space: nowrap;" title="Your work auto-saves to this browser"><svg class="save-icon saved" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="margin-right: 6px; flex-shrink: 0;"><path d="M20 6 9 17l-5-5"/></svg>All changes saved</span>
+
+      <span id="zoom-level-display" title="Reset Zoom">Zoom 100%</span>
+      <span id="app-version-display" title="View Changelog">v1.5.0</span>
+
+      <div class="topbar-divider"></div>
+
+      <button class="btn" id="btn-preview" title="Preview the active canvas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Preview
+      </button>
+      <button class="btn primary" id="btn-export-top" title="Export HTML5 package">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+      <span id="save-status" title="Your work auto-saves to this browser"><svg class="save-icon saved" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" style="margin-right: 6px; flex-shrink: 0;"><path d="M20 6 9 17l-5-5"/></svg>All changes saved</span>
     </div>
 
     <!-- ============== WORKSPACES ============== -->
