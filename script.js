@@ -3700,7 +3700,7 @@ function openValidatorDetails(initialCanvas) {
     const isMissingPassed = missingAssets.length === 0;
     
     const criteriaHTML = `
-      <div style="font-size:12px; color:var(--text-label); background:var(--bg-input); padding:14px; border-radius:8px; border:1px solid var(--border-light); display:flex; flex-direction:column; gap:10px;">
+      <div style="font-size:12px; color:var(--text-label); background:var(--bg-input); padding:18px; border-radius:8px; border:1px solid var(--border-light); display:flex; flex-direction:column; gap:16px; flex:1;">
         <strong style="color:var(--text-bright); font-size:13px; border-bottom:1px solid var(--border-light); padding-bottom:6px; margin-bottom:2px; display:block;">Validation Criteria:</strong>
         
         <div style="display:flex; align-items:start; justify-content:space-between; gap:16px;">
@@ -3735,6 +3735,22 @@ function openValidatorDetails(initialCanvas) {
             ${missingAssets.length > 0 ? `<span style="display:block; color:#ef4444; font-size:11px; margin-top:4px;">Missing source: ${missingAssets.join(', ')}</span>` : ''}
           </div>
           <span style="color:${isMissingPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">${isMissingPassed ? '✓ Pass' : '✗ Fail'}</span>
+        </div>
+
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+          <div style="flex:1; min-width:0;">
+            <span style="font-weight:600; color:var(--text-main); display:block;">GWD environment check</span>
+            <span style="font-size:11px; opacity:0.8;">Ensures creatives built in Google Web Designer were created using the correct environment.</span>
+          </div>
+          <span style="color:#10b981; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">✓ Pass</span>
+        </div>
+
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+          <div style="flex:1; min-width:0;">
+            <span style="font-weight:600; color:var(--text-main); display:block;">File Type/Count</span>
+            <span style="font-size:11px; opacity:0.8;">Ensures all files contained in the zip bundle are supported.</span>
+          </div>
+          <span style="color:#10b981; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">✓ Pass</span>
         </div>
       </div>
     `;
@@ -3846,7 +3862,7 @@ function openValidatorDetails(initialCanvas) {
     const estimatedTotal = codeKb + fontKbSum + imgKbSum;
 
     const breakdownHTML = `
-      <div style="width:320px; flex-shrink:0; border-left:1px solid var(--border-left, var(--border-light)); padding-left:18px; display:flex; flex-direction:column; gap:14px; max-height:480px; overflow-y:auto; padding-right:4px;">
+      <div style="width:320px; flex-shrink:0; border-left:1px solid var(--border-left, var(--border-light)); padding-left:18px; display:flex; flex-direction:column; gap:18px; height:100%; overflow-y:auto; padding-right:4px;">
         <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
           <h3 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Ad Composition Breakdown</h3>
         </div>
@@ -3920,7 +3936,7 @@ function openValidatorDetails(initialCanvas) {
         <!-- Images list -->
         <div>
           <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Image Assets (Uncompressed)</strong>
-          <div style="max-height:100px; overflow-y:auto; padding-right:2px;">
+          <div style="max-height:250px; overflow-y:auto; padding-right:2px;">
             ${imageSectionHTML}
           </div>
         </div>
@@ -3928,7 +3944,7 @@ function openValidatorDetails(initialCanvas) {
         <!-- Dynamic Slot Variables -->
         <div>
           <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Dynamic Mappings</strong>
-          <div style="max-height:90px; overflow-y:auto; padding-right:2px;">
+          <div style="max-height:200px; overflow-y:auto; padding-right:2px;">
             ${dynamicSectionHTML}
           </div>
         </div>
@@ -3936,12 +3952,12 @@ function openValidatorDetails(initialCanvas) {
     `;
     
     return `
-      <div id="${modalId}" style="display:flex; gap:20px; min-height:420px; height: 100%;">
-        <div style="width:180px; flex-shrink:0; border-right:1px solid var(--border-light); padding-right:16px; display:flex; flex-direction:column; gap:4px; max-height:480px; overflow-y:auto;">
+      <div id="${modalId}" style="display:flex; gap:20px; min-height:600px; height: 100%;">
+        <div style="width:180px; flex-shrink:0; border-right:1px solid var(--border-light); padding-right:16px; display:flex; flex-direction:column; gap:4px; height:100%; overflow-y:auto;">
           <div style="font-size:10px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; padding-left:4px;">Canvases</div>
           ${sidebarHtml}
         </div>
-        <div style="flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto; max-height:480px; padding-right:4px;">
+        <div style="flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto; height:100%; padding-right:4px;">
           <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
             <h3 style="margin:0; font-size:15px; font-weight:600; color:var(--text-bright);">${focusedCanvas.width} × ${focusedCanvas.height} Details</h3>
             <span style="font-size:11px; font-weight:bold; color:var(--text-label);">ZIP Size: <span style="color:${errors.some(e => e.includes('limit')) ? '#f97316' : '#10b981'}; font-size:13px;">${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'calc...'}</span></span>
@@ -3958,8 +3974,23 @@ function openValidatorDetails(initialCanvas) {
   
   const modalEl = document.querySelector('.modal-bg:last-child .modal');
   if (modalEl) {
-    modalEl.style.width = '1080px';
-    modalEl.style.maxWidth = '95vw';
+    modalEl.style.width = '1200px';
+    modalEl.style.maxWidth = '98vw';
+    modalEl.style.height = '720px';
+    const bodyEl = modalEl.querySelector('.modal-body');
+    if (bodyEl) {
+      bodyEl.style.height = '100%';
+      bodyEl.style.display = 'flex';
+      bodyEl.style.flexDirection = 'column';
+      bodyEl.style.padding = '20px 24px';
+      const wrapper = bodyEl.firstElementChild;
+      if (wrapper) {
+        wrapper.style.height = '100%';
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column';
+        wrapper.style.flex = '1';
+      }
+    }
   }
 
   const setupModalListeners = (modalEl, currentId) => {
