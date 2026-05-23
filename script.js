@@ -4404,10 +4404,10 @@ function renderLinkControl() {
         <div class="link-group-row" data-group-id="${g.id}" style="display:flex; align-items:center; justify-content:space-between; padding:5px 6px; border-radius:4px; margin-bottom:4px; background:${rowBg}; ${rowStyle} cursor:pointer; gap:6px;">
           <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0;">
             ${iconHtml}
-            <span class="layer-name" style="font-size:11px; font-weight:500; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${g.name}</span>
+            <span class="layer-name" style="font-size:10.5px; font-weight:500; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${g.name}</span>
           </div>
           <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
-            <span style="font-size:10px; font-weight:600; color:var(--text-bright); background:rgba(255,255,255,0.08); padding:2px 4px; border-radius:8px; margin-right:2px; display:inline-block; line-height:1;">${count}</span>
+            <span style="font-size:9.5px; font-weight:600; color:var(--text-main); background:rgba(255,255,255,0.06); padding:2px 4px; border-radius:8px; margin-right:2px; display:inline-block; line-height:1;">${count}</span>
             <button class="icon-btn ${g.liveLink ? 'active' : ''} lg-live-btn" data-group-id="${g.id}" title="Toggle Live-Link Mode (Instant Sync)" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:${g.liveLink ? 'var(--accent-light)' : 'var(--text-muted)'};">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="23 4 23 10 17 10"></polyline>
@@ -4418,8 +4418,11 @@ function renderLinkControl() {
             <button class="icon-btn ${hasElements && !allHidden ? 'active' : ''} lg-eye-btn" data-group-id="${g.id}" title="Toggle group visibility" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:${hasElements && !allHidden ? 'var(--text-bright)' : 'var(--text-muted)'};">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             </button>
-            <button class="icon-btn active lg-delete-btn" data-group-id="${g.id}" title="Unlink group" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:#ef4444;">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.84 12.2a4.5 4.5 0 0 0-6.37-6.37l-1.5 1.5"></path><path d="M11.53 16.07a4.5 4.5 0 0 0 6.37 6.37l1.5-1.5"></path></svg>
+            <button class="icon-btn active lg-delete-btn" data-group-id="${g.id}" title="Unlink group" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:var(--text-muted);">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path>
+                <line x1="2" y1="2" x2="22" y2="22"></line>
+              </svg>
             </button>
           </div>
         </div>
@@ -4564,7 +4567,7 @@ function renderLinkControl() {
               <div class="toggle-slider">
                 <div class="toggle-knob"></div>
               </div>
-              <input type="checkbox" id="lnk-live-toggle" style="position: absolute; opacity: 0; pointer-events: none;" ${group.liveLink ? 'checked' : ''} />
+              <input type="checkbox" id="lnk-live-toggle" style="display: none !important;" ${group.liveLink ? 'checked' : ''} />
             </label>
           </div>`;
 
@@ -4648,9 +4651,9 @@ function renderLinkControl() {
           const cat = group.category;
           let keys = [];
           if (cat === 'text') keys = ['text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect'];
-          else if (cat === 'button') keys = ['text', 'textColor', 'font', 'fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'button') keys = ['text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'image') keys = ['image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
-          else if (cat === 'shape') keys = ['fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'shape') keys = ['fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
           
           keys.forEach(k => {
             group.syncProperties[k] = targetVal;

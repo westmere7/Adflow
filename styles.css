@@ -3371,6 +3371,15 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
       }
     }
 
+    @keyframes marching-ants-circle {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
     .el.link-highlight-live::after,
     .el.link-highlight-hover-live::after {
       animation: marching-ants 0.8s linear infinite;
@@ -3378,14 +3387,21 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 
     /* Circles can't use the 4-edge gradient dashes — they clip into broken
        fragments around the curve. Use a real dashed border, which follows the
-       50% border-radius cleanly. */
+       50% border-radius cleanly. For live-link mode, we rotate the circle border
+       to simulate marching ants. */
     .el.shape-circle.link-highlight::after,
-    .el.shape-circle.link-highlight-hover::after,
-    .el.shape-circle.link-highlight-live::after,
-    .el.shape-circle.link-highlight-hover-live::after {
+    .el.shape-circle.link-highlight-hover::after {
       background: none;
       animation: none;
       border: calc(2px / var(--z, 1)) dashed var(--accent-light);
+    }
+
+    .el.shape-circle.link-highlight-live::after,
+    .el.shape-circle.link-highlight-hover-live::after {
+      background: none;
+      border: calc(2px / var(--z, 1)) dashed var(--accent-light);
+      animation: marching-ants-circle 20s linear infinite;
+      transform-origin: center;
     }
 
 
@@ -3630,11 +3646,45 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
   overflow: hidden;
 }
 
-.live-link-toggle-btn:hover {
-  border-color: var(--accent-base);
+.live-link-toggle-btn:hover,
+.live-link-toggle-btn.active:hover {
+  border-color: transparent !important;
   background: rgba(124, 92, 255, 0.08);
   color: var(--text-main);
   box-shadow: 0 4px 10px rgba(124, 92, 255, 0.15);
+}
+
+.live-link-toggle-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0.5px;
+  pointer-events: none;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 2;
+}
+
+.live-link-toggle-btn:hover::after {
+  opacity: 1;
+  background-image:
+    linear-gradient(90deg, var(--accent-base) 50%, transparent 50%),
+    linear-gradient(90deg, var(--accent-base) 50%, transparent 50%),
+    linear-gradient(0deg, var(--accent-base) 50%, transparent 50%),
+    linear-gradient(0deg, var(--accent-base) 50%, transparent 50%);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-size: 10px 1.5px, 10px 1.5px, 1.5px 10px, 1.5px 10px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  animation: btn-marching-ants 0.8s linear infinite;
+}
+
+@keyframes btn-marching-ants {
+  0% {
+    background-position: 0 0, 0 100%, 0 0, 100% 0;
+  }
+  100% {
+    background-position: 20px 0, -20px 100%, 0 -20px, 100% 20px;
+  }
 }
 
 .live-link-toggle-btn svg {
@@ -3673,23 +3723,22 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 
 /* Active states matching the active class */
 .live-link-toggle-btn.active {
-  border-color: rgba(124, 92, 255, 0.6);
-  background: linear-gradient(135deg, var(--accent-base) 0%, #9079ff 100%);
-  color: #ffffff;
-  font-weight: 700;
-  box-shadow: 0 4px 15px rgba(124, 92, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  border-color: var(--accent-base);
+  background: rgba(124, 92, 255, 0.08);
+  color: var(--text-bright);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(124, 92, 255, 0.15);
 }
 
 .live-link-toggle-btn.active:hover {
-  border-color: rgba(124, 92, 255, 0.8);
-  background: linear-gradient(135deg, var(--accent-hover) 0%, #a78bfa 100%);
-  box-shadow: 0 6px 18px rgba(124, 92, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-color: var(--accent-hover);
+  background: rgba(124, 92, 255, 0.12);
+  box-shadow: 0 6px 16px rgba(124, 92, 255, 0.25);
 }
 
 .live-link-toggle-btn.active .toggle-slider {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: transparent;
+  background: var(--accent-base);
+  border-color: var(--accent-base);
 }
 
 .live-link-toggle-btn.active .toggle-slider .toggle-knob {
@@ -3699,17 +3748,17 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 }
 
 .live-link-toggle-btn.active svg {
-  color: #ffffff !important;
-  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.6));
+  color: var(--accent-light) !important;
+  filter: drop-shadow(0 0 3px rgba(124, 92, 255, 0.6));
   animation: bolt-glow 1.5s ease-in-out infinite alternate;
 }
 
 @keyframes bolt-glow {
   from {
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+    filter: drop-shadow(0 0 2px rgba(124, 92, 255, 0.4));
   }
   to {
-    filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.9));
+    filter: drop-shadow(0 0 5px rgba(124, 92, 255, 0.8));
   }
 }
 
@@ -3761,6 +3810,38 @@ input[type="checkbox"]:disabled {
   cursor: not-allowed !important;
   border-color: var(--border-light) !important;
   background: var(--bg-input) !important;
+}
+
+
+/* Link Group Row Action Button Styling */
+.link-group-row .icon-btn {
+  color: var(--text-muted) !important;
+  transition: color 0.2s ease, transform 0.2s ease !important;
+}
+
+.link-group-row .icon-btn:hover {
+  color: var(--text-bright) !important;
+  transform: scale(1.15) !important;
+}
+
+.link-group-row .icon-btn.lg-live-btn.active {
+  color: var(--accent-light) !important;
+}
+
+.link-group-row .icon-btn.lg-live-btn.active:hover {
+  color: var(--accent-hover) !important;
+}
+
+.link-group-row .icon-btn.lg-eye-btn.active {
+  color: var(--text-bright) !important;
+}
+
+.link-group-row .icon-btn.lg-delete-btn {
+  color: var(--text-muted) !important;
+}
+
+.link-group-row .icon-btn.lg-delete-btn:hover {
+  color: #f87171 !important; /* Soft Red */
 }
 
 
