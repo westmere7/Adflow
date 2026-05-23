@@ -1687,7 +1687,7 @@ function previewFrameNode(c) {
 function renderFrameControls() {
   const sel = document.getElementById('frame-select');
   if (!sel) return;
-  sel.innerHTML = state.frames.map((f, i) => `<option value="${f.id}" ${f.id === state.activeFrameId ? 'selected' : ''}>Frame ${i + 1}</option>`).join('');
+  sel.innerHTML = state.frames.map((f, i) => `<option value="${f.id}" ${f.id === state.activeFrameId ? 'selected' : ''} style="${f.skip ? 'color: var(--text-muted); font-style: italic;' : ''}">Frame ${i + 1}</option>`).join('');
 
   const currentFrame = state.frames.find(f => f.id === state.activeFrameId);
   const durInput = document.getElementById('frame-duration');
@@ -1697,6 +1697,16 @@ function renderFrameControls() {
   const fIdx = state.frames.findIndex(f => f.id === state.activeFrameId);
   if (btnPrev) btnPrev.disabled = fIdx <= 0;
   if (btnNext) btnNext.disabled = fIdx >= state.frames.length - 1;
+
+  const btnSkip = document.getElementById('btn-skip-frame');
+  if (btnSkip && currentFrame) {
+    btnSkip.disabled = state.frames.length <= 1;
+    if (currentFrame.skip) {
+      btnSkip.classList.add('active');
+    } else {
+      btnSkip.classList.remove('active');
+    }
+  }
 
   const loopChk = document.getElementById('project-loop-ad');
   if (loopChk) {
@@ -1708,7 +1718,8 @@ function renderFrameControls() {
     };
   }
 
-  const isLastFrame = fIdx === state.frames.length - 1;
+  const activeFrames = state.frames.filter(f => !f.skip);
+  const isLastFrame = activeFrames.length > 0 && activeFrames[activeFrames.length - 1].id === state.activeFrameId;
 
   if (durInput && currentFrame && document.activeElement !== durInput) {
     durInput.value = currentFrame.duration || 2;
@@ -2146,7 +2157,7 @@ function canvasFrameNode(c) {
   leftSide.style.alignItems = 'center';
 
   if (state.activeCanvasId === c.id && !isSinglePreview) {
-    const opts = state.frames.map((f, i) => `<option value="${f.id}" ${f.id === state.activeFrameId ? 'selected' : ''}>Frame ${i + 1}</option>`).join('');
+    const opts = state.frames.map((f, i) => `<option value="${f.id}" ${f.id === state.activeFrameId ? 'selected' : ''} style="${f.skip ? 'color: var(--text-muted); font-style: italic;' : ''}">Frame ${i + 1}</option>`).join('');
     leftSide.innerHTML = `
       <div style="display:flex; align-items:center; gap:3px;">
         <button class="btn-prev-inline" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&lsaquo;</button>
@@ -2210,6 +2221,9 @@ function canvasFrameNode(c) {
       const idx = state.frames.findIndex(f => f.id === state.activeFrameId);
       state.frames.splice(idx, 1);
       state.activeFrameId = state.frames[Math.max(0, idx - 1)].id;
+      if (state.frames.length === 1) {
+        state.frames[0].skip = false;
+      }
       state.canvases.forEach(cv => {
         cv.elements = cv.elements.filter(el => el.persistent !== false || state.frames.some(f => f.id === el.frameId));
       });
@@ -8684,9 +8698,12 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   const elsBot = c.elements.filter(e => e.persistent === 'bottom').map(renderEl).join('\n');
   const elsTop = c.elements.filter(e => e.persistent === 'top').map(renderEl).join('\n');
 
+  // Filter out skipped frames unless it is a static image export of that active frame
+  const activeFrames = state.frames.filter(f => !f.skip || (isImageExport && f.id === state.activeFrameId));
+
   let framesHTML = '';
   const frameData = [];
-  state.frames.forEach((f, i) => {
+  activeFrames.forEach((f, i) => {
     const frameEls = c.elements.filter(e => e.persistent === false && e.frameId === f.id).map(renderEl).join('\n');
     const displayStyle = isImageExport 
       ? (f.id === state.activeFrameId ? 'block' : 'none') 
@@ -9523,6 +9540,9 @@ document.getElementById('btn-remove-frame').addEventListener('click', () => {
   const idx = state.frames.findIndex(f => f.id === state.activeFrameId);
   state.frames.splice(idx, 1);
   state.activeFrameId = state.frames[Math.max(0, idx - 1)].id;
+  if (state.frames.length === 1) {
+    state.frames[0].skip = false;
+  }
 
   state.canvases.forEach(c => {
     c.elements = c.elements.filter(e => e.persistent !== false || state.frames.some(f => f.id === e.frameId));
@@ -9532,6 +9552,24 @@ document.getElementById('btn-remove-frame').addEventListener('click', () => {
   state.layerSelection = [];
   pushHistory();
   render();
+});
+document.getElementById('btn-skip-frame').addEventListener('click', () => {
+  const currentFrame = state.frames.find(f => f.id === state.activeFrameId);
+  if (currentFrame) {
+    if (state.frames.length <= 1) return;
+    const wasSkipped = !!currentFrame.skip;
+    
+    // Enforce at most one skipped frame by unskipping all other frames
+    state.frames.forEach(f => {
+      f.skip = false;
+    });
+    
+    // Toggle active frame skip
+    currentFrame.skip = !wasSkipped;
+    
+    pushHistory();
+    render();
+  }
 });
 
 document.getElementById('frame-duration').addEventListener('input', (e) => {

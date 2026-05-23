@@ -844,6 +844,16 @@ body.theme-navy {
 
     }
 
+    .btn:disabled {
+
+      opacity: 0.45;
+
+      cursor: not-allowed;
+
+      pointer-events: none;
+
+    }
+
 
 
     .btn.primary {
@@ -873,6 +883,26 @@ body.theme-navy {
       background: transparent;
 
       border: 1px solid var(--border-light);
+
+    }
+
+    .btn.ghost.active {
+
+      background: var(--accent-dark);
+
+      border-color: var(--accent-base);
+
+      color: var(--text-bright);
+
+    }
+
+    .btn.ghost.active:hover {
+
+      background: var(--accent-hover);
+
+      border-color: var(--accent-hover);
+
+      color: var(--text-bright);
 
     }
 
