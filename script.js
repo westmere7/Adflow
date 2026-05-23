@@ -6506,10 +6506,7 @@ function renderProps() {
     { val: 'slide-down', label: 'Slide Down' },
     { val: 'slide-left', label: 'Slide Left' },
     { val: 'slide-right', label: 'Slide Right' },
-    { val: 'swipe-up', label: 'Swipe Up' },
-    { val: 'swipe-down', label: 'Swipe Down' },
-    { val: 'swipe-left', label: 'Swipe Left' },
-    { val: 'swipe-right', label: 'Swipe Right' },
+    { val: 'swipe', label: 'Swipe' },
     { val: 'pop-in', label: 'Pop In' },
     { val: 'zoom-in', label: 'Zoom Out' }
   ];
@@ -6518,28 +6515,61 @@ function renderProps() {
     animOptions.push({ val: 'fade-typing', label: 'Fade Typing' });
   }
 
+  const isSwipeActive = (el.animType || 'none').startsWith('swipe-');
+
   f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
-    ${animOptions.map(o => `<button class="align-btn anim-btn ${o.val === (el.animType || 'none') ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Transition: ${o.label}">${o.label}</button>`).join('')}
+    ${animOptions.map(o => {
+      const isActive = o.val === 'swipe' ? isSwipeActive : o.val === (el.animType || 'none');
+      return `<button class="align-btn anim-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Transition: ${o.label}">${o.label}</button>`;
+    }).join('')}
   </div>`);
 
   // Seconds inputs use step=0.1 so wheel-scroll and arrow keys nudge by 0.1.
-  const secNum = (key, label, def = '') => `<div class="prop-row"><label>${label}</label><input type="number" step="0.1" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
+  const secNum = (key, label, def = '') => `<div class="prop-row" style="margin:0;"><label>${label}</label><input type="number" step="0.1" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
   f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
     ${secNum('animDuration', 'Duration (s)')}
     ${secNum('animDelay', 'Delay (s)')}
   </div></div>`);
 
+  const isSwipe = (el.animType || 'none').startsWith('swipe-');
+  const currentDirection = isSwipe ? el.animType.replace('swipe-', '') : 'right';
+
+  const directionSelector = isSwipe ? `
+    <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
+      <label>Direction</label>
+      <select id="prop-swipe-direction" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Swipe direction">
+        <option value="up" ${currentDirection === 'up' ? 'selected' : ''}>Up</option>
+        <option value="down" ${currentDirection === 'down' ? 'selected' : ''}>Down</option>
+        <option value="left" ${currentDirection === 'left' ? 'selected' : ''}>Left</option>
+        <option value="right" ${currentDirection === 'right' ? 'selected' : ''}>Right</option>
+      </select>
+    </div>
+  ` : '';
+
   const hasFadeToggle = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'swipe-up', 'swipe-down', 'swipe-left', 'swipe-right', 'pop-in', 'zoom-in'].includes(el.animType);
-  if (hasFadeToggle || el.animType === 'zoom-in') {
-    let extraProps = '';
-    if (el.animType === 'zoom-in') {
-      extraProps += `<div style="flex:1; min-width:0;"><label>Zoom From (%)</label><input type="number" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : 110}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Animation zoom starting scale percentage" /></div>`;
-    }
-    if (hasFadeToggle) {
-      const fadeChecked = el.animFade !== false ? 'checked' : '';
-      extraProps += `<div style="flex:1; display:flex; align-items:center; margin-top:0px;"><div class="checkbox-row"><input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during movement transition" ${fadeChecked}/><label for="prop-anim-fade" title="Fade in element during movement transition" style="cursor:pointer;">Fade</label></div></div>`;
-    }
-    f.push(`<div class="prop-row" style="display:flex; gap:16px; margin-bottom:12px;">${extraProps}</div>`);
+  const fadeCheckbox = hasFadeToggle ? `
+    <div style="flex:1; display:flex; align-items:center; height:100%; padding-top:14px;">
+      <div class="checkbox-row" style="margin:0;">
+        <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during movement transition" ${el.animFade !== false ? 'checked' : ''}/>
+        <label for="prop-anim-fade" title="Fade in element during movement transition" style="cursor:pointer; font-size:11px;">Fade</label>
+      </div>
+    </div>
+  ` : '';
+
+  const zoomFromControl = el.animType === 'zoom-in' ? `
+    <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
+      <label>Zoom From (%)</label>
+      <input type="number" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : 110}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation zoom starting scale percentage" />
+    </div>
+  ` : '';
+
+  if (fadeCheckbox || directionSelector || zoomFromControl) {
+    f.push(`<div class="prop-row" style="margin-bottom:8px;">
+      <div class="prop-grid-2">
+        ${fadeCheckbox || '<div></div>'}
+        ${directionSelector || zoomFromControl || '<div></div>'}
+      </div>
+    </div>`);
   }
 
   if (el.type === 'text' && el.hasBg && (el.animType === 'typing' || el.animType === 'fade-typing')) {
@@ -6922,25 +6952,34 @@ function renderProps() {
   propsEl.querySelectorAll('.anim-btn').forEach(btn => {
     const val = btn.dataset.val;
     btn.addEventListener('click', () => {
-      updateProp('animType', val);
+      let targetVal = val;
+      if (targetVal === 'swipe') {
+        targetVal = 'swipe-right';
+      }
+      updateProp('animType', targetVal);
       pushHistory();
       renderProps();
     });
     btn.addEventListener('mouseenter', () => {
+      let previewVal = val;
+      if (previewVal === 'swipe') {
+        const currentSwipeDir = (el.animType || 'none').startsWith('swipe-') ? el.animType.replace('swipe-', '') : 'right';
+        previewVal = `swipe-${currentSwipeDir}`;
+      }
       const domNodes = state.layerSelection.length > 1
         ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
         : [document.querySelector(`.el[data-id="${el.id}"]`)];
       domNodes.forEach(node => {
-        if (node && val !== 'none') {
+        if (node && previewVal !== 'none') {
           const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
-          if (nodeEl.type === 'text' && (val === 'typing' || val === 'fade-typing')) {
+          if (nodeEl.type === 'text' && (previewVal === 'typing' || previewVal === 'fade-typing')) {
             const target = node.querySelector('.editable') || node.querySelector('span');
             if (target && !target.dataset.origHtml) {
               target.dataset.origHtml = target.innerHTML;
               target.dataset.origStyle = target.getAttribute('style') || '';
               const chars = [...(nodeEl.text || '')];
               const totalDur = nodeEl.animDuration || 1;
-              const charDur = val === 'fade-typing' ? 0.3 : 0.01;
+              const charDur = previewVal === 'fade-typing' ? 0.3 : 0.01;
               const baseDelay = nodeEl.animDelay || 0;
               const charDelay = totalDur / Math.max(1, chars.length);
               target.innerHTML = chars.map((c, i) => {
@@ -6949,9 +6988,6 @@ function renderProps() {
                 const escC = c === ' ' ? ' ' : c.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                 return `<span style="opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;">${escC}</span>`;
               }).join('');
-              // Match the export behavior: when Animate BG is on, swap the static
-              // box-decoration-break bg for runtime per-line overlays so the bg
-              // arrival tracks each line's typing window.
               if (nodeEl.hasBg && nodeEl.animateBg) {
                 const lr = nodeEl.bgPadL !== undefined ? nodeEl.bgPadL : 8;
                 const tb = nodeEl.bgPadV !== undefined ? nodeEl.bgPadV : 4;
@@ -6959,14 +6995,9 @@ function renderProps() {
                 const opa = (nodeEl.bgOpacity !== undefined ? nodeEl.bgOpacity : 100) / 100;
                 const bgRgba = hexToRgba(nodeEl.bg || '#000000', opa);
                 const bgDelay = Number(baseDelay) + (Number(nodeEl.bgOffset) || 0);
-                // Strip the static bg styling so overlays don't double up. Keep
-                // the padding — the per-line overlays' math assumes the wrapper
-                // is padded (charSpan.offsetLeft = lr), and removing it would shift
-                // the text left compared to the static-bg state.
                 target.style.backgroundImage = '';
                 target.style.boxDecorationBreak = '';
                 target.style.removeProperty('-webkit-box-decoration-break');
-                // Switch to a positioned inline-block so absolute overlays anchor here.
                 target.style.display = 'inline-block';
                 target.style.position = 'relative';
                 target.style.isolation = 'isolate';
@@ -6981,17 +7012,15 @@ function renderProps() {
               }
             }
           } else {
-            if (val === 'zoom-in') {
+            if (previewVal === 'zoom-in') {
               const zf = nodeEl.zoomFrom !== undefined ? nodeEl.zoomFrom / 100 : 1.1;
               node.style.setProperty('--zoom-from', zf);
             }
-            // Suffix flips by family: slide/pop/zoom default WITH fade ('-nofade' when off);
-            // swipe defaults WITHOUT fade ('-fade' when on).
-            const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(val);
-            const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(val);
+            const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(previewVal);
+            const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(previewVal);
             const fadeOn = nodeEl.animFade !== false;
             const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
-            node.style.animation = `anim-${val}${suffix} ${nodeEl.animDuration || 1}s ease-out 0s both`;
+            node.style.animation = `anim-${previewVal}${suffix} ${nodeEl.animDuration || 1}s ease-out 0s both`;
           }
         }
       });
@@ -7006,8 +7035,6 @@ function renderProps() {
           const target = node.querySelector('.editable') || node.querySelector('span');
           if (target && target.dataset.origHtml !== undefined) {
             target.innerHTML = target.dataset.origHtml;
-            // Restore the original style attribute wholesale so any overlays-related
-            // inline styles (display, position, isolation, padding strip, etc.) revert.
             if (target.dataset.origStyle !== undefined) {
               target.setAttribute('style', target.dataset.origStyle);
             }
@@ -7017,6 +7044,16 @@ function renderProps() {
       });
     });
   });
+
+  const swipeDirectionSelect = propsEl.querySelector('#prop-swipe-direction');
+  if (swipeDirectionSelect) {
+    swipeDirectionSelect.addEventListener('change', () => {
+      const dir = swipeDirectionSelect.value;
+      updateProp('animType', `swipe-${dir}`);
+      pushHistory();
+      renderProps();
+    });
+  }
 
   propsEl.querySelectorAll('.eff-btn').forEach(btn => {
     const val = btn.dataset.val;
@@ -8408,12 +8445,12 @@ ${fontFaceRules.join('\n')}
   @keyframes anim-bg-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
   @keyframes anim-swipe-left  { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
   @keyframes anim-swipe-right { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
-  @keyframes anim-swipe-up    { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
-  @keyframes anim-swipe-down  { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes anim-swipe-up    { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes anim-swipe-down  { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
   @keyframes anim-swipe-left-fade  { from { clip-path: inset(0 0 0 100%); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
   @keyframes anim-swipe-right-fade { from { clip-path: inset(0 100% 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
-  @keyframes anim-swipe-up-fade    { from { clip-path: inset(0 0 100% 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
-  @keyframes anim-swipe-down-fade  { from { clip-path: inset(100% 0 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+  @keyframes anim-swipe-up-fade    { from { clip-path: inset(100% 0 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+  @keyframes anim-swipe-down-fade  { from { clip-path: inset(0 0 100% 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
   @keyframes eff-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
   @keyframes eff-float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
   @keyframes eff-flash { 0%, 50%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
