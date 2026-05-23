@@ -4980,21 +4980,45 @@ function renderAssets() {
     div.draggable = true;
     div.dataset.assetId = asset.id;
     if (indented) div.style.paddingLeft = '22px';
-    div.title = isAssetReadOnly
-      ? 'RMIT Pre-loaded asset (Read-only). Drag onto a canvas to place it.'
-      : 'Double-click to rename. Drag onto a canvas to place it, or onto a folder to move it.';
 
-    const icon = asset.kind === 'group' ? GROUP_ICON : (layerIcon(asset.iconType) || GROUP_ICON);
     const hasDynamic = (asset.elements || []).some(el =>
       el._assetDmMap || (el.dynamic && Object.keys(el.dynamic).some(k => el.dynamic[k])));
-    const bolt = hasDynamic
-      ? '<svg viewBox="0 0 24 24" width="12" height="12" style="flex-shrink:0;fill:var(--accent-light);"><title>Contains dynamic data</title><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
+    const hasAnimation = (asset.elements || []).some(el =>
+      (el.animType && el.animType !== 'none') || (el.effectType && el.effectType !== 'none')
+    );
+
+    let tooltipParts = [];
+    if (isAssetReadOnly) {
+      tooltipParts.push('RMIT Pre-loaded asset (Read-only).');
+    } else {
+      tooltipParts.push('Double-click to rename. Drag onto a canvas to place, or onto a folder to move.');
+    }
+    if (hasDynamic && hasAnimation) {
+      tooltipParts.push('Contains animations and dynamic data.');
+    } else if (hasDynamic) {
+      tooltipParts.push('Contains dynamic data.');
+    } else if (hasAnimation) {
+      tooltipParts.push('Contains animations.');
+    }
+    div.title = tooltipParts.join(' ');
+
+    const icon = asset.kind === 'group' ? GROUP_ICON : (layerIcon(asset.iconType) || GROUP_ICON);
+    
+    const animIndicator = hasAnimation
+      ? `<svg viewBox="0 0 24 24" width="12" height="12" style="flex-shrink:0;fill:var(--accent-base);" title="Contains animations/effects"><title>Contains animations/effects</title><polygon points="6 3 20 12 6 21 6 3"/></svg>`
       : '';
+    const dynamicIndicator = hasDynamic
+      ? `<svg viewBox="0 0 24 24" width="12" height="12" style="flex-shrink:0;fill:var(--accent-base);" title="Contains dynamic data"><title>Contains dynamic data</title><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`
+      : '';
+
     const deleteBtn = isAssetReadOnly ? '' : `<button class="icon-btn active" data-act="del" title="Delete asset">${TRASH}</button>`;
     div.innerHTML = `
       <svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icon}</svg>
       <span class="layer-name">${esc(asset.name)}</span>
-      ${bolt}
+      <span class="asset-indicators" style="display:flex; align-items:center; gap:4px; margin-left:8px; margin-right:6px; flex-shrink:0;">
+        ${animIndicator}
+        ${dynamicIndicator}
+      </span>
       <div class="layer-actions">
         ${deleteBtn}
       </div>`;
