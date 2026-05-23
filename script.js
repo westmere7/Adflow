@@ -9712,11 +9712,12 @@ const defaultFallbackFiles = [
 
 async function fetchAssetFilenames() {
   try {
-    const response = await fetch('data/assets/');
+    const response = await fetch('data/assets/?_t=' + Date.now());
     if (!response.ok) return defaultFallbackFiles;
     const html = await response.text();
     
-    const regex = /(?:href=["']|[^"'>\s]*\/)?([\w\-.%()\s]+\.(?:jpg|jpeg|png|gif|svg|webp))(?:\?|["'>\s]|$)/gi;
+    // Match any href pointing to an image filename (supporting spaces, brackets, special characters)
+    const regex = /href=["']?([^"'>]+?\.(?:jpg|jpeg|png|gif|svg|webp))["']?/gi;
     const files = new Set();
     let match;
     while ((match = regex.exec(html)) !== null) {
@@ -9764,7 +9765,7 @@ async function syncRmitAssets() {
   for (const filename of filenames) {
     const assetId = 'as_rmit_' + filename;
     const imgId = 'img_rmit_' + filename;
-    const url = 'data/assets/' + encodeURIComponent(filename);
+    const url = 'data/assets/' + encodeURIComponent(filename) + '?_t=' + Date.now();
     
     const displayName = filename.substring(0, filename.lastIndexOf('.')) || filename;
     
