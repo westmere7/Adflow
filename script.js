@@ -6506,6 +6506,10 @@ function renderProps() {
     { val: 'slide-down', label: 'Slide Down' },
     { val: 'slide-left', label: 'Slide Left' },
     { val: 'slide-right', label: 'Slide Right' },
+    { val: 'swipe-up', label: 'Swipe Up' },
+    { val: 'swipe-down', label: 'Swipe Down' },
+    { val: 'swipe-left', label: 'Swipe Left' },
+    { val: 'swipe-right', label: 'Swipe Right' },
     { val: 'pop-in', label: 'Pop In' },
     { val: 'zoom-in', label: 'Zoom Out' }
   ];
@@ -6525,7 +6529,7 @@ function renderProps() {
     ${secNum('animDelay', 'Delay (s)')}
   </div></div>`);
 
-  const hasFadeToggle = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(el.animType);
+  const hasFadeToggle = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'swipe-up', 'swipe-down', 'swipe-left', 'swipe-right', 'pop-in', 'zoom-in'].includes(el.animType);
   if (hasFadeToggle || el.animType === 'zoom-in') {
     let extraProps = '';
     if (el.animType === 'zoom-in') {
@@ -6981,8 +6985,12 @@ function renderProps() {
               const zf = nodeEl.zoomFrom !== undefined ? nodeEl.zoomFrom / 100 : 1.1;
               node.style.setProperty('--zoom-from', zf);
             }
-            const hasFade = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(val);
-            const suffix = (hasFade && nodeEl.animFade === false) ? '-nofade' : '';
+            // Suffix flips by family: slide/pop/zoom default WITH fade ('-nofade' when off);
+            // swipe defaults WITHOUT fade ('-fade' when on).
+            const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(val);
+            const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(val);
+            const fadeOn = nodeEl.animFade !== false;
+            const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
             node.style.animation = `anim-${val}${suffix} ${nodeEl.animDuration || 1}s ease-out 0s both`;
           }
         }
@@ -8147,8 +8155,10 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     let entryAnims = [];
     let entryVars = '';
     if (animType !== 'none' && !isImageExport) {
-      const hasFade = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
-      const suffix = (hasFade && el.animFade === false) ? '-nofade' : '';
+      const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(animType);
+      const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
+      const fadeOn = el.animFade !== false;
+      const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
       if (el.type !== 'text' || (animType !== 'typing' && animType !== 'fade-typing')) {
         entryAnims.push(`anim-${animType}${suffix} ${el.animDuration || 1}s ${animType === 'typing' ? 'steps(30, end)' : 'ease-out'} ${el.animDelay || 0}s both`);
       }
