@@ -10947,11 +10947,37 @@ document.addEventListener('mousedown', (e) => {
   }
 }, true);
 
+let currentHoveredSection = null;
+document.addEventListener('mouseover', (e) => {
+  currentHoveredSection = e.target.closest('.panel-section');
+});
+
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     const menu = document.getElementById('ctx-menu');
     if (menu && menu.style.display === 'flex') {
       menu.style.display = 'none';
+    }
+  }
+  
+  if (e.key === '`' || e.code === 'Backquote') {
+    const activeEl = document.activeElement;
+    if (activeEl && (
+      activeEl.tagName === 'INPUT' || 
+      activeEl.tagName === 'TEXTAREA' || 
+      activeEl.isContentEditable
+    )) {
+      return;
+    }
+    if (currentHoveredSection) {
+      if (currentHoveredSection.hasAttribute('data-permanent') || currentHoveredSection.getAttribute('data-permanent') === 'true') {
+        return;
+      }
+      const fsBtn = currentHoveredSection.querySelector('.panel-fullscreen-btn');
+      if (fsBtn) {
+        e.preventDefault();
+        fsBtn.click();
+      }
     }
   }
 });
