@@ -9430,6 +9430,10 @@ document.getElementById('menu-file-new').addEventListener('click', openNewProjec
 document.getElementById('menu-project-settings').addEventListener('click', openProjectSettingsDialog);
 
 const defaultFallbackFiles = [
+  'Asset (1).jpg',
+  'Asset (2).jpg',
+  'Asset (3).jpg',
+  'Asset (4).jpg',
   'Image (1).jpg',
   'Image (2).jpg',
   'Image (3).jpg',
@@ -9490,7 +9494,7 @@ async function syncRmitAssets() {
   for (const filename of filenames) {
     const assetId = 'as_rmit_' + filename;
     const imgId = 'img_rmit_' + filename;
-    const url = 'data/assets/' + filename;
+    const url = 'data/assets/' + encodeURIComponent(filename);
     
     const displayName = filename.substring(0, filename.lastIndexOf('.')) || filename;
     
