@@ -3700,64 +3700,64 @@ function openValidatorDetails(initialCanvas) {
     const isMissingPassed = missingAssets.length === 0;
     
     const criteriaHTML = `
-      <div style="font-size:12px; color:var(--text-label); background:var(--bg-input); padding:18px; border-radius:8px; border:1px solid var(--border-light); display:flex; flex-direction:column; gap:16px; flex:1;">
-        <strong style="color:var(--text-bright); font-size:13px; border-bottom:1px solid var(--border-light); padding-bottom:6px; margin-bottom:2px; display:block;">Validation Criteria:</strong>
+      <div style="font-size:13.5px; color:var(--text-label); background:var(--bg-input); padding:20px; border-radius:8px; border:1px solid var(--border-light); display:flex; flex-direction:column; gap:18px; flex:1;">
+        <strong style="color:var(--text-bright); font-size:14.5px; border-bottom:1px solid var(--border-light); padding-bottom:8px; margin-bottom:2px; display:block;">Validation Criteria:</strong>
         
         <div style="display:flex; align-items:start; justify-content:space-between; gap:16px;">
           <div style="flex:1; min-width:0;">
-            <span style="font-weight:600; color:var(--text-main); display:block;">ZIP File Size Limit</span>
-            <span style="font-size:11px; opacity:0.8;">The compressed package must be under ${limitKb}KB. Current: ${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'Calculating...'}</span>
+            <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">ZIP File Size Limit</span>
+            <span style="font-size:12px; opacity:0.8;">The compressed package must be under ${limitKb}KB. Current: ${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'Calculating...'}</span>
           </div>
-          <span style="color:${isSizePassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">${isSizePassed ? '✓ Pass' : '✗ Fail'}</span>
+          <span style="color:${isSizePassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">${isSizePassed ? '✓ Pass' : '✗ Fail'}</span>
         </div>
 
-        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
           <div style="flex:1; min-width:0;">
-            <span style="font-weight:600; color:var(--text-main); display:block;">clickTag URL Validation</span>
-            <span style="font-size:11px; opacity:0.8; word-break:break-all;">URL: <span style="font-family:monospace; color:${clickTagValid ? 'var(--accent-light)' : '#ef4444'};">${clickTagMsg}</span></span>
+            <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">clickTag URL Validation</span>
+            <span style="font-size:12px; opacity:0.8; word-break:break-all;">URL: <span style="font-family:monospace; color:${clickTagValid ? 'var(--accent-light)' : '#ef4444'};">${clickTagMsg}</span></span>
           </div>
-          <span style="color:${isClickTagPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">${isClickTagPassed ? '✓ Pass' : '✗ Fail'}</span>
+          <span style="color:${isClickTagPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">${isClickTagPassed ? '✓ Pass' : '✗ Fail'}</span>
         </div>
 
-        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
           <div style="flex:1; min-width:0;">
-            <span style="font-weight:600; color:var(--text-main); display:block;">Local Asset Requirements</span>
-            <span style="font-size:11px; opacity:0.8;">All asset files must be bundled locally inside the zip. External assets are forbidden.</span>
-            ${externalAssets.length > 0 ? `<span style="display:block; color:#ef4444; font-size:11px; margin-top:4px;">External files: ${externalAssets.join(', ')}</span>` : ''}
+            <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">Local Asset Requirements</span>
+            <span style="font-size:12px; opacity:0.8;">All asset files must be bundled locally inside the zip. External assets are forbidden.</span>
+            ${externalAssets.length > 0 ? `<span style="display:block; color:#ef4444; font-size:12px; margin-top:4px;">External files: ${externalAssets.join(', ')}</span>` : ''}
           </div>
-          <span style="color:${isAssetsPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">${isAssetsPassed ? '✓ Pass' : '✗ Fail'}</span>
+          <span style="color:${isAssetsPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">${isAssetsPassed ? '✓ Pass' : '✗ Fail'}</span>
         </div>
 
-        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
           <div style="flex:1; min-width:0;">
-            <span style="font-weight:600; color:var(--text-main); display:block;">Broken Asset Check</span>
-            <span style="font-size:11px; opacity:0.8;">All image layers must have valid source files.</span>
-            ${missingAssets.length > 0 ? `<span style="display:block; color:#ef4444; font-size:11px; margin-top:4px;">Missing source: ${missingAssets.join(', ')}</span>` : ''}
+            <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">Broken Asset Check</span>
+            <span style="font-size:12px; opacity:0.8;">All image layers must have valid source files.</span>
+            ${missingAssets.length > 0 ? `<span style="display:block; color:#ef4444; font-size:12px; margin-top:4px;">Missing source: ${missingAssets.join(', ')}</span>` : ''}
           </div>
-          <span style="color:${isMissingPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">${isMissingPassed ? '✓ Pass' : '✗ Fail'}</span>
+          <span style="color:${isMissingPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">${isMissingPassed ? '✓ Pass' : '✗ Fail'}</span>
         </div>
 
-        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
           <div style="flex:1; min-width:0;">
-            <span style="font-weight:600; color:var(--text-main); display:block;">GWD environment check</span>
-            <span style="font-size:11px; opacity:0.8;">Ensures creatives built in Google Web Designer were created using the correct environment.</span>
+            <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">GWD environment check</span>
+            <span style="font-size:12px; opacity:0.8;">Ensures creatives built in Google Web Designer were created using the correct environment.</span>
           </div>
-          <span style="color:#10b981; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">✓ Pass</span>
+          <span style="color:#10b981; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">✓ Pass</span>
         </div>
 
-        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:8px;">
+        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
           <div style="flex:1; min-width:0;">
-            <span style="font-weight:600; color:var(--text-main); display:block;">File Type/Count</span>
-            <span style="font-size:11px; opacity:0.8;">Ensures all files contained in the zip bundle are supported.</span>
+            <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">File Type/Count</span>
+            <span style="font-size:12px; opacity:0.8;">Ensures all files contained in the zip bundle are supported.</span>
           </div>
-          <span style="color:#10b981; font-weight:bold; font-size:13px; flex-shrink:0; white-space:nowrap;">✓ Pass</span>
+          <span style="color:#10b981; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">✓ Pass</span>
         </div>
       </div>
     `;
     
     const errorsHTML = errors.length > 0 ? `
-      <div style="font-size:12px; color:#ef4444; background:rgba(239, 68, 68, 0.08); padding:14px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.2); display:flex; flex-direction:column; gap:6px;">
-        <strong style="display:flex; align-items:center; gap:6px; font-size:13px;">
+      <div style="font-size:13px; color:#ef4444; background:rgba(239, 68, 68, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.2); display:flex; flex-direction:column; gap:6px;">
+        <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
           <span>⚠️</span> Issues Found (${errors.length})
         </strong>
         <ul style="margin:0; padding-left:18px; line-height:1.5; display:flex; flex-direction:column; gap:4px;">
@@ -3765,8 +3765,8 @@ function openValidatorDetails(initialCanvas) {
         </ul>
       </div>
     ` : `
-      <div style="font-size:12px; color:#10b981; background:rgba(16, 185, 129, 0.08); padding:14px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.2); display:flex; flex-direction:column; gap:6px;">
-        <strong style="display:flex; align-items:center; gap:6px; font-size:13px;">
+      <div style="font-size:13px; color:#10b981; background:rgba(16, 185, 129, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.2); display:flex; flex-direction:column; gap:6px;">
+        <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
           <span>✓</span> All validation checks passed!
         </strong>
         <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to the specified file size limit and Google Ad specs.</p>
@@ -3835,93 +3835,93 @@ function openValidatorDetails(initialCanvas) {
 
     // Construct the breakdown HTML column
     const fontSectionHTML = fontDetails.length > 0 ? fontDetails.map(f => `
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:4px;">
-        <span style="color:var(--text-main); font-family:monospace; font-size:10px;">${f.name}</span>
-        <span style="color:var(--text-muted); font-size:10px;">~${f.size} KB</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:6px;">
+        <span style="color:var(--text-main); font-family:monospace; font-size:12px;">${f.name}</span>
+        <span style="color:var(--text-muted); font-size:11px;">~${f.size} KB</span>
       </div>
-    `).join('') : '<div style="font-size:11px; color:var(--text-muted); font-style:italic; padding-left:4px;">No custom fonts embedded</div>';
+    `).join('') : '<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding-left:4px;">No custom fonts embedded</div>';
 
     const imageSectionHTML = imageDetails.length > 0 ? imageDetails.map(img => `
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:4px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:6px;">
         <div style="display:flex; flex-direction:column; min-width:0; flex:1; padding-right:8px;">
-          <span style="color:var(--text-main); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:500; font-size:10px;">${img.name}</span>
-          <span style="font-size:9px; color:var(--text-muted);">${img.dimensions} • ${img.isLocal ? 'Template' : 'Upload'}</span>
+          <span style="color:var(--text-main); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:500; font-size:12px;">${img.name}</span>
+          <span style="font-size:11px; color:var(--text-muted);">${img.dimensions} • ${img.isLocal ? 'Template' : 'Upload'}</span>
         </div>
-        <span style="color:var(--text-muted); font-size:10px; flex-shrink:0;">${img.size ? img.size.toFixed(1) + ' KB' : '0 KB'}</span>
+        <span style="color:var(--text-muted); font-size:11.5px; flex-shrink:0;">${img.size ? img.size.toFixed(1) + ' KB' : '0 KB'}</span>
       </div>
-    `).join('') : '<div style="font-size:11px; color:var(--text-muted); font-style:italic; padding-left:4px;">No image layers used</div>';
+    `).join('') : '<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding-left:4px;">No image layers used</div>';
 
     const dynamicSectionHTML = dynamicDetails.length > 0 ? dynamicDetails.map(d => `
-      <div style="display:flex; flex-direction:column; font-size:10px; margin-bottom:6px; background:rgba(255,255,255,0.02); padding:6px; border-radius:4px; border:1px solid rgba(255,255,255,0.04);">
-        <span style="color:var(--text-main); font-weight:500;">${d.layerName} <span style="font-weight:normal; color:var(--text-muted); font-size:9px;">(${d.field})</span></span>
-        <span style="font-size:9px; color:var(--accent-light); font-family:monospace; margin-top:2px;">↳ mapped to {${d.mapping}}</span>
+      <div style="display:flex; flex-direction:column; font-size:11.5px; margin-bottom:8px; background:rgba(255,255,255,0.02); padding:8px; border-radius:4px; border:1px solid rgba(255,255,255,0.04);">
+        <span style="color:var(--text-main); font-weight:500;">${d.layerName} <span style="font-weight:normal; color:var(--text-muted); font-size:11px;">(${d.field})</span></span>
+        <span style="font-size:11px; color:var(--accent-light); font-family:monospace; margin-top:2px;">↳ mapped to {${d.mapping}}</span>
       </div>
-    `).join('') : '<div style="font-size:11px; color:var(--text-muted); font-style:italic; padding-left:4px;">No dynamic fields configured</div>';
+    `).join('') : '<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding-left:4px;">No dynamic fields configured</div>';
 
     const codeKb = 2.5;
     const estimatedTotal = codeKb + fontKbSum + imgKbSum;
 
     const breakdownHTML = `
-      <div style="width:320px; flex-shrink:0; border-left:1px solid var(--border-left, var(--border-light)); padding-left:18px; display:flex; flex-direction:column; gap:18px; height:100%; overflow-y:auto; padding-right:4px;">
+      <div style="width:360px; flex-shrink:0; border-left:1px solid var(--border-left, var(--border-light)); padding-left:18px; display:flex; flex-direction:column; gap:20px; height:100%; overflow-y:auto; padding-right:4px;">
         <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
-          <h3 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Ad Composition Breakdown</h3>
+          <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright);">Ad Composition Breakdown</h3>
         </div>
 
         <!-- Element counts -->
-        <div style="background:rgba(255,255,255,0.01); padding:10px; border-radius:6px; border:1px solid var(--border-light);">
-          <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Layers &amp; Elements</strong>
-          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:6px; font-size:11px;">
-            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
-              <span style="color:var(--text-muted); font-size:10px;">Total Layers</span>
-              <span style="font-weight:600; color:var(--text-bright);">${totalCount}</span>
+        <div style="background:rgba(255,255,255,0.01); padding:12px; border-radius:6px; border:1px solid var(--border-light);">
+          <strong style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:10px;">Layers &amp; Elements</strong>
+          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:8px; font-size:12.5px;">
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:6px 8px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:11px;">Total Layers</span>
+              <span style="font-weight:600; color:var(--text-bright); font-size:12.5px;">${totalCount}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
-              <span style="color:var(--text-muted); font-size:10px;">Text Fields</span>
-              <span style="font-weight:600; color:var(--text-bright);">${textCount}</span>
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:6px 8px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:11px;">Text Fields</span>
+              <span style="font-weight:600; color:var(--text-bright); font-size:12.5px;">${textCount}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
-              <span style="color:var(--text-muted); font-size:10px;">Images</span>
-              <span style="font-weight:600; color:var(--text-bright);">${imgCount}</span>
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:6px 8px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:11px;">Images</span>
+              <span style="font-weight:600; color:var(--text-bright); font-size:12.5px;">${imgCount}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
-              <span style="color:var(--text-muted); font-size:10px;">Shapes &amp; Buttons</span>
-              <span style="font-weight:600; color:var(--text-bright);">${shapeCount + btnCount}</span>
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:6px 8px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:11px;">Shapes &amp; Buttons</span>
+              <span style="font-weight:600; color:var(--text-bright); font-size:12.5px;">${shapeCount + btnCount}</span>
             </div>
           </div>
         </div>
 
         <!-- Weight breakdown chart -->
-        <div style="background:rgba(255,255,255,0.01); padding:10px; border-radius:6px; border:1px solid var(--border-light);">
-          <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Weight Contribution (Est.)</strong>
-          <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="background:rgba(255,255,255,0.01); padding:12px; border-radius:6px; border:1px solid var(--border-light);">
+          <strong style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:10px;">Weight Contribution (Est.)</strong>
+          <div style="display:flex; flex-direction:column; gap:10px;">
             <!-- Code progress bar -->
             <div>
-              <div style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:3px;">
+              <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:4px;">
                 <span style="color:var(--text-main);">Structure &amp; Libraries</span>
-                <span style="color:var(--text-muted); font-family:monospace; font-size:9px;">${codeKb.toFixed(1)} KB</span>
+                <span style="color:var(--text-muted); font-family:monospace; font-size:10.5px;">${codeKb.toFixed(1)} KB</span>
               </div>
-              <div style="height:4px; background:var(--bg-input); border-radius:2px; overflow:hidden;">
-                <div style="width:${Math.min(100, (codeKb / estimatedTotal) * 100)}%; height:100%; background:#3b82f6; border-radius:2px;"></div>
+              <div style="height:6px; background:var(--bg-input); border-radius:3px; overflow:hidden;">
+                <div style="width:${Math.min(100, (codeKb / estimatedTotal) * 100)}%; height:100%; background:#3b82f6; border-radius:3px;"></div>
               </div>
             </div>
             <!-- Fonts progress bar -->
             <div>
-              <div style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:3px;">
+              <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:4px;">
                 <span style="color:var(--text-main);">Embedded Fonts</span>
-                <span style="color:var(--text-muted); font-family:monospace; font-size:9px;">${fontKbSum.toFixed(1)} KB</span>
+                <span style="color:var(--text-muted); font-family:monospace; font-size:10.5px;">${fontKbSum.toFixed(1)} KB</span>
               </div>
-              <div style="height:4px; background:var(--bg-input); border-radius:2px; overflow:hidden;">
-                <div style="width:${Math.min(100, (fontKbSum / estimatedTotal) * 100)}%; height:100%; background:#8b5cf6; border-radius:2px;"></div>
+              <div style="height:6px; background:var(--bg-input); border-radius:3px; overflow:hidden;">
+                <div style="width:${Math.min(100, (fontKbSum / estimatedTotal) * 100)}%; height:100%; background:#8b5cf6; border-radius:3px;"></div>
               </div>
             </div>
             <!-- Images progress bar -->
             <div>
-              <div style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:3px;">
+              <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:4px;">
                 <span style="color:var(--text-main);">Image Assets</span>
-                <span style="color:var(--text-muted); font-family:monospace; font-size:9px;">${imgKbSum.toFixed(1)} KB</span>
+                <span style="color:var(--text-muted); font-family:monospace; font-size:10.5px;">${imgKbSum.toFixed(1)} KB</span>
               </div>
-              <div style="height:4px; background:var(--bg-input); border-radius:2px; overflow:hidden;">
-                <div style="width:${Math.min(100, (imgKbSum / estimatedTotal) * 100)}%; height:100%; background:#10b981; border-radius:2px;"></div>
+              <div style="height:6px; background:var(--bg-input); border-radius:3px; overflow:hidden;">
+                <div style="width:${Math.min(100, (imgKbSum / estimatedTotal) * 100)}%; height:100%; background:#10b981; border-radius:3px;"></div>
               </div>
             </div>
           </div>
@@ -3929,13 +3929,13 @@ function openValidatorDetails(initialCanvas) {
 
         <!-- Embedded Fonts list -->
         <div>
-          <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Embedded Fonts</strong>
+          <strong style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Embedded Fonts</strong>
           ${fontSectionHTML}
         </div>
 
         <!-- Images list -->
         <div>
-          <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Image Assets (Uncompressed)</strong>
+          <strong style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Image Assets (Uncompressed)</strong>
           <div style="max-height:250px; overflow-y:auto; padding-right:2px;">
             ${imageSectionHTML}
           </div>
@@ -3943,7 +3943,7 @@ function openValidatorDetails(initialCanvas) {
 
         <!-- Dynamic Slot Variables -->
         <div>
-          <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Dynamic Mappings</strong>
+          <strong style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Dynamic Mappings</strong>
           <div style="max-height:200px; overflow-y:auto; padding-right:2px;">
             ${dynamicSectionHTML}
           </div>
@@ -3952,15 +3952,15 @@ function openValidatorDetails(initialCanvas) {
     `;
     
     return `
-      <div id="${modalId}" style="display:flex; gap:20px; min-height:600px; height: 100%;">
-        <div style="width:180px; flex-shrink:0; border-right:1px solid var(--border-light); padding-right:16px; display:flex; flex-direction:column; gap:4px; height:100%; overflow-y:auto;">
-          <div style="font-size:10px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; padding-left:4px;">Canvases</div>
+      <div id="${modalId}" style="display:flex; gap:24px; min-height:600px; height: 100%;">
+        <div style="width:190px; flex-shrink:0; border-right:1px solid var(--border-light); padding-right:16px; display:flex; flex-direction:column; gap:4px; height:100%; overflow-y:auto;">
+          <div style="font-size:11.5px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; padding-left:4px;">Canvases</div>
           ${sidebarHtml}
         </div>
-        <div style="flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto; height:100%; padding-right:4px;">
+        <div style="flex:1; display:flex; flex-direction:column; gap:16px; overflow-y:auto; height:100%; padding-right:4px;">
           <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
-            <h3 style="margin:0; font-size:15px; font-weight:600; color:var(--text-bright);">${focusedCanvas.width} × ${focusedCanvas.height} Details</h3>
-            <span style="font-size:11px; font-weight:bold; color:var(--text-label);">ZIP Size: <span style="color:${errors.some(e => e.includes('limit')) ? '#f97316' : '#10b981'}; font-size:13px;">${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'calc...'}</span></span>
+            <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright);">${focusedCanvas.width} × ${focusedCanvas.height} Details</h3>
+            <span style="font-size:12.5px; font-weight:bold; color:var(--text-label);">ZIP Size: <span style="color:${errors.some(e => e.includes('limit')) ? '#f97316' : '#10b981'}; font-size:14px;">${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'calc...'}</span></span>
           </div>
           ${errorsHTML}
           ${criteriaHTML}
@@ -3969,6 +3969,8 @@ function openValidatorDetails(initialCanvas) {
       </div>
     `;
   };
+
+  let activeDetailsId = initialCanvas.id;
 
   openModal(`Validation Dashboard`, generateModalContent(initialCanvas.id), false);
   
@@ -3991,9 +3993,61 @@ function openValidatorDetails(initialCanvas) {
         wrapper.style.flex = '1';
       }
     }
+
+    const modalHead = modalEl.querySelector('.modal-head');
+    const closeBtn = modalEl.querySelector('#modal-close');
+    if (modalHead && closeBtn) {
+      const previewBtn = document.createElement('button');
+      previewBtn.className = 'btn';
+      previewBtn.id = 'val-modal-preview';
+      previewBtn.title = 'Preview this canvas layout';
+      previewBtn.textContent = 'Preview';
+      previewBtn.style.marginRight = '8px';
+      previewBtn.onclick = () => {
+        const currentCanvas = state.canvases.find(c => c.id === activeDetailsId);
+        if (!currentCanvas) return;
+        
+        // Close modal
+        const modalBg = modalEl.closest('.modal-bg');
+        if (modalBg) modalBg.remove();
+        
+        // Activate target canvas
+        state.activeCanvasId = currentCanvas.id;
+        render();
+        
+        // Enter preview mode
+        const area = document.getElementById('canvas-area');
+        state.prePreviewScrollLeft = area.scrollLeft;
+        state.prePreviewScrollTop = area.scrollTop;
+        state.prePreviewZoom = state.zoom || 0.6;
+        document.body.classList.add('preview-active');
+        const { x, y } = allCanvasesCenter();
+        animateViewTo(1, x, y, 350, () => {
+          state.isPreviewMode = true;
+          render();
+        });
+      };
+      
+      const exportBtn = document.createElement('button');
+      exportBtn.className = 'btn primary';
+      exportBtn.id = 'val-modal-export';
+      exportBtn.title = 'Export this canvas as ZIP package';
+      exportBtn.textContent = 'Export ZIP';
+      exportBtn.style.marginRight = '8px';
+      exportBtn.onclick = () => {
+        const currentCanvas = state.canvases.find(c => c.id === activeDetailsId);
+        if (currentCanvas) {
+          exportCanvasAsZip(currentCanvas);
+        }
+      };
+      
+      modalHead.insertBefore(exportBtn, closeBtn);
+      modalHead.insertBefore(previewBtn, exportBtn);
+    }
   }
 
   const setupModalListeners = (modalEl, currentId) => {
+    activeDetailsId = currentId;
     const buttons = modalEl.querySelectorAll('.val-sidebar-item');
     buttons.forEach(btn => {
       const canvasId = btn.dataset.canvasId;
