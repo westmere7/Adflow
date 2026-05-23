@@ -183,6 +183,7 @@ const state = {
   activeCanvasId: null,
   selectedElementId: null,
   layerSelection: [],
+  assetSelection: [],
   zoom: 0.6,
   editingElementId: null,      // inline-edit (text) mode
   isolatedGroupId: null,
@@ -3073,6 +3074,37 @@ function onElementMouseDown(e, el, canvasCtx) {
       t.y = Math.round(ny);
     });
 
+    const ap = document.getElementById('panel-section-assets');
+    document.querySelectorAll('#asset-list [data-folder-id]').forEach(f => f.style.background = '');
+    if (ap) {
+      const rect = ap.getBoundingClientRect();
+      const overAp = (ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom);
+      if (overAp) {
+        ap.style.background = 'var(--accent-dark)';
+        const isLeftDrag = (ev.clientX - rect.left < 45);
+        if (!isLeftDrag) {
+          const hoveredEls = document.elementsFromPoint(ev.clientX, ev.clientY);
+          const folderRow = hoveredEls.map(el => el.closest && el.closest('[data-folder-id]')).find(Boolean);
+          if (folderRow) {
+            folderRow.style.background = 'var(--accent-base)';
+          } else {
+            const assetRow = hoveredEls.map(el => el.closest && el.closest('[data-asset-id]')).find(Boolean);
+            if (assetRow) {
+              const targetAsset = (state.assetLibrary || []).find(a => a.id === assetRow.dataset.assetId);
+              if (targetAsset && targetAsset.folderId) {
+                const targetFolderRow = document.querySelector(`#asset-list [data-folder-id="${targetAsset.folderId}"]`);
+                if (targetFolderRow) {
+                  targetFolderRow.style.background = 'var(--accent-base)';
+                }
+              }
+            }
+          }
+        }
+      } else {
+        ap.style.background = '';
+      }
+    }
+
     state.activeSmartGuides = { x: snapX, y: snapY };
     render(true);
   };
@@ -3082,6 +3114,53 @@ function onElementMouseDown(e, el, canvasCtx) {
     window.removeEventListener('mouseup', onUp);
     state.activeSmartGuides = null;
     state.dropTargetCanvasId = null;
+
+    const ap = document.getElementById('panel-section-assets');
+    let droppedOnAssets = false;
+    let targetFolderId = null;
+    if (ap) {
+      const rect = ap.getBoundingClientRect();
+      droppedOnAssets = (ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom);
+      ap.style.background = '';
+      if (droppedOnAssets) {
+        const isLeftDrag = (ev.clientX - rect.left < 45);
+        if (!isLeftDrag) {
+          const hoveredEls = document.elementsFromPoint(ev.clientX, ev.clientY);
+          const folderRow = hoveredEls.map(el => el.closest && el.closest('[data-folder-id]')).find(Boolean);
+          if (folderRow) {
+            targetFolderId = folderRow.dataset.folderId;
+          } else {
+            const assetRow = hoveredEls.map(el => el.closest && el.closest('[data-asset-id]')).find(Boolean);
+            if (assetRow) {
+              const targetAsset = (state.assetLibrary || []).find(a => a.id === assetRow.dataset.assetId);
+              if (targetAsset) {
+                targetFolderId = targetAsset.folderId || null;
+              }
+            }
+          }
+        }
+      }
+    }
+    document.querySelectorAll('#asset-list [data-folder-id]').forEach(f => f.style.background = '');
+
+    if (droppedOnAssets) {
+      targets.forEach((t, i) => {
+        t.x = origPos[i].x;
+        t.y = origPos[i].y;
+      });
+      if (tempClones) {
+        canvasCtx.elements = canvasCtx.elements.filter(e => !tempClones.includes(e));
+        tempClones = null;
+      }
+      const targetFolder = targetFolderId ? (state.assetFolders || []).find(f => f.id === targetFolderId) : null;
+      if (targetFolder && targetFolder.readOnly) {
+        alert("Cannot add assets to a read-only folder.");
+        render();
+        return;
+      }
+      saveSelectionAsAsset(targetFolderId);
+      return;
+    }
 
     if (tempClones) {
       canvasCtx.elements = canvasCtx.elements.filter(e => !tempClones.includes(e));
@@ -4476,7 +4555,7 @@ function renderLinkControl() {
 // Snapshot the current selection into the asset library. A single grouped
 // element pulls in its whole group. Link-group membership is dropped; per-element
 // dynamic-data flags are kept.
-function saveSelectionAsAsset() {
+function saveSelectionAsAsset(folderId) {
   const c = getActiveCanvas();
   if (!c) return;
   const ids = (state.layerSelection && state.layerSelection.length)
@@ -4512,6 +4591,7 @@ function saveSelectionAsAsset() {
     kind: isGroup ? 'group' : 'element',
     iconType: isGroup ? 'group' : snapshot[0].type,
     elements: snapshot,
+    folderId: folderId || null,
   });
   pushHistory();
   render();
@@ -4557,13 +4637,29 @@ function placeAsset(assetId, canvasId, dropX, dropY) {
       }
       delete e._assetDmMap;
     }
-    if (e.persistent !== 'top' && e.persistent !== 'bottom') e.frameId = state.activeFrameId;
+    if (e.persistent !== 'top' && e.persistent !== 'bottom') {
+      e.persistent = false;
+      e.frameId = state.activeFrameId;
+    }
     c.elements.push(e);
     newIds.push(e.id);
   });
-  // A renamed single-element asset stamps its name onto the placed element.
-  if (asset.kind === 'element' && asset.renamed && src[0]) {
-    src[0].customName = asset.name;
+  // Placed elements carry the asset name (or the saved element customName for
+  // groups), auto-incremented when a layer of that name already exists on the
+  // canvas — so the Layers panel never shows duplicates.
+  const existingNames = c.elements
+    .filter(e => !newIds.includes(e.id))
+    .map(e => baseLayerLabel(e))
+    .filter(Boolean);
+  if (asset.kind === 'element' && src[0]) {
+    src[0].customName = uniqueName(asset.name, existingNames);
+  } else if (asset.kind === 'group') {
+    src.forEach(e => {
+      if (e.customName) {
+        e.customName = uniqueName(e.customName, existingNames);
+        existingNames.push(e.customName);
+      }
+    });
   }
   state.activeCanvasId = c.id;
   state.layerSelection = newIds;
@@ -4585,11 +4681,13 @@ function uniqueName(base, names) {
 
 function createAssetFolder() {
   if (!state.assetFolders) state.assetFolders = [];
+  const folderId = 'af_' + uid();
   state.assetFolders.push({
-    id: 'af_' + uid(),
+    id: folderId,
     name: uniqueName('New Folder', state.assetFolders.map(f => f.name)),
     collapsed: false,
   });
+  state.editingFolderId = folderId;
   pushHistory();
   render();
 }
@@ -4612,68 +4710,157 @@ function renderAssets() {
   const GROUP_ICON = '<rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/>';
   const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></svg>';
 
-  // Inline double-click rename, mirroring the layers / link-group panels.
+  // Reusable inline rename logic.
+  const enterEditMode = (row, nameSpan, draggableRow, getName, commit) => {
+    if (nameSpan.dataset.scrollInterval) {
+      clearInterval(parseInt(nameSpan.dataset.scrollInterval, 10));
+      nameSpan.dataset.scrollInterval = '';
+      nameSpan.scrollLeft = 0;
+    }
+    nameSpan.contentEditable = 'true';
+    if (draggableRow) row.draggable = false;
+    nameSpan.focus();
+    window.getSelection().selectAllChildren(nameSpan);
+    const finish = () => {
+      nameSpan.contentEditable = 'false';
+      if (draggableRow) row.draggable = true;
+      const v = nameSpan.innerText.trim();
+      if (v) { commit(v); pushHistory(); }
+      render();
+    };
+    nameSpan.addEventListener('blur', finish, { once: true });
+    nameSpan.addEventListener('keydown', (ek) => {
+      if (ek.key === 'Enter') { ek.preventDefault(); nameSpan.blur(); }
+      if (ek.key === 'Escape') { ek.preventDefault(); nameSpan.innerText = getName(); nameSpan.blur(); }
+    });
+  };
+
   const wireRename = (row, nameSpan, draggableRow, getName, commit) => {
     row.addEventListener('dblclick', (e) => {
       if (e.target.closest('button') || e.target.closest('.folder-caret')) return;
       e.stopPropagation();
-      if (nameSpan.dataset.scrollInterval) {
-        clearInterval(parseInt(nameSpan.dataset.scrollInterval, 10));
-        nameSpan.dataset.scrollInterval = '';
-        nameSpan.scrollLeft = 0;
+      if (window._assetClickRenderTimeout) {
+        clearTimeout(window._assetClickRenderTimeout);
+        window._assetClickRenderTimeout = null;
       }
-      nameSpan.contentEditable = 'true';
-      if (draggableRow) row.draggable = false;
-      nameSpan.focus();
-      window.getSelection().selectAllChildren(nameSpan);
-      const finish = () => {
-        nameSpan.contentEditable = 'false';
-        if (draggableRow) row.draggable = true;
-        const v = nameSpan.innerText.trim();
-        if (v) { commit(v); pushHistory(); }
-        render();
-      };
-      nameSpan.addEventListener('blur', finish, { once: true });
-      nameSpan.addEventListener('keydown', (ek) => {
-        if (ek.key === 'Enter') { ek.preventDefault(); nameSpan.blur(); }
-        if (ek.key === 'Escape') { ek.preventDefault(); nameSpan.innerText = getName(); nameSpan.blur(); }
-      });
+      enterEditMode(row, nameSpan, draggableRow, getName, commit);
     });
   };
 
   const makeAssetRow = (asset, indented) => {
     const div = document.createElement('div');
-    div.className = 'layer';
+    const isAssetSelected = (state.assetSelection || []).includes(asset.id);
+    const parentFolder = asset.folderId ? (state.assetFolders || []).find(f => f.id === asset.folderId) : null;
+    const isAssetReadOnly = parentFolder && parentFolder.readOnly;
+
+    div.className = 'layer' + (isAssetSelected ? ' selected' : '') + (isAssetReadOnly ? ' read-only-asset' : '');
     div.draggable = true;
+    div.dataset.assetId = asset.id;
     if (indented) div.style.paddingLeft = '22px';
-    div.title = 'Double-click to rename. Drag onto a canvas to place it, or onto a folder to move it.';
+    div.title = isAssetReadOnly
+      ? 'RMIT Pre-loaded asset (Read-only). Drag onto a canvas to place it.'
+      : 'Double-click to rename. Drag onto a canvas to place it, or onto a folder to move it.';
+
     const icon = asset.kind === 'group' ? GROUP_ICON : (layerIcon(asset.iconType) || GROUP_ICON);
     const hasDynamic = (asset.elements || []).some(el =>
       el._assetDmMap || (el.dynamic && Object.keys(el.dynamic).some(k => el.dynamic[k])));
     const bolt = hasDynamic
       ? '<svg viewBox="0 0 24 24" width="12" height="12" style="flex-shrink:0;fill:var(--accent-light);"><title>Contains dynamic data</title><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
       : '';
+    const deleteBtn = isAssetReadOnly ? '' : `<button class="icon-btn active" data-act="del" title="Delete asset">${TRASH}</button>`;
     div.innerHTML = `
       <svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icon}</svg>
       <span class="layer-name">${esc(asset.name)}</span>
       ${bolt}
       <div class="layer-actions">
-        <button class="icon-btn active" data-act="del" title="Delete asset">${TRASH}</button>
+        ${deleteBtn}
       </div>`;
-    div.querySelector('[data-act="del"]').addEventListener('click', (e) => {
+    
+    div.addEventListener('click', (e) => {
+      if (e.target.closest('button') || div.querySelector('.layer-name').contentEditable === 'true') return;
       e.stopPropagation();
-      state.assetLibrary = (state.assetLibrary || []).filter(a => a.id !== asset.id);
-      pushHistory();
-      render();
-    });
-    wireRename(div, div.querySelector('.layer-name'), true,
-      () => asset.name,
-      (v) => {
-        asset.name = uniqueName(v, (state.assetLibrary || []).filter(a => a.id !== asset.id).map(a => a.name));
-        asset.renamed = true;
+      
+      if (!state.assetSelection) state.assetSelection = [];
+      
+      const hadCanvasSelection = (state.layerSelection && state.layerSelection.length > 0) || state.selectedElementId !== null;
+      state.layerSelection = [];
+      state.selectedElementId = null;
+      
+      const assetId = asset.id;
+      
+      if (e.ctrlKey || e.metaKey) {
+        if (state.assetSelection.includes(assetId)) {
+          state.assetSelection = state.assetSelection.filter(id => id !== assetId);
+        } else {
+          state.assetSelection.push(assetId);
+        }
+      } else if (e.shiftKey) {
+        const allVisibleRowEls = Array.from(document.querySelectorAll('#asset-list .layer[data-asset-id]'));
+        const allIds = allVisibleRowEls.map(el => el.dataset.assetId);
+        const clickedIdx = allIds.indexOf(assetId);
+        const lastSelectedId = state.assetSelection[state.assetSelection.length - 1];
+        const lastIdx = lastSelectedId ? allIds.indexOf(lastSelectedId) : -1;
+        
+        if (lastIdx !== -1) {
+          const start = Math.min(clickedIdx, lastIdx);
+          const end = Math.max(clickedIdx, lastIdx);
+          const rangeIds = allIds.slice(start, end + 1);
+          rangeIds.forEach(id => {
+            if (!state.assetSelection.includes(id)) {
+              state.assetSelection.push(id);
+            }
+          });
+        } else {
+          state.assetSelection = [assetId];
+        }
+      } else {
+        state.assetSelection = [assetId];
+      }
+      
+      document.querySelectorAll('#asset-list .layer[data-asset-id]').forEach(row => {
+        const rowId = row.dataset.assetId;
+        if (state.assetSelection.includes(rowId)) {
+          row.classList.add('selected');
+        } else {
+          row.classList.remove('selected');
+        }
       });
+
+      if (window._assetClickRenderTimeout) clearTimeout(window._assetClickRenderTimeout);
+      window._assetClickRenderTimeout = setTimeout(() => {
+        render();
+      }, 200);
+    });
+
+    if (!isAssetReadOnly) {
+      div.querySelector('[data-act="del"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isSelected = (state.assetSelection || []).includes(asset.id);
+        if (isSelected) {
+          state.assetLibrary = (state.assetLibrary || []).filter(a => !state.assetSelection.includes(a.id));
+          state.assetSelection = [];
+        } else {
+          state.assetLibrary = (state.assetLibrary || []).filter(a => a.id !== asset.id);
+          if (state.assetSelection) {
+            state.assetSelection = state.assetSelection.filter(id => id !== asset.id);
+          }
+        }
+        pushHistory();
+        render();
+      });
+
+      wireRename(div, div.querySelector('.layer-name'), true,
+        () => asset.name,
+        (v) => {
+          asset.name = uniqueName(v, (state.assetLibrary || []).filter(a => a.id !== asset.id).map(a => a.name));
+          asset.renamed = true;
+        });
+    }
+
     div.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('application/x-asset', asset.id);
+      const isSelected = (state.assetSelection || []).includes(asset.id);
+      const idsToDrag = isSelected ? state.assetSelection.join(',') : asset.id;
+      e.dataTransfer.setData('application/x-asset', idsToDrag);
       e.dataTransfer.effectAllowed = 'copyMove';
     });
     return div;
@@ -4681,46 +4868,45 @@ function renderAssets() {
 
   const makeFolderRow = (folder) => {
     const div = document.createElement('div');
-    div.className = 'layer';
+    div.className = 'layer' + (folder.readOnly ? ' read-only-folder' : '');
+    div.dataset.folderId = folder.id;
     const caretRot = folder.collapsed ? 'transform:rotate(-90deg);' : '';
+    const deleteBtn = folder.readOnly ? '' : `<button class="icon-btn active" data-act="del-folder" title="Delete folder (its assets move out)">${TRASH}</button>`;
     div.innerHTML = `
       <svg class="folder-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;cursor:pointer;${caretRot}transition:transform .15s;"><polyline points="6 9 12 15 18 9"/></svg>
       <svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h5l2 3h9v11H4z"/></svg>
       <span class="layer-name" style="font-weight:600;">${esc(folder.name)}</span>
       <div class="layer-actions">
-        <button class="icon-btn active" data-act="del-folder" title="Delete folder (its assets move out)">${TRASH}</button>
+        ${deleteBtn}
       </div>`;
     div.querySelector('.folder-caret').addEventListener('click', (e) => {
       e.stopPropagation();
       folder.collapsed = !folder.collapsed;
       render();
     });
-    div.querySelector('[data-act="del-folder"]').addEventListener('click', (e) => {
-      e.stopPropagation();
-      (state.assetLibrary || []).forEach(a => { if (a.folderId === folder.id) a.folderId = null; });
-      state.assetFolders = (state.assetFolders || []).filter(f => f.id !== folder.id);
-      pushHistory();
-      render();
-    });
-    wireRename(div, div.querySelector('.layer-name'), false,
-      () => folder.name,
-      (v) => { folder.name = uniqueName(v, (state.assetFolders || []).filter(f => f.id !== folder.id).map(f => f.name)); });
-    div.addEventListener('dragover', (e) => {
-      if (e.dataTransfer.types.includes('application/x-asset')) {
-        e.preventDefault();
-        div.style.background = 'var(--accent-dark)';
-      }
-    });
-    div.addEventListener('dragleave', () => { div.style.background = ''; });
-    div.addEventListener('drop', (e) => {
-      div.style.background = '';
-      const aid = e.dataTransfer.getData('application/x-asset');
-      if (!aid) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const a = (state.assetLibrary || []).find(x => x.id === aid);
-      if (a && a.folderId !== folder.id) { a.folderId = folder.id; pushHistory(); render(); }
-    });
+    if (!folder.readOnly) {
+      div.querySelector('[data-act="del-folder"]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        (state.assetLibrary || []).forEach(a => { if (a.folderId === folder.id) a.folderId = null; });
+        state.assetFolders = (state.assetFolders || []).filter(f => f.id !== folder.id);
+        pushHistory();
+        render();
+      });
+    }
+    const nameSpan = div.querySelector('.layer-name');
+    const getName = () => folder.name;
+    const commit = (v) => { folder.name = uniqueName(v, (state.assetFolders || []).filter(f => f.id !== folder.id).map(f => f.name)); };
+
+    if (!folder.readOnly) {
+      wireRename(div, nameSpan, false, getName, commit);
+    }
+
+    if (state.editingFolderId === folder.id) {
+      delete state.editingFolderId;
+      setTimeout(() => {
+        enterEditMode(div, nameSpan, false, getName, commit);
+      }, 50);
+    }
     return div;
   };
 
@@ -4733,22 +4919,321 @@ function renderAssets() {
   lib.filter(a => !a.folderId || !folders.some(f => f.id === a.folderId))
      .forEach(a => listEl.appendChild(makeAssetRow(a, false)));
 
-  // Empty list space is a drop target — drop an asset here to move it to top level.
-  listEl.ondragover = (e) => {
-    if (e.dataTransfer.types.includes('application/x-asset')) e.preventDefault();
-  };
-  listEl.ondrop = (e) => {
-    if (e.target !== listEl) return;
-    const aid = e.dataTransfer.getData('application/x-asset');
-    if (!aid) return;
-    e.preventDefault();
-    const a = (state.assetLibrary || []).find(x => x.id === aid);
-    if (a && a.folderId) { a.folderId = null; pushHistory(); render(); }
-  };
+  // Empty list space click handler
+  listEl.addEventListener('click', (e) => {
+    if (e.target === listEl) {
+      state.assetSelection = [];
+      render();
+    }
+  });
 }
 
-document.getElementById('btn-asset-add')?.addEventListener('click', (e) => { e.stopPropagation(); saveSelectionAsAsset(); });
+function showAddAssetDropdown(e) {
+  let popup = document.getElementById('asset-add-popup');
+  if (popup) { popup.remove(); return; }
+
+  popup = document.createElement('div');
+  popup.id = 'asset-add-popup';
+  popup.style.position = 'absolute';
+  popup.style.background = 'var(--bg-panel)';
+  popup.style.border = '1px solid var(--border-light)';
+  popup.style.borderRadius = '6px';
+  popup.style.padding = '4px 0';
+  popup.style.zIndex = '1000000';
+  popup.style.width = '200px';
+  popup.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)';
+
+  const items = [
+    {
+      label: 'Add current selection',
+      action: () => {
+        saveSelectionAsAsset();
+      }
+    },
+    {
+      label: 'Upload new image file',
+      action: () => {
+        let fileInput = document.getElementById('asset-upload-file-input');
+        if (!fileInput) {
+          fileInput = document.createElement('input');
+          fileInput.id = 'asset-upload-file-input';
+          fileInput.type = 'file';
+          fileInput.accept = '.png,.jpg,.jpeg,.svg';
+          fileInput.multiple = true;
+          fileInput.style.display = 'none';
+          document.body.appendChild(fileInput);
+          fileInput.addEventListener('change', async (ev) => {
+            const files = Array.from(ev.target.files).filter(f => 
+              /^image\/(png|jpeg|svg\+xml)$/i.test(f.type) || /\.(png|jpg|jpeg|svg)$/i.test(f.name)
+            );
+            if (files.length === 0) return;
+            for (const file of files) {
+              try {
+                const { assetId, naturalW, naturalH } = await readFileAsAsset(file);
+                if (!state.assetLibrary) state.assetLibrary = [];
+                state.assetLibrary.push({
+                  id: 'as_' + uid(),
+                  name: uniqueName(file.name, (state.assetLibrary || []).map(a => a.name)),
+                  kind: 'element',
+                  iconType: 'image',
+                  elements: [
+                    {
+                      id: uid(),
+                      type: 'image',
+                      name: file.name,
+                      assetId,
+                      width: naturalW,
+                      height: naturalH,
+                      x: 0,
+                      y: 0
+                    }
+                  ]
+                });
+              } catch (err) {
+                console.error(err);
+              }
+            }
+            pushHistory();
+            render();
+          });
+        }
+        fileInput.click();
+      }
+    }
+  ];
+
+  items.forEach(item => {
+    const btn = document.createElement('div');
+    btn.textContent = item.label;
+    btn.style.padding = '8px 16px';
+    btn.style.cursor = 'pointer';
+    btn.style.fontSize = '12px';
+    btn.style.color = 'var(--text-main)';
+    btn.addEventListener('mouseenter', () => {
+      btn.style.background = 'var(--accent-base)';
+      btn.style.color = 'var(--text-bright)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--text-main)';
+    });
+    btn.addEventListener('click', () => {
+      item.action();
+      popup.remove();
+    });
+    popup.appendChild(btn);
+  });
+
+  document.body.appendChild(popup);
+
+  const triggerEl = e.currentTarget || e.target || e;
+  const rect = triggerEl.getBoundingClientRect();
+  popup.style.left = rect.left + 'px';
+  popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+
+  const popupRect = popup.getBoundingClientRect();
+  if (popupRect.right > window.innerWidth) {
+    popup.style.left = (window.innerWidth - popupRect.width - 8) + 'px';
+  }
+  if (popupRect.bottom > window.innerHeight) {
+    popup.style.top = (rect.top - popupRect.height - 4) + 'px';
+  }
+
+  const closer = (ev) => {
+    if (!popup.contains(ev.target) && ev.target !== triggerEl && !triggerEl.contains(ev.target)) {
+      popup.remove();
+      document.removeEventListener('mousedown', closer);
+    }
+  };
+  document.addEventListener('mousedown', closer);
+}
+
+document.getElementById('btn-asset-add')?.addEventListener('click', (e) => { e.stopPropagation(); showAddAssetDropdown(e); });
 document.getElementById('btn-asset-folder')?.addEventListener('click', (e) => { e.stopPropagation(); createAssetFolder(); });
+
+// Handle dragging files directly from computer or layers to the assets panel
+(function initAssetsPanelDropTarget() {
+  // Use a delegation listener on document to ensure it works even if elements are updated
+  document.addEventListener('dragover', (e) => {
+    const ap = document.getElementById('panel-section-assets');
+    if (!ap) return;
+    const rect = ap.getBoundingClientRect();
+    const overAp = (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom);
+    const t = e.dataTransfer.types;
+    if (overAp && (t.includes('Files') || t.includes('text/plain') || t.includes('application/x-asset'))) {
+      e.preventDefault();
+      ap.style.background = 'var(--accent-dark)';
+      
+      // Clear all folder row highlights first
+      document.querySelectorAll('#asset-list [data-folder-id]').forEach(f => f.style.background = '');
+      
+      // Highlight specific folder row if hovered and NOT dragging to the left
+      const isLeftDrag = (e.clientX - rect.left < 45);
+      if (!isLeftDrag) {
+        const folderRow = e.target.closest('[data-folder-id]');
+        if (folderRow) {
+          folderRow.style.background = 'var(--accent-base)';
+        } else {
+          const assetRow = e.target.closest('[data-asset-id]');
+          if (assetRow) {
+            const targetAsset = (state.assetLibrary || []).find(a => a.id === assetRow.dataset.assetId);
+            if (targetAsset && targetAsset.folderId) {
+              const targetFolderRow = document.querySelector(`#asset-list [data-folder-id="${targetAsset.folderId}"]`);
+              if (targetFolderRow) {
+                targetFolderRow.style.background = 'var(--accent-base)';
+              }
+            }
+          }
+        }
+      }
+    } else {
+      ap.style.background = '';
+      document.querySelectorAll('#asset-list [data-folder-id]').forEach(f => f.style.background = '');
+    }
+  });
+
+  document.addEventListener('drop', async (e) => {
+    const ap = document.getElementById('panel-section-assets');
+    if (!ap) return;
+    const rect = ap.getBoundingClientRect();
+    const overAp = (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom);
+    if (!overAp) return;
+    
+    ap.style.background = '';
+    document.querySelectorAll('#asset-list [data-folder-id]').forEach(f => f.style.background = '');
+    
+    const isLeftDrag = (e.clientX - rect.left < 45);
+    let targetFolderId = null;
+    if (!isLeftDrag) {
+      const folderRow = e.target.closest('[data-folder-id]');
+      if (folderRow) {
+        targetFolderId = folderRow.dataset.folderId;
+      } else {
+        const assetRow = e.target.closest('[data-asset-id]');
+        if (assetRow) {
+          const targetAsset = (state.assetLibrary || []).find(a => a.id === assetRow.dataset.assetId);
+          if (targetAsset) {
+            targetFolderId = targetAsset.folderId || null;
+          }
+        }
+      }
+    }
+    
+    const targetFolder = targetFolderId ? (state.assetFolders || []).find(f => f.id === targetFolderId) : null;
+    const isTargetReadOnly = targetFolder && targetFolder.readOnly;
+
+    // 1. Files dropped directly from computer
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isTargetReadOnly) {
+        alert("Cannot add assets to a read-only folder.");
+        return;
+      }
+      const files = Array.from(e.dataTransfer.files).filter(f => 
+        /^image\/(png|jpeg|svg\+xml)$/i.test(f.type) || /\.(png|jpg|jpeg|svg)$/i.test(f.name)
+      );
+      if (files.length === 0) {
+        alert('Only image files (PNG, JPEG, SVG) are allowed.');
+        return;
+      }
+      for (const file of files) {
+        try {
+          const { assetId, naturalW, naturalH } = await readFileAsAsset(file);
+          if (!state.assetLibrary) state.assetLibrary = [];
+          state.assetLibrary.push({
+            id: 'as_' + uid(),
+            name: uniqueName(file.name, (state.assetLibrary || []).map(a => a.name)),
+            kind: 'element',
+            iconType: 'image',
+            folderId: targetFolderId || null,
+            elements: [
+              {
+                id: uid(),
+                type: 'image',
+                name: file.name,
+                assetId,
+                width: naturalW,
+                height: naturalH,
+                x: 0,
+                y: 0
+              }
+            ]
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      pushHistory();
+      render();
+      return;
+    }
+
+    // 2. Dragging layers from Layers panel (carries text/plain)
+    const rawIds = e.dataTransfer.getData('text/plain');
+    if (rawIds) {
+      const canvas = getActiveCanvas();
+      if (canvas) {
+        const ids = rawIds.split(',');
+        const els = canvas.elements.filter(el => ids.includes(el.id));
+        if (els.length > 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isTargetReadOnly) {
+            alert("Cannot add assets to a read-only folder.");
+            return;
+          }
+          const prevSelection = state.layerSelection;
+          const prevSelectedId = state.selectedElementId;
+          state.layerSelection = ids;
+          state.selectedElementId = ids[ids.length - 1];
+          saveSelectionAsAsset(targetFolderId);
+          state.layerSelection = prevSelection;
+          state.selectedElementId = prevSelectedId;
+          render();
+        }
+      }
+      return;
+    }
+
+    // 3. Dragging assets inside panel (carries application/x-asset)
+    const rawAids = e.dataTransfer.getData('application/x-asset');
+    if (rawAids) {
+      e.preventDefault();
+      e.stopPropagation();
+      const aids = rawAids.split(',');
+      const hasReadOnlyAsset = aids.some(aid => {
+        const a = (state.assetLibrary || []).find(x => x.id === aid);
+        if (a) {
+          const pf = a.folderId ? (state.assetFolders || []).find(f => f.id === a.folderId) : null;
+          return pf && pf.readOnly;
+        }
+        return false;
+      });
+      if (hasReadOnlyAsset) {
+        alert("Pre-loaded read-only assets cannot be moved.");
+        return;
+      }
+      if (isTargetReadOnly) {
+        alert("Cannot move assets into a read-only folder.");
+        return;
+      }
+      let changed = false;
+      aids.forEach(aid => {
+        const a = (state.assetLibrary || []).find(x => x.id === aid);
+        if (a && a.folderId !== targetFolderId) {
+          a.folderId = targetFolderId || null;
+          changed = true;
+        }
+      });
+      if (changed) {
+        pushHistory();
+        render();
+      }
+      return;
+    }
+  });
+})();
 
 function renderLayers() {
   const c = getActiveCanvas();
@@ -6901,19 +7386,41 @@ window.addEventListener('keydown', (e) => {
   }
 
   const el = getSelectedElement();
-
-  // Delete / Backspace → remove selected element(s)
   const hasSelection = el || (state.layerSelection && state.layerSelection.length > 0);
-  if ((e.key === 'Delete' || e.key === 'Backspace') && hasSelection) {
-    const c = getActiveCanvas();
-    const toDel = (state.layerSelection && state.layerSelection.length > 0) ? state.layerSelection : [el.id];
-    c.elements = c.elements.filter(x => !toDel.includes(x.id));
-    state.selectedElementId = null;
-    state.layerSelection = [];
-    e.preventDefault();
-    pushHistory();
-    render();
-    return;
+
+  // Delete / Backspace → remove selected asset(s) or element(s)
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (state.assetSelection && state.assetSelection.length > 0) {
+      e.preventDefault();
+      const hasReadOnly = state.assetSelection.some(aid => {
+        const a = (state.assetLibrary || []).find(x => x.id === aid);
+        if (a) {
+          const pf = a.folderId ? (state.assetFolders || []).find(f => f.id === a.folderId) : null;
+          return pf && pf.readOnly;
+        }
+        return false;
+      });
+      if (hasReadOnly) {
+        alert("Pre-loaded read-only assets cannot be deleted.");
+        return;
+      }
+      state.assetLibrary = (state.assetLibrary || []).filter(x => !state.assetSelection.includes(x.id));
+      state.assetSelection = [];
+      pushHistory();
+      render();
+      return;
+    }
+    if (hasSelection) {
+      const c = getActiveCanvas();
+      const toDel = (state.layerSelection && state.layerSelection.length > 0) ? state.layerSelection : [el.id];
+      c.elements = c.elements.filter(x => !toDel.includes(x.id));
+      state.selectedElementId = null;
+      state.layerSelection = [];
+      e.preventDefault();
+      pushHistory();
+      render();
+      return;
+    }
   }
 
   // Esc → deselect
@@ -8421,7 +8928,7 @@ document.getElementById('menu-project-settings').addEventListener('click', openP
 // Builds a fresh project from picked canvas presets (all checked by default),
 // a name, an ad-size limit (KB) and a default canvas background. Replaces the
 // working state and lets the normal autosave persist it.
-function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, clickTag }) {
+async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, clickTag }) {
   const bg = bgColor || '#0f172a';
   
   let currentX = 2050;
@@ -8532,8 +9039,82 @@ function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, clickTag 
   state.isolatedGroupId = null;
   state.guides = [];
   state.clipboard = null;
-  // Drop user-uploaded assets; keep the bundled RMIT logo data-url if present.
+  // Reset assets panel
+  state.assetLibrary = [];
+  state.assetFolders = [];
   state.assets = state.assets && state.assets.rmit_logo ? { rmit_logo: state.assets.rmit_logo } : {};
+
+  // Create default read-only RMIT folder
+  const rmitFolderId = 'af_rmit';
+  state.assetFolders.push({
+    id: rmitFolderId,
+    name: 'RMIT',
+    collapsed: false,
+    readOnly: true
+  });
+
+  // Load default RMIT assets from data/assets/
+  const filesToLoad = [
+    { name: 'Image (1)', filename: 'Image (1).jpg', url: 'data/assets/Image (1).jpg' },
+    { name: 'Image (2)', filename: 'Image (2).jpg', url: 'data/assets/Image (2).jpg' },
+    { name: 'Image (3)', filename: 'Image (3).jpg', url: 'data/assets/Image (3).jpg' },
+    { name: 'Image (6)', filename: 'Image (6).jpg', url: 'data/assets/Image (6).jpg' }
+  ];
+
+  for (const item of filesToLoad) {
+    try {
+      const response = await fetch(item.url);
+      if (response.ok) {
+        const blob = await response.blob();
+        const dataUrl = await new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result);
+          fr.onerror = () => reject(fr.error);
+          fr.readAsDataURL(blob);
+        });
+        const assetId = 'img_' + uid();
+        state.assets[assetId] = dataUrl;
+        
+        const { naturalW, naturalH } = await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve({ naturalW: img.naturalWidth || 120, naturalH: img.naturalHeight || 90 });
+          img.onerror = () => resolve({ naturalW: 120, naturalH: 90 });
+          img.src = dataUrl;
+        });
+
+        state.assetLibrary.push({
+          id: 'as_' + uid(),
+          name: item.name,
+          kind: 'element',
+          iconType: 'image',
+          folderId: rmitFolderId,
+          elements: [
+            {
+              id: uid(),
+              type: 'image',
+              name: item.filename,
+              assetId,
+              width: naturalW,
+              height: naturalH,
+              x: 0,
+              y: 0
+            }
+          ]
+        });
+      }
+    } catch (err) {
+      console.error('Failed to preload RMIT asset:', item.url, err);
+    }
+  }
+  state.dataMerge = {
+    enabled: false,
+    columns: [],
+    rows: [],
+    keyColumn: null,
+    activeVersion: null,
+    locked: false,
+    mappings: {}
+  };
   state.zoom = 0.6;
 
   history.length = 0;
@@ -8632,11 +9213,11 @@ function openNewProjectDialog() {
     boxes.forEach(b => { b.checked = !allOn; });
   };
 
-  bg.querySelector('#np-create').onclick = () => {
+  bg.querySelector('#np-create').onclick = async () => {
     const presetIndices = [...bg.querySelectorAll('.np-canvas:checked')].map(b => +b.dataset.idx);
     if (presetIndices.length === 0) { alert('Pick at least one canvas size.'); return; }
     const hex = '#' + (hexInp.value.replace(/[^0-9a-fA-F]/g, '').padEnd(6, '0').slice(0, 6) || '0f172a');
-    createNewProject({
+    await createNewProject({
       name: bg.querySelector('#np-name').value,
       presetIndices,
       sizeLimitKb: bg.querySelector('#np-size-limit').value,
@@ -10335,6 +10916,16 @@ document.addEventListener('mousedown', (e) => {
   const menu = document.getElementById('ctx-menu');
   if (menu && menu.style.display === 'flex' && !menu.contains(e.target)) {
     menu.style.display = 'none';
+  }
+
+  // Clear asset selection if clicked outside the Assets panel or popup
+  const ap = document.getElementById('panel-section-assets');
+  const popup = document.getElementById('asset-add-popup');
+  if (state.assetSelection && state.assetSelection.length > 0) {
+    if ((!ap || !ap.contains(e.target)) && (!popup || !popup.contains(e.target))) {
+      state.assetSelection = [];
+      render();
+    }
   }
 }, true);
 

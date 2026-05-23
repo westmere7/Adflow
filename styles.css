@@ -1367,6 +1367,23 @@ body.theme-navy {
 
     }
 
+    .layer.read-only-folder {
+      color: var(--accent-light, #a78bfa) !important;
+      font-weight: 600;
+    }
+    .layer.read-only-folder .layer-icon {
+      color: var(--accent-base, #7c5cff) !important;
+      opacity: 1;
+    }
+    .layer.read-only-asset {
+      color: var(--accent-light, #a78bfa) !important;
+      opacity: 0.85;
+    }
+    .layer.read-only-asset .layer-icon {
+      color: var(--accent-base, #7c5cff) !important;
+      opacity: 1;
+    }
+
 
 
     .layer .layer-icon {
@@ -3477,5 +3494,27 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 /* Image Preview Hover Overlay */
 .img-preview-container:hover .img-preview-overlay {
   opacity: 1 !important;
+}
+
+#asset-list {
+  max-height: 250px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+/* Custom scrollbar for #asset-list to match modern style */
+#asset-list::-webkit-scrollbar {
+  width: 4px;
+}
+#asset-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+#asset-list::-webkit-scrollbar-thumb {
+  background: var(--border-light, rgba(255, 255, 255, 0.1));
+  border-radius: 2px;
+}
+#asset-list::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-base, #3b82f6);
 }
 
