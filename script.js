@@ -4637,6 +4637,9 @@ function placeAsset(assetId, canvasId, dropX, dropY) {
       }
       delete e._assetDmMap;
     }
+    if (e.type === 'image' && !e.name) {
+      e.name = e.customName || asset.name || 'image.png';
+    }
     if (e.persistent !== 'top' && e.persistent !== 'bottom') {
       e.persistent = false;
       e.frameId = state.activeFrameId;
