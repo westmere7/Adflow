@@ -254,24 +254,42 @@ function getMeasureDiv() {
 function measureTextFits(el, text, fontSize) {
   const m = getMeasureDiv();
   m.innerHTML = '';
-  m.style.width = el.width + 'px';
+  
+  let targetWidth = el.width;
+  let targetHeight = el.height;
+  if (el.type === 'button') {
+    const padLR = el.paddingLR !== undefined ? el.paddingLR : 16;
+    const padTB = el.paddingTB !== undefined ? el.paddingTB : 0;
+    targetWidth = Math.max(0, el.width - padLR * 2);
+    targetHeight = Math.max(0, el.height - padTB * 2);
+  }
+  m.style.width = targetWidth + 'px';
+  
+  const isButton = el.type === 'button';
+  const ta = el.textAlign || (isButton ? 'center' : 'left');
+  const lh = isButton ? '1.2' : getResolvedLineHeight(el);
+  const fw = el.weight || (isButton ? '600' : '400');
   
   const textBlock = document.createElement('div');
-  textBlock.style.textAlign = el.textAlign || 'left';
+  textBlock.style.textAlign = 'left';
   textBlock.style.width = '100%';
   textBlock.style.fontSize = fontSize + 'px';
-  textBlock.style.lineHeight = getResolvedLineHeight(el);
+  textBlock.style.lineHeight = lh;
   
-  const span = document.createElement(el.htmlTag || 'span');
+  const span = document.createElement(isButton ? 'span' : (el.htmlTag || 'span'));
   span.innerText = text;
   span.style.fontSize = fontSize + 'px';
-  span.style.fontWeight = el.weight || '400';
+  span.style.fontWeight = fw;
   span.style.fontFamily = el.fontFamily || 'Arial';
-  span.style.lineHeight = getResolvedLineHeight(el);
+  span.style.lineHeight = lh;
   span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
-  span.style.wordBreak = 'break-word';
+  if (isButton && !el.wrapText) {
+    span.style.whiteSpace = 'nowrap';
+  } else {
+    span.style.wordBreak = 'break-word';
+  }
   
-  if (el.hasBg) {
+  if (!isButton && el.hasBg) {
     const lr = el.bgPadL !== undefined ? el.bgPadL : 8;
     const tb = el.bgPadV !== undefined ? el.bgPadV : 4;
     span.style.display = 'inline';
@@ -284,8 +302,8 @@ function measureTextFits(el, text, fontSize) {
   m.appendChild(textBlock);
   
   const rect = textBlock.getBoundingClientRect();
-  const fitsHeight = rect.height <= el.height;
-  const fitsWidth = textBlock.scrollWidth <= el.width;
+  const fitsHeight = rect.height <= (targetHeight + 1.5);
+  const fitsWidth = textBlock.scrollWidth <= (targetWidth + 1.5);
   
   return fitsHeight && fitsWidth;
 }
@@ -764,6 +782,16 @@ function applyLinkSync(sourceEl, targetEl, group) {
     if (sync.textColor) {
       if (sourceEl.color !== undefined) targetEl.color = sourceEl.color;
       else delete targetEl.color;
+    }
+    if (sync.font) {
+      const fontProps = ['fontFamily', 'weight', 'fontSize', 'autoSize', 'maxFontSize', 'paddingLR', 'paddingTB', 'textAlign', 'verticalAlign', 'wrapText'];
+      fontProps.forEach(p => {
+        if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
+        else delete targetEl[p];
+      });
+      if (targetEl.autoSize) {
+        targetEl.autoHug = false;
+      }
     }
     if (sync.fill) {
       if (sourceEl.bg !== undefined) targetEl.bg = sourceEl.bg;
@@ -2370,10 +2398,13 @@ function elementNode(el, canvasCtx) {
   } else if (el.type === 'button') {
     d.classList.add('button');
     d.style.color = dColor;
-    d.style.fontSize = el.fontSize + 'px';
+    const computedFontSize = el.autoSize ? calculateAutoSize(el, dText) : (el.fontSize || 14);
+    d.style.fontSize = computedFontSize + 'px';
     d.style.fontFamily = el.fontFamily || 'Arial';
     d.style.borderRadius = (el.radius || 0) + 'px';
-    d.style.padding = `0 ${el.paddingLR || 16}px`;
+    const paddingTB = el.paddingTB !== undefined ? el.paddingTB : 0;
+    const paddingLR = el.paddingLR !== undefined ? el.paddingLR : 16;
+    d.style.padding = `${paddingTB}px ${paddingLR}px`;
     d.style.display = 'flex';
     const vAlignMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
     d.style.alignItems = vAlignMap[el.verticalAlign || 'middle'];
@@ -2390,7 +2421,7 @@ function elementNode(el, canvasCtx) {
       ed.className = 'editable';
       ed.contentEditable = 'true';
       applyColorToText(ed, dColor);
-      ed.style.fontSize = el.fontSize + 'px';
+      ed.style.fontSize = computedFontSize + 'px';
       ed.style.fontFamily = el.fontFamily || 'Arial';
       ed.style.fontWeight = el.weight || '600';
       ed.style.outline = 'none';
@@ -2398,7 +2429,11 @@ function elementNode(el, canvasCtx) {
       // otherwise width:100% + word-break:break-word fragments the text mid-word.
       ed.style.display = 'inline';
       ed.style.width = 'auto';
-      ed.style.wordBreak = 'normal';
+      ed.style.wordBreak = el.wrapText ? 'break-word' : 'normal';
+      if (el.wrapText) {
+        ed.style.whiteSpace = 'normal';
+        ed.style.maxWidth = '100%';
+      }
       // position:relative makes the text stack above the absolute fill child,
       // since positioned elements paint after non-positioned ones by default.
       ed.style.position = 'relative';
@@ -2411,6 +2446,13 @@ function elementNode(el, canvasCtx) {
       applyColorToText(span, dColor);
       span.style.fontWeight = el.weight || '600';
       span.style.position = 'relative';
+      if (el.wrapText) {
+        span.style.wordBreak = 'break-word';
+        span.style.whiteSpace = 'normal';
+        span.style.maxWidth = '100%';
+      } else {
+        span.style.whiteSpace = 'nowrap';
+      }
       d.appendChild(span);
     }
     const stroke = strokeOverlayNode(el);
@@ -2532,6 +2574,7 @@ function wireInlineEdit(ed, el, key) {
         }
       }
       pushHistory();
+      if (typeof checkButtonFontSizeWarning === 'function') checkButtonFontSizeWarning(el);
     }
     state.editingElementId = null;
     state.commitRenderTimer = setTimeout(() => {
@@ -2591,6 +2634,16 @@ function wireInlineEdit(ed, el, key) {
       ed.style.fontSize = size + 'px';
       const sizeInput = propsEl.querySelector('[data-k="fontSize"]');
       if (sizeInput) sizeInput.value = size;
+    }
+    if (el.type === 'button' && el.autoSize) {
+      const probe = isDyn ? Object.assign({}, el, { text: ed.innerText }) : el;
+      const size = calculateAutoSize(probe, ed.innerText);
+      ed.style.fontSize = size + 'px';
+      const sizeInput = propsEl.querySelector('[data-k="fontSize"]');
+      if (sizeInput) sizeInput.value = size;
+      if (size < 6) {
+        showCanvasNotification('Text size will be unreadable', { type: 'warning' });
+      }
     }
   });
   // don't let mouse-drag inside the editor move the element
@@ -3350,7 +3403,10 @@ function onResizeMouseDown(e, el, corner) {
   const onUp = () => {
     window.removeEventListener('mousemove', onMove);
     window.removeEventListener('mouseup', onUp);
-    if (el.width !== o.w || el.height !== o.h || el.x !== o.x || el.y !== o.y) pushHistory();
+    if (el.width !== o.w || el.height !== o.h || el.x !== o.x || el.y !== o.y) {
+      pushHistory();
+      if (typeof checkButtonFontSizeWarning === 'function') checkButtonFontSizeWarning(el);
+    }
   };
   window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup', onUp);
@@ -4434,6 +4490,7 @@ function renderLinkControl() {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
               <label title="Sync button label text across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} title="Sync button label text across linked elements" /> Button text</label>
               <label title="Sync button text color across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="textColor" ${sync.textColor ? 'checked' : ''} title="Sync button text color across linked elements" /> Button text color</label>
+              <label title="Sync button font family, weight, alignment, and auto-scaling settings across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} title="Sync button font family, weight, alignment, and auto-scaling settings across linked elements" /> Font settings</label>
               <label title="Sync button background fill across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} title="Sync button background fill across linked elements" /> Fill</label>
               <label title="Sync button stroke properties across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} title="Sync button stroke properties across linked elements" /> Stroke</label>
               <label title="Sync button width and height across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} title="Sync button width and height across linked elements" /> Transform (W+H)</label>
@@ -4557,7 +4614,7 @@ function renderLinkControl() {
           const cat = group.category;
           let keys = [];
           if (cat === 'text') keys = ['text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect'];
-          else if (cat === 'button') keys = ['text', 'textColor', 'fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'button') keys = ['text', 'textColor', 'font', 'fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'image') keys = ['image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
           else if (cat === 'shape') keys = ['fill', 'stroke', 'transform', 'opacity', 'inAnim', 'effect'];
           
@@ -6449,32 +6506,57 @@ function renderProps() {
   if (el.type === 'line') { f.push(colOpac('color', 'Line color')); }
   if (el.type === 'button') {
     f.push(txt('text', 'Label'));
-    f.push(`<div class="prop-row"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
-      <div class="prop-row" style="margin:0"><label>Font</label>
-        <select data-k="fontFamily" title="Button Font Family">
-          ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
-        </select>
+    // Row 1: Font and Weight
+    f.push(`<div class="prop-row">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+        <div class="prop-row" style="margin:0"><label>Font</label>
+          <select data-k="fontFamily" title="Button Font Family">
+            ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
+          </select>
+        </div>
+        <div class="prop-row" style="margin:0"><label>Weight</label>
+          <select data-k="weight" title="Button Font Weight">
+            ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${w === el.weight ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
+          </select>
+        </div>
       </div>
-      <div class="prop-row" style="margin:0"><label>Weight</label>
-        <select data-k="weight" title="Button Font Weight">
-          ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${w === el.weight ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
-        </select>
+    </div>`);
+
+    // Row 2: Size & Auto & Max size
+    const computedFontSize = el.autoSize ? calculateAutoSize(el, dText) : (el.fontSize || 14);
+    f.push(`<div class="prop-row">
+      <div style="display:flex; align-items:end; gap:8px; width:100%;">
+        <div class="prop-row" style="margin:0; flex:1;">
+          <label for="prop-font-size">Size</label>
+          <input type="number" data-k="fontSize" id="prop-font-size" value="${computedFontSize}" ${el.autoSize ? 'disabled' : ''} style="width:100%;" title="Button Font Size" />
+        </div>
+        <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
+          <input type="checkbox" data-k="autoSize" id="prop-auto-size" title="Auto-scale button text size to fit boundary" ${el.autoSize ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
+          <label for="prop-auto-size" title="Auto-scale button text size to fit boundary" style="cursor:pointer; margin:0;">Auto</label>
+        </div>
+        <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
+          <input type="checkbox" data-k="wrapText" id="prop-wrap-text" title="Allow button text to wrap onto multiple lines" ${el.wrapText ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
+          <label for="prop-wrap-text" title="Allow button text to wrap onto multiple lines" style="cursor:pointer; margin:0;">Wrap</label>
+        </div>
+        <div class="prop-row" style="margin:0; flex:1;">
+          <label for="prop-max-font-size">Max size</label>
+          <input type="number" data-k="maxFontSize" id="prop-max-font-size" value="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" ${!el.autoSize ? 'disabled' : ''} style="width:100%;" title="Maximum font size when using Auto-size" />
+        </div>
       </div>
-      <div class="prop-row" style="margin:0"><label>Size</label>
-        <input type="number" data-k="fontSize" value="${el.fontSize}" title="Button Font Size" />
-      </div>
-    </div></div>`);
+    </div>`);
+
     f.push(colOpac('bg', 'BG'));
     f.push(col('color', 'Text color'));
-    // Radius + Padding L/R share a row.
+    // Radius + Padding L/R + Padding T/B share a row.
     f.push(`<div class="prop-row" style="display:flex; gap:6px;">
           <div style="flex:1; min-width:0;"><label for="prop-radius">Radius</label><input type="number" data-k="radius" id="prop-radius" value="${el.radius !== undefined ? el.radius : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button corner radius in pixels" /></div>
           <div style="flex:1; min-width:0;"><label for="prop-padding-lr">Padding L/R</label><input type="number" data-k="paddingLR" id="prop-padding-lr" value="${el.paddingLR !== undefined ? el.paddingLR : 16}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button horizontal padding in pixels" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-padding-tb">Padding T/B</label><input type="number" data-k="paddingTB" id="prop-padding-tb" value="${el.paddingTB !== undefined ? el.paddingTB : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button vertical padding in pixels" /></div>
         </div>`);
     f.push(`<div class="prop-row" style="display:flex; gap:16px;">
           <div class="checkbox-row">
-            <input type="checkbox" data-k="autoHug" id="prop-auto-hug" title="Auto-scale button width to hug text content" ${el.autoHug ? 'checked' : ''}/>
-            <label for="prop-auto-hug" title="Auto-scale button width to hug text content" style="cursor:pointer;">Hug</label>
+            <input type="checkbox" data-k="autoHug" id="prop-auto-hug" title="Auto-scale button width to hug text content" ${el.autoHug ? 'checked' : ''} ${el.autoSize ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}/>
+            <label for="prop-auto-hug" title="Auto-scale button width to hug text content" style="cursor:${el.autoSize ? 'not-allowed' : 'pointer'}; opacity:${el.autoSize ? '0.5' : '1'};">Hug</label>
           </div>
           <div class="checkbox-row">
             ${c && c.fullClickArea !== false 
@@ -6737,6 +6819,16 @@ function renderProps() {
       <div class="panel-section-content">
         ${f.join('')}`;
 
+function checkButtonFontSizeWarning(el) {
+  if (el && el.type === 'button' && el.autoSize) {
+    const dText = (typeof dmDisplay === 'function' ? dmDisplay(el).text : null) || el.text;
+    const computedFontSize = calculateAutoSize(el, dText);
+    if (computedFontSize < 6) {
+      showCanvasNotification('Text size will be unreadable', { type: 'warning' });
+    }
+  }
+}
+
   const updateProp = (k, val) => {
     if (!k) return;
     // (A) Edit-in-place for panel-edited dynamic fields (color/bg/text): route to the active
@@ -6751,7 +6843,7 @@ function renderProps() {
     if (state.layerSelection && state.layerSelection.length > 1 && c) {
       c.elements.filter(e => state.layerSelection.includes(e.id)).forEach(selEl => {
         if (k === 'text' && selEl.id !== el.id) return; // Don't copy specific text content across elements
-        if (['fontFamily', 'fontSize', 'weight', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'verticalAlign', 'autoSize', 'maxFontSize'].includes(k) && selEl.type !== 'text' && selEl.type !== 'button') return;
+        if (['fontFamily', 'fontSize', 'weight', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'verticalAlign', 'autoSize', 'maxFontSize', 'paddingLR', 'paddingTB'].includes(k) && selEl.type !== 'text' && selEl.type !== 'button') return;
         
         if ((k === 'width' || k === 'height') && selEl.type === 'button') {
           selEl.autoHug = false;
@@ -6792,6 +6884,12 @@ function renderProps() {
             delete selEl[k];
           } else {
             selEl[k] = val;
+            if (k === 'autoSize' && val === true) {
+              selEl.autoHug = false;
+            }
+            if (k === 'autoHug' && val === true) {
+              selEl.autoSize = false;
+            }
           }
         }
         
@@ -6839,6 +6937,12 @@ function renderProps() {
           delete el[k];
         } else {
           el[k] = val;
+          if (k === 'autoSize' && val === true) {
+            el.autoHug = false;
+          }
+          if (k === 'autoHug' && val === true) {
+            el.autoSize = false;
+          }
         }
       }
       if (el.type === 'button' && el.autoHug) {
@@ -6849,6 +6953,7 @@ function renderProps() {
       const autoHugInp = propsEl.querySelector('input[data-k="autoHug"]');
       if (autoHugInp) autoHugInp.checked = false;
     }
+    checkButtonFontSizeWarning(el);
     render(true);
   };
 
@@ -6902,7 +7007,7 @@ function renderProps() {
     });
     inp.addEventListener('change', () => {
       pushHistory();
-      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio') renderProps();
+      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText') renderProps();
     });
     if (inp.type === 'number') {
       inp.addEventListener('wheel', (e) => {
@@ -8511,10 +8616,21 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       const ff = el.fontFamily ? el.fontFamily + ',sans-serif' : 'Arial,Helvetica,sans-serif';
       const alignMap = { left: 'flex-start', center: 'center', right: 'flex-end', justify: 'space-between' };
       const jc = alignMap[el.textAlign || 'center'];
+      const paddingTB = el.paddingTB !== undefined ? el.paddingTB : 0;
+      const paddingLR = el.paddingLR !== undefined ? el.paddingLR : 16;
       // Fill is its own absolute layer with `fillOpacity`; the text sits on top
       // at full opacity (relative positioning so it stacks above the fill); the
       // stroke overlay paints last on top of both.
-      return `    <div style="${wrapStyle}">${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div style="position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:0 ${el.paddingLR || 16}px;box-sizing:border-box;">${esc(el.text)}</div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+      if (el.autoSize) {
+        const autoAttrs = ` class="auto-size-text" data-max-size="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" data-width="${el.width}" data-height="${el.height}" data-padding-lr="${paddingLR}" data-padding-tb="${paddingTB}"`;
+        const spanStyle = el.wrapText
+          ? `display:inline;word-break:break-word;white-space:normal;`
+          : `display:inline;white-space:nowrap;`;
+        return `    <div style="${wrapStyle}"${autoAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div class="auto-size-block" style="position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:break-word;' : ''}"><span class="auto-size-span" style="${spanStyle}">${esc(el.text)}</span></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+      } else {
+        const normalBlockStyle = `position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:break-word;' : 'white-space:nowrap;'}`;
+        return `    <div style="${wrapStyle}">${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div style="${normalBlockStyle}">${esc(el.text)}</div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+      }
     }
     if (el.type === 'image' && el.assetId) {
       let src = state.assets[el.assetId] || el.assetId;
@@ -8732,6 +8848,11 @@ ${elsTop}
         var targetWidth = parseFloat(wrapper.getAttribute('data-width')) || wrapper.offsetWidth;
         var targetHeight = parseFloat(wrapper.getAttribute('data-height')) || wrapper.offsetHeight;
         
+        var padLR = parseFloat(wrapper.getAttribute('data-padding-lr')) || 0;
+        var padTB = parseFloat(wrapper.getAttribute('data-padding-tb')) || 0;
+        targetWidth = Math.max(0, targetWidth - padLR * 2);
+        targetHeight = Math.max(0, targetHeight - padTB * 2);
+
         var block = wrapper.querySelector('.auto-size-block');
         var span = wrapper.querySelector('.auto-size-span');
         if (!block || !span) return;
@@ -8896,7 +9017,7 @@ function syncDefaultsForRole(role, cat) {
   // Baseline: content + appearance; keep layout (transform) and font-size independent.
   const s = { opacity: true, inAnim: true, effect: true, transform: false };
   if (cat === 'text') { s.text = true; s.font = true; s.fontSize = false; s.color = true; s.background = true; }
-  else if (cat === 'button') { s.text = true; s.textColor = true; s.fill = true; s.stroke = true; }
+  else if (cat === 'button') { s.text = true; s.textColor = true; s.fill = true; s.stroke = true; s.font = true; }
   else if (cat === 'image') { s.image = true; s.rotation = true; }
   else if (cat === 'shape') { s.fill = true; s.stroke = true; }
   else if (cat === 'line') { s.color = true; s.thickness = true; }
