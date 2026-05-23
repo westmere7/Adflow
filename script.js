@@ -364,7 +364,7 @@ function getCappedHistory(limit) {
 // IndexedDB (not localStorage) so large projects with embedded image data URLs
 // don't hit the ~5MB localStorage ceiling. A single record holds the latest
 // working state; it's overwritten on a debounce after every change.
-const AUTOSAVE_DB = 'adcooker-autosave';
+const AUTOSAVE_DB = 'adflow-autosave';
 const AUTOSAVE_STORE = 'state';
 const AUTOSAVE_KEY = 'current';
 
@@ -7885,7 +7885,7 @@ window.addEventListener('copy', (e) => {
   if (c && state.layerSelection?.length > 0) {
     const selected = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
     state.clipboard = selected;
-    e.clipboardData.setData('application/x-adcooker-elements', JSON.stringify(selected));
+    e.clipboardData.setData('application/x-adflow-elements', JSON.stringify(selected));
     e.preventDefault();
   }
 });
@@ -7899,7 +7899,7 @@ window.addEventListener('cut', (e) => {
   if (c && state.layerSelection?.length > 0) {
     const selected = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
     state.clipboard = selected;
-    e.clipboardData.setData('application/x-adcooker-elements', JSON.stringify(selected));
+    e.clipboardData.setData('application/x-adflow-elements', JSON.stringify(selected));
     c.elements = c.elements.filter(x => !state.layerSelection.includes(x.id));
     state.layerSelection = [];
     state.selectedElementId = null;
@@ -7917,8 +7917,8 @@ window.addEventListener('paste', (e) => {
   const c = getActiveCanvas();
   if (!c) return;
 
-  // 1. Try pasting Adcooker elements
-  const elementsData = e.clipboardData.getData('application/x-adcooker-elements');
+  // 1. Try pasting Adflow elements
+  const elementsData = e.clipboardData.getData('application/x-adflow-elements') || e.clipboardData.getData('application/x-adcooker-elements');
   if (elementsData) {
     e.preventDefault();
     try {
@@ -9042,17 +9042,18 @@ document.getElementById('btn-preview').addEventListener('click', () => {
 // ============================================================================
 // Save / Load Project
 // ============================================================================
-async function saveProjectAsCook() {
+async function saveProjectAsFlow() {
   if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
 
   const zip = new JSZip();
   const exportState = JSON.parse(JSON.stringify(state));
   exportState.editingElementId = null;
-  const ca = document.getElementById('canvas-area');
-  if (ca) {
+  if (document.getElementById('canvas-area')) {
+    const ca = document.getElementById('canvas-area');
     exportState.viewScrollLeft = ca.scrollLeft;
     exportState.viewScrollTop = ca.scrollTop;
   }
+  exportState.zoom = state.zoom || 0.6;
 
   // Embed the capped history stack and index
   const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 10;
@@ -9060,13 +9061,24 @@ async function saveProjectAsCook() {
   exportState.history = capped.history;
   exportState.historyIndex = capped.historyIndex;
 
+  // Prune history from file to keep size small, unless user configured to save it
+  const settings = (await _idbGet('settings')) || {};
+  if (settings.saveHistoryInProject !== true) {
+    delete exportState.history;
+    delete exportState.historyIndex;
+  }
+
   const imgFolder = zip.folder('images');
-  for (const [assetId, dataUrl] of Object.entries(exportState.assets || {})) {
-    if (dataUrl.startsWith('data:')) {
-      const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-      if (match) {
-        const ext = match[1] === 'jpeg' ? 'jpg' : (match[1] === 'svg+xml' ? 'svg' : match[1]);
-        const b64Data = match[2];
+  if (exportState.assets) {
+    for (const [assetId, dataUrl] of Object.entries(exportState.assets)) {
+      if (dataUrl && dataUrl.startsWith('data:image/')) {
+        const parts = dataUrl.split(',');
+        const b64Data = parts[1];
+        const mimeType = parts[0].split(';')[0].split(':')[1];
+        let ext = mimeType.split('/')[1];
+        if (ext === 'jpeg') ext = 'jpg';
+        if (ext === 'svg+xml') ext = 'svg';
+
         const filename = `${assetId}.${ext}`;
         imgFolder.file(filename, b64Data, { base64: true });
         exportState.assets[assetId] = `images/${filename}`;
@@ -9078,7 +9090,7 @@ async function saveProjectAsCook() {
   // preview without unpacking the whole project payload.
   const savedAt = new Date().toISOString();
   zip.file('meta.json', JSON.stringify({
-    magic: 'adcooker',
+    magic: 'adflow',
     version: 1,
     savedAt,
     projectName: state.projectName || 'RMIT_Ad'
@@ -9088,12 +9100,12 @@ async function saveProjectAsCook() {
   const content = await zip.generateAsync({ type: 'blob' });
   const projName = (state.projectName || 'RMIT_Ad').replace(/[^a-zA-Z0-9_-]/g, '_');
   const datePart = savedAt.slice(0, 10); // YYYY-MM-DD
-  const suggestedName = `${projName}-${datePart}.cook`;
+  const suggestedName = `${projName}-${datePart}.flow`;
 
   if (window.showSaveFilePicker) {
     try {
       const handle = await window.showSaveFilePicker({
-        types: [{ description: 'Ad Cooker Project', accept: { 'application/octet-stream': ['.cook'] } }],
+        types: [{ description: 'Ad Flow Project', accept: { 'application/octet-stream': ['.flow'] } }],
         suggestedName
       });
       const writable = await handle.createWritable();
@@ -9111,9 +9123,10 @@ async function saveProjectAsCook() {
   }
 }
 
-// Backwards-compat alias — keyboard shortcuts and a few other places still reference
+// Backwards-compat aliases — keyboard shortcuts and a few other places still reference
 // the original name.
-const saveProjectToZip = saveProjectAsCook;
+const saveProjectAsCook = saveProjectAsFlow;
+const saveProjectToZip = saveProjectAsFlow;
 
 async function addRecentProject(exportState) {
   try {
@@ -9232,7 +9245,7 @@ function loadProjectFromState(loadedState) {
 }
 
 // Shared inflater used by the menu Open dialog AND the drag-drop overlay. Both
-// formats — modern .cook and legacy .zip — share the same internal structure.
+// formats — modern .flow and legacy .cook/.zip — share the same internal structure.
 async function loadProjectFromBlob(file) {
   if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
   const zip = await JSZip.loadAsync(file);
@@ -9295,7 +9308,7 @@ async function openProjectFromZip() {
   if (window.showOpenFilePicker) {
     try {
       const [handle] = await window.showOpenFilePicker({
-        types: [{ description: 'Ad Cooker Project', accept: { 'application/octet-stream': ['.cook', '.zip'] } }]
+        types: [{ description: 'Ad Flow Project', accept: { 'application/octet-stream': ['.flow', '.cook', '.zip'] } }]
       });
       file = await handle.getFile();
     } catch (e) { if (e.name !== 'AbortError') console.error('Open failed:', e); return; }
@@ -9303,7 +9316,7 @@ async function openProjectFromZip() {
     file = await new Promise(resolve => {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = '.cook,.zip';
+      input.accept = '.flow,.cook,.zip';
       input.onchange = e => resolve(e.target.files[0]);
       input.click();
     });
@@ -9313,7 +9326,7 @@ async function openProjectFromZip() {
     await loadProjectFromBlob(file);
   } catch (err) {
     console.error(err);
-    alert('Failed to load project. Ensure it is a valid .cook file.');
+    alert('Failed to load project. Ensure it is a valid .flow or .cook file.');
   }
 }
 
@@ -9671,7 +9684,7 @@ function openNewProjectDialog() {
             </div>
           </div>
         </div>
-        <p style="margin:0; font-size:11px; color:var(--text-muted); line-height:1.5;">This replaces your current project. Your existing work is auto-saved — save a <strong>.cook</strong> file first if you want a separate backup.</p>
+        <p style="margin:0; font-size:11px; color:var(--text-muted); line-height:1.5;">This replaces your current project. Your existing work is auto-saved — save a <strong>.flow</strong> file first if you want a separate backup.</p>
       </div>
       <div class="modal-foot">
         <button class="btn" id="np-cancel" title="Cancel and keep current project">Cancel</button>
@@ -9996,7 +10009,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
             Key Concept: Multi-Canvas Workflow & Link Groups
           </h3>
           <p style="margin:0; font-size:12px; color:var(--text-muted); line-height:1.5;">
-            Design once, propagate everywhere. RMIT Display Studio lets you orchestrate every banner size (Canvas) inside a single project. Using <b>Link Groups</b>, you bind elements — headlines, CTA buttons, logos, background shapes — across canvases, so a change syncs automatically (or in real time) instead of being re-done by hand in every size.
+            Design once, propagate everywhere. RMIT Adflow lets you orchestrate every banner size (Canvas) inside a single project. Using <b>Link Groups</b>, you bind elements — headlines, CTA buttons, logos, background shapes — across canvases, so a change syncs automatically (or in real time) instead of being re-done by hand in every size.
           </p>
         </div>
 
@@ -10011,7 +10024,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
         </div>
 
         <h2 style="color:#22d3ee; margin-top:0; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">1. Workspace & Multi-Canvas Orchestration</h2>
-        <p>Instead of managing separate files for each banner size, RMIT Display Studio arranges all your ad sizes (Canvases) side-by-side on an infinite panning workspace.</p>
+        <p>Instead of managing separate files for each banner size, RMIT Adflow arranges all your ad sizes (Canvases) side-by-side on an infinite panning workspace.</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
           <li style="margin-bottom:6px;"><b>Adding Canvases:</b> Click the <b>+</b> button in the left sidebar to add standard IAB display sizes (300×250, 728×90, 160×600, 970×250, 320×50, …) or input custom dimensions.</li>
           <li style="margin-bottom:6px;"><b>Active Canvas Selection:</b> Click any canvas to make it the active workspace. The side property panels and options automatically scope to the selected canvas.</li>
@@ -10050,7 +10063,18 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
           <li style="margin-bottom:6px;"><b>Advanced Color Picker:</b> Swatches support linear and radial gradients, hex inputs, alpha opacity settings, and saved project swatches.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">5. Layer Stacking & Persistence</h2>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">5. Assets Panel &amp; Reusable Elements</h2>
+        <p>The Assets panel (bottom-left) allows you to store, organize, and reuse design elements and image uploads:</p>
+        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
+          <li style="margin-bottom:6px;"><b>Saving Custom Assets:</b> Select any canvas element (text, shape, button, image, or group) and click the <b>+</b> button in the Assets panel header (or right-click the element and select <b>Save to Assets</b>) to store it. Custom assets preserve all styles, contents, and animations.</li>
+          <li style="margin-bottom:6px;"><b>Asset Folders:</b> Create folders via the folder icon in the panel header. Double-click custom folder names to rename them (read-only preloaded folders cannot be renamed).</li>
+          <li style="margin-bottom:6px;"><b>External Files &amp; Drag-and-Drop:</b> Drag image files (PNG, JPEG, SVG) directly from your computer into the Assets panel or onto a specific folder. Alternatively, click the <b>+</b> button to trigger a prompt to upload new files.</li>
+          <li style="margin-bottom:6px;"><b>Organizing Assets:</b> Supports single/multiple selection (hold <span class="kbd">Ctrl</span> or <span class="kbd">Shift</span>). Drag selected assets into folders or out to the left margin to move them back to the root list. Press <span class="kbd">Delete</span> or <span class="kbd">Backspace</span> to delete selected custom assets.</li>
+          <li style="margin-bottom:6px;"><b>RMIT Folder:</b> A read-only collection of RMIT brand assets is preloaded automatically. These assets are protected against deletion or renaming and support WebP compression when placed on canvas.</li>
+          <li style="margin-bottom:6px;"><b>Adding to Canvas:</b> Drag assets from the panel onto any canvas, or double-click an asset to place it in the center. Placed elements are registered correctly in the Layers list.</li>
+        </ul>
+
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">6. Layer Stacking & Persistence</h2>
         <p>Order and target layers across frames via the left Layers Panel:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
           <li style="margin-bottom:6px;"><b>Arranging:</b> Drag layers up and down the stack, or use <span class="kbd">Ctrl</span>+<span class="kbd">[</span> and <span class="kbd">Ctrl</span>+<span class="kbd">]</span> to order.</li>
@@ -10058,7 +10082,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
           <li style="margin-bottom:6px;"><b>Persistence (Frame vs Top vs Bottom):</b> Click the persistence badge on a layer. <i>Frame</i> limits the element to the current timeline frame. <i>Bottom</i> locks it as a background across all frames. <i>Top</i> forces it to overlay above all frames (useful for branding logos and persistent CTAs).</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">6. Timeline, Animations & Loop</h2>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">7. Timeline, Animations & Loop</h2>
         <p>Animate your display ads using the frame-based sequencer at the top of the workspace:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
           <li style="margin-bottom:6px;"><b>Frames:</b> Create sequence steps with individual display durations. The per-frame transition selector covers <i>Fade</i>, <i>Slide</i> (L/R/U/D), and <i>Swipe</i> (L/R/U/D, a wipe that reveals the next frame). Slide/Swipe also offer an <b>Add Fade</b> toggle and a transition duration.</li>
@@ -10068,7 +10092,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
           <li style="margin-bottom:6px;"><b>Timeline Loop:</b> Toggle the global Loop option to repeat the whole timeline continuously.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">7. Alignment, Guides & Snapping</h2>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">8. Alignment, Guides & Snapping</h2>
         <p>Ensure precise layout alignment across your banners:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
           <li style="margin-bottom:6px;"><b>Magnetic Snapping:</b> Elements align and snap to canvas edges, centers, guidelines, and sibling layers. Toggle Snapping in the workspace context menu.</li>
@@ -10076,30 +10100,30 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
           <li style="margin-bottom:6px;"><b>Precision Nudging:</b> Use arrow keys to nudge elements 1px, or hold <span class="kbd">Shift</span> to nudge 10px.</li>
         </ul>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">8. Saving, Auto-Save & Project Management</h2>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">9. Saving, Auto-Save & Project Management</h2>
         <p>Your work is protected automatically, and projects are easy to start, reopen and configure:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
           <li style="margin-bottom:6px;"><b>Seamless auto-save:</b> Every change is continuously persisted to this browser (IndexedDB) and restored when you return — including your zoom and scroll position. The top bar shows a live status: <i>All changes saved</i>, <i>Saving…</i>, or <i>Unsaved changes</i>. No prompt on close.</li>
-          <li style="margin-bottom:6px;"><b>Project History:</b> Undo/redo history is saved directly within the browser session autosave and inside <code>.cook</code> project files, allowing full history recovery upon reopening or importing a project. The history limit is configurable from <b>File → Settings</b> (1 to 50 states, default 10). <i>Warning: Storing history does not persist deleted assets (like images) from a past session. Undoing after reopening a project might result in missing images if those assets were deleted and pruned.</i></li>
-          <li style="margin-bottom:6px;"><b>Manual save / open (.cook):</b> <b>File → Save Project</b> (<span class="kbd">⌘ / Ctrl</span>+<span class="kbd">S</span>) writes a portable <b>.cook</b> file (project + embedded assets); <b>Open Project</b> loads <code>.cook</code> (and legacy <code>.zip</code>) back in.</li>
+          <li style="margin-bottom:6px;"><b>Project History:</b> Undo/redo history is saved directly within the browser session autosave and inside <code>.flow</code> project files, allowing full history recovery upon reopening or importing a project. The history limit is configurable from <b>File → Settings</b> (1 to 50 states, default 10). <i>Warning: Storing history does not persist deleted assets (like images) from a past session. Undoing after reopening a project might result in missing images if those assets were deleted and pruned.</i></li>
+          <li style="margin-bottom:6px;"><b>Manual save / open (.flow):</b> <b>File → Save Project</b> (<span class="kbd">⌘ / Ctrl</span>+<span class="kbd">S</span>) writes a portable <b>.flow</b> file (project + embedded assets); <b>Open Project</b> loads <code>.flow</code> (and legacy <code>.cook</code>/<code>.zip</code>) back in.</li>
           <li style="margin-bottom:6px;"><b>Open Recent:</b> The File menu lists your last manually-saved projects with timestamps for one-click restore.</li>
           <li style="margin-bottom:6px;"><b>New Project wizard:</b> Choose which canvas sizes to include (all on by default), the project name, ClickTag URL, the default canvas background colour, and a configurable <b>maximum ad weight (KB)</b> used by the live validator.</li>
           <li style="margin-bottom:6px;"><b>Project Settings &amp; Settings:</b> Edit project name / ClickTag in <b>File → Project Settings</b>; app-level preferences (theme, rulers, snapping, Crop to Canvas, and history limit) live in <b>File → Settings</b>.</li>
         </ul>
 
-        <h2 style="color:var(--accent-light); margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">9. Data &amp; Versions ✨ (Dynamic Creative)</h2>
+        <h2 style="color:var(--accent-light); margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">10. Data &amp; Versions ✨ (Dynamic Creative)</h2>
         <p>Design <b>one</b> template, then mail-merge a spreadsheet of data into it to produce a finished ad set per row — perfect for running the same banner set across many RMIT courses. Open it from <b>File → Data &amp; Versions…</b> or the <b>Data</b> button in the top bar.</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:10px;">
           <li style="margin-bottom:8px;"><b>1 · Mark what's dynamic:</b> Select an element and, in the <b>Dynamic Data</b> section of the Properties panel, tick the fields that should vary per version — <i>Text</i> &amp; <i>Color</i> on text, plus <i>Background</i> on buttons, <i>Image</i> on images, or fill <i>Color</i> on shapes. A small dot marks dynamic elements on the canvas. Unmarked elements are never touched by the merge.</li>
           <li style="margin-bottom:8px;"><b>Slots &amp; link groups:</b> A dynamic field becomes a <b>slot</b>. If the element belongs to a Link Group, the slot covers the <b>whole group</b> — so one binding fills that element on every size at once. Toggling a field on a linked element automatically applies it to all its siblings, and your link-group sync settings are never altered.</li>
-          <li style="margin-bottom:8px;"><b>2 · Load your sheet:</b> In the panel, <b>Import CSV</b> (or add columns/rows by hand). Map each spreadsheet column to a slot's field, choose the <b>★ key column</b> (used to name exported folders), and optionally bind a column to the <b>ClickTag</b> exit URL. The whole sheet is stored inside the <code>.cook</code> project, auto-saves with it, and can be exported back to CSV for the team to edit.</li>
+          <li style="margin-bottom:8px;"><b>2 · Load your sheet:</b> In the panel, <b>Import CSV</b> (or add columns/rows by hand). Map each spreadsheet column to a slot's field, choose the <b>★ key column</b> (used to name exported folders), and optionally bind a column to the <b>ClickTag</b> exit URL. The whole sheet is stored inside the <code>.flow</code> project, auto-saves with it, and can be exported back to CSV for the team to edit.</li>
           <li style="margin-bottom:8px;"><b>3 · Switch versions live:</b> Pick a row from the <b>Version</b> dropdown in the top bar to preview it on the canvas — in both editing and preview modes. Substitution is <b>non-destructive</b>: your template defaults are never overwritten, and choosing "Template (no version)" returns to them.</li>
           <li style="margin-bottom:8px;"><b>Edit-in-place &amp; Data lock:</b> While a version is active, editing a dynamic slot on the canvas (typing into text, recolouring, swapping an image) writes back to <b>that row's cell</b> rather than the template. Click the <b>lock</b> button next to the dropdown to make dynamic slots read-only so you can review versions without nudging the data.</li>
           <li style="margin-bottom:8px;"><b>4 · Export every version:</b> In the Export dialog, <b>Export All Versions</b> generates one folder per row (named from the key column), each containing the full Google-Ads-compliant ZIP set, through the standard export pipeline.</li>
         </ul>
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Image columns should reference an asset filename already used in the project (or a full URL). Frames need no special handling — a frame-1 and frame-2 headline are simply two differently-named slots.</p>
 
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">10. Exporting & Google Ads Validation</h2>
+        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">11. Exporting & Google Ads Validation</h2>
         <p>Export ready-to-run HTML5 ad packages tailored for Google Ads compliance:</p>
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:8px;">
           <li style="margin-bottom:6px;"><b>ClickTag Configuration:</b> Set target redirects globally or override individual click destinations per canvas.</li>
@@ -10109,7 +10133,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
         </ul>
 
       </div>`;
-  openModal('RMIT Display Studio Documentation', body, false);
+  openModal('RMIT Adflow Documentation', body, false);
 });
 
 
@@ -10118,7 +10142,7 @@ const CHANGELOG_DATA = [
     version: 'v1.7.0',
     date: 'May 2026',
     items: [
-      'Added options to save undo/redo history within the .cook project file and the IndexedDB autosave, allowing full project history recovery upon session reload or project file import.',
+      'Added options to save undo/redo history within the .flow project file and the IndexedDB autosave, allowing full project history recovery upon session reload or project file import.',
       'Introduced a "History & Saving" settings section, allowing users to configure the saved history limit (1 to 50 entries, defaulting to 10).',
       'Added a prominent warning in the settings panel regarding deleted image and assets persistence across sessions to prevent missing references when undoing past deletions.',
       'Synchronized versioning strings across Settings headers, About dialogs, and Update checks.'
@@ -10145,7 +10169,7 @@ const CHANGELOG_DATA = [
       'Composable with link groups: a slot maps to its link group when one exists (one binding fans across all sizes) or to a single element otherwise — without ever altering your link-group sync settings.',
       'Version switcher in the top bar applies the selected row live in both editing and preview, non-destructively — your template defaults are never overwritten.',
       'Edit-in-place: changing a dynamic slot on the canvas while a version is active writes back to that row’s cell. A new Data lock button makes dynamic slots read-only so you can review versions without nudging the data.',
-      'ClickTag is bindable per version, and “Export All Versions” produces one folder per row (named from your chosen key column) through the standard Google-Ads export pipeline. The data sheet is stored inside the .cook project (auto-saves & travels) and can be imported/exported as CSV.'
+      'ClickTag is bindable per version, and “Export All Versions” produces one folder per row (named from your chosen key column) through the standard Google-Ads export pipeline. The data sheet is stored inside the .flow project (auto-saves & travels) and can be imported/exported as CSV.'
     ]
   },
   {
@@ -10164,7 +10188,7 @@ const CHANGELOG_DATA = [
       'Auto-resize from selected (AI): build your entire size set in one click. It reads every element on the selected canvas, detects each one’s role (heading, subheading, button, logo, shape, background image, or generic), then clears the other canvases and re-places + re-sizes matching elements using per-format layout presets.',
       'Auto-resize automatically links every propagated element into its own group with role-aware sync defaults — content and appearance stay in sync across canvases while position, dimensions and font-size remain independent per format.',
       'Added a dedicated "Font size" sync property for text link groups, split out from "Font settings" — you can now sync the typeface across canvases while keeping per-canvas sizes.',
-      'Added seamless local auto-save: projects are continuously persisted to the browser (IndexedDB) and restored on reload, with a live save-status indicator (All changes saved / Saving… / Unsaved) in the top bar. Manual .cook saving is unchanged.',
+      'Added seamless local auto-save: projects are continuously persisted to the browser (IndexedDB) and restored on reload, with a live save-status indicator (All changes saved / Saving… / Unsaved) in the top bar. Manual .flow saving is unchanged.',
       'New Project wizard now lets you pick which canvas sizes to include, the project name, the default canvas background colour, and a configurable maximum ad weight (KB) that drives the live size-validation warnings.',
       'Cleaned up the Tools panel — removed the permanent highlight on the Auto-resize and Toggle Safezones buttons (the AI badge stays).'
     ]
@@ -10497,7 +10521,7 @@ function checkVersionUpdate() {
       <div style="background:var(--bg-panel); border:1px solid var(--border-light); border-radius:8px; width:480px; max-width:90%; padding:24px; box-shadow:0 20px 25px -5px rgb(0 0 0 / 0.5); display:flex; flex-direction:column; gap:16px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <h2 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright);">RMIT Display Studio Updated</h2>
+            <h2 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright);">RMIT Adflow Updated</h2>
             <span style="background:var(--accent-base); color:var(--text-bright); font-size:10px; font-weight:700; padding:2px 6px; border-radius:12px;">${currentVersion}</span>
           </div>
           <span style="font-size:11px; color:var(--text-muted);">Updated from ${lastSeen}</span>
@@ -10551,7 +10575,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
         </div>
       </div>`;
-  openModal('About RMIT Display Studio', body, false);
+  openModal('About RMIT Adflow', body, false);
   const btnChangelog = document.getElementById('btn-changelog');
   if (btnChangelog) {
     btnChangelog.onclick = () => {

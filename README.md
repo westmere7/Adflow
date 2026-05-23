@@ -1,6 +1,6 @@
 # RMIT Display Studio
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-adcooker.netlify.app-brightgreen?style=for-the-badge&logo=netlify)](https://adcooker.netlify.app/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-adflow.netlify.app-brightgreen?style=for-the-badge&logo=netlify)](https://adflow.netlify.app/)
 
 A professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. RMIT Display Studio eliminates the need for complex build pipelines and third-party software installations, providing a streamlined environment tailored for high-volume banner production.
 
@@ -39,7 +39,7 @@ Design **one** template, then data-merge a spreadsheet into it to produce a fini
 
 - **Per-element dynamic opt-in** — select any element and tick which fields should vary per version in the new **Dynamic Data** panel: *Text* and *Color* on text; plus *Background* on buttons, *Image* on images, or fill *Color* on shapes. Unmarked elements are never touched by the merge; a small dot marks dynamic elements on the canvas.
 - **Slots compose with Link Groups** — a dynamic field becomes a *slot*. If the element is in a Link Group, the slot covers the **whole group**, so one binding fills that element on every size at once. Toggling a field on a linked element applies it to all siblings automatically — and your link-group sync settings are never altered.
-- **Bind columns → slots** — import a CSV (or build the sheet inline), map each column to a slot's field, pick the **★ key column** that names exported folders, and optionally bind a column to the **ClickTag** exit URL. The sheet is stored inside the `.cook` project (auto-saves and travels with it) and can be exported back to CSV for the team to edit.
+- **Bind columns → slots** — import a CSV (or build the sheet inline), map each column to a slot's field, pick the **★ key column** that names exported folders, and optionally bind a column to the **ClickTag** exit URL. The sheet is stored inside the `.flow` project (auto-saves and travels with it) and can be exported back to CSV for the team to edit.
 - **Live, non-destructive version switching** — pick a row from the top-bar **Version** dropdown to preview it on the canvas in both editing and preview modes. Your template defaults are never overwritten; "Template (no version)" returns to them.
 - **Edit-in-place + Data lock** — while a version is active and the Data Lock is OFF, editing a dynamic slot (either inline on the canvas or via the properties panel) writes back directly to **that row's cell** in the version record. Toggling the **Data lock** to ON makes all dynamic inputs and textareas read-only, preventing accidental changes to version data.
 - **Batch export** — **Export All Versions** produces one folder per row (named from the key column), each holding the full Google Ads-compliant ZIP set, through the standard export pipeline.
@@ -53,7 +53,7 @@ Frames need no special handling — a frame-1 and frame-2 headline are simply tw
 ### Workspace & Architecture
 - **Infinite Multi-Canvas Workspace**: Design and edit multiple ad sizes simultaneously side-by-side within a single project window.
 - **Seamless Auto-Save**: Every change is continuously persisted to the browser (IndexedDB) and restored on reload — including zoom & scroll position — with a live save-status indicator in the top bar. No "unsaved changes" nagging.
-- **Portable `.cook` Projects**: Manually save/open self-contained `.cook` files (project + embedded assets), with an **Open Recent** list of your last saved projects for one-click restore.
+- **Portable `.flow` Projects**: Manually save/open self-contained `.flow` files (project + embedded assets), with an **Open Recent** list of your last saved projects for one-click restore.
 - **New Project Wizard**: Spin up a project by picking which canvas sizes to include, the name, ClickTag, default background colour, and a configurable maximum ad weight (KB).
 - **Theming System**: Switch between distinct UI color schemas (Dark, RMIT Brand, Ocean, Navy, Light).
 - **History Management**: Full Undo/Redo stack supporting complex nested operations.
@@ -62,7 +62,7 @@ Frames need no special handling — a frame-1 and frame-2 headline are simply tw
 - **Data & Versions Engine**: Bind named element *slots* to spreadsheet columns and generate one finished ad set per row — see the headline feature above.
 - **Per-Element Dynamic Flags**: Opt individual fields (text, colour, background, image) into the merge from the Properties panel; flags propagate across Link Groups so a slot stays consistent on every size.
 - **Top-Bar Version Switcher**: Live, non-destructive preview of any version in both editing and preview, with edit-in-place write-back and a Data lock for read-only review.
-- **CSV Import / Export & Batch Export**: Round-trip the data sheet as CSV (stored inside the `.cook` project) and export every version as its own folder of Google Ads-compliant ZIPs.
+- **CSV Import / Export & Batch Export**: Round-trip the data sheet as CSV (stored inside the `.flow` project) and export every version as its own folder of Google Ads-compliant ZIPs.
 
 ### Element & Asset Management
 - **Supported Entities**: Text, Images, SVGs, Rectangles, Circles, and Buttons.
@@ -130,7 +130,7 @@ No build tools, `npm install`, or server configuration required.
 
 ### Hosted Environment
 Access the application immediately via the live deployment:
-**[adcooker.netlify.app](https://adcooker.netlify.app/)**
+**[adflow.netlify.app](https://adflow.netlify.app/)**
 
 ### Local Environment
 1. **Clone the repository**

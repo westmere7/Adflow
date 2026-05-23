@@ -1,15 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(awk 'NR>=1360 && NR<=1378 {printf \"%d: [%s]\\\\n\", NR, $0}' \"G:/My Drive/RMIT_WORKS/Apps/Adcooker/styles.css\")",
-      "Bash(awk 'NR>=1368 && NR<=1372' \"G:/My Drive/RMIT_WORKS/Apps/Adcooker/styles.css\")",
+      "Bash(awk 'NR>=1360 && NR<=1378 {printf \"%d: [%s]\\\\n\", NR, $0}' \"G:/My Drive/RMIT_WORKS/Apps/Adflow/styles.css\")",
+      "Bash(awk 'NR>=1368 && NR<=1372' \"G:/My Drive/RMIT_WORKS/Apps/Adflow/styles.css\")",
       "Bash(node --check script.js)",
       "Bash(echo \"EXIT: $?\")",
       "Bash(awk '/CHANGELOG_DATA/,/^\\\\];/' script.js)",
       "Bash(echo \"exit $?\")",
       "Bash(grep -v \"^0$\")",
       "mcp__Claude_Preview__preview_start",
-      "PowerShell($p=\"G:\\\\My Drive\\\\RMIT_WORKS\\\\Apps\\\\Adcooker\\\\styles.css\"; $t=[System.IO.File]::ReadAllText\\($p\\); $old=\".el.dm-slot.dm-active { outline: calc\\(1px / var\\(--z, 1\\)\\) solid var\\(--accent-light\\); outline-offset: calc\\(1px / var\\(--z, 1\\)\\); }\"; if\\($t.Contains\\($old\\)\\){ $t=$t.Replace\\(\"`r`n\"+$old,\"\"\\).Replace\\($old,\"\"\\); [System.IO.File]::WriteAllText\\($p,$t\\); Write-Output \"removed\" } else { Write-Output \"NOT FOUND\" })"
+      "PowerShell($p=\"G:\\\\My Drive\\\\RMIT_WORKS\\\\Apps\\\\Adflow\\\\styles.css\"; $t=[System.IO.File]::ReadAllText\\($p\\); $old=\".el.dm-slot.dm-active { outline: calc\\(1px / var\\(--z, 1\\)\\) solid var\\(--accent-light\\); outline-offset: calc\\(1px / var\\(--z, 1\\)\\); }\"; if\\($t.Contains\\($old\\)\\){ $t=$t.Replace\\(\"`r`n\"+$old,\"\"\\).Replace\\($old,\"\"\\); [System.IO.File]::WriteAllText\\($p,$t\\); Write-Output \"removed\" } else { Write-Output \"NOT FOUND\" })"
     ]
   }
 }
