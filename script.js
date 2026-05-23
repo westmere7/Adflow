@@ -3757,20 +3757,199 @@ function openValidatorDetails(initialCanvas) {
       </div>
     `;
     
+    // Calculate elements stats
+    const totalCount = focusedCanvas.elements.length;
+    const textCount = focusedCanvas.elements.filter(e => e.type === 'text').length;
+    const imgCount = focusedCanvas.elements.filter(e => e.type === 'image').length;
+    const shapeCount = focusedCanvas.elements.filter(e => ['rect', 'circle', 'triangle', 'star', 'polygon', 'line', 'path'].includes(e.type)).length;
+    const btnCount = focusedCanvas.elements.filter(e => e.type === 'button').length;
+    
+    // Calculate fonts
+    const req = getRequiredFonts(focusedCanvas);
+    const fontDetails = [];
+    let fontKbSum = 0;
+    if (req.museo.has(300)) { fontDetails.push({ name: 'Museo 300', size: 32 }); fontKbSum += 32; }
+    if (req.museo.has(500)) { fontDetails.push({ name: 'Museo 500', size: 33 }); fontKbSum += 33; }
+    if (req.museo.has(700)) { fontDetails.push({ name: 'Museo 700', size: 33 }); fontKbSum += 33; }
+    if (req.helvetica.has(300)) { fontDetails.push({ name: 'Helvetica Neue Lt Pro 300', size: 38 }); fontKbSum += 38; }
+    if (req.helvetica.has(400)) { fontDetails.push({ name: 'Helvetica Neue Lt Pro 400', size: 39 }); fontKbSum += 39; }
+    if (req.helvetica.has(500)) { fontDetails.push({ name: 'Helvetica Neue Lt Pro 500', size: 38 }); fontKbSum += 38; }
+
+    // Calculate images
+    const imageDetails = [];
+    let imgKbSum = 0;
+    focusedCanvas.elements.forEach(el => {
+      if (el.type === 'image') {
+        let src = state.assets[el.assetId] || el.assetId;
+        let kbVal = 0;
+        let isLocal = true;
+        if (src && src.startsWith('data:')) {
+          kbVal = Math.round(src.length * 0.75 / 1024 * 10) / 10;
+          isLocal = false;
+        } else if (src && urlSizeCache[src]) {
+          kbVal = Math.round(urlSizeCache[src] * 10) / 10;
+        }
+        imgKbSum += kbVal;
+        imageDetails.push({
+          name: el.name || 'Image Layer',
+          size: kbVal,
+          isLocal: isLocal,
+          dimensions: `${el.width}×${el.height}px`
+        });
+      }
+    });
+
+    // Calculate dynamic data bindings
+    const dynamicDetails = [];
+    focusedCanvas.elements.forEach(el => {
+      if (el.dynamic) {
+        Object.keys(el.dynamic).forEach(field => {
+          if (el.dynamic[field]) {
+            const key = dmSlotKey(el) + '::' + field;
+            const mappedColumn = (state.dataMerge && state.dataMerge.mappings) ? state.dataMerge.mappings[key] : null;
+            dynamicDetails.push({
+              layerName: el.name || baseLayerLabel(el),
+              field: field,
+              mapping: mappedColumn || '— none —'
+            });
+          }
+        });
+      }
+    });
+
+    // Construct the breakdown HTML column
+    const fontSectionHTML = fontDetails.length > 0 ? fontDetails.map(f => `
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:4px;">
+        <span style="color:var(--text-main); font-family:monospace; font-size:10px;">${f.name}</span>
+        <span style="color:var(--text-muted); font-size:10px;">~${f.size} KB</span>
+      </div>
+    `).join('') : '<div style="font-size:11px; color:var(--text-muted); font-style:italic; padding-left:4px;">No custom fonts embedded</div>';
+
+    const imageSectionHTML = imageDetails.length > 0 ? imageDetails.map(img => `
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:4px;">
+        <div style="display:flex; flex-direction:column; min-width:0; flex:1; padding-right:8px;">
+          <span style="color:var(--text-main); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:500; font-size:10px;">${img.name}</span>
+          <span style="font-size:9px; color:var(--text-muted);">${img.dimensions} • ${img.isLocal ? 'Template' : 'Upload'}</span>
+        </div>
+        <span style="color:var(--text-muted); font-size:10px; flex-shrink:0;">${img.size ? img.size.toFixed(1) + ' KB' : '0 KB'}</span>
+      </div>
+    `).join('') : '<div style="font-size:11px; color:var(--text-muted); font-style:italic; padding-left:4px;">No image layers used</div>';
+
+    const dynamicSectionHTML = dynamicDetails.length > 0 ? dynamicDetails.map(d => `
+      <div style="display:flex; flex-direction:column; font-size:10px; margin-bottom:6px; background:rgba(255,255,255,0.02); padding:6px; border-radius:4px; border:1px solid rgba(255,255,255,0.04);">
+        <span style="color:var(--text-main); font-weight:500;">${d.layerName} <span style="font-weight:normal; color:var(--text-muted); font-size:9px;">(${d.field})</span></span>
+        <span style="font-size:9px; color:var(--accent-light); font-family:monospace; margin-top:2px;">↳ mapped to {${d.mapping}}</span>
+      </div>
+    `).join('') : '<div style="font-size:11px; color:var(--text-muted); font-style:italic; padding-left:4px;">No dynamic fields configured</div>';
+
+    const codeKb = 2.5;
+    const estimatedTotal = codeKb + fontKbSum + imgKbSum;
+
+    const breakdownHTML = `
+      <div style="width:320px; flex-shrink:0; border-left:1px solid var(--border-left, var(--border-light)); padding-left:18px; display:flex; flex-direction:column; gap:14px; max-height:480px; overflow-y:auto; padding-right:4px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
+          <h3 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Ad Composition Breakdown</h3>
+        </div>
+
+        <!-- Element counts -->
+        <div style="background:rgba(255,255,255,0.01); padding:10px; border-radius:6px; border:1px solid var(--border-light);">
+          <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Layers &amp; Elements</strong>
+          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:6px; font-size:11px;">
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:10px;">Total Layers</span>
+              <span style="font-weight:600; color:var(--text-bright);">${totalCount}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:10px;">Text Fields</span>
+              <span style="font-weight:600; color:var(--text-bright);">${textCount}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:10px;">Images</span>
+              <span style="font-weight:600; color:var(--text-bright);">${imgCount}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:10px;">Shapes &amp; Buttons</span>
+              <span style="font-weight:600; color:var(--text-bright);">${shapeCount + btnCount}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weight breakdown chart -->
+        <div style="background:rgba(255,255,255,0.01); padding:10px; border-radius:6px; border:1px solid var(--border-light);">
+          <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Weight Contribution (Est.)</strong>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <!-- Code progress bar -->
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:3px;">
+                <span style="color:var(--text-main);">Structure &amp; Libraries</span>
+                <span style="color:var(--text-muted); font-family:monospace; font-size:9px;">${codeKb.toFixed(1)} KB</span>
+              </div>
+              <div style="height:4px; background:var(--bg-input); border-radius:2px; overflow:hidden;">
+                <div style="width:${Math.min(100, (codeKb / estimatedTotal) * 100)}%; height:100%; background:#3b82f6; border-radius:2px;"></div>
+              </div>
+            </div>
+            <!-- Fonts progress bar -->
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:3px;">
+                <span style="color:var(--text-main);">Embedded Fonts</span>
+                <span style="color:var(--text-muted); font-family:monospace; font-size:9px;">${fontKbSum.toFixed(1)} KB</span>
+              </div>
+              <div style="height:4px; background:var(--bg-input); border-radius:2px; overflow:hidden;">
+                <div style="width:${Math.min(100, (fontKbSum / estimatedTotal) * 100)}%; height:100%; background:#8b5cf6; border-radius:2px;"></div>
+              </div>
+            </div>
+            <!-- Images progress bar -->
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:3px;">
+                <span style="color:var(--text-main);">Image Assets</span>
+                <span style="color:var(--text-muted); font-family:monospace; font-size:9px;">${imgKbSum.toFixed(1)} KB</span>
+              </div>
+              <div style="height:4px; background:var(--bg-input); border-radius:2px; overflow:hidden;">
+                <div style="width:${Math.min(100, (imgKbSum / estimatedTotal) * 100)}%; height:100%; background:#10b981; border-radius:2px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Embedded Fonts list -->
+        <div>
+          <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Embedded Fonts</strong>
+          ${fontSectionHTML}
+        </div>
+
+        <!-- Images list -->
+        <div>
+          <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Image Assets (Uncompressed)</strong>
+          <div style="max-height:100px; overflow-y:auto; padding-right:2px;">
+            ${imageSectionHTML}
+          </div>
+        </div>
+
+        <!-- Dynamic Slot Variables -->
+        <div>
+          <strong style="display:block; font-size:10px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Dynamic Mappings</strong>
+          <div style="max-height:90px; overflow-y:auto; padding-right:2px;">
+            ${dynamicSectionHTML}
+          </div>
+        </div>
+      </div>
+    `;
+    
     return `
       <div id="${modalId}" style="display:flex; gap:20px; min-height:420px; height: 100%;">
-        <div style="width:230px; border-right:1px solid var(--border-light); padding-right:16px; display:flex; flex-direction:column; gap:4px; max-height:480px; overflow-y:auto;">
+        <div style="width:180px; flex-shrink:0; border-right:1px solid var(--border-light); padding-right:16px; display:flex; flex-direction:column; gap:4px; max-height:480px; overflow-y:auto;">
           <div style="font-size:10px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; padding-left:4px;">Canvases</div>
           ${sidebarHtml}
         </div>
         <div style="flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto; max-height:480px; padding-right:4px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
             <h3 style="margin:0; font-size:15px; font-weight:600; color:var(--text-bright);">${focusedCanvas.width} × ${focusedCanvas.height} Details</h3>
             <span style="font-size:11px; font-weight:bold; color:var(--text-label);">ZIP Size: <span style="color:${errors.some(e => e.includes('limit')) ? '#f97316' : '#10b981'}; font-size:13px;">${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'calc...'}</span></span>
           </div>
           ${errorsHTML}
           ${criteriaHTML}
         </div>
+        ${breakdownHTML}
       </div>
     `;
   };
@@ -3779,7 +3958,7 @@ function openValidatorDetails(initialCanvas) {
   
   const modalEl = document.querySelector('.modal-bg:last-child .modal');
   if (modalEl) {
-    modalEl.style.width = '760px';
+    modalEl.style.width = '1080px';
     modalEl.style.maxWidth = '95vw';
   }
 
@@ -11569,6 +11748,11 @@ function cycleVersion(dir) {
 }
 
 document.getElementById('menu-file-data')?.addEventListener('click', openDataPanel);
+document.getElementById('btn-open-data')?.addEventListener('click', openDataPanel);
+document.getElementById('version-select')?.addEventListener('change', (e) => dmSetActiveVersion(e.target.value));
+document.getElementById('btn-version-prev')?.addEventListener('click', () => cycleVersion('prev'));
+document.getElementById('btn-version-next')?.addEventListener('click', () => cycleVersion('next'));
+document.getElementById('btn-data-lock')?.addEventListener('click', dmToggleLock);
 propsEl?.addEventListener('click', (e) => {
   const lockedRow = e.target.closest('[data-locked-field="true"]');
   if (lockedRow) {
