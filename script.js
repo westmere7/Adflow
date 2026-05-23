@@ -6477,8 +6477,12 @@ function renderProps() {
             <label for="prop-auto-hug" title="Auto-scale button width to hug text content" style="cursor:pointer;">Hug</label>
           </div>
           <div class="checkbox-row">
-            <input type="checkbox" data-k="isClickArea" id="prop-is-click-area" title="Make this button the main click-through area" ${el.isClickArea ? 'checked' : ''}/>
-            <label for="prop-is-click-area" title="Make this button the main click-through area" style="cursor:pointer;">Clicktag</label>
+            ${c && c.fullClickArea !== false 
+              ? `<input type="checkbox" data-k="isClickArea" id="prop-is-click-area" title="Forced selected because 'Use entire canvas as click area' is checked in Canvas Settings" checked disabled style="cursor: not-allowed;"/>
+                 <label for="prop-is-click-area" title="Forced selected because 'Use entire canvas as click area' is checked in Canvas Settings" style="cursor: not-allowed; opacity: 0.5;">Clicktag</label>`
+              : `<input type="checkbox" data-k="isClickArea" id="prop-is-click-area" title="Make this button the main click-through area" ${el.isClickArea ? 'checked' : ''}/>
+                 <label for="prop-is-click-area" title="Make this button the main click-through area" style="cursor:pointer;">Clicktag</label>`
+            }
           </div>
         </div>`);
     f.push(strokeSection());
@@ -8557,11 +8561,13 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
 
   let clickAreasHTML = '';
   if (!isImageExport) {
-    const clickBtns = c.elements.filter(e => e.type === 'button' && e.isClickArea);
-    if (c.fullClickArea === false && clickBtns.length > 0) {
-      clickAreasHTML = clickBtns.map(btn => `<a class="clickArea" href="javascript:void(0);" style="position:absolute;left:${btn.x}px;top:${btn.y}px;width:${btn.width}px;height:${btn.height}px;z-index:9999;display:block;"></a>`).join('\n    ');
-    } else {
+    if (c.fullClickArea !== false) {
       clickAreasHTML = `<a class="clickArea" href="javascript:void(0);" style="position:absolute;inset:0;z-index:9999;display:block;"></a>`;
+    } else {
+      const clickBtns = c.elements.filter(e => e.type === 'button' && e.isClickArea);
+      if (clickBtns.length > 0) {
+        clickAreasHTML = clickBtns.map(btn => `<a class="clickArea" href="javascript:void(0);" style="position:absolute;left:${btn.x}px;top:${btn.y}px;width:${btn.width}px;height:${btn.height}px;z-index:9999;display:block;"></a>`).join('\n    ');
+      }
     }
   }
 
