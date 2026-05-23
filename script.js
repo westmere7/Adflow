@@ -225,6 +225,7 @@ state.activeCanvasId = state.canvases[0].id;
 
 const history = [];
 let historyIndex = -1;
+var sizeUpdateTimeout = null;
 
 function measureButtonWidth(el) {
   const canvas = measureButtonWidth.canvas || (measureButtonWidth.canvas = document.createElement('canvas'));
@@ -9194,9 +9195,9 @@ async function updateRecentProjectsMenu() {
         date.style.color = 'var(--text-muted)';
       });
       
-      el.addEventListener('click', () => {
+      el.addEventListener('click', async () => {
         if (confirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
-          loadProjectFromState(item.stateSnapshot);
+          await loadProjectFromState(item.stateSnapshot);
         }
       });
       container.appendChild(el);
@@ -9206,7 +9207,7 @@ async function updateRecentProjectsMenu() {
   }
 }
 
-function loadProjectFromState(loadedState) {
+async function loadProjectFromState(loadedState) {
   state.selectedElementId = null;
   state.layerSelection = [];
   state.editingElementId = null;
@@ -9224,6 +9225,8 @@ function loadProjectFromState(loadedState) {
   }
 
   Object.assign(state, JSON.parse(JSON.stringify(loadedState)));
+
+  await syncRmitAssets();
   
   if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
     history.length = 0;
@@ -9283,6 +9286,7 @@ async function loadProjectFromBlob(file) {
   }
   Object.assign(state, loadedState);
   state.assets = newAssets || {};
+  await syncRmitAssets();
 
   if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
     history.length = 0;
@@ -9425,6 +9429,119 @@ document.getElementById('menu-file-save').addEventListener('click', saveProjectT
 document.getElementById('menu-file-new').addEventListener('click', openNewProjectDialog);
 document.getElementById('menu-project-settings').addEventListener('click', openProjectSettingsDialog);
 
+const defaultFallbackFiles = [
+  'Image (1).jpg',
+  'Image (2).jpg',
+  'Image (3).jpg',
+  'Image (6).jpg'
+];
+
+async function fetchAssetFilenames() {
+  try {
+    const response = await fetch('data/assets/');
+    if (!response.ok) return defaultFallbackFiles;
+    const html = await response.text();
+    
+    const regex = /(?:href=["']|[^"'>\s]*\/)?([\w\-.%()\s]+\.(?:jpg|jpeg|png|gif|svg|webp))(?:\?|["'>\s]|$)/gi;
+    const files = new Set();
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+      try {
+        const decoded = decodeURIComponent(match[1]);
+        const filename = decoded.split('/').pop();
+        if (filename && filename.trim()) {
+          files.add(filename.trim());
+        }
+      } catch (e) {}
+    }
+    
+    if (files.size === 0) {
+      return defaultFallbackFiles;
+    }
+    return Array.from(files);
+  } catch (e) {
+    return defaultFallbackFiles;
+  }
+}
+
+async function syncRmitAssets() {
+  const rmitFolderId = 'af_rmit';
+  
+  if (!state.assetFolders) state.assetFolders = [];
+  let rmitFolder = state.assetFolders.find(f => f.id === rmitFolderId);
+  if (!rmitFolder) {
+    rmitFolder = {
+      id: rmitFolderId,
+      name: 'RMIT',
+      collapsed: false,
+      readOnly: true
+    };
+    state.assetFolders.push(rmitFolder);
+  }
+  
+  const filenames = await fetchAssetFilenames();
+  
+  if (!state.assetLibrary) state.assetLibrary = [];
+  if (!state.assets) state.assets = {};
+  
+  const nonRmitLibrary = state.assetLibrary.filter(a => a.folderId !== rmitFolderId);
+  const rmitLibrary = [];
+  
+  for (const filename of filenames) {
+    const assetId = 'as_rmit_' + filename;
+    const imgId = 'img_rmit_' + filename;
+    const url = 'data/assets/' + filename;
+    
+    const displayName = filename.substring(0, filename.lastIndexOf('.')) || filename;
+    
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const blob = await response.blob();
+        const dataUrl = await new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result);
+          fr.onerror = () => reject(fr.error);
+          fr.readAsDataURL(blob);
+        });
+        
+        state.assets[imgId] = dataUrl;
+        
+        const { naturalW, naturalH } = await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve({ naturalW: img.naturalWidth || 120, naturalH: img.naturalHeight || 90 });
+          img.onerror = () => resolve({ naturalW: 120, naturalH: 90 });
+          img.src = dataUrl;
+        });
+        
+        rmitLibrary.push({
+          id: assetId,
+          name: displayName,
+          kind: 'element',
+          iconType: 'image',
+          folderId: rmitFolderId,
+          elements: [
+            {
+              id: uid(),
+              type: 'image',
+              name: filename,
+              assetId: imgId,
+              width: naturalW,
+              height: naturalH,
+              x: 0,
+              y: 0
+            }
+          ]
+        });
+      }
+    } catch (err) {
+      console.error('Failed to preload RMIT asset:', url, err);
+    }
+  }
+  
+  state.assetLibrary = [...nonRmitLibrary, ...rmitLibrary];
+}
+
 // ============================================================================
 // New Project dialog
 // ============================================================================
@@ -9547,68 +9664,7 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
   state.assetFolders = [];
   state.assets = state.assets && state.assets.rmit_logo ? { rmit_logo: state.assets.rmit_logo } : {};
 
-  // Create default read-only RMIT folder
-  const rmitFolderId = 'af_rmit';
-  state.assetFolders.push({
-    id: rmitFolderId,
-    name: 'RMIT',
-    collapsed: false,
-    readOnly: true
-  });
-
-  // Load default RMIT assets from data/assets/
-  const filesToLoad = [
-    { name: 'Image (1)', filename: 'Image (1).jpg', url: 'data/assets/Image (1).jpg' },
-    { name: 'Image (2)', filename: 'Image (2).jpg', url: 'data/assets/Image (2).jpg' },
-    { name: 'Image (3)', filename: 'Image (3).jpg', url: 'data/assets/Image (3).jpg' },
-    { name: 'Image (6)', filename: 'Image (6).jpg', url: 'data/assets/Image (6).jpg' }
-  ];
-
-  for (const item of filesToLoad) {
-    try {
-      const response = await fetch(item.url);
-      if (response.ok) {
-        const blob = await response.blob();
-        const dataUrl = await new Promise((resolve, reject) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(fr.result);
-          fr.onerror = () => reject(fr.error);
-          fr.readAsDataURL(blob);
-        });
-        const assetId = 'img_' + uid();
-        state.assets[assetId] = dataUrl;
-        
-        const { naturalW, naturalH } = await new Promise((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve({ naturalW: img.naturalWidth || 120, naturalH: img.naturalHeight || 90 });
-          img.onerror = () => resolve({ naturalW: 120, naturalH: 90 });
-          img.src = dataUrl;
-        });
-
-        state.assetLibrary.push({
-          id: 'as_' + uid(),
-          name: item.name,
-          kind: 'element',
-          iconType: 'image',
-          folderId: rmitFolderId,
-          elements: [
-            {
-              id: uid(),
-              type: 'image',
-              name: item.filename,
-              assetId,
-              width: naturalW,
-              height: naturalH,
-              x: 0,
-              y: 0
-            }
-          ]
-        });
-      }
-    } catch (err) {
-      console.error('Failed to preload RMIT asset:', item.url, err);
-    }
-  }
+  await syncRmitAssets();
   state.dataMerge = {
     enabled: false,
     columns: [],
@@ -9888,7 +9944,6 @@ function openExportModal() {
 document.getElementById('menu-file-export').addEventListener('click', openExportModal);
 document.getElementById('btn-export-top').addEventListener('click', openExportModal);
 
-var sizeUpdateTimeout = null;
 function queueSizeUpdate() {
   if (typeof JSZip === 'undefined') return;
   if (sizeUpdateTimeout) clearTimeout(sizeUpdateTimeout);
@@ -10441,7 +10496,7 @@ const CHANGELOG_DATA = [
     items: [
       'Streamlined Gradient Color Picker layout (removed eyedropper fallback, moved stop swatches under gradient track, aligned Opacity, Angle, and Reverse Swap icon onto a single row).',
       'Refactored Text Background animations to layout the toggle ("animate text BG") and the "Time offset" numeric input side-by-side.',
-      'Rebranded the application from Ad Cooker to RMIT Display Studio.',
+      'Rebranded the application from Ad Cooker to RMIT Adflow.',
       'Simplified the File & Edit menus by removing the Multi-Save to Folder and Test menu items.',
       'Completely rewrote the GitHub README with high-fidelity technical specs and clean formatting.',
       'Introduced the Versioning & Changelog system to the About section.'
@@ -12235,6 +12290,7 @@ function initCollapsiblePanels() {
 (async function initApp() {
   let restored = false;
   try { restored = await restoreAutosave(); } catch (e) { console.warn(e); }
+  await syncRmitAssets();
   updateRecentProjectsMenu();
   render();
   initCollapsiblePanels();

@@ -1,4 +1,4 @@
-RMIT Display Studio - Version & Changelog History
+RMIT Adflow - Version & Changelog History
 
 v0.8.0 (Current) - May 2026
 - Added options to save undo/redo history within the .cook project file and the IndexedDB autosave, allowing full project history recovery upon session reload or project file import.
@@ -152,7 +152,7 @@ v0.4.1 - May 2026
 v0.4.0 - May 2026
 - Streamlined Gradient Color Picker layout (removed eyedropper fallback, moved stop swatches under gradient track, aligned Opacity, Angle, and Reverse Swap icon onto a single row).
 - Refactored Text Background animations to layout the toggle ("animate text BG") and the "Time offset" numeric input side-by-side.
-- Rebranded the application from Ad Cooker to RMIT Display Studio.
+- Rebranded the application from Ad Cooker to RMIT Adflow.
 - Simplified the File & Edit menus by removing the Multi-Save to Folder and Test menu items.
 - Completely rewrote the GitHub README with high-fidelity technical specs and clean formatting.
 - Introduced the Versioning & Changelog system to the About section.
