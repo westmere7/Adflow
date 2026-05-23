@@ -1,8 +1,12 @@
-# RMIT Display Studio
+<p align="center">
+  <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow Logo" width="240" />
+</p>
+
+# RMIT Adflow
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-adflow.netlify.app-brightgreen?style=for-the-badge&logo=netlify)](https://adflow.netlify.app/)
 
-A professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. RMIT Display Studio eliminates the need for complex build pipelines and third-party software installations, providing a streamlined environment tailored for high-volume banner production.
+A professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. RMIT Adflow eliminates the need for complex build pipelines and third-party software installations, providing a streamlined environment tailored for high-volume banner production.
 
 Designed to replace bloated legacy tools like Google Web Designer, this application allows creative teams to compose multi-frame, multi-size banner campaigns on an infinite canvas and instantly export them as Google Ads-compliant HTML5 packages.
 
@@ -10,7 +14,7 @@ Designed to replace bloated legacy tools like Google Web Designer, this applicat
 
 ## 🚀 Core Concept: Multi-Canvas Workflow & Link Groups
 
-The standout feature of RMIT Display Studio is its **Multi-Canvas Orchestration**. Instead of creating and managing separate files for each banner size (e.g. 300x250, 728x90, 160x600), you lay out all sizes side-by-side on an infinite panning workspace.
+The standout feature of RMIT Adflow is its **Multi-Canvas Orchestration**. Instead of creating and managing separate files for each banner size (e.g. 300x250, 728x90, 160x600), you lay out all sizes side-by-side on an infinite panning workspace.
 
 To avoid duplicate, manual updates across different canvases, you use **Link Groups**:
 - **Auto-Link Matching Elements**: Pressing **Auto-Link** automatically scans all canvases and groups elements with the same layer name and category/type. Toggle **Selected only** to scan and group matches targeting only the currently selected layer.
@@ -109,7 +113,7 @@ Frames need no special handling — a frame-1 and frame-2 headline are simply tw
 
 ### Project Structure
 ```text
-RMIT-Display-Studio/
+RMIT-Adflow/
 ├── index.html          # Application shell & UI DOM structure
 ├── script.js           # Core application logic, event delegation, and export pipeline
 ├── styles.css          # UI styles, responsive rules, and theme definitions
@@ -136,7 +140,7 @@ Access the application immediately via the live deployment:
 1. **Clone the repository**
    ```bash
    git clone <repo-url>
-   cd RMIT-Display-Studio
+   cd RMIT-Adflow
    ```
 
 2. **Serve locally**
