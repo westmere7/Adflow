@@ -71,9 +71,15 @@
         </div>
       </div>
       <div class="title" style="display:flex; align-items:center;">
-        <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" style="height:24px;" />
+        <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" style="height:24px; margin-right: 8px;" />
+        <div style="height:20px; width:1px; background-color:#1f2330; margin: 0 12px; flex-shrink:0;"></div>
+        <div id="project-meta-container" style="display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; border-radius:4px; padding:2px 6px; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.06)'" onmouseout="this.style.backgroundColor='transparent'" title="Click to open project settings / Double-click to rename">
+          <span id="project-name-display" style="font-size:12px; font-weight:600; color:var(--text-bright); outline:none; white-space:nowrap;">RMIT_Ad</span>
+          <span id="save-status" style="width:8px; height:8px; display:inline-block; border-radius:50%; flex-shrink:0; background-color:#10b981; transition: all 0.3s ease;"></span>
+          <span id="save-status-text" style="font-size:10px; color:var(--text-muted); font-weight:500; flex-shrink:0; transition: color 0.3s ease;">Saved</span>
+        </div>
+        <div style="height:20px; width:1px; background-color:#1f2330; margin: 0 12px; flex-shrink:0;"></div>
       </div>
-      <div class="spacer" style="flex:0 0 24px"></div>
       <div
         style="display:flex;align-items:center;gap:6px;margin-right:24px;border-right:1px solid #1f2330;padding-right:24px;"
         id="frame-controls-container">
@@ -135,15 +141,7 @@
       </span>
       <span id="zoom-level-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Reset Zoom">Zoom 100%</span>
       <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v0.8.0</span>
-      <span id="save-status" title="Your work auto-saves to this browser">
-        <svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-          <path d="M17 21v-8H7v8"/>
-        </svg>
-        <svg class="status-indicator" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; display: block;">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
-      </span>
+
       <button class="btn" id="btn-preview" title="Preview the interactive banner animation">Preview</button>
       <button class="btn primary" id="btn-export-top" title="Export banner to HTML package">Export</button>
     </div>

@@ -451,58 +451,51 @@ function setSaveStatus(status) {
   const el = document.getElementById('save-status');
   if (!el) return;
 
-  const getSimpleFloppy = (color, anim = '') => `
-    <svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="${anim}; width: 14px; height: 14px; display: block;">
-      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-      <path d="M17 21v-8H7v8"/>
-    </svg>
-  `;
-
   const map = {
     saved: {
-      tooltip: 'All changes saved to local storage',
-      html: `
-        ${getSimpleFloppy('#10b981')}
-        <svg class="status-indicator" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; display: block; animation: save-pop 0.3s ease;">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
-      `
+      tooltip: 'All changes saved to browser',
+      color: '#10b981',
+      boxShadow: '0 0 8px rgba(16, 185, 129, 0.4)',
+      animation: 'none',
+      text: 'Saved'
     },
     unsaved: {
       tooltip: 'Unsaved changes',
-      html: `
-        ${getSimpleFloppy('#f59e0b')}
-        <svg class="status-indicator" viewBox="0 0 24 24" fill="#f59e0b" style="width: 12px; height: 12px; display: block;">
-          <circle cx="12" cy="12" r="5"/>
-        </svg>
-      `
+      color: '#f59e0b',
+      boxShadow: '0 0 8px rgba(245, 158, 11, 0.4)',
+      animation: 'none',
+      text: 'Unsaved'
     },
     saving: {
       tooltip: 'Saving changes...',
-      html: `
-        ${getSimpleFloppy('#38bdf8')}
-        <svg class="status-indicator loading" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="3.5" stroke-linecap="round" style="width: 12px; height: 12px; display: block;">
-          <circle cx="12" cy="12" r="10" stroke="rgba(56, 189, 248, 0.2)"/>
-          <path d="M12 2a10 10 0 0 1 10 10"/>
-        </svg>
-      `
+      color: '#38bdf8',
+      boxShadow: '0 0 8px rgba(56, 189, 248, 0.4)',
+      animation: 'save-dot-pulse 1s infinite alternate',
+      text: 'Saving...'
     },
     error: {
       tooltip: 'Auto-save failed!',
-      html: `
-        ${getSimpleFloppy('#ef4444', 'animation: save-shake 0.4s ease')}
-        <svg class="status-indicator" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; display: block; animation: save-shake 0.4s ease;">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      `
+      color: '#ef4444',
+      boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
+      animation: 'save-dot-pulse 0.4s infinite alternate',
+      text: 'Error'
     }
   };
 
   const m = map[status] || map.saved;
-  el.innerHTML = m.html;
+  el.style.backgroundColor = m.color;
+  el.style.boxShadow = m.boxShadow;
+  el.style.animation = m.animation;
   el.title = m.tooltip;
+
+  const textEl = document.getElementById('save-status-text');
+  if (textEl) {
+    textEl.innerText = m.text;
+    textEl.style.color = status === 'error' ? '#f87171' : 'var(--text-muted)';
+    textEl.title = m.tooltip;
+  }
 }
+
 
 async function writeAutosave() {
   try {
@@ -666,6 +659,7 @@ function autoLinkElements() {
           defaultSync.textColor = true;
           defaultSync.fill = true;
           defaultSync.stroke = true;
+          defaultSync.radius = true;
           defaultSync.transform = true;
           defaultSync.opacity = true;
           defaultSync.inAnim = true;
@@ -680,6 +674,7 @@ function autoLinkElements() {
         } else if (cat === 'shape') {
           defaultSync.fill = true;
           defaultSync.stroke = true;
+          defaultSync.radius = true;
           defaultSync.transform = true;
           defaultSync.opacity = true;
           defaultSync.inAnim = true;
@@ -808,6 +803,10 @@ function applyLinkSync(sourceEl, targetEl, group) {
         else delete targetEl[p];
       });
     }
+    if (sync.radius) {
+      if (sourceEl.radius !== undefined) targetEl.radius = sourceEl.radius;
+      else delete targetEl.radius;
+    }
     if (sync.transform) {
       targetEl.width = sourceEl.width;
       targetEl.height = sourceEl.height;
@@ -850,6 +849,10 @@ function applyLinkSync(sourceEl, targetEl, group) {
         if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
         else delete targetEl[p];
       });
+    }
+    if (sync.radius) {
+      if (sourceEl.radius !== undefined) targetEl.radius = sourceEl.radius;
+      else delete targetEl.radius;
     }
     if (sync.transform) {
       targetEl.width = sourceEl.width;
@@ -926,6 +929,7 @@ function createAndLinkGroup(name) {
     defaultSync.textColor = true;
     defaultSync.fill = true;
     defaultSync.stroke = true;
+    defaultSync.radius = true;
     defaultSync.transform = true;
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
@@ -940,6 +944,7 @@ function createAndLinkGroup(name) {
   } else if (cat === 'shape') {
     defaultSync.fill = true;
     defaultSync.stroke = true;
+    defaultSync.radius = true;
     defaultSync.transform = true;
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
@@ -1044,6 +1049,7 @@ function autoAddAndLink(srcEl) {
       defaultSync.textColor = true;
       defaultSync.fill = true;
       defaultSync.stroke = true;
+      defaultSync.radius = true;
       defaultSync.transform = true;
       defaultSync.opacity = true;
       defaultSync.inAnim = true;
@@ -1058,6 +1064,7 @@ function autoAddAndLink(srcEl) {
     } else if (cat === 'shape') {
       defaultSync.fill = true;
       defaultSync.stroke = true;
+      defaultSync.radius = true;
       defaultSync.transform = true;
       defaultSync.opacity = true;
       defaultSync.inAnim = true;
@@ -1425,9 +1432,9 @@ function render(skipProps = false) {
   }
 
 
-  const projectNameEl = document.getElementById('project-name');
-  if (projectNameEl && document.activeElement !== projectNameEl) {
-    projectNameEl.value = state.projectName || 'RMIT_Ad';
+  const projectNameDisp = document.getElementById('project-name-display');
+  if (projectNameDisp && document.activeElement !== projectNameDisp && projectNameDisp.contentEditable !== 'true') {
+    projectNameDisp.innerText = state.projectName || 'RMIT_Ad';
   }
   const clicktagEl = document.getElementById('clicktag');
   if (clicktagEl && document.activeElement !== clicktagEl) {
@@ -4388,8 +4395,10 @@ function renderLinkControl() {
           <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
             <span style="font-size:10px; font-weight:600; color:var(--text-bright); background:rgba(255,255,255,0.08); padding:2px 4px; border-radius:8px; margin-right:2px; display:inline-block; line-height:1;">${count}</span>
             <button class="icon-btn ${g.liveLink ? 'active' : ''} lg-live-btn" data-group-id="${g.id}" title="Toggle Live-Link Mode (Instant Sync)" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:${g.liveLink ? 'var(--accent-light)' : 'var(--text-muted)'};">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="${g.liveLink ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
               </svg>
             </button>
             <button class="icon-btn ${hasElements && !allHidden ? 'active' : ''} lg-eye-btn" data-group-id="${g.id}" title="Toggle group visibility" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:${hasElements && !allHidden ? 'var(--text-bright)' : 'var(--text-muted)'};">
@@ -4480,70 +4489,77 @@ function renderLinkControl() {
           </div>`;
           
           if (cat === 'text') {
-            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
-              <label title="Sync text content across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} title="Sync text content across linked elements" /> Text content</label>
-              <label title="Sync font family and weight settings across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} title="Sync font family and weight settings across linked elements" /> Font settings</label>
-              <label title="Sync font size across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fontSize" ${(sync.fontSize !== undefined ? sync.fontSize : sync.font) ? 'checked' : ''} title="Sync font size across linked elements" /> Font size</label>
-              <label title="Sync text color across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} title="Sync text color across linked elements" /> Colors</label>
-              <label title="Sync text background properties across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="background" ${(sync.background !== undefined ? sync.background : sync.color) ? 'checked' : ''} title="Sync text background properties across linked elements" /> Background</label>
-              <label title="Sync opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync opacity across linked elements" /> Opacity</label>
-              <label title="Sync entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync entry transition animation across linked elements" /> IN Animation</label>
-              <label title="Sync continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync continuous effect across linked elements" /> Effects</label>
+            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
+              <label title="Sync text content across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} /> Text content</label>
+              <label title="Sync font family and weight settings across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} /> Font settings</label>
+              <label title="Sync font size across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="fontSize" ${(sync.fontSize !== undefined ? sync.fontSize : sync.font) ? 'checked' : ''} /> Font size</label>
+              <label title="Sync text color across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} /> Colors</label>
+              <label title="Sync text background properties across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="background" ${(sync.background !== undefined ? sync.background : sync.color) ? 'checked' : ''} /> Background</label>
+              <label title="Sync opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
+              <label title="Sync entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
+              <label title="Sync continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
             </div>`;
           } else if (cat === 'button') {
-            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
-              <label title="Sync button label text across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} title="Sync button label text across linked elements" /> Button text</label>
-              <label title="Sync button text color across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="textColor" ${sync.textColor ? 'checked' : ''} title="Sync button text color across linked elements" /> Button text color</label>
-              <label title="Sync button font family, weight, alignment, and auto-scaling settings across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} title="Sync button font family, weight, alignment, and auto-scaling settings across linked elements" /> Font settings</label>
-              <label title="Sync button background fill across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} title="Sync button background fill across linked elements" /> Fill</label>
-              <label title="Sync button stroke properties across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} title="Sync button stroke properties across linked elements" /> Stroke</label>
-              <label title="Sync button width and height across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} title="Sync button width and height across linked elements" /> Transform (W+H)</label>
-              <label title="Sync button opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync button opacity across linked elements" /> Opacity</label>
-              <label title="Sync button entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync button entry transition animation across linked elements" /> IN Animation</label>
-              <label title="Sync button continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync button continuous effect across linked elements" /> Effects</label>
+            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
+              <label title="Sync button label text across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} /> Button text</label>
+              <label title="Sync button text color across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="textColor" ${sync.textColor ? 'checked' : ''} /> Text color</label>
+              <label title="Sync button font family, weight, alignment, and auto-scaling settings across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} /> Font settings</label>
+              <label title="Sync button background fill across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} /> Fill</label>
+              <label title="Sync button stroke properties across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} /> Stroke</label>
+              <label title="Sync button corner radius across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="radius" ${sync.radius ? 'checked' : ''} /> Corner radius</label>
+              <label title="Sync button width and height across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Size (W+H)</label>
+              <label title="Sync button opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
+              <label title="Sync button entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
+              <label title="Sync button continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
             </div>`;
           } else if (cat === 'image') {
-            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
-              <label title="Sync image asset across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="image" ${sync.image ? 'checked' : ''} title="Sync image asset across linked elements" /> Image asset</label>
-              <label title="Sync image width and height across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} title="Sync image width and height across linked elements" /> Transform (W+H)</label>
-              <label title="Sync image opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync image opacity across linked elements" /> Opacity</label>
-              <label title="Sync image rotation angle across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="rotation" ${sync.rotation ? 'checked' : ''} title="Sync image rotation angle across linked elements" /> Rotation</label>
-              <label title="Sync image entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync image entry transition animation across linked elements" /> IN Animation</label>
-              <label title="Sync image continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync image continuous effect across linked elements" /> Effects</label>
+            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
+              <label title="Sync image asset across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="image" ${sync.image ? 'checked' : ''} /> Image asset</label>
+              <label title="Sync image width and height across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Size (W+H)</label>
+              <label title="Sync image opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
+              <label title="Sync image rotation angle across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="rotation" ${sync.rotation ? 'checked' : ''} /> Rotation</label>
+              <label title="Sync image entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
+              <label title="Sync image continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
             </div>`;
           } else if (cat === 'shape') {
-            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
-              <label title="Sync shape fill color across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} title="Sync shape fill color across linked elements" /> Color</label>
-              <label title="Sync shape stroke properties across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} title="Sync shape stroke properties across linked elements" /> Stroke</label>
-              <label title="Sync shape width and height across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} title="Sync shape width and height across linked elements" /> Transform (W+H)</label>
-              <label title="Sync shape opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync shape opacity across linked elements" /> Opacity</label>
-              <label title="Sync shape entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync shape entry transition animation across linked elements" /> IN Animation</label>
-              <label title="Sync shape continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync shape continuous effect across linked elements" /> Effects</label>
+            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
+              <label title="Sync shape fill color across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} /> Color</label>
+              <label title="Sync shape stroke properties across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} /> Stroke</label>
+              <label title="Sync shape corner radius across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="radius" ${sync.radius ? 'checked' : ''} /> Corner radius</label>
+              <label title="Sync shape width and height across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Size (W+H)</label>
+              <label title="Sync shape opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
+              <label title="Sync shape entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
+              <label title="Sync shape continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
             </div>`;
           } else if (cat === 'line') {
-            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px;">
-              <label title="Sync line color across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} title="Sync line color across linked elements" /> Color</label>
-              <label title="Sync line thickness across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="thickness" ${sync.thickness ? 'checked' : ''} title="Sync line thickness across linked elements" /> Thickness</label>
-              <label title="Sync line opacity across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} title="Sync line opacity across linked elements" /> Opacity</label>
-              <label title="Sync line entry transition animation across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} title="Sync line entry transition animation across linked elements" /> IN Animation</label>
-              <label title="Sync line continuous effect across linked elements" style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} title="Sync line continuous effect across linked elements" /> Effects</label>
+            html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
+              <label title="Sync line color across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} /> Color</label>
+              <label title="Sync line thickness across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="thickness" ${sync.thickness ? 'checked' : ''} /> Thickness</label>
+              <label title="Sync line opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
+              <label title="Sync line entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
+              <label title="Sync line continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
             </div>`;
           }
           html += `</div>`;
           
-          html += `<div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--bg-input); display:flex; align-items:center; margin-bottom:6px;">
-            <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-bright); font-weight:500; cursor:pointer;" title="Sync changes instantly across all canvases as you edit">
-              <input type="checkbox" id="lnk-live-toggle" title="Sync changes instantly across all canvases as you edit" ${group.liveLink ? 'checked' : ''} />
-              Live-link mode
+          html += `<div style="padding-top:8px; border-top:1px solid var(--bg-input);">
+            <label class="live-link-toggle-btn ${group.liveLink ? 'active' : ''}" title="Sync changes instantly across all canvases as you edit">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:11px; font-weight:600;">Live-link mode</span>
+              </div>
+              <div class="toggle-slider">
+                <div class="toggle-knob"></div>
+              </div>
+              <input type="checkbox" id="lnk-live-toggle" style="position: absolute; opacity: 0; pointer-events: none;" ${group.liveLink ? 'checked' : ''} />
             </label>
           </div>`;
 
-          html += `<button id="lnk-btn-push" class="btn primary" title="Force push properties from selection to all other members in the group" style="width:100%; font-size:11px; padding:6px 12px; font-weight:600; margin-top:8px; box-sizing:border-box;">Push Changes to Group</button>`;
-          html += `<button id="lnk-btn-unlink" class="btn" title="Remove selected element(s) from link groups" style="width:100%; font-size:11px; padding:6px 12px; margin-top:4px; box-sizing:border-box;">Unlink Selected</button>`;
+          html += `<button id="lnk-btn-push" class="btn primary" title="Force push properties from selection to all other members in the group" style="width:100%; font-size:11px; padding:6px 12px; font-weight:600; box-sizing:border-box;">Push Changes to Group</button>`;
+          html += `<button id="lnk-btn-unlink" class="btn" title="Remove selected element(s) from link groups" style="width:100%; font-size:11px; padding:6px 12px; box-sizing:border-box;">Unlink Selected</button>`;
         }
       } else {
         html += `<div style="font-size: 11px; color:#ef4444; width:100%; box-sizing:border-box;">Selection contains multiple link groups.</div>`;
-        html += `<button id="lnk-btn-unlink-all" class="btn" title="Remove selected element(s) from link groups" style="width:100%; font-size:11px; padding:6px 12px; margin-top:4px; box-sizing:border-box;">Unlink All</button>`;
+        html += `<button id="lnk-btn-unlink-all" class="btn" title="Remove selected element(s) from link groups" style="width:100%; font-size:11px; padding:6px 12px; box-sizing:border-box;">Unlink All</button>`;
       }
     } else {
       html += `<div style="padding: 8px; border: 1px dashed var(--bg-input); border-radius: 4px; margin-bottom: 12px; font-size: 11px; color:#ef4444; background:rgba(239, 68, 68, 0.05); text-align:center;">Cannot link different types of elements.</div>`;
@@ -9020,9 +9036,9 @@ function syncDefaultsForRole(role, cat) {
   // Baseline: content + appearance; keep layout (transform) and font-size independent.
   const s = { opacity: true, inAnim: true, effect: true, transform: false };
   if (cat === 'text') { s.text = true; s.font = true; s.fontSize = false; s.color = true; s.background = true; }
-  else if (cat === 'button') { s.text = true; s.textColor = true; s.fill = true; s.stroke = true; s.font = true; }
+  else if (cat === 'button') { s.text = true; s.textColor = true; s.fill = true; s.stroke = true; s.font = true; s.radius = true; }
   else if (cat === 'image') { s.image = true; s.rotation = true; }
-  else if (cat === 'shape') { s.fill = true; s.stroke = true; }
+  else if (cat === 'shape') { s.fill = true; s.stroke = true; s.radius = true; }
   else if (cat === 'line') { s.color = true; s.thickness = true; }
   return s;
 }
@@ -9558,6 +9574,82 @@ document.getElementById('menu-file-open').addEventListener('click', openProjectF
 document.getElementById('menu-file-save').addEventListener('click', saveProjectToZip);
 document.getElementById('menu-file-new').addEventListener('click', openNewProjectDialog);
 document.getElementById('menu-project-settings').addEventListener('click', openProjectSettingsDialog);
+
+// Project name display and setting modal triggers
+(function() {
+  let projectClickTimeout = null;
+  const projectMeta = document.getElementById('project-meta-container');
+  const projectNameDisp = document.getElementById('project-name-display');
+
+  if (projectMeta && projectNameDisp) {
+    projectMeta.addEventListener('click', (e) => {
+      if (projectNameDisp.contentEditable === 'true') return;
+      if (e.target.tagName === 'INPUT') return;
+
+      if (projectClickTimeout) {
+        clearTimeout(projectClickTimeout);
+        projectClickTimeout = null;
+      } else {
+        projectClickTimeout = setTimeout(() => {
+          projectClickTimeout = null;
+          openProjectSettingsDialog();
+        }, 220);
+      }
+    });
+
+    projectMeta.addEventListener('dblclick', (e) => {
+      if (projectClickTimeout) {
+        clearTimeout(projectClickTimeout);
+        projectClickTimeout = null;
+      }
+      e.stopPropagation();
+      startRenameProject();
+    });
+  }
+})();
+
+function startRenameProject() {
+  const disp = document.getElementById('project-name-display');
+  if (!disp) return;
+
+  disp.contentEditable = 'true';
+  disp.focus();
+
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(disp);
+  selection.removeAllRanges();
+  selection.addRange(range);
+
+  const originalName = state.projectName || 'RMIT_Ad';
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      disp.blur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      disp.innerText = originalName;
+      disp.blur();
+    }
+  };
+
+  const onBlur = () => {
+    disp.contentEditable = 'false';
+    disp.removeEventListener('keydown', onKeyDown);
+    const newName = disp.innerText.trim();
+    if (newName && newName !== originalName) {
+      state.projectName = newName;
+      pushHistory();
+      render();
+    } else {
+      disp.innerText = originalName;
+    }
+  };
+
+  disp.addEventListener('keydown', onKeyDown);
+  disp.addEventListener('blur', onBlur, { once: true });
+}
 
 const defaultFallbackFiles = [
   'Asset (1).jpg',
