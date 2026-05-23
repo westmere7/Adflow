@@ -1372,23 +1372,41 @@ body.theme-navy {
 
     /* layers list */
 
+    .layer-section-title {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding: 12px 0 6px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .layer-section-title:first-of-type {
+      padding-top: 4px;
+    }
+
     .layer {
 
       display: flex;
 
       align-items: center;
 
-      gap: 8px;
+      gap: 6px;
 
-      padding: 6px 8px;
+      padding: 5px 6px;
 
       border-radius: 4px;
 
       cursor: pointer;
 
-      font-size: 12px;
+      font-size: 10.5px;
 
-      color: var(--text-label);
+      color: var(--text-main);
 
     }
 
@@ -1433,9 +1451,9 @@ body.theme-navy {
 
     .layer .layer-icon {
 
-      width: 12px;
+      width: 13px;
 
-      height: 12px;
+      height: 13px;
 
       flex-shrink: 0;
 
@@ -1473,7 +1491,8 @@ body.theme-navy {
 
 
 
-    .layer .layer-name[contenteditable="true"] {
+    .layer .layer-name[contenteditable="true"],
+    .link-group-row .layer-name[contenteditable="true"] {
       background: var(--bg-body);
       color: var(--text-bright);
       border: 1px solid var(--accent-base);
@@ -1490,7 +1509,8 @@ body.theme-navy {
       scrollbar-width: none !important;
       -ms-overflow-style: none !important;
     }
-    .layer .layer-name[contenteditable="true"]::-webkit-scrollbar {
+    .layer .layer-name[contenteditable="true"]::-webkit-scrollbar,
+    .link-group-row .layer-name[contenteditable="true"]::-webkit-scrollbar {
       display: none !important;
     }
 
@@ -1542,9 +1562,9 @@ body.theme-navy {
 
     .layer .icon-btn svg {
 
-      width: 14px;
+      width: 13px;
 
-      height: 14px;
+      height: 13px;
 
     }
 

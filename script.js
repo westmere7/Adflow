@@ -5639,11 +5639,11 @@ function renderLayers() {
 
   const frameIdx = state.frames.findIndex(f => f.id === state.activeFrameId);
   layersEl.innerHTML = `
-    <div class="layer-section-title" style="font-size:10px;font-weight:600;color:var(--text-label);padding:4px 0;text-transform:uppercase;letter-spacing:0.05em">Persistent (Top)</div>
+    <div class="layer-section-title">Persistent Tier (Top)</div>
     <div id="layers-top" class="layer-dropzone" data-persistent="top" style="min-height:16px;margin-bottom:8px"></div>
-    <div class="layer-section-title" style="font-size:10px;font-weight:600;color:var(--text-label);padding:4px 0;text-transform:uppercase;letter-spacing:0.05em">Frame ${frameIdx + 1}</div>
+    <div class="layer-section-title">Timeline (Frame ${frameIdx + 1})</div>
     <div id="layers-mid" class="layer-dropzone" data-persistent="false" style="min-height:16px;margin-bottom:8px"></div>
-    <div class="layer-section-title" style="font-size:10px;font-weight:600;color:var(--text-label);padding:4px 0;text-transform:uppercase;letter-spacing:0.05em">Persistent (Bottom)</div>
+    <div class="layer-section-title">Persistent Tier (Bottom)</div>
     <div id="layers-bot" class="layer-dropzone" data-persistent="bottom" style="min-height:16px"></div>
   `;
 
@@ -7844,6 +7844,13 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Tab') {
     e.preventDefault();
     document.body.classList.toggle('fullscreen-mode');
+    return;
+  }
+
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+    e.preventDefault();
+    state.showRulers = !state.showRulers;
+    render();
     return;
   }
 
@@ -10309,6 +10316,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
       <tr><td><b>Nudge 1 Pixel</b></td><td style="text-align: right;"><span class="kbd">←</span> <span class="kbd">↑</span> <span class="kbd">↓</span> <span class="kbd">→</span></td></tr>
       <tr><td><b>Nudge 10 Pixels</b></td><td style="text-align: right;"><span class="kbd">⇧ Shift</span> + <span class="kbd">← ↑ ↓ →</span></td></tr>
       <tr><td><b>Pan Workspace</b></td><td style="text-align: right;">Hold <span class="kbd">Space</span> + Drag</td></tr>
+      <tr><td><b>Toggle Rulers & Guides</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">R</span></td></tr>
       <tr><td><b>Toggle Fullscreen</b></td><td style="text-align: right;"><span class="kbd">Tab</span></td></tr>
       <tr><td><b>Deselect / Exit Modes</b></td><td style="text-align: right;"><span class="kbd">Esc</span></td></tr>
       <tr><td><b>Context Menu</b></td><td style="text-align: right;">Right-click Canvas or Element</td></tr>
