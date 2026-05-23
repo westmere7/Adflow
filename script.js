@@ -10139,7 +10139,7 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 const CHANGELOG_DATA = [
   {
-    version: 'v1.7.0',
+    version: 'v0.8.0',
     date: 'May 2026',
     items: [
       'Added options to save undo/redo history within the .flow project file and the IndexedDB autosave, allowing full project history recovery upon session reload or project file import.',
@@ -10149,7 +10149,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.6.0',
+    version: 'v0.7.0',
     date: 'May 2026',
     items: [
       'Refined saving indicators with a simpler, cleaner floppy disk icon and status indicators (check mark for saved, rotating circle for saving, amber dot for unsaved, and cross for error) positioned before the Preview button with a fixed width to prevent layout shifting.',
@@ -10161,7 +10161,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.5.0',
+    version: 'v0.6.0',
     date: 'May 2026',
     items: [
       'Data & Versions (dynamic creative): bind named element “slots” to spreadsheet columns and generate one finished ad set per row — ideal for spinning up the same banner set across many RMIT courses. Open it from File → Data & Versions or the Data button in the top bar.',
@@ -10173,7 +10173,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.4.1',
+    version: 'v0.5.1',
     date: 'May 2026',
     items: [
       'Converted brand and editor fonts (Museo & Helvetica Neue LT Pro) to highly compressed WOFF2 format to optimize loading speed.',
@@ -10182,7 +10182,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.4.0',
+    version: 'v0.5.0',
     date: 'May 2026',
     items: [
       'Auto-resize from selected (AI): build your entire size set in one click. It reads every element on the selected canvas, detects each one’s role (heading, subheading, button, logo, shape, background image, or generic), then clears the other canvases and re-places + re-sizes matching elements using per-format layout presets.',
@@ -10194,14 +10194,14 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.3.32',
+    version: 'v0.4.32',
     date: 'May 2026',
     items: [
       'Disabled the confirmation pop-up alert when adding/cloning elements to other canvases and linking them.'
     ]
   },
   {
-    version: 'v1.3.31',
+    version: 'v0.4.31',
     date: 'May 2026',
     items: [
       'Added a "Live-link mode" option under Sync Properties which synchronizes element updates across all canvases in real time as the user edits (dragging, resizing, typing, etc.).',
@@ -10209,14 +10209,14 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.3.30',
+    version: 'v0.4.30',
     date: 'May 2026',
     items: [
       'Disabled the success pop-up message upon successful auto-linking; alerts are now shown only when no elements are found to link.'
     ]
   },
   {
-    version: 'v1.3.29',
+    version: 'v0.4.29',
     date: 'May 2026',
     items: [
       'Reorganized context menu layout: Moved "Push changes to group" to the main context menu directly above the "Link Group" submenu item.',
@@ -10224,14 +10224,14 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.3.28',
+    version: 'v0.4.28',
     date: 'May 2026',
     items: [
       'Added a "Selected only" checkbox option under Auto-Link to only auto-link elements matching the name and type of currently selected layers.'
     ]
   },
   {
-    version: 'v1.3.27',
+    version: 'v0.4.27',
     date: 'May 2026',
     items: [
       'Added a "Clear everything" button to the TOOLs section to reset all canvases, selections, and link groups.',
@@ -10244,7 +10244,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.3.26',
+    version: 'v0.4.26',
     date: 'May 2026',
     items: [
       'Added a comprehensive component linking system: link elements of the same type across canvases to sync text, styles, shapes, button properties, images, rotation, opacity, IN animations, and effects.',
@@ -10254,7 +10254,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.3.25',
+    version: 'v0.4.25',
     date: 'May 2026',
     items: [
       'Introduced emotional support loading spinner: when exports take longer than 3 seconds, the spinner now sighs dramatically to validate your frustration.',
@@ -10263,161 +10263,161 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.3.24',
+    version: 'v0.4.24',
     date: 'May 2026',
     items: [
       'Refactored "Recent Projects" to be a nested "Open Recent" slide-out submenu inside the File dropdown menu.'
     ]
   },
   {
-    version: 'v1.3.23',
+    version: 'v0.4.23',
     date: 'May 2026',
     items: [
       'Added a "Recent Projects" section in the File menu displaying the last 10 manually saved projects with their names and save timestamps, allowing quick one-click restoration.'
     ]
   },
   {
-    version: 'v1.3.22',
+    version: 'v0.4.22',
     date: 'May 2026',
     items: [
       'Added a 1px solid black border overlay showing the exact boundaries of the canvas in the editor workspace when Crop to Canvas is disabled.'
     ]
   },
   {
-    version: 'v1.3.21',
+    version: 'v0.4.21',
     date: 'May 2026',
     items: [
       'Fixed frame transition stacking issue where animating frame-dependent images would briefly override and overlap persistent top layers by isolating layer z-indices.'
     ]
   },
   {
-    version: 'v1.3.20',
+    version: 'v0.4.20',
     date: 'May 2026',
     items: [
       'Allows direct pasting of text strings and image files from standard clipboards into active canvas without selecting or adding element placeholders first.'
     ]
   },
   {
-    version: 'v1.3.19',
+    version: 'v0.4.19',
     date: 'May 2026',
     items: [
       'Strips all rich-text and source formatting (HTML/inline styles) when pasting text from external applications like Adobe Illustrator, Microsoft Word, or web pages.'
     ]
   },
   {
-    version: 'v1.3.18',
+    version: 'v0.4.18',
     date: 'May 2026',
     items: [
       'Updated default "Learn more" button to use Museo 700 branding typeface.'
     ]
   },
   {
-    version: 'v1.3.17',
+    version: 'v0.4.17',
     date: 'May 2026',
     items: [
       'Added a default "Learn more" button in RMIT font styling on top of the main layer group for all canvases in new projects.'
     ]
   },
   {
-    version: 'v1.3.16',
+    version: 'v0.4.16',
     date: 'May 2026',
     items: [
       'Added a toggle setting (off by default) to temporarily bring elements to the front layer during dragging operations.'
     ]
   },
   {
-    version: 'v1.3.15',
+    version: 'v0.4.15',
     date: 'May 2026',
     items: [
       'Introduced pre-styled heading (Museo 700) and subheading (Helvetica Neue LT Pro) elements into the main layer group for all canvases on project creation.'
     ]
   },
   {
-    version: 'v1.3.14',
+    version: 'v0.4.14',
     date: 'May 2026',
     items: [
       'Fixed off-center new project canvas rendering by dynamically positioning canvases in wrapping grid rows and auto-centering viewport focus.'
     ]
   },
   {
-    version: 'v1.3.13',
+    version: 'v0.4.13',
     date: 'May 2026',
     items: [
       'Added version display next to zoom level in the header and enabled opening the Changelog directly by clicking it.'
     ]
   },
   {
-    version: 'v1.3.12',
+    version: 'v0.4.12',
     date: 'May 2026',
     items: [
       'Fixed frame transition flicker / blackout bug by maintaining the previous frame underneath during the animation transition.'
     ]
   },
   {
-    version: 'v1.3.11',
+    version: 'v0.4.11',
     date: 'May 2026',
     items: [
       'Arranged spacing properties in "Leading - Auto - Tracking" order with custom spacing constraints for clean visual separation.'
     ]
   },
   {
-    version: 'v1.3.10',
+    version: 'v0.4.10',
     date: 'May 2026',
     items: [
       'Renamed spacing properties to Leading and Tracking, and placed the Auto checkbox after Tracking on the same line.'
     ]
   },
   {
-    version: 'v1.3.9',
+    version: 'v0.4.9',
     date: 'May 2026',
     items: [
       'Reorganized Spacing Properties layout (moved Auto checkbox underneath the input and expanded column gap) to prevent visual overlap.'
     ]
   },
   {
-    version: 'v1.3.8',
+    version: 'v0.4.8',
     date: 'May 2026',
     items: [
       'Renamed Line Height to Line Spacing, fixed text-jamming bugs for unitless spacing multipliers, and added an Auto line spacing toggle.'
     ]
   },
   {
-    version: 'v1.3.7',
+    version: 'v0.4.7',
     date: 'May 2026',
     items: [
       'Prevented middle-mouse panning from triggering canvas marquee selection or header dragging.'
     ]
   },
   {
-    version: 'v1.3.6',
+    version: 'v0.4.6',
     date: 'May 2026',
     items: [
       'Enabled workspace panning via middle mouse click dragging.'
     ]
   },
   {
-    version: 'v1.3.5',
+    version: 'v0.4.5',
     date: 'May 2026',
     items: [
       'Aligned default RMIT logo seed with the Brand Element full white logo (RMIT_White.svg).'
     ]
   },
   {
-    version: 'v1.3.4',
+    version: 'v0.4.4',
     date: 'May 2026',
     items: [
       'Added quick dropdown to background creation to allow adding background layers to all canvases simultaneously.'
     ]
   },
   {
-    version: 'v1.3.3',
+    version: 'v0.4.3',
     date: 'May 2026',
     items: [
       'Expanded overlay screen joke database to 30+ jokes.'
     ]
   },
   {
-    version: 'v1.3.2',
+    version: 'v0.4.2',
     date: 'May 2026',
     items: [
       'Implemented random overlay jokes on viewport size check screen.',
@@ -10427,7 +10427,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.3.1',
+    version: 'v0.4.1',
     date: 'May 2026',
     items: [
       'Enforced light-scheme color-rendering for Light and RMIT themes on browser native controls (inputs, select dropdowns).',
@@ -10436,7 +10436,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.3.0',
+    version: 'v0.4.0',
     date: 'May 2026',
     items: [
       'Streamlined Gradient Color Picker layout (removed eyedropper fallback, moved stop swatches under gradient track, aligned Opacity, Angle, and Reverse Swap icon onto a single row).',
@@ -10448,7 +10448,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.2.0',
+    version: 'v0.3.0',
     date: 'May 2026',
     items: [
       'Added new "Settings..." workspace shortcuts to the top menu and canvas context menu.',
@@ -10457,7 +10457,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.1.0',
+    version: 'v0.2.0',
     date: 'May 2026',
     items: [
       'Decoupled continuous animations (Pan, Zoom, Float, Pulse, etc.) from entry transitions.',
@@ -10465,7 +10465,7 @@ const CHANGELOG_DATA = [
     ]
   },
   {
-    version: 'v1.0.0',
+    version: 'v0.1.0',
     date: 'May 2026',
     items: [
       'Initial deployment of the visual banner designer with multi-canvas support and frame animations.'
@@ -10499,7 +10499,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v1.7.0';
+  const currentVersion = 'v0.8.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10569,7 +10569,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v1.7.0</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.8.0</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10625,7 +10625,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v1.7.0</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.8.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

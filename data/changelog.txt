@@ -1,12 +1,12 @@
 RMIT Display Studio - Version & Changelog History
 
-v1.7.0 (Current) - May 2026
+v0.8.0 (Current) - May 2026
 - Added options to save undo/redo history within the .cook project file and the IndexedDB autosave, allowing full project history recovery upon session reload or project file import.
 - Introduced a "History & Saving" settings section, allowing users to configure the saved history limit (1 to 50 entries, defaulting to 10).
 - Added a prominent warning in the settings panel regarding deleted image and assets persistence across sessions to prevent missing references when undoing past deletions.
 - Synchronized versioning strings across Settings headers, About dialogs, and Update checks.
 
-v1.6.0 - May 2026
+v0.7.0 - May 2026
 - Refined saving indicators with a simpler, cleaner floppy disk icon and status indicators (check mark for saved, rotating circle for saving, amber dot for unsaved, and cross for error) positioned before the Preview button with a fixed width to prevent layout shifting.
 - Decoupled Link Group and Dynamic Data indicator badges from element wrappers, aligning them statically with the active selection outline to prevent them from animating or scaling with elements.
 - Show slot dropdowns directly in the Properties menu for quick binding next to the checkboxes, with dropdowns grayed out when unchecked.
@@ -14,7 +14,7 @@ v1.6.0 - May 2026
 - Persistent Dynamic Data panel in the properties sidebar, showing a general description and setup button even when no element is selected.
 - Global rename of "Add to canvases and link" to "Distribute & Link" for clarity.
 
-v1.5.0 - May 2026
+v0.6.0 - May 2026
 - Data & Versions (dynamic creative): bind named element “slots” to spreadsheet columns and generate one finished ad set per row — ideal for spinning up the same banner set across many RMIT courses. Open it from File → Data & Versions or the Data button in the top bar.
 - Per-element dynamic opt-in: a new “Dynamic Data” section in the Properties panel lets you mark exactly which fields vary per version (text & colour on text, + background on buttons, image on images, fill colour on shapes). Toggles propagate across a link group, so one logical slot stays consistent on every size.
 - Composable with link groups: a slot maps to its link group when one exists (one binding fans across all sizes) or to a single element otherwise — without ever altering your link-group sync settings.
@@ -22,12 +22,12 @@ v1.5.0 - May 2026
 - Edit-in-place: changing a dynamic slot on the canvas while a version is active writes back to that row’s cell. A new Data lock button makes dynamic slots read-only so you can review versions without nudging the data.
 - ClickTag is bindable per version, and “Export All Versions” produces one folder per row (named from your chosen key column) through the standard Google-Ads export pipeline. The data sheet is stored inside the .cook project (auto-saves & travels) and can be imported/exported as CSV.
 
-v1.4.1 - May 2026
+v0.5.1 - May 2026
 - Converted brand and editor fonts (Museo & Helvetica Neue LT Pro) to highly compressed WOFF2 format to optimize loading speed.
 - Implemented selective font packaging, bundling only the specific font families and weights used by the text and button elements of each canvas (e.g. only packaging Museo 700 if Museo 300/500 are not used), minimizing export bundle sizes.
 - Added a WebP image compression function for non-vector uploaded images inside the workspace, allowing quality customization via slider with real-time file size previews. Previously compressed images grey out the option to avoid duplicate compression.
 
-v1.4.0 - May 2026
+v0.5.0 - May 2026
 - Auto-resize from selected (AI): build your entire size set in one click. It reads every element on the selected canvas, detects each one’s role (heading, subheading, button, logo, shape, background image, or generic), then clears the other canvases and re-places + re-sizes matching elements using per-format layout presets.
 - Auto-resize automatically links every propagated element into its own group with role-aware sync defaults — content and appearance stay in sync across canvases while position, dimensions and font-size remain independent per format.
 - Added a dedicated "Font size" sync property for text link groups, split out from "Font settings" — you can now sync the typeface across canvases while keeping per-canvas sizes.
@@ -35,24 +35,24 @@ v1.4.0 - May 2026
 - New Project wizard now lets you pick which canvas sizes to include, the project name, the default canvas background colour, and a configurable maximum ad weight (KB) that drives the live size-validation warnings.
 - Cleaned up the Tools panel — removed the permanent highlight on the Auto-resize and Toggle Safezones buttons (the AI badge stays).
 
-v1.3.32 - May 2026
+v0.4.32 - May 2026
 - Disabled the confirmation pop-up alert when adding/cloning elements to other canvases and linking them.
 
-v1.3.31 - May 2026
+v0.4.31 - May 2026
 - Added a "Live-link mode" option under Sync Properties which synchronizes element updates across all canvases in real time as the user edits (dragging, resizing, typing, etc.).
 - Added a "Live-link" lightning bolt button to the active link groups panel, and condensed the action button layout to optimize sidebar space.
 
-v1.3.30 - May 2026
+v0.4.30 - May 2026
 - Disabled the success pop-up message upon successful auto-linking; alerts are now shown only when no elements are found to link.
 
-v1.3.29 - May 2026
+v0.4.29 - May 2026
 - Reorganized context menu layout: Moved "Push changes to group" to the main context menu directly above the "Link Group" submenu item.
 - Renamed "Link to: [Name]" list items inside the "Link Group" submenu to "Linked to: [Name]" and moved them to the top of the submenu.
 
-v1.3.28 - May 2026
+v0.4.28 - May 2026
 - Added a "Selected only" checkbox option under Auto-Link to only auto-link elements matching the name and type of currently selected layers.
 
-v1.3.27 - May 2026
+v0.4.27 - May 2026
 - Added a "Clear everything" button to the TOOLs section to reset all canvases, selections, and link groups.
 - Cleaned up the element context menu by grouping Remove Link, Push Changes, and Delete Group actions inside the Link Group submenu.
 - Added "Distribute & Link" as a direct context menu action under the Link Group submenu.
@@ -61,95 +61,95 @@ v1.3.27 - May 2026
 - Synchronized link group icons to match the exact SVGs of the corresponding Layer list item types.
 - Highlighted active link group rows in the sidebar when any of their elements are selected.
 
-v1.3.26 - May 2026
+v0.4.26 - May 2026
 - Added a comprehensive component linking system: link elements of the same type across canvases to sync text, styles, shapes, button properties, images, rotation, opacity, IN animations, and effects.
 - Added support for auto-linking elements by layer name and type, with visual highlighting, group visibility toggles, and group deletion.
 - Added inline double-click renaming, marquee scrolling, and a dedicated right-side element counter badge for link groups.
 - Relocated project settings to a dedicated modal dialog accessible from the File dropdown menu, and added a ClickTag URL field to the New Project wizard.
 
-v1.3.25 - May 2026
+v0.4.25 - May 2026
 - Introduced emotional support loading spinner: when exports take longer than 3 seconds, the spinner now sighs dramatically to validate your frustration.
 - Refactored the alignment helper to respect personal space. Elements will now complain in the console if positioned too close to each other.
 - Fixed a bug where zoom levels above 400% would temporarily summon a portal to the Flashtalking timeline dimension.
 
-v1.3.24 - May 2026
+v0.4.24 - May 2026
 - Refactored "Recent Projects" to be a nested "Open Recent" slide-out submenu inside the File dropdown menu.
 
-v1.3.23 - May 2026
+v0.4.23 - May 2026
 - Added a "Recent Projects" section in the File menu displaying the last 10 manually saved projects with their names and save timestamps, allowing quick one-click restoration.
 
-v1.3.22 - May 2026
+v0.4.22 - May 2026
 - Added a 1px solid black border overlay showing the exact boundaries of the canvas in the editor workspace when Crop to Canvas is disabled.
 
-v1.3.21 - May 2026
+v0.4.21 - May 2026
 - Fixed frame transition stacking issue where animating frame-dependent images would briefly override and overlap persistent top layers by isolating layer z-indices.
 
-v1.3.20 - May 2026
+v0.4.20 - May 2026
 - Allows direct pasting of text strings and image files from standard clipboards into active canvas without selecting or adding element placeholders first.
 
-v1.3.19 - May 2026
+v0.4.19 - May 2026
 - Strips all rich-text and source formatting (HTML/inline styles) when pasting text from external applications like Adobe Illustrator, Microsoft Word, or web pages.
 
-v1.3.18 - May 2026
+v0.4.18 - May 2026
 - Updated default "Learn more" button to use Museo 700 branding typeface.
 
-v1.3.17 - May 2026
+v0.4.17 - May 2026
 - Added a default "Learn more" button in RMIT font styling on top of the main layer group for all canvases in new projects.
 
-v1.3.16 - May 2026
+v0.4.16 - May 2026
 - Added a toggle setting (off by default) to temporarily bring elements to the front layer during dragging operations.
 
-v1.3.15 - May 2026
+v0.4.15 - May 2026
 - Introduced pre-styled heading (Museo 700) and subheading (Helvetica Neue LT Pro) elements into the main layer group for all canvases on project creation.
 
-v1.3.14 - May 2026
+v0.4.14 - May 2026
 - Fixed off-center new project canvas rendering by dynamically positioning canvases in wrapping grid rows and auto-centering viewport focus.
 
-v1.3.13 - May 2026
+v0.4.13 - May 2026
 - Added version display next to zoom level in the header and enabled opening the Changelog directly by clicking it.
 
-v1.3.12 - May 2026
+v0.4.12 - May 2026
 - Fixed frame transition flicker / blackout bug by maintaining the previous frame underneath during the animation transition.
 
-v1.3.11 - May 2026
+v0.4.11 - May 2026
 - Arranged spacing properties in "Leading - Auto - Tracking" order with custom spacing constraints for clean visual separation.
 
-v1.3.10 - May 2026
+v0.4.10 - May 2026
 - Renamed spacing properties to Leading and Tracking, and placed the Auto checkbox after Tracking on the same line.
 
-v1.3.9 - May 2026
+v0.4.9 - May 2026
 - Reorganized Spacing Properties layout (moved Auto checkbox underneath the input and expanded column gap) to prevent visual overlap.
 
-v1.3.8 - May 2026
+v0.4.8 - May 2026
 - Renamed Line Height to Line Spacing, fixed text-jamming bugs for unitless spacing multipliers, and added an Auto line spacing toggle.
 
-v1.3.7 - May 2026
+v0.4.7 - May 2026
 - Prevented middle-mouse panning from triggering canvas marquee selection or header dragging.
 
-v1.3.6 - May 2026
+v0.4.6 - May 2026
 - Enabled workspace panning via middle mouse click dragging.
 
-v1.3.5 - May 2026
+v0.4.5 - May 2026
 - Aligned default RMIT logo seed with the Brand Element full white logo (RMIT_White.svg).
 
-v1.3.4 - May 2026
+v0.4.4 - May 2026
 - Added quick dropdown to background creation to allow adding background layers to all canvases simultaneously.
 
-v1.3.3 - May 2026
+v0.4.3 - May 2026
 - Expanded overlay screen joke database to 30+ jokes.
 
-v1.3.2 - May 2026
+v0.4.2 - May 2026
 - Implemented random overlay jokes on viewport size check screen.
 - Enforced light-scheme color-rendering for Light and RMIT themes.
 - Removed High Contrast and Pride themes.
 - Added version number and Changelog button to the Settings panel header.
 
-v1.3.1 - May 2026
+v0.4.1 - May 2026
 - Enforced light-scheme color-rendering for Light and RMIT themes on browser native controls (inputs, select dropdowns).
 - Removed High Contrast and Pride themes from the project.
 - Added version number and Changelog button to the Settings panel header.
 
-v1.3.0 - May 2026
+v0.4.0 - May 2026
 - Streamlined Gradient Color Picker layout (removed eyedropper fallback, moved stop swatches under gradient track, aligned Opacity, Angle, and Reverse Swap icon onto a single row).
 - Refactored Text Background animations to layout the toggle ("animate text BG") and the "Time offset" numeric input side-by-side.
 - Rebranded the application from Ad Cooker to RMIT Display Studio.
@@ -157,14 +157,14 @@ v1.3.0 - May 2026
 - Completely rewrote the GitHub README with high-fidelity technical specs and clean formatting.
 - Introduced the Versioning & Changelog system to the About section.
 
-v1.2.0 - May 2026
+v0.3.0 - May 2026
 - Added new "Settings..." workspace shortcuts to the top menu and canvas context menu.
 - Introduced a detailed Help Documentation system in the app.
 - Synchronized all workspace shortcut listings across in-app modals and project docs.
 
-v1.1.0 - May 2026
+v0.2.0 - May 2026
 - Decoupled continuous animations (Pan, Zoom, Float, Pulse, etc.) from entry transitions.
 - Renamed automation panels, grouped HTML & PNG exports, and added validation for ClickTags.
 
-v1.0.0 - May 2026
+v0.1.0 - May 2026
 - Initial deployment of the visual banner designer with multi-canvas support and frame animations.
