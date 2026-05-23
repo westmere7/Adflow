@@ -2050,6 +2050,17 @@ body.theme-navy {
 
 
 
+    .el.button span,
+
+    .el.button .editable {
+
+      word-break: normal;
+
+    }
+
+
+
+
     .el.image img {
 
       width: 100%;

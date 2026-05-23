@@ -283,8 +283,12 @@ function measureTextFits(el, text, fontSize) {
   span.style.fontFamily = el.fontFamily || 'Arial';
   span.style.lineHeight = lh;
   span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
-  if (isButton && !el.wrapText) {
-    span.style.whiteSpace = 'nowrap';
+  if (isButton) {
+    if (!el.wrapText) {
+      span.style.whiteSpace = 'nowrap';
+    } else {
+      span.style.wordBreak = 'normal';
+    }
   } else {
     span.style.wordBreak = 'break-word';
   }
@@ -2429,7 +2433,7 @@ function elementNode(el, canvasCtx) {
       // otherwise width:100% + word-break:break-word fragments the text mid-word.
       ed.style.display = 'inline';
       ed.style.width = 'auto';
-      ed.style.wordBreak = el.wrapText ? 'break-word' : 'normal';
+      ed.style.wordBreak = 'normal';
       if (el.wrapText) {
         ed.style.whiteSpace = 'normal';
         ed.style.maxWidth = '100%';
@@ -2447,7 +2451,7 @@ function elementNode(el, canvasCtx) {
       span.style.fontWeight = el.weight || '600';
       span.style.position = 'relative';
       if (el.wrapText) {
-        span.style.wordBreak = 'break-word';
+        span.style.wordBreak = 'normal';
         span.style.whiteSpace = 'normal';
         span.style.maxWidth = '100%';
       } else {
@@ -8624,11 +8628,11 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       if (el.autoSize) {
         const autoAttrs = ` class="auto-size-text" data-max-size="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" data-width="${el.width}" data-height="${el.height}" data-padding-lr="${paddingLR}" data-padding-tb="${paddingTB}"`;
         const spanStyle = el.wrapText
-          ? `display:inline;word-break:break-word;white-space:normal;`
+          ? `display:inline;word-break:normal;white-space:normal;`
           : `display:inline;white-space:nowrap;`;
-        return `    <div style="${wrapStyle}"${autoAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div class="auto-size-block" style="position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:break-word;' : ''}"><span class="auto-size-span" style="${spanStyle}">${esc(el.text)}</span></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+        return `    <div style="${wrapStyle}"${autoAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div class="auto-size-block" style="position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:normal;' : ''}"><span class="auto-size-span" style="${spanStyle}">${esc(el.text)}</span></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
       } else {
-        const normalBlockStyle = `position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:break-word;' : 'white-space:nowrap;'}`;
+        const normalBlockStyle = `position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:normal;' : 'white-space:nowrap;'}`;
         return `    <div style="${wrapStyle}">${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div style="${normalBlockStyle}">${esc(el.text)}</div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
       }
     }
@@ -8884,9 +8888,8 @@ ${elsTop}
           block.style.fontSize = mid + 'px';
           span.style.fontSize = mid + 'px';
           
-          var rect = block.getBoundingClientRect();
-          var fitsHeight = rect.height <= targetHeight;
-          var fitsWidth = block.scrollWidth <= targetWidth;
+          var fitsHeight = (block.scrollHeight - padTB * 2) <= (targetHeight + 1.5);
+          var fitsWidth = (block.scrollWidth - padLR * 2) <= (targetWidth + 1.5);
           
           if (fitsHeight && fitsWidth) {
             best = mid;
