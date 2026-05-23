@@ -3265,8 +3265,11 @@ function onResizeMouseDown(e, el, corner) {
   const onMove = (ev) => {
     const dx = (ev.clientX - startX) / z;
     const dy = (ev.clientY - startY) / z;
-    let ldx = dx * cos - dy * sin;
-    let ldy = dx * sin + dy * cos;
+    
+    const isAlt = ev.altKey;
+    const factor = isAlt ? 2 : 1;
+    let ldx = (dx * cos - dy * sin) * factor;
+    let ldy = (dx * sin + dy * cos) * factor;
 
     // Shift or lockRatio = lock aspect ratio. For corners, sync the smaller delta to the
     // dominant one along the original aspect.
@@ -3310,7 +3313,7 @@ function onResizeMouseDown(e, el, corner) {
       el.autoHug = false;
     }
 
-    if (ev.altKey && (el.type === 'text' || el.type === 'button') && o.fs) {
+    if (ev.ctrlKey && (el.type === 'text' || el.type === 'button') && o.fs) {
       const isHorizontalOnly = (corner === 'e' || corner === 'w');
       const scale = isHorizontalOnly ? (newW / o.w) : (newH / o.h);
       el.fontSize = Math.max(4, Math.round(o.fs * scale));
@@ -3318,31 +3321,28 @@ function onResizeMouseDown(e, el, corner) {
       el.fontSize = o.fs;
     }
 
-    if (ev.ctrlKey || ev.metaKey) {
-      el.width = Math.round(newW / 10) * 10;
-      el.height = Math.round(newH / 10) * 10;
+    el.width = Math.round(newW);
+    el.height = Math.round(newH);
 
-      let lx_pinned_snap = (lx_pinned === 0) ? 0 : (lx_pinned === o.w ? el.width : el.width / 2);
-      let ly_pinned_snap = (ly_pinned === 0) ? 0 : (ly_pinned === o.h ? el.height : el.height / 2);
-      const lx_rel_snap = lx_pinned_snap - el.width / 2;
-      const ly_rel_snap = ly_pinned_snap - el.height / 2;
-      const cx_snap = px - (lx_rel_snap * cos_cw - ly_rel_snap * sin_cw);
-      const cy_snap = py - (lx_rel_snap * sin_cw + ly_rel_snap * cos_cw);
-      el.x = Math.round((cx_snap - el.width / 2) / 10) * 10;
-      el.y = Math.round((cy_snap - el.height / 2) / 10) * 10;
-    } else {
-      el.width = Math.round(newW);
-      el.height = Math.round(newH);
-
-      let lx_pinned_new = (lx_pinned === 0) ? 0 : (lx_pinned === o.w ? el.width : el.width / 2);
-      let ly_pinned_new = (ly_pinned === 0) ? 0 : (ly_pinned === o.h ? el.height : el.height / 2);
-      const lx_rel_new = lx_pinned_new - el.width / 2;
-      const ly_rel_new = ly_pinned_new - el.height / 2;
-      const cx_new = px - (lx_rel_new * cos_cw - ly_rel_new * sin_cw);
-      const cy_new = py - (lx_rel_new * sin_cw + ly_rel_new * cos_cw);
-      el.x = Math.round(cx_new - el.width / 2);
-      el.y = Math.round(cy_new - el.height / 2);
+    let cur_lx_pinned = lx_pinned;
+    let cur_ly_pinned = ly_pinned;
+    if (isAlt) {
+      cur_lx_pinned = o.w / 2;
+      cur_ly_pinned = o.h / 2;
     }
+    const lx_rel_init = cur_lx_pinned - o.w / 2;
+    const ly_rel_init = cur_ly_pinned - o.h / 2;
+    const px_curr = o_cx + lx_rel_init * cos_cw - ly_rel_init * sin_cw;
+    const py_curr = o_cy + lx_rel_init * sin_cw + ly_rel_init * cos_cw;
+
+    let lx_pinned_new = (cur_lx_pinned === 0) ? 0 : (cur_lx_pinned === o.w ? el.width : el.width / 2);
+    let ly_pinned_new = (cur_ly_pinned === 0) ? 0 : (cur_ly_pinned === o.h ? el.height : el.height / 2);
+    const lx_rel_new = lx_pinned_new - el.width / 2;
+    const ly_rel_new = ly_pinned_new - el.height / 2;
+    const cx_new = px_curr - (lx_rel_new * cos_cw - ly_rel_new * sin_cw);
+    const cy_new = py_curr - (lx_rel_new * sin_cw + ly_rel_new * cos_cw);
+    el.x = Math.round(cx_new - el.width / 2);
+    el.y = Math.round(cy_new - el.height / 2);
 
     render();
   };
