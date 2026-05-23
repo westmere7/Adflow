@@ -4552,10 +4552,19 @@ function renderLinkControl() {
 // ============================================================================
 // Assets — a per-project library of reusable elements and groups
 // ============================================================================
+function ensureAssetsPanelExpanded() {
+  const assetsSection = document.getElementById('panel-section-assets');
+  if (assetsSection && assetsSection.classList.contains('collapsed')) {
+    assetsSection.classList.remove('collapsed');
+    localStorage.setItem('panel-collapsed-header-assets', 'false');
+  }
+}
+
 // Snapshot the current selection into the asset library. A single grouped
 // element pulls in its whole group. Link-group membership is dropped; per-element
 // dynamic-data flags are kept.
 function saveSelectionAsAsset(folderId) {
+  ensureAssetsPanelExpanded();
   const c = getActiveCanvas();
   if (!c) return;
   const ids = (state.layerSelection && state.layerSelection.length)
@@ -4683,6 +4692,7 @@ function uniqueName(base, names) {
 }
 
 function createAssetFolder() {
+  ensureAssetsPanelExpanded();
   if (!state.assetFolders) state.assetFolders = [];
   const folderId = 'af_' + uid();
   state.assetFolders.push({
@@ -4932,6 +4942,7 @@ function renderAssets() {
 }
 
 function showAddAssetDropdown(e) {
+  ensureAssetsPanelExpanded();
   let popup = document.getElementById('asset-add-popup');
   if (popup) { popup.remove(); return; }
 
@@ -5127,6 +5138,7 @@ document.getElementById('btn-asset-folder')?.addEventListener('click', (e) => { 
 
     // 1. Files dropped directly from computer
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      ensureAssetsPanelExpanded();
       e.preventDefault();
       e.stopPropagation();
       if (isTargetReadOnly) {
