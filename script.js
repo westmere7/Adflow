@@ -8163,12 +8163,133 @@ async function exportCanvasAsZip(c) {
   URL.revokeObjectURL(a.href);
 }
 
+const fontCache = {};
+async function getFontAsDataUrl(filename) {
+  if (fontCache[filename]) return fontCache[filename];
+  try {
+    const res = await fetch(`data/fonts/${filename}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    fontCache[filename] = base64;
+    return base64;
+  } catch (err) {
+    console.warn(`Failed to fetch font ${filename}:`, err);
+    return null;
+  }
+}
+
 async function exportCanvasAsPng(c) {
   try {
-    const html = generateExportHTML(c, null, true); // disable anims for static image
+    // 1. Fetch and inline required fonts for this canvas
+    const req = getRequiredFonts(c);
+    const fontPromises = [];
+    const fontReplacements = [];
+    
+    const museoFiles = {
+      300: 'Museo300-Regular.woff2',
+      500: 'Museo500-Regular.woff2',
+      700: 'Museo700-Regular.woff2'
+    };
+    const helveticaFiles = {
+      300: 'helveticaneueltpro_lt.woff2',
+      400: 'helveticaneueltpro_roman.woff2',
+      500: 'helveticaneueltpro.woff2'
+    };
+    
+    if (req.museo) {
+      for (const w of req.museo) {
+        const file = museoFiles[w];
+        if (file) {
+          fontPromises.push((async () => {
+            const dataUrl = await getFontAsDataUrl(file);
+            if (dataUrl) {
+              fontReplacements.push({ file, dataUrl });
+            }
+          })());
+        }
+      }
+    }
+    if (req.helvetica) {
+      for (const w of req.helvetica) {
+        const file = helveticaFiles[w];
+        if (file) {
+          fontPromises.push((async () => {
+            const dataUrl = await getFontAsDataUrl(file);
+            if (dataUrl) {
+              fontReplacements.push({ file, dataUrl });
+            }
+          })());
+        }
+      }
+    }
+    
+    await Promise.all(fontPromises);
+
+    let html = generateExportHTML(c, null, true); // disable anims for static image
+    for (const rep of fontReplacements) {
+      html = html.split(`data/fonts/${rep.file}`).join(rep.dataUrl);
+      html = html.split(`assets/${rep.file}`).join(rep.dataUrl);
+    }
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    const xhtml = new XMLSerializer().serializeToString(doc.documentElement);
+    
+    // Extract styles
+    const styles = Array.from(doc.querySelectorAll('style')).map(s => s.textContent).join('\n');
+    
+    // Extract the #ad element
+    const adEl = doc.querySelector('#ad');
+    if (!adEl) throw new Error('#ad element not found');
+    
+    // Inline any relative img sources
+    const imgPromises = [];
+    const imgs = adEl.querySelectorAll('img');
+    imgs.forEach(img => {
+      const src = img.getAttribute('src');
+      if (src && !src.startsWith('data:') && !src.startsWith('http:') && !src.startsWith('https:')) {
+        imgPromises.push((async () => {
+          try {
+            const res = await fetch(src);
+            if (res.ok) {
+              const blob = await res.blob();
+              const dataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              img.setAttribute('src', dataUrl);
+            }
+          } catch (e) {
+            console.warn(`Failed to inline image ${src}:`, e);
+          }
+        })());
+      }
+    });
+    await Promise.all(imgPromises);
+
+    // Make sure we have a well-formed XHTML container starting with div
+    const xhtmlContainer = document.createElement('div');
+    xhtmlContainer.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    xhtmlContainer.style.width = '100%';
+    xhtmlContainer.style.height = '100%';
+    xhtmlContainer.style.position = 'relative';
+    
+    const styleEl = document.createElement('style');
+    styleEl.textContent = styles;
+    xhtmlContainer.appendChild(styleEl);
+    
+    // Clone and append the ad structure
+    xhtmlContainer.appendChild(adEl.cloneNode(true));
+    
+    const xhtml = new XMLSerializer().serializeToString(xhtmlContainer);
+    
     const cnv = document.createElement('canvas');
     cnv.width = c.width;
     cnv.height = c.height;
@@ -8176,15 +8297,14 @@ async function exportCanvasAsPng(c) {
     ctx.fillStyle = c.bgColor || '#000';
     ctx.fillRect(0, 0, c.width, c.height);
     const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${c.width}" height="${c.height}"><foreignObject x="0" y="0" width="100%" height="100%">${xhtml}</foreignObject></svg>`;
-    const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-    const svgUrl = URL.createObjectURL(svgBlob);
+    const base64Svg = btoa(unescape(encodeURIComponent(svgStr)));
+    const svgUrl = `data:image/svg+xml;base64,${base64Svg}`;
     await new Promise((res, rej) => {
       const img = new Image();
       img.onload = () => { ctx.drawImage(img, 0, 0); res(); };
       img.onerror = () => rej(new Error('Image failed to load from SVG'));
       img.src = svgUrl;
     });
-    URL.revokeObjectURL(svgUrl);
     const pngUrl = cnv.toDataURL('image/png');
     const a = document.createElement('a');
     const projName = state.projectName || 'Ad';
@@ -8427,16 +8547,21 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   const frameData = [];
   state.frames.forEach((f, i) => {
     const frameEls = c.elements.filter(e => e.persistent === false && e.frameId === f.id).map(renderEl).join('\n');
-    framesHTML += `<div class="frame" id="frame-${f.id}" style="display:${i === 0 ? 'block' : 'none'};width:100%;height:100%;position:absolute;inset:0;">\n${frameEls}\n</div>\n`;
+    const displayStyle = isImageExport 
+      ? (f.id === state.activeFrameId ? 'block' : 'none') 
+      : (i === 0 ? 'block' : 'none');
+    framesHTML += `<div class="frame" id="frame-${f.id}" style="display:${displayStyle};width:100%;height:100%;position:absolute;inset:0;">\n${frameEls}\n</div>\n`;
     frameData.push({ id: f.id, duration: f.duration || 2, transition: i === 0 ? 'none' : (f.transition || 'fade'), transitionDuration: f.transitionDuration || 0.5, transitionFade: f.transitionFade });
   });
 
   let clickAreasHTML = '';
-  const clickBtns = c.elements.filter(e => e.type === 'button' && e.isClickArea);
-  if (c.fullClickArea === false && clickBtns.length > 0) {
-    clickAreasHTML = clickBtns.map(btn => `<a class="clickArea" href="javascript:void(0);" style="position:absolute;left:${btn.x}px;top:${btn.y}px;width:${btn.width}px;height:${btn.height}px;z-index:9999;display:block;"></a>`).join('\n    ');
-  } else {
-    clickAreasHTML = `<a class="clickArea" href="javascript:void(0);" style="position:absolute;inset:0;z-index:9999;display:block;"></a>`;
+  if (!isImageExport) {
+    const clickBtns = c.elements.filter(e => e.type === 'button' && e.isClickArea);
+    if (c.fullClickArea === false && clickBtns.length > 0) {
+      clickAreasHTML = clickBtns.map(btn => `<a class="clickArea" href="javascript:void(0);" style="position:absolute;left:${btn.x}px;top:${btn.y}px;width:${btn.width}px;height:${btn.height}px;z-index:9999;display:block;"></a>`).join('\n    ');
+    } else {
+      clickAreasHTML = `<a class="clickArea" href="javascript:void(0);" style="position:absolute;inset:0;z-index:9999;display:block;"></a>`;
+    }
   }
 
   // Only include @font-face rules for fonts and weights actually used in this canvas
