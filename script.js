@@ -5617,15 +5617,26 @@ function renderProps() {
 
   // Hex-copy button helpers — used by every hex color input across the app.
   const HEX_COPY_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-  const hexCopyBtn = (k, disabled = false) => `<button class="hex-copy" data-target-k="${k}" title="Copy hex" tabindex="-1" ${disabled ? 'disabled style="pointer-events:none;"' : ''} style="position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:2px; color:var(--text-muted); display:flex; align-items:center;">${HEX_COPY_SVG}</button>`;
-  const hexInputBox = (key, value, inputId = '', disabled = false) => `<div style="position:relative; flex:1; min-width:0; ${disabled ? 'pointer-events:none;' : ''}"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" title="Hex color code" ${disabled ? 'disabled style="pointer-events:none;"' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase;" />${hexCopyBtn(key, disabled)}</div>`;
+  const hexCopyBtn = (k, disabled = false) => {
+    const disabledAttr = disabled ? 'disabled' : '';
+    const pointerEvents = disabled ? 'pointer-events:none; opacity:0.4;' : '';
+    const style = `position:absolute; right:4px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:2px; color:var(--text-muted); display:flex; align-items:center; ${pointerEvents}`;
+    return `<button class="hex-copy" data-target-k="${k}" title="Copy hex" tabindex="-1" ${disabledAttr} style="${style}">${HEX_COPY_SVG}</button>`;
+  };
+  const hexInputBox = (key, value, inputId = '', disabled = false) => {
+    const disabledAttr = disabled ? 'disabled' : '';
+    const pointerEvents = disabled ? 'pointer-events:none; opacity:0.5;' : '';
+    const containerStyle = `position:relative; flex:1; min-width:0; ${pointerEvents}`;
+    const inputStyle = `width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase; ${pointerEvents}`;
+    return `<div style="${containerStyle}"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" title="Hex color code" ${disabledAttr} style="${inputStyle}" />${hexCopyBtn(key, disabled)}</div>`;
+  };
 
   // ---- Dynamic Data (data-merge / versioning) ----
   let dynamicHtml = '';
   if (typeof dmFieldsForType === 'function') {
     const dmFields = el ? dmFieldsForType(el.type) : [];
     if (el && dmFields.length) {
-      dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data">
+      dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
         <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
           <span class="dd-marquee" style="flex:1; min-width:0; overflow:hidden; white-space:nowrap;">Dynamic Data<span style="color:var(--text-main);">: ${esc(layerLabel(el))}</span></span>
           <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="flex-shrink:0; transition: transform 0.2s ease;">
@@ -5663,7 +5674,7 @@ function renderProps() {
       dynamicHtml += `<button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="margin-top:10px;width:100%;font-size:11px;">Open Data &amp; Versions…</button>`;
       dynamicHtml += `</div>`;
     } else {
-      dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data">
+      dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
         <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
           <span>Dynamic Data</span>
           <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
@@ -5690,6 +5701,7 @@ function renderProps() {
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </h3>
+        <div class="panel-section-content">
         <div class="prop-row">
           <label>Dimensions</label>
           <div class="prop-grid-2">
@@ -5750,7 +5762,7 @@ function renderProps() {
         </div>
 
         <div class="prop-empty" style="padding: 16px 0 0;">Tip: double-click text to edit it inline. Use <span class="kbd">←↑↓→</span> to nudge, <span class="kbd">⌫</span> to delete.</div>
-      </div>`;
+      </div></div>`;
     const wInp = document.getElementById('c-w');
     const hInp = document.getElementById('c-h');
 
@@ -6229,14 +6241,16 @@ function renderProps() {
   }
 
   // Animation section
-  f.push(`</div>`); // end of properties section
+  f.push(`</div></div>`); // end of properties section
   f.push(`<div class="panel-section" id="panel-section-animation">
     <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none;">
       <span>Animation</span>
       <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
         <polyline points="6 9 12 15 18 9"></polyline>
       </svg>
-    </h3>`);
+    </h3>
+    <div class="panel-section-content">`);
+
   f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>IN TRANSITIONS</label></div>`);
 
   const animOptions = [
@@ -6370,7 +6384,7 @@ function renderProps() {
     }
   }
 
-  f.push(`</div>`);
+  f.push(`</div></div>`);
 
   propsEl.innerHTML = `
     ${dynamicHtml}
@@ -6381,7 +6395,8 @@ function renderProps() {
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
       </h3>
-      ${f.join('')}`;
+      <div class="panel-section-content">
+        ${f.join('')}`;
 
   const updateProp = (k, val) => {
     if (!k) return;
@@ -11516,12 +11531,6 @@ function cycleVersion(dir) {
 }
 
 document.getElementById('menu-file-data')?.addEventListener('click', openDataPanel);
-document.getElementById('btn-open-data')?.addEventListener('click', openDataPanel);
-document.getElementById('version-select')?.addEventListener('change', (e) => dmSetActiveVersion(e.target.value));
-document.getElementById('btn-version-prev')?.addEventListener('click', () => cycleVersion('prev'));
-document.getElementById('btn-version-next')?.addEventListener('click', () => cycleVersion('next'));
-document.getElementById('btn-data-lock')?.addEventListener('click', dmToggleLock);
-
 propsEl?.addEventListener('click', (e) => {
   const lockedRow = e.target.closest('[data-locked-field="true"]');
   if (lockedRow) {
@@ -11557,10 +11566,114 @@ function initCollapsiblePanels() {
       parentSection.classList.add('collapsed');
     }
     
-    header.addEventListener('click', () => {
+    header.addEventListener('click', (e) => {
+      if (e.target.closest('.panel-fullscreen-btn')) return;
       const currentlyCollapsed = parentSection.classList.toggle('collapsed');
       localStorage.setItem(storageKey, currentlyCollapsed ? 'true' : 'false');
     });
+
+    // Exclude canvases (which is not collapsible anyway) and Dynamic Data
+    const isExcluded = (keyAttr === 'header-dynamic-data');
+    if (!isExcluded) {
+      const collapseIcon = header.querySelector('.collapse-icon');
+      if (collapseIcon) {
+        const fsBtn = document.createElement('button');
+        fsBtn.className = 'panel-fullscreen-btn';
+        fsBtn.title = 'Toggle Full Mode';
+        fsBtn.style.cursor = 'pointer';
+        fsBtn.style.display = 'inline-flex';
+        fsBtn.style.alignItems = 'center';
+        fsBtn.style.justifyContent = 'center';
+        fsBtn.style.background = 'none';
+        fsBtn.style.border = 'none';
+        fsBtn.style.padding = '0';
+        fsBtn.style.outline = 'none';
+        fsBtn.style.color = 'var(--text-muted)';
+        fsBtn.style.transition = 'color 0.15s';
+        
+        fsBtn.addEventListener('mouseenter', () => fsBtn.style.color = 'var(--text-bright)');
+        fsBtn.addEventListener('mouseleave', () => {
+          if (!parentSection.classList.contains('full-mode')) {
+            fsBtn.style.color = 'var(--text-muted)';
+          } else {
+            fsBtn.style.color = 'var(--accent-light)';
+          }
+        });
+        
+        const setIcon = () => {
+          const isFull = parentSection.classList.contains('full-mode');
+          if (isFull) {
+            fsBtn.title = 'Exit Full Mode';
+            fsBtn.style.color = 'var(--accent-light)';
+            fsBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v3a2 2 0 0 1-2 2H4M15 4v3a2 2 0 0 0 2 2h3M15 20v-3a2 2 0 0 1 2-2h3M9 20v-3a2 2 0 0 0-2-2H4"/></svg>`;
+          } else {
+            fsBtn.title = 'Toggle Full Mode';
+            fsBtn.style.color = 'var(--text-muted)';
+            fsBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 0 0-2 2v3M15 4h3a2 2 0 0 1 2 2v3M15 20h3a2 2 0 0 0 2-2v-3M9 20H6a2 2 0 0 1-2-2v-3"/></svg>`;
+          }
+        };
+        setIcon();
+        
+        if (collapseIcon.parentNode === header) {
+          const wrapper = document.createElement('span');
+          wrapper.style.display = 'inline-flex';
+          wrapper.style.alignItems = 'center';
+          wrapper.style.gap = '6px';
+          wrapper.style.marginLeft = 'auto';
+          
+          header.insertBefore(wrapper, collapseIcon);
+          wrapper.appendChild(fsBtn);
+          wrapper.appendChild(collapseIcon);
+        } else {
+          collapseIcon.parentNode.insertBefore(fsBtn, collapseIcon);
+        }
+        
+        fsBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          
+          const isEnteringFull = !parentSection.classList.contains('full-mode');
+          const panelScroll = parentSection.closest('.panel-scroll');
+          
+          if (panelScroll) {
+            panelScroll.querySelectorAll('.panel-section').forEach(sec => {
+              if (sec !== parentSection) {
+                sec.classList.remove('full-mode');
+                sec.classList.remove('sibling-hidden');
+                const siblingFsBtn = sec.querySelector('.panel-fullscreen-btn');
+                if (siblingFsBtn) {
+                  siblingFsBtn.title = 'Toggle Full Mode';
+                  siblingFsBtn.style.color = 'var(--text-muted)';
+                  siblingFsBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H6a2 2 0 0 0-2 2v3M15 4h3a2 2 0 0 1 2 2v3M15 20h3a2 2 0 0 0 2-2v-3M9 20H6a2 2 0 0 1-2-2v-3"/></svg>`;
+                }
+              }
+            });
+          }
+          
+          if (isEnteringFull) {
+            parentSection.classList.add('full-mode');
+            parentSection.classList.remove('collapsed');
+            
+            if (panelScroll) {
+              panelScroll.querySelectorAll('.panel-section').forEach(sec => {
+                if (sec !== parentSection && !sec.hasAttribute('data-permanent') && sec.getAttribute('data-permanent') !== 'true') {
+                  sec.classList.add('sibling-hidden');
+                }
+              });
+            }
+          } else {
+            parentSection.classList.remove('full-mode');
+            if (panelScroll) {
+              panelScroll.querySelectorAll('.panel-section').forEach(sec => {
+                sec.classList.remove('sibling-hidden');
+              });
+            }
+          }
+          
+          setIcon();
+        });
+      }
+    }
   });
 }
 

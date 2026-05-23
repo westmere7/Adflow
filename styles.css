@@ -1128,11 +1128,35 @@ body.theme-navy {
 
 
     .panel-scroll {
-
+      display: flex;
+      flex-direction: column;
       overflow-y: auto;
-
       flex: 1;
+      height: 100%;
+    }
 
+    .panel-section.sibling-hidden {
+      display: none !important;
+    }
+
+    .panel-section.full-mode {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border-bottom: none;
+    }
+
+    .panel-section.full-mode > *:not(h3) {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .panel-section-content {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
 
 
