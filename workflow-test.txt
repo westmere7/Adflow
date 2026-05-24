@@ -1,0 +1,6 @@
+This file was written by Claude to verify the write-only workflow:
+- Written directly into the main checkout, not the worktree.
+- No git operations were run.
+- It should appear in GitHub Desktop as a new, unstaged file alongside
+  the previous run-server.bat commit (which I committed before being
+  corrected). Safe to delete after verifying.
