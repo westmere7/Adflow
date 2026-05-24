@@ -1,6 +1,13 @@
 RMIT Adflow - Version & Changelog History
 
-v0.10.1 (Current) - May 2026
+v0.11.0 (Current) - May 2026
+- Rebuilt the Data & Versions panel as a spreadsheet-style editor. The modal is now ~1180px wide with a two-column layout: controls (import/export, slot mapping, enable toggle, export-all) stay on the left, the data sheet fills the right.
+- Inline column rename — double-click a column header to edit; Enter to commit, Esc to cancel. Column header now has separate buttons for the naming-key star (★), sort cycle (↕/↑/↓), and delete (×).
+- Drag-and-drop reordering for both rows (grip ⋮⋮ at the left of each row) and columns (drag the column header). Active-preview index follows the row it was attached to.
+- Sort cycle on each column: none → ascending → descending → none. Sort uses numeric comparison when both values parse as numbers, locale-aware string comparison otherwise.
+- Sheet now stretches to the modal's available height and shows numeric row numbers in a dedicated # column.
+
+v0.10.1 - May 2026
 - Manage Spaces now supports rename (owner), duplicate (anyone — clones folders + projects to a new space you own), and delete (owner — confirmation by typing the space name; cleans up storage blobs).
 - Signing out now flushes the local autosave and reloads back to the splash + sign-in gate instead of leaving the app open in a half-signed-out state.
 - Pushing to the cloud now checks for a same-name collision in the current context. If another project shares the name, a warning toast appears with "Replace" (overwrite the existing cloud copy) and "Rename" (push as a new project under a different name) — pushes with unique names go through silently as before.

@@ -10753,10 +10753,10 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
         <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:10px;">
           <li style="margin-bottom:8px;"><b>1 · Mark what's dynamic:</b> Select an element and, in the <b>Dynamic Data</b> section of the Properties panel, tick the fields that should vary per version — <i>Text</i> &amp; <i>Color</i> on text, plus <i>Background</i> on buttons, <i>Image</i> on images, or fill <i>Color</i> on shapes. A small dot marks dynamic elements on the canvas. Unmarked elements are never touched by the merge.</li>
           <li style="margin-bottom:8px;"><b>Slots &amp; link groups:</b> A dynamic field becomes a <b>slot</b>. If the element belongs to a Link Group, the slot covers the <b>whole group</b> — so one binding fills that element on every size at once. Toggling a field on a linked element automatically applies it to all its siblings, and your link-group sync settings are never altered.</li>
-          <li style="margin-bottom:8px;"><b>2 · Load your sheet:</b> In the panel, <b>Import CSV</b> (or add columns/rows by hand). Map each spreadsheet column to a slot's field, choose the <b>★ key column</b> (used to name exported folders), and optionally bind a column to the <b>ClickTag</b> exit URL. The whole sheet is stored inside the <code>.flow</code> project, auto-saves with it, and can be exported back to CSV for the team to edit.</li>
+          <li style="margin-bottom:8px;"><b>2 · Load your sheet:</b> In the panel, <b>Import CSV</b> (or add columns/rows by hand). Map each spreadsheet column to a slot's field, choose the <b>★ version name</b> column (used to name exported folders), and optionally bind a column to the <b>ClickTag</b> exit URL. The whole sheet is stored inside the <code>.flow</code> project, auto-saves with it, and can be exported back to CSV for the team to edit.</li>
           <li style="margin-bottom:8px;"><b>3 · Switch versions live:</b> Pick a row from the <b>Version</b> dropdown in the top bar to preview it on the canvas — in both editing and preview modes. Substitution is <b>non-destructive</b>: your template defaults are never overwritten, and choosing "Template (no version)" returns to them.</li>
           <li style="margin-bottom:8px;"><b>Edit-in-place &amp; Data lock:</b> While a version is active, editing a dynamic slot on the canvas (typing into text, recolouring, swapping an image) writes back to <b>that row's cell</b> rather than the template. Click the <b>lock</b> button next to the dropdown to make dynamic slots read-only so you can review versions without nudging the data.</li>
-          <li style="margin-bottom:8px;"><b>4 · Export every version:</b> In the Export dialog, <b>Export All Versions</b> generates one folder per row (named from the key column), each containing the full Google-Ads-compliant ZIP set, through the standard export pipeline.</li>
+          <li style="margin-bottom:8px;"><b>4 · Export every version:</b> In the Export dialog, <b>Export All Versions</b> generates one folder per row (named from the version-name column), each containing the full Google-Ads-compliant ZIP set, through the standard export pipeline.</li>
         </ul>
         <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Image columns should reference an asset filename already used in the project (or a full URL). Frames need no special handling — a frame-1 and frame-2 headline are simply two differently-named slots.</p>
 
@@ -10775,6 +10775,17 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.11.0',
+    date: 'May 2026',
+    items: [
+      'Rebuilt the Data & Versions panel as a spreadsheet-style editor. The modal is now ~1180px wide with a two-column layout: controls (import/export, slot mapping, enable toggle, export-all) stay on the left, the data sheet fills the right.',
+      'Inline column rename — double-click a column header to edit; Enter to commit, Esc to cancel. Column header now has separate buttons for the naming-key star (★), sort cycle (↕/↑/↓), and delete (×).',
+      'Drag-and-drop reordering for both rows (grip ⋮⋮ at the left of each row) and columns (drag the column header). Active-preview index follows the row it was attached to.',
+      'Sort cycle on each column: none → ascending → descending → none. Sort uses numeric comparison when both values parse as numbers, locale-aware string comparison otherwise.',
+      'Sheet now stretches to the modal\'s available height and shows numeric row numbers in a dedicated # column.'
+    ]
+  },
   {
     version: 'v0.10.1',
     date: 'May 2026',
@@ -11190,7 +11201,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.10.1';
+  const currentVersion = 'v0.11.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -11260,7 +11271,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.10.1</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.11.0</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -11316,7 +11327,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.10.1</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.11.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -12600,12 +12611,52 @@ function dmAddColumn(name) {
   dm.rows.forEach(r => { if (r[name] === undefined) r[name] = ''; });
   if (!dm.keyColumn) dm.keyColumn = name;
 }
-function dmDeleteColumn(name) {
+function dmRenameColumn(oldName, newName) {
+  newName = (newName || '').trim();
   const dm = state.dataMerge;
-  dm.columns = dm.columns.filter(c => c !== name);
-  dm.rows.forEach(r => delete r[name]);
-  Object.keys(dm.mappings).forEach(k => { if (dm.mappings[k] === name) delete dm.mappings[k]; });
-  if (dm.keyColumn === name) dm.keyColumn = dm.columns[0] || null;
+  if (!newName || newName === oldName) return false;
+  if (!dm.columns.includes(oldName)) return false;
+  if (dm.columns.includes(newName)) { alert('A column named "' + newName + '" already exists.'); return false; }
+  const idx = dm.columns.indexOf(oldName);
+  dm.columns[idx] = newName;
+  dm.rows.forEach(r => { if (r[oldName] !== undefined) { r[newName] = r[oldName]; delete r[oldName]; } });
+  Object.keys(dm.mappings).forEach(k => { if (dm.mappings[k] === oldName) dm.mappings[k] = newName; });
+  if (dm.keyColumn === oldName) dm.keyColumn = newName;
+  return true;
+}
+function dmReorderColumns(fromIdx, toIdx) {
+  const dm = state.dataMerge;
+  if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= dm.columns.length || toIdx > dm.columns.length) return;
+  const [moved] = dm.columns.splice(fromIdx, 1);
+  // Adjust toIdx if we removed from earlier in the array.
+  const insertAt = toIdx > fromIdx ? toIdx - 1 : toIdx;
+  dm.columns.splice(insertAt, 0, moved);
+}
+function dmReorderRows(fromIdx, toIdx) {
+  const dm = state.dataMerge;
+  if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= dm.rows.length || toIdx > dm.rows.length) return;
+  const activeRowRef = (dm.activeVersion != null) ? dm.rows[dm.activeVersion] : null;
+  const [moved] = dm.rows.splice(fromIdx, 1);
+  const insertAt = toIdx > fromIdx ? toIdx - 1 : toIdx;
+  dm.rows.splice(insertAt, 0, moved);
+  if (activeRowRef) dm.activeVersion = dm.rows.indexOf(activeRowRef);
+}
+function dmSortByColumn(column, direction) {
+  const dm = state.dataMerge;
+  if (!dm.columns.includes(column)) return;
+  const activeRowRef = (dm.activeVersion != null) ? dm.rows[dm.activeVersion] : null;
+  const dir = direction === 'desc' ? -1 : 1;
+  // Stable sort: compare numerically if both values parse as numbers, else string-locale-aware.
+  dm.rows.sort((a, b) => {
+    const av = a[column] == null ? '' : String(a[column]);
+    const bv = b[column] == null ? '' : String(b[column]);
+    const an = parseFloat(av), bn = parseFloat(bv);
+    if (!Number.isNaN(an) && !Number.isNaN(bn) && /^-?\d+(\.\d+)?$/.test(av.trim()) && /^-?\d+(\.\d+)?$/.test(bv.trim())) {
+      return (an - bn) * dir;
+    }
+    return av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' }) * dir;
+  });
+  if (activeRowRef) dm.activeVersion = dm.rows.indexOf(activeRowRef);
 }
 function dmAddRow() {
   const dm = state.dataMerge;
@@ -12621,9 +12672,21 @@ function dmDeleteRow(i) {
 }
 
 // ---- Data panel modal ----
+// Per-panel transient state — sort direction, etc. Lives on bg.
+function _dmState(bg) {
+  if (!bg._dmState) bg._dmState = { sortCol: null, sortDir: null };
+  return bg._dmState;
+}
+
 function openDataPanel() {
   openModal('Data &amp; Versions', '<div id="dm-panel"></div>', false);
   const bg = document.body.lastElementChild;
+  // Widen the modal so the sheet has real room.
+  const modal = bg.querySelector('.modal');
+  if (modal) {
+    modal.style.width = '1180px';
+    modal.style.maxWidth = '95vw';
+  }
   dmRenderPanel(bg);
 }
 
@@ -12631,74 +12694,122 @@ function dmRenderPanel(bg) {
   const panel = bg.querySelector('#dm-panel');
   if (!panel) return;
   const dm = state.dataMerge;
+  const dms = _dmState(bg);
   const slots = dmDiscoverSlots();
-  const cellStyle = 'width:100%;background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;';
-  const selStyle = 'background:var(--bg-input);border:1px solid #272c3a;color:var(--text-main);border-radius:4px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;min-width:140px;';
-  const thStyle = 'padding:6px 8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;text-align:left;white-space:nowrap;';
+  const selStyle = 'background:var(--bg-input);border:1px solid var(--border-light);color:var(--text-main);border-radius:4px;padding:5px 7px;font-size:11px;outline:none;font-family:inherit;width:100%;';
   const colOptions = (sel) => ['<option value="">— none —</option>'].concat(dm.columns.map(c => `<option value="${dmEsc(c)}" ${c === sel ? 'selected' : ''}>${dmEsc(c)}</option>`)).join('');
 
-  // Mapping rows
+  // --- LEFT: controls + mapping ---
   let mapRows = '';
   slots.forEach(s => s.fields.forEach(field => {
     const key = s.slotKey + '::' + field;
-    const linkIcon = s.grouped ? `
-      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-left:4px; color:var(--accent-light);" title="Link Group">
-        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-      </svg>` : '';
-    mapRows += `<tr>
-      <td style="padding:4px 12px 4px 0;font-size:12px;color:var(--text-main);">${dmEsc(s.name)}${linkIcon}
-        <span style="color:var(--text-muted);font-size:10px;">· ${DM_FIELD_LABEL[field] || field}${s.grouped ? ` · ${s.count} sizes` : ''}</span></td>
-      <td style="padding:4px 0;"><select class="dm-map" data-mapkey="${key}" style="${selStyle}">${colOptions(dm.mappings[key])}</select></td>
-    </tr>`;
+    const linkIcon = s.grouped ? `<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-left:4px; color:var(--accent-light);"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>` : '';
+    mapRows += `
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <div style="font-size:11px; color:var(--text-main);"><b>${dmEsc(s.name)}</b>${linkIcon} <span style="color:var(--text-muted); font-weight:400;">· ${DM_FIELD_LABEL[field] || field}${s.grouped ? ` · ${s.count} sizes` : ''}</span></div>
+        <select class="dm-map" data-mapkey="${key}" style="${selStyle}">${colOptions(dm.mappings[key])}</select>
+      </div>`;
   }));
-  mapRows += `<tr>
-    <td style="padding:4px 12px 4px 0;font-size:12px;color:var(--text-main);">ClickTag <span style="color:var(--text-muted);font-size:10px;">· exit URL</span></td>
-    <td style="padding:4px 0;"><select class="dm-map" data-mapkey="clicktag::url" style="${selStyle}">${colOptions(dm.mappings['clicktag::url'])}</select></td>
-  </tr>`;
+  mapRows += `
+    <div style="display:flex; flex-direction:column; gap:4px;">
+      <div style="font-size:11px; color:var(--text-main);"><b>ClickTag</b> <span style="color:var(--text-muted); font-weight:400;">· exit URL</span></div>
+      <select class="dm-map" data-mapkey="clicktag::url" style="${selStyle}">${colOptions(dm.mappings['clicktag::url'])}</select>
+    </div>`;
 
-  const mapSection = slots.length
-    ? `<table style="border-collapse:collapse;">${mapRows}</table>`
-    : `<div style="font-size:11px;color:var(--text-muted);line-height:1.5;">No dynamic slots yet. Select an element on the canvas and tick fields under <b>Dynamic Data</b> in the Properties panel to make them vary per version.<br><br><table style="border-collapse:collapse;">${mapRows}</table></div>`;
+  const slotHint = slots.length
+    ? ''
+    : `<div style="font-size:11px;color:var(--text-muted);line-height:1.5; padding:8px 10px; background:var(--bg-input); border-radius:5px;">No dynamic slots yet. Select an element on the canvas and tick fields under <b>Dynamic Data</b> in the Properties panel to make them vary per version.</div>`;
 
-  // Data grid
-  const gridHead = `<tr>
-    <th style="${thStyle}width:28px;"></th>` +
-    dm.columns.map(c => `<th style="${thStyle}">
-      <span class="dm-keycol" data-col="${dmEsc(c)}" title="Click to set as naming key" style="cursor:pointer;">${dmEsc(c)} ${c === dm.keyColumn ? '<span style="color:var(--accent-light);" title="Used to name exported folders">★</span>' : ''}</span>
-      <button class="dm-delcol" data-col="${dmEsc(c)}" title="Delete column" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;line-height:1;margin-left:4px;">×</button>
-    </th>`).join('') +
-    `<th style="${thStyle}width:28px;"></th></tr>`;
-  const gridBody = dm.rows.map((r, i) => `<tr data-row="${i}" style="${dm.activeVersion === i ? 'background:rgba(124,92,255,.12);' : ''}">
-    <td style="padding:3px 6px;border-bottom:1px solid #15171f;"><button class="dm-viewrow" data-row="${i}" title="Preview this version on the canvas" style="background:none;border:none;color:${dm.activeVersion === i ? 'var(--accent-light)' : 'var(--text-muted)'};cursor:pointer;font-size:13px;">${dm.activeVersion === i ? '●' : '○'}</button></td>` +
-    dm.columns.map(c => `<td style="padding:3px 6px;border-bottom:1px solid #15171f;"><input class="dm-cell" data-row="${i}" data-col="${dmEsc(c)}" value="${dmEsc(r[c] || '')}" style="${cellStyle}min-width:120px;"/></td>`).join('') +
-    `<td style="padding:3px 6px;border-bottom:1px solid #15171f;"><button class="dm-delrow" data-row="${i}" title="Delete row" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;">×</button></td></tr>`).join('');
+  // --- RIGHT: sheet ---
+  const sortIconFor = (c) => {
+    if (dms.sortCol !== c) return '<span style="color:var(--text-muted); opacity:.5;">↕</span>';
+    return dms.sortDir === 'asc'
+      ? '<span style="color:var(--accent-light);">↑</span>'
+      : '<span style="color:var(--accent-light);">↓</span>';
+  };
+  const colHeaderHtml = dm.columns.map((c, ci) => `
+    <th data-col-idx="${ci}" data-col="${dmEsc(c)}" draggable="true" class="dm-col-th${c === dm.keyColumn ? ' dm-key-col' : ''}" style="padding:6px 8px;border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; color:var(--text-label); font-weight:600; text-align:left; white-space:nowrap; cursor:grab; user-select:none; min-width:140px;">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="dm-col-name" data-col="${dmEsc(c)}" contenteditable="false" title="Double-click to rename" style="cursor:text; outline:none; padding:1px 2px; border-radius:3px; flex:1; overflow:hidden; text-overflow:ellipsis;">${dmEsc(c)}</span>
+        <button class="dm-key-toggle" data-col="${dmEsc(c)}" title="Toggle Version name (used for exported folder names)" style="background:none; border:none; padding:0 2px; cursor:pointer; font-size:13px; line-height:1; color:${c === dm.keyColumn ? 'var(--accent-light)' : 'var(--text-muted)'};">★</button>
+        <button class="dm-sort" data-col="${dmEsc(c)}" title="Sort by this column" style="background:none; border:none; padding:0 2px; cursor:pointer; font-size:12px; line-height:1;">${sortIconFor(c)}</button>
+        <button class="dm-delcol" data-col="${dmEsc(c)}" title="Delete column" style="background:none; border:none; padding:0 2px; cursor:pointer; font-size:13px; line-height:1; color:var(--text-muted);">×</button>
+      </div>
+    </th>`).join('');
 
-  const gridSection = dm.columns.length
-    ? `<div style="overflow:auto;max-height:300px;border:1px solid #1f2330;border-radius:6px;">
-         <table style="border-collapse:collapse;width:100%;font-size:11px;color:var(--text-main);"><thead>${gridHead}</thead><tbody>${gridBody}</tbody></table>
+  const rowsHtml = dm.rows.map((r, i) => {
+    const active = dm.activeVersion === i;
+    return `<tr data-row="${i}" class="dm-row" style="${active ? 'background:rgba(124,92,255,.10);' : ''}">
+      <td class="dm-row-handle" data-row="${i}" draggable="true" title="Drag to reorder" style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; cursor:grab; text-align:center; color:var(--text-muted); width:22px; user-select:none; font-size:11px;">⋮⋮</td>
+      <td style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; width:28px; text-align:center;"><button class="dm-viewrow" data-row="${i}" title="Preview this version on the canvas" style="background:none; border:none; color:${active ? 'var(--accent-light)' : 'var(--text-muted)'}; cursor:pointer; font-size:14px; padding:0;">${active ? '●' : '○'}</button></td>
+      <td style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; width:32px; text-align:center; color:var(--text-muted); font-size:10px; font-variant-numeric:tabular-nums;">${i + 1}</td>` +
+      dm.columns.map(c => `<td class="${c === dm.keyColumn ? 'dm-key-col' : ''}" style="padding:0; border-bottom:1px solid #15171f; border-right:1px solid #15171f; min-width:140px;"><input class="dm-cell" data-row="${i}" data-col="${dmEsc(c)}" value="${dmEsc(r[c] || '')}" style="width:100%; background:transparent; border:none; color:var(--text-main); padding:6px 8px; font-size:11px; outline:none; font-family:inherit;"/></td>`).join('') +
+      `<td style="padding:3px 4px; border-bottom:1px solid #15171f; width:28px; text-align:center;"><button class="dm-delrow" data-row="${i}" title="Delete row" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:13px; padding:0;">×</button></td>
+    </tr>`;
+  }).join('');
+
+  const sheetTable = dm.columns.length
+    ? `<div style="overflow:auto; max-height:100%; min-height:0; flex:0 1 auto; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-panel);">
+         <table style="border-collapse:collapse; width:100%; font-size:11px; color:var(--text-main);">
+           <thead>
+             <tr>
+               <th style="width:22px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel);"></th>
+               <th style="width:28px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel);"></th>
+               <th style="width:32px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel); color:var(--text-muted); font-size:10px; font-weight:600;">#</th>
+               ${colHeaderHtml}
+               <th style="width:28px; padding:6px 4px; border-bottom:1px solid var(--border-light); background:var(--bg-panel);"></th>
+             </tr>
+           </thead>
+           <tbody>${rowsHtml}</tbody>
+         </table>
        </div>`
-    : `<div style="font-size:11px;color:var(--text-muted);">No data yet — import a CSV or add a column to begin.</div>`;
+    : `<div style="flex:1; min-height:200px; display:flex; align-items:center; justify-content:center; border:1px dashed var(--border-light); border-radius:6px; color:var(--text-muted); font-size:12px;">No data yet — import a CSV or add a column to begin.</div>`;
 
   panel.innerHTML = `
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
-      <button class="btn" id="dm-import">Import CSV…</button>
-      <button class="btn" id="dm-export" ${dm.columns.length ? '' : 'disabled'}>Export CSV</button>
-      <button class="btn" id="dm-addcol">+ Column</button>
-      <button class="btn" id="dm-addrow" ${dm.columns.length ? '' : 'disabled'}>+ Row</button>
-      <div style="flex:1;"></div>
-      <label class="checkbox-row" style="display:flex;align-items:center;gap:6px;font-size:11px;"><input type="checkbox" id="dm-enabled" ${dm.enabled ? 'checked' : ''}/> Enable merge</label>
-      <button class="btn primary" id="dm-export-versions" ${dm.rows.length ? '' : 'disabled'}>Export All Versions (${dm.rows.length})</button>
-    </div>
+    <div style="display:flex; gap:16px; height:calc(86vh - 110px); min-height:420px;">
 
-    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin:0 0 8px;">Column → Slot Mapping</h3>
-    ${mapSection}
+      <!-- LEFT: controls -->
+      <div style="width:280px; flex-shrink:0; display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-right:4px;">
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn" id="dm-import" style="flex:1;">Import CSV…</button>
+          <button class="btn" id="dm-export" ${dm.columns.length ? '' : 'disabled'} style="flex:1;">Export CSV</button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn" id="dm-addcol" style="flex:1;">+ Column</button>
+          <button class="btn" id="dm-addrow" ${dm.columns.length ? '' : 'disabled'} style="flex:1;">+ Row</button>
+        </div>
 
-    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin:18px 0 8px;">Versions (${dm.rows.length} row${dm.rows.length === 1 ? '' : 's'}) · ● = active preview · ★ = name key</h3>
-    ${gridSection}
+        <label class="checkbox-row" style="display:flex; align-items:center; gap:7px; font-size:11px; padding:8px 10px; background:var(--bg-input); border-radius:5px; cursor:pointer;">
+          <input type="checkbox" id="dm-enabled" ${dm.enabled ? 'checked' : ''} style="margin:0;"/>
+          Enable merge
+        </label>
 
-    <div style="margin-top:12px;font-size:10px;color:var(--text-muted);line-height:1.5;">
-      Image columns should hold an asset filename already used in this project (or a full URL). Editing a dynamic slot on the canvas while a version is active writes back to that row${dm.locked ? ' — currently <b style="color:var(--accent-light);">locked</b> (read-only)' : ''}.
+        <button class="btn primary" id="dm-export-versions" ${dm.rows.length ? '' : 'disabled'} style="padding:8px;">Export All Versions (${dm.rows.length})</button>
+
+        <div>
+          <h3 style="font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin:0 0 8px; font-weight:600;">Column → Slot Mapping</h3>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            ${slotHint}
+            ${mapRows}
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: sheet -->
+      <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <h3 style="font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin:0; font-weight:600;">
+            Versions <span style="color:var(--text-main);">·</span> ${dm.rows.length} row${dm.rows.length === 1 ? '' : 's'}
+          </h3>
+          <div style="font-size:10px; color:var(--text-muted);">
+            ● active preview · ★ version name · drag ⋮⋮ to reorder · double-click header to rename
+          </div>
+        </div>
+        ${sheetTable}
+        <div style="font-size:10px; color:var(--text-muted); line-height:1.5;">
+          Image columns should hold an asset filename already used in this project (or a full URL). Editing a dynamic slot on the canvas while a version is active writes back to that row${dm.locked ? ' — currently <b style="color:var(--accent-light);">locked</b> (read-only)' : ''}.
+        </div>
+      </div>
     </div>`;
 
   dmWirePanel(bg);
@@ -12708,6 +12819,7 @@ function dmWirePanel(bg) {
   const reRender = () => { renderVersionSwitcher(); render(); dmRenderPanel(bg); };
   const q = (sel) => bg.querySelector(sel);
   const all = (sel) => bg.querySelectorAll(sel);
+  const dms = _dmState(bg);
 
   if (q('#dm-import')) q('#dm-import').onclick = () => dmImportFile(() => reRender());
   if (q('#dm-export')) q('#dm-export').onclick = () => dmExportCSV();
@@ -12724,9 +12836,30 @@ function dmWirePanel(bg) {
     render();
   });
 
-  all('.dm-keycol').forEach(s => s.onclick = () => { state.dataMerge.keyColumn = s.dataset.col; pushHistory(); reRender(); });
-  all('.dm-delcol').forEach(b => b.onclick = () => { if (confirm(`Delete column "${b.dataset.col}"?`)) { dmDeleteColumn(b.dataset.col); pushHistory(); reRender(); } });
+  // Key toggle
+  all('.dm-key-toggle').forEach(b => b.onclick = () => {
+    state.dataMerge.keyColumn = (state.dataMerge.keyColumn === b.dataset.col) ? null : b.dataset.col;
+    pushHistory(); reRender();
+  });
+
+  // Sort cycle: none → asc → desc → none
+  all('.dm-sort').forEach(b => b.onclick = () => {
+    const col = b.dataset.col;
+    if (dms.sortCol !== col) { dms.sortCol = col; dms.sortDir = 'asc'; dmSortByColumn(col, 'asc'); }
+    else if (dms.sortDir === 'asc') { dms.sortDir = 'desc'; dmSortByColumn(col, 'desc'); }
+    else { dms.sortCol = null; dms.sortDir = null; /* leave row order as-is */ }
+    pushHistory(); reRender();
+  });
+
+  // Delete column
+  all('.dm-delcol').forEach(b => b.onclick = () => {
+    if (confirm(`Delete column "${b.dataset.col}"?`)) { dmDeleteColumn(b.dataset.col); if (dms.sortCol === b.dataset.col) { dms.sortCol = null; dms.sortDir = null; } pushHistory(); reRender(); }
+  });
+
+  // Delete row
   all('.dm-delrow').forEach(b => b.onclick = () => { dmDeleteRow(Number(b.dataset.row)); pushHistory(); reRender(); });
+
+  // Active version toggle
   all('.dm-viewrow').forEach(b => b.onclick = () => {
     const i = Number(b.dataset.row);
     state.dataMerge.activeVersion = (state.dataMerge.activeVersion === i) ? null : i;
@@ -12734,6 +12867,7 @@ function dmWirePanel(bg) {
     pushHistory(); reRender();
   });
 
+  // Cell editing (live preview + history on blur)
   all('.dm-cell').forEach(inp => {
     inp.oninput = () => {
       const row = state.dataMerge.rows[Number(inp.dataset.row)];
@@ -12742,6 +12876,99 @@ function dmWirePanel(bg) {
       renderVersionSwitcher();
     };
     inp.onchange = () => pushHistory();
+  });
+
+  // Inline column rename: double-click span → contenteditable; Enter/blur to commit, Esc to cancel.
+  all('.dm-col-name').forEach(span => {
+    span.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      const original = span.dataset.col;
+      span.contentEditable = 'true';
+      span.style.background = 'var(--bg-input)';
+      span.style.border = '1px solid var(--accent-base)';
+      span.focus();
+      const sel = window.getSelection(); sel.removeAllRanges();
+      const range = document.createRange(); range.selectNodeContents(span); sel.addRange(range);
+
+      const commit = (cancel) => {
+        span.removeEventListener('blur', onBlur);
+        span.removeEventListener('keydown', onKey);
+        span.contentEditable = 'false';
+        span.style.background = ''; span.style.border = '';
+        const newName = span.textContent.trim();
+        if (cancel || !newName || newName === original) { span.textContent = original; return; }
+        if (dmRenameColumn(original, newName)) { pushHistory(); reRender(); }
+        else { span.textContent = original; }
+      };
+      const onBlur = () => commit(false);
+      const onKey = (k) => {
+        if (k.key === 'Enter') { k.preventDefault(); commit(false); }
+        else if (k.key === 'Escape') { k.preventDefault(); commit(true); }
+      };
+      span.addEventListener('blur', onBlur, { once: true });
+      span.addEventListener('keydown', onKey);
+    });
+  });
+
+  // --- Drag-and-drop reordering ---
+  let dragOverEl = null;
+  const clearDragHints = () => {
+    bg.querySelectorAll('.dm-col-th').forEach(el => { el.style.borderLeft = ''; el.style.boxShadow = ''; });
+    bg.querySelectorAll('.dm-row').forEach(el => { el.style.borderTop = ''; el.style.boxShadow = ''; });
+  };
+
+  // Column drag
+  all('.dm-col-th').forEach(th => {
+    th.addEventListener('dragstart', (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('application/x-dm-col', th.dataset.colIdx);
+      th.style.opacity = '.4';
+    });
+    th.addEventListener('dragend', () => { th.style.opacity = ''; clearDragHints(); });
+    th.addEventListener('dragover', (e) => {
+      if (!e.dataTransfer.types.includes('application/x-dm-col')) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearDragHints();
+      th.style.borderLeft = '2px solid var(--accent-base)';
+      dragOverEl = th;
+    });
+    th.addEventListener('drop', (e) => {
+      if (!e.dataTransfer.types.includes('application/x-dm-col')) return;
+      e.preventDefault();
+      const from = Number(e.dataTransfer.getData('application/x-dm-col'));
+      const to = Number(th.dataset.colIdx);
+      dmReorderColumns(from, to);
+      pushHistory(); reRender();
+    });
+  });
+
+  // Row drag
+  all('.dm-row-handle').forEach(handle => {
+    const row = handle.closest('.dm-row');
+    handle.addEventListener('dragstart', (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('application/x-dm-row', handle.dataset.row);
+      if (row) row.style.opacity = '.4';
+    });
+    handle.addEventListener('dragend', () => { if (row) row.style.opacity = ''; clearDragHints(); });
+  });
+  all('.dm-row').forEach(rowEl => {
+    rowEl.addEventListener('dragover', (e) => {
+      if (!e.dataTransfer.types.includes('application/x-dm-row')) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearDragHints();
+      rowEl.style.boxShadow = 'inset 0 2px 0 var(--accent-base)';
+    });
+    rowEl.addEventListener('drop', (e) => {
+      if (!e.dataTransfer.types.includes('application/x-dm-row')) return;
+      e.preventDefault();
+      const from = Number(e.dataTransfer.getData('application/x-dm-row'));
+      const to = Number(rowEl.dataset.row);
+      dmReorderRows(from, to);
+      pushHistory(); reRender();
+    });
   });
 }
 

@@ -3864,4 +3864,18 @@ input[type="checkbox"]:disabled {
   color: #f87171 !important; /* Soft Red */
 }
 
+/* Data & Versions sheet — subtle row + column zebra striping. Intersecting
+   even-row × even-data-column cells get a slightly stronger tint for a soft
+   additive feel. The active-row highlight (set inline) still wins. */
+#dm-panel .dm-row:nth-child(even) > td { background-color: rgba(255, 255, 255, .018); }
+#dm-panel .dm-row > td:nth-child(2n+4) { background-color: rgba(255, 255, 255, .018); }
+#dm-panel .dm-row:nth-child(even) > td:nth-child(2n+4) { background-color: rgba(255, 255, 255, .036); }
+
+/* Name-key column highlight — accent tint to call out which column is used
+   for export folder names. Sits after the zebra rules so it wins at equal
+   specificity. The header gets a stronger tint than body cells. */
+#dm-panel .dm-col-th.dm-key-col { background-color: rgba(124, 92, 255, .12); }
+#dm-panel .dm-row > td.dm-key-col { background-color: rgba(124, 92, 255, .05); }
+#dm-panel .dm-row:nth-child(even) > td.dm-key-col { background-color: rgba(124, 92, 255, .075); }
+
 
