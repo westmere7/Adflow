@@ -14392,12 +14392,22 @@ async function openCloudProjectsModal() {
   refreshProjects();
 }
 
+const _UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const _isUuid = (s) => typeof s === 'string' && _UUID_RE.test(s);
+
 async function pushCurrentProjectToCloud(opts = {}) {
   const u = authState.currentUser();
   if (!u) throw new Error('Not signed in.');
   const spaceId = spacesState.currentId();
   const folderId = opts.folderId || null;
   const projectName = state.projectName || 'RMIT_Ad';
+
+  // Promote any local short id (e.g. "proj_xyz123") to a real UUID up-front so
+  // the same value can be used as the row id, the storage filename, AND the
+  // collision-check exclusion key. Without this, the `neq` below was being run
+  // against a uuid column with a non-uuid value and the whole query errored,
+  // silently bypassing the duplicate prompt.
+  if (!_isUuid(state.projectId)) state.projectId = crypto.randomUUID();
 
   // Same-name collision check: any OTHER project in this context with the
   // same name forces the user to choose Replace or Rename before we touch
@@ -14406,8 +14416,9 @@ async function pushCurrentProjectToCloud(opts = {}) {
     let q = sb.from('projects').select('id, name').eq('name', projectName);
     if (spaceId) q = q.eq('space_id', spaceId);
     else q = q.is('space_id', null).eq('user_id', u.id);
-    if (state.projectId) q = q.neq('id', state.projectId);
-    const { data: dupes } = await q;
+    q = q.neq('id', state.projectId);
+    const { data: dupes, error: dupErr } = await q;
+    if (dupErr) console.warn('Collision check failed:', dupErr);
     if (dupes && dupes.length > 0) {
       const existing = dupes[0];
       await new Promise((resolve) => {
@@ -14452,26 +14463,27 @@ async function pushCurrentProjectToCloud(opts = {}) {
   try { built = await buildFlowBlob(); }
   catch (e) { setSaveStatus('error'); throw e; }
   const { blob } = built;
-  // Storage path: personal under {uid}/, space under spaces/{space_id}/.
-  // Use a fresh uuid-like suffix so we don't collide with the local short id.
-  const blobName = (state.projectId && state.projectId.length >= 20) ? state.projectId : crypto.randomUUID();
-  const path = spaceId ? `spaces/${spaceId}/${blobName}.flow` : `${u.id}/${blobName}.flow`;
+  // Storage path uses state.projectId (a real UUID guaranteed above), so the
+  // path is stable across pushes of the same project.
+  const path = spaceId ? `spaces/${spaceId}/${state.projectId}.flow` : `${u.id}/${state.projectId}.flow`;
   const { error: upErr } = await sb.storage.from('projects').upload(path, blob, { upsert: true, contentType: 'application/octet-stream' });
   if (upErr) { setSaveStatus('error'); throw upErr; }
-  // Find existing row by storage_path so re-pushes update in place.
-  const { data: existing } = await sb.from('projects').select('id').eq('storage_path', path).maybeSingle();
+  // Upsert by id — the same UUID is used as both the row id and the storage
+  // filename, so updates land on the same record on every push.
+  const { data: existing } = await sb.from('projects').select('id').eq('id', state.projectId).maybeSingle();
   if (existing?.id) {
     const { error: upd } = await sb.from('projects').update({
       name: state.projectName || 'RMIT_Ad',
       ad_size_limit_kb: state.adSizeLimit || 150,
       size_bytes: blob.size,
       folder_id: folderId,
+      storage_path: path,
       updated_at: new Date().toISOString()
-    }).eq('id', existing.id);
+    }).eq('id', state.projectId);
     if (upd) { setSaveStatus('error'); throw upd; }
-    state.projectId = existing.id;
   } else {
-    const { data: inserted, error: ins } = await sb.from('projects').insert({
+    const { error: ins } = await sb.from('projects').insert({
+      id: state.projectId,
       user_id: u.id,
       space_id: spaceId,
       folder_id: folderId,
@@ -14479,9 +14491,8 @@ async function pushCurrentProjectToCloud(opts = {}) {
       ad_size_limit_kb: state.adSizeLimit || 150,
       size_bytes: blob.size,
       storage_path: path
-    }).select('id').single();
+    });
     if (ins) { setSaveStatus('error'); throw ins; }
-    if (inserted?.id) state.projectId = inserted.id;
   }
   setSaveStatus('saved');
 }
