@@ -51,6 +51,47 @@
 const urlSizeCache = {};
 
 // ============================================================================
+// Auto-resize role taxonomy (v2)
+// ============================================================================
+// Hoisted here so render() — which fires early during boot and now calls
+// ensureRolesAssignedAll() — can reach these constants without tripping a
+// temporal-dead-zone ReferenceError. The detector function `autoAssignRole`
+// and the sweeps `ensureRolesAssigned` / `ensureRolesAssignedAll` are
+// declared further down (function declarations hoist, const declarations
+// don't, so only the data tables need to live up here).
+
+const ROLE_IDS = [
+  'background-image',
+  'rmit-logo',
+  'cta-button',
+  'heading',
+  'subheading',
+  'cricos',
+  'main-image',
+  'rfwn',
+  'extra-info',
+  'misc'
+];
+
+const ROLE_LABELS = {
+  'background-image': 'Background image',
+  'rmit-logo':        'RMIT logo',
+  'cta-button':       'CTA button',
+  'heading':          'Heading',
+  'subheading':       'Subheading',
+  'cricos':           'CRICOS line',
+  'main-image':       'Main image',
+  'rfwn':             'RFWN tagline',
+  'extra-info':       'Extra info',
+  'misc':             'Unassigned'
+};
+
+const ROLE_PICKER_ORDER = [
+  'heading', 'subheading', 'cta-button', 'main-image', 'background-image',
+  'rmit-logo', 'rfwn', 'cricos', 'extra-info', 'misc'
+];
+
+// ============================================================================
 // Supabase / Auth — optional cloud sign-in. Anonymous local use is unchanged
 // when these credentials are blank or the SDK fails to load. RLS protects
 // data server-side, so the anon key is safe to commit.
@@ -1569,6 +1610,10 @@ function render(skipProps = false) {
   if (state.canvases) {
     state.canvases.forEach(sanitizeMasks);
   }
+  // Lazy role auto-assignment — fills el.role on any element missing it.
+  // Short-circuits per-element when role is already set, so the cost is
+  // a single ID-existence check after the first run.
+  ensureRolesAssignedAll();
   if (state.commitRenderTimer) {
     clearTimeout(state.commitRenderTimer);
     state.commitRenderTimer = null;
@@ -6236,10 +6281,29 @@ function renderLayers() {
 
       const eyeIconHtml = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
 
+      // Role-assignment button (3rd icon, leftmost in actions).
+      // - Gray only when the element has no role yet (or role === 'misc').
+      // - Accent (purple) for every known role, whether auto-detected or
+      //   manually picked. The tooltip differentiates the two so the user
+      //   can still tell at a glance.
+      const roleId = el.role || 'misc';
+      const isAssigned = !!(el.role && el.role !== 'misc');
+      const roleAssignedManually = isAssigned && el.roleAuto === false;
+      const roleLabel = ROLE_LABELS[roleId] || 'Unassigned';
+      const roleTooltip = isAssigned
+        ? (roleAssignedManually
+            ? `Auto-resize role: ${roleLabel} (click to change)`
+            : `Auto-resize role: ${roleLabel} (auto-detected — click to change)`)
+        : `Auto-resize role: Unassigned (click to assign)`;
+      const roleIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v4"></path><path d="M9 21H5a2 2 0 0 1-2-2v-4"></path><line x1="20" y1="4" x2="14" y2="10"></line><line x1="4" y1="20" x2="10" y2="14"></line></svg>`;
+
       div.innerHTML = `
         ${iconHtml}
         <span class="layer-name" style="${el.hidden ? 'opacity:0.5;text-decoration:line-through' : ''}">${layerLabel(el)}</span>
         <div class="layer-actions">
+          <button class="icon-btn role-btn ${isAssigned ? 'role-assigned' : ''}" data-act="role" title="${roleTooltip}">
+            ${roleIconSvg}
+          </button>
           <button class="icon-btn ${el.locked ? 'active' : ''}" data-act="lock" title="Toggle lock">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </button>
@@ -6421,6 +6485,11 @@ function renderLayers() {
 
       div.addEventListener('click', (e) => {
         const act = e.target.closest('button')?.dataset.act;
+        if (act === 'role') {
+          const btn = e.target.closest('button');
+          openRolePicker(el, btn);
+          return;
+        }
         if (act === 'lock') {
           const toToggle = (state.layerSelection?.includes(el.id)) ? state.layerSelection : [el.id];
           toToggle.forEach(id => {
@@ -9765,6 +9834,82 @@ function canvasFormatClass(c) {
   return 'rectangle';                                 // 300×250
 }
 
+// ============================================================================
+// Rule-based auto-resize — Role taxonomy (v2)
+// ============================================================================
+// 9 named roles + 'misc' fallback. The data tables (ROLE_IDS, ROLE_LABELS,
+// ROLE_PICKER_ORDER) live near the top of the script so render() — which
+// fires during boot — can read them without a TDZ ReferenceError. The
+// detector functions below are function declarations and get hoisted.
+// The legacy `detectElementRole` (further down) is still used by the old
+// `autoResizeFromSelected` executor until that's fully removed.
+
+function autoAssignRole(el, canvas) {
+  if (!el || !canvas) return 'misc';
+  const text = (el.text || '').toLowerCase();
+  const name = (el.customName || '').toLowerCase();
+  const area = (el.width * el.height) / (canvas.width * canvas.height || 1);
+
+  // Name-based first (trust the user's layer name when present).
+  if (name === 'rfwn' || name.includes('ready for')) return 'rfwn';
+  if (name.includes('cricos') || name.includes('compliance')) return 'cricos';
+  if (name.includes('rmit') || name.includes('logo')) return 'rmit-logo';
+  if (name === 'background' || name === 'bg' || name.includes('background image')) return 'background-image';
+  if (name === 'heading' || name.includes('headline')) return 'heading';
+  if (name === 'subheading' || name.includes('subhead')) return 'subheading';
+  if (name === 'extra info' || name.includes('extra-info') || name.includes('extra info')) return 'extra-info';
+  if (name.includes('main image') || name.includes('hero') || name.includes('main-image')) return 'main-image';
+  if (name === 'button' || name.includes('cta')) return 'cta-button';
+
+  // Text-content recognition for the brand-specific lines.
+  if (el.type === 'text') {
+    if (text.includes('cricos') || /\brto\b/i.test(el.text || '')) return 'cricos';
+    if (text.includes('ready for') && text.includes('next')) return 'rfwn';
+    // Largest font in the canvas = heading, second largest = subheading.
+    const ranked = (canvas.elements || [])
+      .filter(e => e.type === 'text' && e.persistent !== 'top')
+      .sort((a, b) => (b.fontSize || 0) - (a.fontSize || 0));
+    if (ranked[0] && ranked[0].id === el.id) return 'heading';
+    if (ranked[1] && ranked[1].id === el.id) return 'subheading';
+    if (el.persistent === 'top') return 'cricos';
+    return 'extra-info';
+  }
+
+  if (el.type === 'button') return 'cta-button';
+
+  if (el.type === 'image') {
+    if (area >= 0.7 || el.persistent === 'bottom') return 'background-image';
+    if (el.persistent === 'top' && area < 0.18) return 'rmit-logo';
+    return 'main-image';
+  }
+
+  if (el.type === 'rect' || el.type === 'circle' || el.type === 'pixel') {
+    if (area >= 0.7 || el.persistent === 'bottom') return 'background-image';
+    return 'misc';
+  }
+
+  return 'misc';
+}
+
+// Walk a canvas and fill in `role` for any element that doesn't have one yet.
+// Auto-assigned elements get `roleAuto = true` so the UI can show them differently
+// from explicitly user-assigned ones (gray vs green).
+function ensureRolesAssigned(canvas) {
+  if (!canvas || !Array.isArray(canvas.elements)) return;
+  canvas.elements.forEach(el => {
+    if (el.role && ROLE_IDS.includes(el.role)) return;
+    el.role = autoAssignRole(el, canvas);
+    el.roleAuto = true;
+  });
+}
+
+// Sweep every canvas in the current project. Safe to call from any boot path.
+function ensureRolesAssignedAll() {
+  if (!state || !Array.isArray(state.canvases)) return;
+  state.canvases.forEach(ensureRolesAssigned);
+}
+
+
 function detectElementRole(el, canvas) {
   const name = (el.customName || '').toLowerCase();
   const area = (el.width * el.height) / (canvas.width * canvas.height || 1);
@@ -9917,7 +10062,1112 @@ function autoResizeFromSelected() {
   render();
 }
 
-document.getElementById('btn-ai-resize').addEventListener('click', autoResizeFromSelected);
+// ============================================================================
+// Role-picker dropdown (anchored to the layer-row role icon)
+// ============================================================================
+function openRolePicker(el, anchorBtn) {
+  if (!el || !anchorBtn) return;
+  // Close any existing picker.
+  document.querySelectorAll('.role-picker-popup').forEach(n => n.remove());
+
+  const pop = document.createElement('div');
+  // NOTE: do NOT add the `dropdown` class here — `.dropdown` has
+  // `display:none` by default and is only revealed by a `.menu-item:hover`
+  // parent. Our popup is body-anchored, so it would stay hidden forever.
+  // We use `dropdown-item` / `dropdown-divider` on children only.
+  pop.className = 'role-picker-popup';
+  const currentRole = el.role || 'misc';
+  const isAuto = el.roleAuto !== false;
+
+  pop.innerHTML = `
+    <div style="padding:8px 12px 4px 12px; font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">
+      Auto-resize role
+    </div>
+    <div style="padding:0 12px 6px 12px; font-size:10px; color:var(--text-muted);">
+      ${isAuto ? 'Auto-detected. Pick one to override.' : 'Manually assigned. Reset clears the override.'}
+    </div>
+    <div class="dropdown-divider"></div>
+    ${ROLE_PICKER_ORDER.map(id => {
+      const isCurrent = id === currentRole;
+      const colorStyle = isCurrent ? 'color:var(--accent-base); font-weight:600;' : '';
+      return `<div class="dropdown-item role-picker-item" data-role-id="${id}" style="display:flex; align-items:center; gap:8px; ${colorStyle}">
+        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${isCurrent ? 'var(--accent-base)' : 'transparent'}; border:1px solid var(--border-light); flex-shrink:0;"></span>
+        <span>${ROLE_LABELS[id]}</span>
+      </div>`;
+    }).join('')}
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-item role-picker-reset" style="font-size:10px; color:var(--text-muted);">↺ Reset to auto-detect</div>
+  `;
+
+  document.body.appendChild(pop);
+
+  // Anchor below the button, right-aligned.
+  const rect = anchorBtn.getBoundingClientRect();
+  Object.assign(pop.style, {
+    position: 'fixed',
+    top: (rect.bottom + 4) + 'px',
+    left: Math.max(8, rect.right - 220) + 'px',
+    minWidth: '220px',
+    background: 'var(--bg-panel)',
+    border: '1px solid var(--border-light)',
+    borderRadius: '6px',
+    boxShadow: '0 10px 30px rgba(0,0,0,.4)',
+    zIndex: 100001,
+    padding: '0 0 4px 0'
+  });
+
+  const closePicker = () => {
+    pop.remove();
+    document.removeEventListener('click', outsideHandler, true);
+    document.removeEventListener('keydown', escHandler);
+  };
+  const outsideHandler = (e) => {
+    if (!pop.contains(e.target) && e.target !== anchorBtn && !anchorBtn.contains(e.target)) {
+      closePicker();
+    }
+  };
+  const escHandler = (e) => { if (e.key === 'Escape') closePicker(); };
+  // Defer attaching so the click that opened us doesn't immediately close.
+  setTimeout(() => {
+    document.addEventListener('click', outsideHandler, true);
+    document.addEventListener('keydown', escHandler);
+  }, 0);
+
+  pop.querySelectorAll('.role-picker-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const newRole = item.dataset.roleId;
+      el.role = newRole;
+      el.roleAuto = false;   // explicit user choice — turns the icon green
+      pushHistory();
+      closePicker();
+      render();
+    });
+  });
+
+  pop.querySelector('.role-picker-reset').addEventListener('click', () => {
+    const c = getActiveCanvas();
+    delete el.role;
+    delete el.roleAuto;
+    ensureRolesAssigned(c);   // re-detect from heuristics
+    pushHistory();
+    closePicker();
+    render();
+  });
+}
+
+
+// ============================================================================
+// Auto-Resize settings modal (Step 1 of the new rule-based engine)
+// ============================================================================
+// Replaces the legacy `autoResizeFromSelected` confirm() dialog. Collects:
+//   - which target canvases to write into (multi-select, excludes source)
+//   - whether to also propagate elements without an assigned role (drop them
+//     into the centre of the target canvas)
+// Once confirmed, calls `runRuleBasedAutoResize(settings)`. The executor is
+// stubbed in Step 1 — wiring it up to the actual rule engine is Step 2.
+
+function openAutoResizeModal() {
+  const src = getActiveCanvas();
+  if (!src) {
+    showCanvasNotification('Select a source canvas first (click its header).', { type: 'warning' });
+    return;
+  }
+  if (state.canvases.length < 2) {
+    showCanvasNotification('Add at least one more canvas to resize into.', { type: 'warning' });
+    return;
+  }
+
+  // Local HTML-escape helper — matches the pattern used by other modal
+  // builders in this file (line 4645, 5639, 6633, 9280).
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, ch =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+  // Make sure every element on the source canvas has a role assigned, so the
+  // modal can show an accurate "unassigned count".
+  ensureRolesAssigned(src);
+  const srcEls = src.elements || [];
+  const unassignedCount = srcEls.filter(el => (el.role || 'misc') === 'misc').length;
+  const totalCount = srcEls.length;
+
+  const targets = state.canvases.filter(c => c.id !== src.id);
+
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `
+    <div class="modal" style="max-width:560px;">
+      <div class="modal-head">
+        <h2>Auto-Resize</h2>
+        <button class="btn" id="ar-modal-close" title="Close dialog">Close</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:4px;">Source canvas</div>
+          <div style="font-size:13px; font-weight:600; color:var(--text-main);">${esc(src.name || (src.width + '×' + src.height))} <span style="color:var(--text-muted); font-weight:400;">— ${src.width}×${src.height}</span></div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${totalCount} element${totalCount === 1 ? '' : 's'} on this frame${unassignedCount > 0 ? ` &middot; <span style="color:#f59e0b;">${unassignedCount} unassigned</span>` : ''}</div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Apply to these canvases</div>
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+            <button class="btn" id="ar-select-all" style="padding:3px 8px; font-size:10px;">Select all</button>
+            <button class="btn" id="ar-select-none" style="padding:3px 8px; font-size:10px;">Clear</button>
+          </div>
+          <div id="ar-target-list" style="display:grid; grid-template-columns: 1fr 1fr; gap:6px 14px; max-height:200px; overflow-y:auto; padding:8px; background:var(--bg-deep); border:1px solid var(--border-light); border-radius:4px;">
+            ${targets.map(c => `
+              <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; padding:3px 0;">
+                <input type="checkbox" class="ar-target-checkbox" data-canvas-id="${c.id}" checked />
+                <span style="color:var(--text-main);">${esc(c.name || (c.width + '×' + c.height))}</span>
+                <span style="color:var(--text-muted); font-size:10px;">${c.width}×${c.height}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
+            <input type="checkbox" id="ar-include-unassigned" />
+            <span>
+              <span style="color:var(--text-main); font-weight:500;">Place unassigned elements in the centre of each target canvas</span>
+              <br>
+              <span style="color:var(--text-muted); font-size:10.5px;">Off (default): unassigned elements are skipped on target canvases. On: they're copied and centred (no rule-based placement).</span>
+            </span>
+          </label>
+        </div>
+
+        <div style="padding:10px 12px; background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); border-radius:4px; font-size:11.5px; color:#fca5a5; line-height:1.5;">
+          <strong style="color:#f87171;">⚠ Heads up:</strong> This wipes every element on the selected target frames — including locked and hidden layers — before placing the new content. The source canvas is untouched. Undo (Ctrl+Z) restores everything.
+        </div>
+      </div>
+      <div class="modal-foot" style="display:flex; justify-content:flex-end; gap:8px;">
+        <button class="btn" id="ar-cancel">Cancel</button>
+        <button class="btn primary" id="ar-run">Run Auto-Resize</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(bg);
+
+  const close = () => {
+    bg.remove();
+    document.removeEventListener('keydown', escHandler);
+  };
+  const escHandler = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', escHandler);
+
+  bg.querySelector('#ar-modal-close').onclick = close;
+  bg.querySelector('#ar-cancel').onclick = close;
+  bg.onclick = (e) => { if (e.target === bg) close(); };
+
+  bg.querySelector('#ar-select-all').onclick = () => {
+    bg.querySelectorAll('.ar-target-checkbox').forEach(cb => cb.checked = true);
+  };
+  bg.querySelector('#ar-select-none').onclick = () => {
+    bg.querySelectorAll('.ar-target-checkbox').forEach(cb => cb.checked = false);
+  };
+
+  bg.querySelector('#ar-run').onclick = () => {
+    const targetIds = Array.from(bg.querySelectorAll('.ar-target-checkbox'))
+      .filter(cb => cb.checked)
+      .map(cb => cb.dataset.canvasId);
+    if (targetIds.length === 0) {
+      showCanvasNotification('Pick at least one target canvas.', { type: 'warning' });
+      return;
+    }
+    const includeUnassigned = bg.querySelector('#ar-include-unassigned').checked;
+    close();
+    runRuleBasedAutoResize({
+      sourceId: src.id,
+      targetIds,
+      includeUnassigned
+    });
+  };
+}
+
+// ============================================================================
+// Rule-based Auto-Resize Engine (v2) — Step 2
+// ============================================================================
+// Reads each element's `role` (assigned in the Layers panel) and applies the
+// matching placement rule from `auto-resize-rules.md` to place that element
+// on every selected target canvas. Rules are pure functions:
+//
+//     placer(srcEl, targetCanvas, ctx) → {x, y, width, height, fontSize?} | null
+//
+// Returning null means "drop this element on this canvas". The caller wipes
+// the target canvas first, then iterates rules in priority order so later
+// rules can reference earlier placements via ctx.placedElements[role].
+
+const ROLE_PRIORITIES = {
+  'background-image': 1,
+  'rmit-logo':        3,
+  'cta-button':       4,
+  'heading':          5,
+  'subheading':       6,
+  'cricos':           7,
+  'main-image':       7,
+  'rfwn':             8,
+  'extra-info':       9,
+  'misc':             99
+};
+
+// ----- Shared helpers ------------------------------------------------------
+
+function clampNum(value, lo, hi) {
+  return Math.max(lo, Math.min(hi, value));
+}
+
+function computeSafezone(c) {
+  const w = c.width, h = c.height;
+  const minDim = Math.min(w, h);
+  const aspect = Math.max(w, h) / minDim;
+  const factor = (minDim < 200 && aspect > 3) ? 0.08 : 0.05;
+  const inset = Math.max(4, Math.round(minDim * factor));
+  return {
+    x: inset,
+    y: inset,
+    w: w - 2 * inset,
+    h: h - 2 * inset,
+    right: w - inset,
+    bottom: h - inset,
+    inset
+  };
+}
+
+// Deep-clone a source element for placement on the target canvas. Strips
+// state that doesn't translate (mask flag, original id) and reassigns the
+// frame association for non-persistent elements.
+function cloneSourceElement(srcEl) {
+  const clone = JSON.parse(JSON.stringify(srcEl));
+  clone.id = uid();
+  if (clone.persistent === false) clone.frameId = state.activeFrameId;
+  // Mask flag clipping the wrong image after move — strip it.
+  delete clone.isMask;
+  delete clone.maskTargetId;
+  return clone;
+}
+
+// ----- Per-role placement rules -------------------------------------------
+
+function placeBackgroundImage(srcEl, target, ctx) {
+  const src = ctx.sourceCanvas;
+  const norm = {
+    x: srcEl.x / src.width,
+    y: srcEl.y / src.height,
+    w: srcEl.width / src.width,
+    h: srcEl.height / src.height
+  };
+  // Fast-path: 100% canvas fill
+  if (Math.abs(norm.x) < 0.005 && Math.abs(norm.y) < 0.005 &&
+      Math.abs(norm.w - 1) < 0.01 && Math.abs(norm.h - 1) < 0.01) {
+    return { x: 0, y: 0, width: target.width, height: target.height };
+  }
+  return {
+    x: Math.round(norm.x * target.width),
+    y: Math.round(norm.y * target.height),
+    width:  Math.max(1, Math.round(norm.w * target.width)),
+    height: Math.max(1, Math.round(norm.h * target.height))
+  };
+}
+
+function placeRmitLogo(srcEl, target, ctx) {
+  const sz = ctx.safezone;
+  const w = target.width, h = target.height;
+  const aspect = w / h;
+
+  // Height: banner branch vs standard branch
+  const logoH = (h <= 100)
+    ? clampNum(Math.round(h * 0.2 + 8), 15, 30)
+    : clampNum(Math.round(Math.sqrt(w * h) * 0.075), 15, 40);
+
+  // Width derived from source aspect (default ~2.85 for RMIT lockup)
+  const srcAspect = (srcEl.width && srcEl.height) ? (srcEl.width / srcEl.height) : 2.85;
+  const logoW = Math.round(logoH * srcAspect);
+
+  let x, y;
+  if (aspect < 0.4) {
+    // Bot-left mode (ultra-narrow skyscraper)
+    const offX = clampNum(Math.round(sz.inset * 0.3), 2, 5);
+    const offY = clampNum(Math.round(sz.inset * 0.3), 2, 5);
+    x = sz.x + offX;
+    y = sz.bottom - offY - logoH;
+  } else {
+    // Top-right mode
+    const offX = clampNum(Math.round(sz.inset * 0.15), 0, 3);
+    const offY = clampNum(Math.round(sz.inset * 0.2), 1, 3);
+    x = sz.right - offX - logoW;
+    y = sz.y + offY;
+  }
+  return { x, y, width: logoW, height: logoH };
+}
+
+function placeCtaButton(srcEl, target, ctx) {
+  const sz = ctx.safezone;
+  const w = target.width, h = target.height;
+  const aspect = w / h;
+  const sqArea = Math.sqrt(w * h);
+
+  const btnH = clampNum(Math.round(sqArea * 0.11), 14, 53);
+
+  if (aspect <= 2.0) {
+    // Tall mode: bot-center of safezone
+    const btnW = clampNum(Math.round(btnH * 3.7), 70, Math.min(200, sz.w));
+    const offY = clampNum(Math.round(h * 0.04), 15, 30);
+    return {
+      x: sz.x + Math.round((sz.w - btnW) / 2),
+      y: sz.bottom - offY - btnH,
+      width: btnW,
+      height: btnH
+    };
+  }
+  // Wide mode: button-right at canvas.w × 0.84, vertically centred
+  const btnW = clampNum(Math.round(btnH * 4.2), 70, 200);
+  const btnRight = Math.round(w * 0.84);
+  return {
+    x: btnRight - btnW,
+    y: Math.round((h - btnH) / 2),
+    width: btnW,
+    height: btnH
+  };
+}
+
+function placeHeading(srcEl, target, ctx) {
+  const sz = ctx.safezone;
+  const w = target.width, h = target.height;
+  const aspect = w / h;
+
+  const offX = clampNum(Math.round(w * 0.03), 2, 80);
+  const offY = (h < 100) ? 2 : clampNum(Math.round(h * 0.15), 20, 100);
+
+  let width;
+  const stackMode = h >= 300;
+  if (stackMode) {
+    width = sz.w;
+  } else if (aspect > 2) {
+    width = (h < 120)
+      ? clampNum(Math.round(w * 0.27), 80, 400)
+      : clampNum(Math.round(w * 0.36), 80, 400);
+  } else {
+    width = clampNum(Math.round(sz.w * 0.55), 120, 270);
+  }
+
+  // Height: keep source's text-height ratio, scaled to font (auto-wrap will
+  // adjust at render time for text/button elements with autoSize on).
+  const srcH = srcEl.height || Math.round(h * 0.3);
+  const height = Math.max(20, srcH);
+
+  return {
+    x: sz.x + offX,
+    y: sz.y + offY,
+    width,
+    height
+  };
+}
+
+function placeSubheading(srcEl, target, ctx) {
+  const heading = ctx.placedElements['heading'];
+  if (!heading) return null; // no anchor to attach to
+  const h = target.height;
+  const offY = clampNum(Math.round(h * 0.02), 4, 16);
+  const srcH = srcEl.height || Math.round(h * 0.1);
+  return {
+    x: heading.x,
+    y: heading.y + heading.height + offY,
+    width: heading.width,
+    height: Math.max(12, srcH)
+  };
+}
+
+function placeCricos(srcEl, target, ctx) {
+  const sz = ctx.safezone;
+  const w = target.width, h = target.height;
+  const minDim = Math.min(w, h);
+
+  const fontSize = clampNum(Math.round(minDim * 0.023), 4, 7);
+  const srcFs = srcEl.fontSize || 7;
+  const scale = fontSize / srcFs;
+  const widthRaw = Math.round((srcEl.width || 100) * scale);
+  const width = clampNum(widthRaw, 40, w - 8);
+  const height = Math.max(8, Math.round((srcEl.height || 12) * scale));
+
+  const offX = Math.max(sz.inset, 8);
+  const offY = Math.max(Math.round(fontSize * 0.5), 4);
+  return {
+    x: offX,
+    y: h - offY - height,
+    width,
+    height,
+    fontSize
+  };
+}
+
+function placeMainImage(srcEl, target, ctx) {
+  const sz = ctx.safezone;
+  const w = target.width, h = target.height;
+  const heading    = ctx.placedElements['heading'];
+  const subheading = ctx.placedElements['subheading'];
+  const cta        = ctx.placedElements['cta-button'];
+
+  const gapX = clampNum(Math.round(w * 0.02), 6, 30);
+  const gapY = clampNum(Math.round(h * 0.02), 6, 20);
+
+  const textBottom = subheading
+    ? (subheading.y + subheading.height)
+    : (heading ? heading.y + heading.height : sz.y);
+
+  const textRight = subheading
+    ? Math.max(((heading?.x || 0) + (heading?.width || 0)), subheading.x + subheading.width)
+    : (heading ? heading.x + heading.width : sz.x);
+
+  const ratio = h / w;
+  const stack = ratio >= 1.0;
+  const ctaWideMode = (w / h) > 2.0;
+
+  let slot;
+  if (stack) {
+    slot = {
+      x: sz.x,
+      y: textBottom + gapY,
+      w: sz.w,
+      h: ((cta) ? (cta.y - gapY) : sz.bottom) - (textBottom + gapY)
+    };
+  } else {
+    slot = {
+      x: textRight + gapX,
+      y: sz.y,
+      w: ((cta && ctaWideMode) ? (cta.x - gapX) : sz.right) - (textRight + gapX),
+      h: sz.h
+    };
+  }
+
+  if (slot.w <= 0 || slot.h <= 0) return null;
+
+  const srcAspect = (srcEl.width && srcEl.height) ? (srcEl.width / srcEl.height) : 1;
+  const slotAspect = slot.w / slot.h;
+
+  let imgW, imgH;
+  if (srcAspect >= slotAspect) {
+    imgW = slot.w;
+    imgH = Math.round(imgW / srcAspect);
+  } else {
+    imgH = slot.h;
+    imgW = Math.round(imgH * srcAspect);
+  }
+
+  // Cover fallback when contain leaves the image too small in the slot.
+  // Honour the engine setting — when off, the image stays small (contain).
+  const allowCover = !ctx.engineSettings || ctx.engineSettings.behaviour?.allowCoverFallback !== false;
+  const fillFrac = Math.max(imgW, imgH) / Math.max(slot.w, slot.h);
+  if (allowCover && fillFrac < 0.6) {
+    if (srcAspect >= slotAspect) {
+      imgH = slot.h;
+      imgW = Math.round(imgH * srcAspect);
+    } else {
+      imgW = slot.w;
+      imgH = Math.round(imgW / srcAspect);
+    }
+  }
+
+  if (Math.min(imgW, imgH) < 30) return null;
+
+  return {
+    x: slot.x + Math.round((slot.w - imgW) / 2),
+    y: slot.y + Math.round((slot.h - imgH) / 2),
+    width: imgW,
+    height: imgH
+  };
+}
+
+function placeRfwn(srcEl, target, ctx) {
+  const sz = ctx.safezone;
+  const w = target.width, h = target.height;
+  const aspect = w / h;
+
+  const fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.032), 5, 17);
+  const width    = clampNum(Math.round(fontSize * 7), 35, 90);
+  // RFWN wraps to ~2 lines at chosen font; leading ~1.2.
+  const height   = Math.max(10, Math.round(fontSize * 2.4));
+
+  let x, y;
+  if (aspect >= 0.4 && aspect <= 2.0) {
+    // top-left mode (square-ish / portrait)
+    const offX = Math.max(2, Math.round(sz.inset * 0.2));
+    x = sz.x + offX;
+    y = sz.y;
+  } else {
+    // bot-right mode (skyscraper / banner)
+    const offX = clampNum(Math.round(sz.inset * 0.4), 0, 5);
+    const offY = clampNum(Math.round(sz.inset * 0.4), 0, 5);
+    x = sz.right - offX - width;
+    y = sz.bottom - offY - height;
+  }
+  return { x, y, width, height, fontSize };
+}
+
+function placeExtraInfo(srcEl, target, ctx) {
+  const sz = ctx.safezone;
+  const w = target.width, h = target.height;
+  const heading    = ctx.placedElements['heading'];
+  const subheading = ctx.placedElements['subheading'];
+  const cta        = ctx.placedElements['cta-button'];
+
+  const gapY = clampNum(Math.round(h * 0.015), 4, 12);
+  const gapX = clampNum(Math.round(w * 0.015), 4, 16);
+  const srcW = srcEl.width || 100;
+  const srcH = srcEl.height || 16;
+
+  // Candidate 1 — below subheading (or heading if no subheading)
+  const anchor = subheading || heading;
+  if (anchor) {
+    const x1 = anchor.x;
+    const y1 = anchor.y + anchor.height + gapY;
+    const x2 = anchor.x + anchor.width;
+    const y2 = (cta && cta.y > y1) ? (cta.y - gapY) : sz.bottom;
+    const candW = x2 - x1, candH = y2 - y1;
+    if (candW >= 40 && candH >= 12) {
+      return {
+        x: x1,
+        y: y1,
+        width: Math.min(srcW, candW),
+        height: Math.min(srcH, candH)
+      };
+    }
+  }
+
+  // Candidate 2 — right of subheading (banner / horizontal layouts)
+  if (subheading && cta) {
+    const x1 = subheading.x + subheading.width + gapX;
+    const y1 = subheading.y;
+    const x2 = cta.x - gapX;
+    const y2 = subheading.y + subheading.height;
+    const candW = x2 - x1, candH = y2 - y1;
+    if (candW >= 40 && candH >= 12) {
+      return { x: x1, y: y1, width: Math.min(srcW, candW), height: Math.min(srcH, candH) };
+    }
+  }
+
+  return null; // drop
+}
+
+const PLACEMENT_RULES = {
+  'background-image': placeBackgroundImage,
+  'rmit-logo':        placeRmitLogo,
+  'cta-button':       placeCtaButton,
+  'heading':          placeHeading,
+  'subheading':       placeSubheading,
+  'cricos':           placeCricos,
+  'main-image':       placeMainImage,
+  'rfwn':             placeRfwn,
+  'extra-info':       placeExtraInfo
+};
+
+// ----- Cross-role relations -----------------------------------------------
+
+// R1: rmit-logo ↔ rfwn edge alignment. After both place individually, snap
+// rfwn to share the relevant edge with the logo per mode case-analysis.
+function applyRelationR1(ctx) {
+  const logo = ctx.placedElements['rmit-logo'];
+  const rfwn = ctx.placedElements['rfwn'];
+  if (!logo || !rfwn) return;
+  const w = ctx.target.width, h = ctx.target.height;
+  const aspect = w / h;
+
+  if (aspect >= 0.4 && aspect <= 2.0) {
+    // Both top — share top edge
+    rfwn.y = logo.y;
+  } else if (aspect < 0.4) {
+    // Both bottom (skyscraper) — share bottom edge
+    rfwn.y = logo.y + logo.height - rfwn.height;
+  } else {
+    // Both right (banner) — share right edge
+    rfwn.x = logo.x + logo.width - rfwn.width;
+  }
+}
+
+// ----- Main executor -------------------------------------------------------
+
+function runRuleBasedAutoResize(settings) {
+  const src = state.canvases.find(c => c.id === settings.sourceId);
+  if (!src) {
+    showCanvasNotification('Source canvas no longer exists.', { type: 'error' });
+    return;
+  }
+
+  ensureRolesAssigned(src);
+
+  // Carry over: every element on the active frame + persistent layers from
+  // the source. Matches the legacy executor's filter so the behaviour is
+  // consistent with what users expect from autosave/auth.
+  const srcEls = (src.elements || []).filter(el =>
+    el.persistent !== false || el.frameId === state.activeFrameId
+  );
+
+  if (!state.linkGroups) state.linkGroups = {};
+
+  const engineSettings = getAutoResizeSettings();
+  const rulesEnabled  = engineSettings.rulesEnabled;
+  const relationsOn   = engineSettings.relations;
+
+  let placedTotal = 0;
+  let droppedTotal = 0;
+  let canvasesUpdated = 0;
+
+  settings.targetIds.forEach(targetId => {
+    const target = state.canvases.find(c => c.id === targetId);
+    if (!target || target.id === src.id) return;
+
+    // Wipe everything on the target — including locked and hidden — per spec.
+    target.elements = [];
+
+    const ctx = {
+      sourceCanvas: src,
+      target,
+      safezone: computeSafezone(target),
+      placedElements: {},
+      engineSettings
+    };
+
+    // Sort source elements by role priority so later rules can read earlier
+    // placements via ctx.placedElements.
+    const sorted = [...srcEls].sort((a, b) => {
+      const ap = ROLE_PRIORITIES[a.role || 'misc'] ?? 99;
+      const bp = ROLE_PRIORITIES[b.role || 'misc'] ?? 99;
+      return ap - bp;
+    });
+
+    sorted.forEach(srcEl => {
+      const role = srcEl.role || 'misc';
+      const cat  = getElementCategory(srcEl) || srcEl.type;
+
+      // Misc / unassigned handling
+      if (role === 'misc') {
+        if (!settings.includeUnassigned) {
+          droppedTotal++;
+          return;
+        }
+        const clone = cloneSourceElement(srcEl);
+        // Centre on target canvas, keep source size (clamped to fit).
+        clone.width  = Math.min(srcEl.width  || 100, target.width  - 8);
+        clone.height = Math.min(srcEl.height || 100, target.height - 8);
+        clone.x = Math.max(0, Math.round((target.width  - clone.width)  / 2));
+        clone.y = Math.max(0, Math.round((target.height - clone.height) / 2));
+        wireLinkGroup(srcEl, clone, role, cat);
+        target.elements.push(clone);
+        placedTotal++;
+        return;
+      }
+
+      // Per-role engine toggle — if the user disabled this rule in settings,
+      // drop the element on every target (treat as if rule returned null).
+      if (rulesEnabled[role] === false) {
+        droppedTotal++;
+        return;
+      }
+
+      const placer = PLACEMENT_RULES[role];
+      const geom = placer ? placer(srcEl, target, ctx) : null;
+      if (!geom) { droppedTotal++; return; }
+
+      const clone = cloneSourceElement(srcEl);
+      clone.x = geom.x;
+      clone.y = geom.y;
+      clone.width  = Math.max(1, geom.width);
+      clone.height = Math.max(1, geom.height);
+      if (typeof geom.fontSize === 'number') clone.fontSize = geom.fontSize;
+
+      // Buttons with autoHug need their width recomputed from the new text/font.
+      if (clone.type === 'button' && clone.autoHug && typeof measureButtonWidth === 'function') {
+        clone.width = measureButtonWidth(clone);
+      }
+
+      wireLinkGroup(srcEl, clone, role, cat);
+      target.elements.push(clone);
+      ctx.placedElements[role] = clone;
+      placedTotal++;
+    });
+
+    // Cross-role pass — R1 only for now, gated by settings.
+    if (relationsOn.r1 !== false) applyRelationR1(ctx);
+
+    canvasesUpdated++;
+  });
+
+  cleanupLinkGroups();
+
+  const finalize = () => {
+    pushHistory();
+    render();
+    showCanvasNotification(
+      `Auto-Resize: ${canvasesUpdated} canvas${canvasesUpdated === 1 ? '' : 'es'} updated · ${placedTotal} placed, ${droppedTotal} dropped`,
+      { type: 'success' }
+    );
+  };
+
+  if (engineSettings.showProgress !== false) {
+    showFakeAutoResizeProgress({
+      sourceCanvas: src,
+      sourceElementCount: srcEls.length,
+      targetCount: canvasesUpdated,
+      placedCount: placedTotal,
+      droppedCount: droppedTotal
+    }, finalize);
+  } else {
+    finalize();
+  }
+}
+
+// ----- Auto-resize engine settings (persisted in state) ------------------
+// Each rule + relation can be toggled off. Defaults: everything on,
+// behaviour toggles match the rules-doc defaults.
+const AUTO_RESIZE_DEFAULT_SETTINGS = {
+  rulesEnabled: {
+    'background-image': true,
+    'rmit-logo':        true,
+    'cta-button':       true,
+    'heading':          true,
+    'subheading':       true,
+    'cricos':           true,
+    'main-image':       true,
+    'rfwn':             true,
+    'extra-info':       true
+  },
+  relations: {
+    r1: true   // rmit-logo ↔ rfwn edge alignment
+  },
+  behaviour: {
+    allowCoverFallback: true,   // main-image: contain → cover at <60% fill
+    showProgress:       true    // fake technical loading overlay
+  },
+  showProgress: true             // (mirrored for fast top-level read)
+};
+
+function getAutoResizeSettings() {
+  if (!state.autoResizeSettings) {
+    state.autoResizeSettings = JSON.parse(JSON.stringify(AUTO_RESIZE_DEFAULT_SETTINGS));
+  }
+  // Fill in any missing keys (e.g. project saved before this version).
+  const s = state.autoResizeSettings;
+  if (!s.rulesEnabled) s.rulesEnabled = { ...AUTO_RESIZE_DEFAULT_SETTINGS.rulesEnabled };
+  if (!s.relations)    s.relations    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.relations };
+  if (!s.behaviour)    s.behaviour    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour };
+  // Backwards-compat: showProgress was originally top-level. Honour it if set.
+  if (typeof s.showProgress !== 'boolean') s.showProgress = s.behaviour.showProgress !== false;
+  return s;
+}
+
+// ----- Fake technical loading overlay -------------------------------------
+// Pure theatre. Computes nothing — the placement work has already happened
+// when this is called. The overlay just delays the visible render() so the
+// user gets a satisfying "the engine is working" cue.
+function showFakeAutoResizeProgress(stats, onComplete) {
+  const bg = document.createElement('div');
+  bg.id = 'ar-progress-overlay';
+  bg.style.cssText = `
+    position: fixed; inset: 0; z-index: 100050;
+    background: rgba(8, 10, 18, 0.78); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    font-family: ui-monospace, "SF Mono", Consolas, Menlo, monospace;
+    color: #c8f9e2;
+  `;
+
+  const elemCount = stats.sourceElementCount;
+  const tgtCount  = stats.targetCount;
+  const src = stats.sourceCanvas;
+  const srcLabel = `${src.width}×${src.height}`;
+
+  // Scripted "pipeline" steps. Total run-time is randomised 2.0–3.0s, and
+  // the per-step intervals are random-weighted so the progression stutters
+  // — some steps tick rapidly, others sit for a long beat before the next.
+  // Pure cosmetics: the actual work is already done.
+  const stepLabels = [
+    `Initializing visual analysis pipeline`,
+    `Uploading source canvas (${srcLabel})`,
+    `Loading Adflow Visual Model v2.4`,
+    `Tokenizing ${elemCount} element${elemCount === 1 ? '' : 's'}`,
+    `Detecting roles via heuristic ensemble`,
+    `Computing safezone parametrics (${tgtCount} target${tgtCount === 1 ? '' : 's'})`,
+    `Solving anchor + size constraints`,
+    `Applying cross-role relations (R1)`,
+    `Synchronizing link groups`,
+    `Finalizing per-canvas placements`
+  ];
+
+  // Random total duration in [2000, 3000] ms. Reserve a 280 ms tail for the
+  // "done" capstone so the last checkmark doesn't appear simultaneously
+  // with the overlay closing.
+  const TOTAL_MS = 2000 + Math.floor(Math.random() * 1001);
+  const stepWindow = TOTAL_MS - 280;
+
+  // Each step gets a random weight between 0.4 and 1.6 of average. The
+  // cumulative sum (normalised against stepWindow) gives the delay at which
+  // its checkmark appears. Variance between adjacent weights produces the
+  // stutter — sometimes two steps fire ~80ms apart, sometimes one sits
+  // alone for ~450ms before the next.
+  const weights = stepLabels.map(() => 0.4 + Math.random() * 1.2);
+  const wSum = weights.reduce((a, b) => a + b, 0);
+  let acc = 0;
+  const steps = stepLabels.map((label, i) => {
+    acc += (weights[i] / wSum) * stepWindow;
+    return { label, delay: Math.round(acc) };
+  });
+
+  bg.innerHTML = `
+    <div style="
+      width: 520px; max-width: calc(100vw - 48px);
+      background: #0d111c;
+      border: 1px solid rgba(124, 92, 255, 0.4);
+      border-radius: 8px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(124, 92, 255, 0.15) inset;
+      padding: 18px 22px 16px 22px;
+      font-size: 11.5px; line-height: 1.55;
+    ">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+        <span class="ar-prog-spinner" style="
+          display:inline-block; width:10px; height:10px;
+          border:1.5px solid rgba(124, 92, 255, 0.35);
+          border-top-color: #b7a3ff; border-radius:50%;
+          animation: ar-prog-spin 0.7s linear infinite;
+        "></span>
+        <span style="color:#b7a3ff; font-weight:600; letter-spacing:0.5px;">Adflow Auto-Resize Engine</span>
+        <span style="color:#5b6478; margin-left:auto; font-size:10px;">v2.0 · rule-based</span>
+      </div>
+      <div style="color:#5b6478; font-size:10px; margin-bottom:10px; border-bottom:1px dashed rgba(124, 92, 255, 0.18); padding-bottom:8px;">
+        pid 0x${Math.floor(Math.random() * 0xFFFF).toString(16).padStart(4, '0')} · ${new Date().toISOString().split('T')[1].split('.')[0]} UTC · stream: visual_pipeline.v2
+      </div>
+      <div id="ar-prog-log" style="min-height:200px; max-height:280px; overflow-y:auto;"></div>
+      <div style="margin-top:12px; height:4px; border-radius:2px; background:rgba(124, 92, 255, 0.12); overflow:hidden;">
+        <div id="ar-prog-bar" style="height:100%; width:0%; background:linear-gradient(90deg, #7c5cff, #b7a3ff); transition: width 0.12s linear;"></div>
+      </div>
+      <div style="margin-top:6px; font-size:9.5px; color:#5b6478; display:flex; justify-content:space-between;">
+        <span id="ar-prog-percent">0%</span>
+        <span>${elemCount} layer${elemCount === 1 ? '' : 's'} · ${tgtCount} target${tgtCount === 1 ? '' : 's'}</span>
+      </div>
+    </div>
+  `;
+
+  // Inject keyframes once.
+  if (!document.getElementById('ar-prog-keyframes')) {
+    const style = document.createElement('style');
+    style.id = 'ar-prog-keyframes';
+    style.textContent = `
+      @keyframes ar-prog-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      @keyframes ar-prog-fade { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: translateY(0); } }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(bg);
+  const log = bg.querySelector('#ar-prog-log');
+  const bar = bg.querySelector('#ar-prog-bar');
+  const pct = bg.querySelector('#ar-prog-percent');
+
+  // Schedule each step's "checkmark" appearance + progress bar tick.
+  steps.forEach((step, i) => {
+    setTimeout(() => {
+      const row = document.createElement('div');
+      row.style.cssText = `animation: ar-prog-fade 0.18s ease-out; margin-bottom:2px;`;
+      row.innerHTML = `
+        <span style="color:#34d399; font-weight:700; margin-right:8px;">[✓]</span><span style="color:#c8f9e2;">${step.label}</span>
+      `;
+      log.appendChild(row);
+      log.scrollTop = log.scrollHeight;
+      const p = Math.round(((i + 1) / steps.length) * 100);
+      bar.style.width = p + '%';
+      pct.textContent = p + '%';
+    }, step.delay);
+  });
+
+  // Done — close overlay and run the deferred render/toast.
+  setTimeout(() => {
+    bar.style.width = '100%';
+    pct.textContent = '100%';
+    const done = document.createElement('div');
+    done.style.cssText = `margin-top:6px; padding-top:6px; border-top:1px dashed rgba(52, 211, 153, 0.25); animation: ar-prog-fade 0.2s ease-out;`;
+    done.innerHTML = `<span style="color:#34d399; font-weight:700;">→</span> <span style="color:#a7f0d2;">done — ${stats.placedCount} placed, ${stats.droppedCount} dropped across ${stats.targetCount} canvas${stats.targetCount === 1 ? '' : 'es'}.</span>`;
+    log.appendChild(done);
+
+    // Stop the spinner (swap the spinner border to a static check).
+    const spinner = bg.querySelector('.ar-prog-spinner');
+    if (spinner) {
+      spinner.style.animation = 'none';
+      spinner.style.borderColor = '#34d399';
+      spinner.style.borderTopColor = '#34d399';
+    }
+  }, TOTAL_MS - 80);
+
+  setTimeout(() => {
+    bg.remove();
+    if (typeof onComplete === 'function') onComplete();
+  }, TOTAL_MS + 280);
+}
+
+
+// ----- Auto-Resize Settings modal (gear icon) -----------------------------
+function openAutoResizeSettingsModal() {
+  const s = getAutoResizeSettings();
+
+  // Each rule gets a row in the modal listing its role, behaviour summary,
+  // and an on/off checkbox. The summary text mirrors the rules doc so users
+  // can see what each rule actually does.
+  const ruleRows = [
+    { role: 'background-image', label: 'Background image', desc: 'Mirror the source bg coverage proportionally onto every target. Full-fill is a fast path.' },
+    { role: 'rmit-logo',        label: 'RMIT logo',        desc: 'Top-right of safezone, except on ultra-narrow skyscrapers (aspect < 0.4) where it goes bot-left.' },
+    { role: 'cta-button',       label: 'CTA button',       desc: 'Tall canvases: bot-center of safezone. Wide canvases: middle-right at canvas.w × 0.84.' },
+    { role: 'heading',          label: 'Heading',          desc: 'Top-left of safezone. Width adapts by canvas aspect (vertical-stack / wide-banner / square-ish).' },
+    { role: 'subheading',       label: 'Subheading',       desc: 'Anchored to heading.bottom-left with a small gap. Inherits heading width.' },
+    { role: 'cricos',           label: 'CRICOS line',      desc: 'Bot-left of canvas (not safezone). Font auto-scales with min(canvas.w, canvas.h), floor 4.' },
+    { role: 'main-image',       label: 'Main image',       desc: 'Slot-search remainder after text + CTA + logo place. Contain by source aspect; cover fallback at <60% fill.' },
+    { role: 'rfwn',             label: 'RFWN tagline',     desc: 'Top-left if aspect 0.4–2.0; bot-right otherwise. Snaps to logo via the R1 relation.' },
+    { role: 'extra-info',       label: 'Extra info',       desc: 'Slot-searches residual gaps below/beside the text block. Dropped if no slot fits.' }
+  ];
+
+  const relationRows = [
+    { id: 'r1', label: 'Logo ↔ RFWN edge alignment', desc: 'After both place individually, RFWN snaps to share the relevant safezone edge with the logo (top / bottom / right depending on aspect).' }
+  ];
+
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `
+    <div class="modal" style="max-width:640px;">
+      <div class="modal-head">
+        <h2>Auto-Resize Settings</h2>
+        <button class="btn" id="ars-modal-close" title="Close dialog">Close</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh; overflow-y:auto;">
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:14px;">
+          Every rule and behaviour the rule-based engine uses. Toggling a rule off skips its placement and drops matching elements on target canvases.
+        </div>
+
+        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Placement rules</div>
+        <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:18px;">
+          ${ruleRows.map(r => `
+            <label class="ars-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; background:var(--bg-deep); border:1px solid var(--border-light); border-radius:4px; cursor:pointer;">
+              <input type="checkbox" class="ars-rule" data-role="${r.role}" ${s.rulesEnabled[r.role] !== false ? 'checked' : ''} style="margin-top:2px; flex-shrink:0;" />
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:12px; font-weight:600; color:var(--text-main);">${r.label}</div>
+                <div style="font-size:10.5px; color:var(--text-muted); line-height:1.45; margin-top:2px;">${r.desc}</div>
+              </div>
+            </label>
+          `).join('')}
+        </div>
+
+        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Cross-role relations</div>
+        <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:18px;">
+          ${relationRows.map(r => `
+            <label class="ars-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; background:var(--bg-deep); border:1px solid var(--border-light); border-radius:4px; cursor:pointer;">
+              <input type="checkbox" class="ars-rel" data-rel="${r.id}" ${s.relations[r.id] !== false ? 'checked' : ''} style="margin-top:2px; flex-shrink:0;" />
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:12px; font-weight:600; color:var(--text-main);">${r.label}</div>
+                <div style="font-size:10.5px; color:var(--text-muted); line-height:1.45; margin-top:2px;">${r.desc}</div>
+              </div>
+            </label>
+          `).join('')}
+        </div>
+
+        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Behaviour</div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <label class="ars-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; background:var(--bg-deep); border:1px solid var(--border-light); border-radius:4px; cursor:pointer;">
+            <input type="checkbox" id="ars-cover" ${s.behaviour.allowCoverFallback !== false ? 'checked' : ''} style="margin-top:2px; flex-shrink:0;" />
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:12px; font-weight:600; color:var(--text-main);">Allow cover fallback for the main image</div>
+              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.45; margin-top:2px;">When contain would leave the image filling less than 60% of its slot, switch to cover (fill the slot, allow canvas-edge clipping). Off: always contain even if visually small.</div>
+            </div>
+          </label>
+          <label class="ars-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; background:var(--bg-deep); border:1px solid var(--border-light); border-radius:4px; cursor:pointer;">
+            <input type="checkbox" id="ars-progress" ${s.showProgress !== false ? 'checked' : ''} style="margin-top:2px; flex-shrink:0;" />
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:12px; font-weight:600; color:var(--text-main);">Show technical progress overlay</div>
+              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.45; margin-top:2px;">Display a ~2-second pipeline-style loading panel while the engine runs. Off: results appear instantly.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="modal-foot" style="display:flex; justify-content:space-between; gap:8px;">
+        <button class="btn" id="ars-reset" style="color:var(--text-muted);">Reset to defaults</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" id="ars-cancel">Cancel</button>
+          <button class="btn primary" id="ars-save">Save</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(bg);
+
+  const close = () => {
+    bg.remove();
+    document.removeEventListener('keydown', escHandler);
+  };
+  const escHandler = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', escHandler);
+
+  bg.querySelector('#ars-modal-close').onclick = close;
+  bg.querySelector('#ars-cancel').onclick = close;
+  bg.onclick = (e) => { if (e.target === bg) close(); };
+
+  bg.querySelector('#ars-reset').onclick = () => {
+    state.autoResizeSettings = JSON.parse(JSON.stringify(AUTO_RESIZE_DEFAULT_SETTINGS));
+    close();
+    openAutoResizeSettingsModal();   // re-open with defaults applied
+  };
+
+  bg.querySelector('#ars-save').onclick = () => {
+    const next = getAutoResizeSettings();
+    bg.querySelectorAll('.ars-rule').forEach(cb => {
+      next.rulesEnabled[cb.dataset.role] = cb.checked;
+    });
+    bg.querySelectorAll('.ars-rel').forEach(cb => {
+      next.relations[cb.dataset.rel] = cb.checked;
+    });
+    next.behaviour.allowCoverFallback = bg.querySelector('#ars-cover').checked;
+    next.behaviour.showProgress       = bg.querySelector('#ars-progress').checked;
+    next.showProgress                 = next.behaviour.showProgress;
+    state.autoResizeSettings = next;
+    pushHistory();
+    close();
+    showCanvasNotification('Auto-Resize settings saved.', { type: 'success' });
+  };
+}
+
+document.getElementById('btn-ai-resize-settings')?.addEventListener('click', openAutoResizeSettingsModal);
+
+
+// Hook src ↔ target into a link group so cross-canvas style/content sync
+// works just like the legacy executor sets up.
+function wireLinkGroup(srcEl, target, role, cat) {
+  let gid = srcEl.linkGroupId;
+  if (!gid || !state.linkGroups[gid]) {
+    gid = 'lg_' + uid();
+    state.linkGroups[gid] = {
+      id: gid,
+      name: baseLayerLabel(srcEl),
+      category: cat,
+      syncProperties: syncDefaultsForRole(legacyRoleForCategory(role, cat), cat)
+    };
+    srcEl.linkGroupId = gid;
+  } else {
+    // Refresh sync defaults so existing groups get role-appropriate behaviour.
+    state.linkGroups[gid].syncProperties = syncDefaultsForRole(legacyRoleForCategory(role, cat), cat);
+  }
+  target.linkGroupId = gid;
+  applyLinkSync(srcEl, target, state.linkGroups[gid]);
+}
+
+// Map our v2 role IDs to the legacy role names that syncDefaultsForRole
+// already understands. The legacy helper only branches on category really,
+// but we keep the role argument for forward-compat.
+function legacyRoleForCategory(roleV2, cat) {
+  switch (roleV2) {
+    case 'heading':          return 'heading';
+    case 'subheading':       return 'subheading';
+    case 'cta-button':       return 'button';
+    case 'rmit-logo':        return 'logo';
+    case 'cricos':           return 'compliance';
+    case 'rfwn':             return 'compliance';
+    case 'extra-info':       return 'text';
+    case 'main-image':       return 'image';
+    case 'background-image': return 'bgimage';
+    default:                 return 'other';
+  }
+}
+
+document.getElementById('btn-ai-resize').addEventListener('click', openAutoResizeModal);
 
 document.getElementById('btn-clear-everything')?.addEventListener('click', () => {
   if (!confirm("Are you sure you want to clear all elements from all canvases? This cannot be undone.")) return;
@@ -11475,6 +12725,81 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.15.1',
+    date: 'May 2026',
+    items: [
+      'Auto-Resize progress overlay now feels more organic: total run-time randomised between 2.0 and 3.0 seconds, and the per-step intervals use random weights (0.4×–1.6× of average) so checkmarks tick unevenly — sometimes two pop in ~80ms apart, sometimes one sits alone for ~450ms before the next, matching the cadence of a real ML pipeline rather than a metronome.'
+    ]
+  },
+  {
+    version: 'v0.15.0',
+    date: 'May 2026',
+    items: [
+      'Auto-Resize now runs behind a ~2-second pipeline-style loading overlay. Terminal-styled centred panel with a spinner, fake pid + UTC timestamp header, a scripted sequence of ten checkmarked status lines, animated progress bar, and a "→ done" capstone. Purely theatrical — placement happens in <50ms; the overlay gates the visible render() so the user sees the engine "doing work."',
+      'New gear icon next to "Auto-resize from selected" opens the Auto-Resize Settings panel. Every placement rule and every cross-role relation is a labelled checkbox with a one-line description. Behaviour section toggles cover-fallback for the main image and the progress overlay. Reset-to-defaults, save, cancel.',
+      'Engine respects the settings: disabled rules drop matching elements on every target, R1 cross-role snap can be turned off, and the cover-fallback gate now reads from settings rather than being hard-coded.'
+    ]
+  },
+  {
+    version: 'v0.14.5',
+    date: 'May 2026',
+    items: [
+      'Role-assignment icon: back to two diagonal arrows (the same concept as the original) but with rounded corner brackets instead of right-angle joins. Smoother silhouette at 13px while keeping the "resize" semantic.'
+    ]
+  },
+  {
+    version: 'v0.14.4',
+    date: 'May 2026',
+    items: [
+      'Swapped the role-assignment icon back to a resize-style glyph — four rounded corner brackets, no diagonal arrows. Reads as "resize/format" without the previous version\'s noise at 13px.',
+      'Accent colour now applies to every layer that has a known role, not just manually-assigned ones. Auto-detected and manually-assigned both show purple; only truly unassigned layers stay grey. The tooltip still says "(auto-detected)" or "(manually set)" on hover so the distinction is preserved.'
+    ]
+  },
+  {
+    version: 'v0.14.3',
+    date: 'May 2026',
+    items: [
+      'Polish: swapped the layer-row role-assignment icon from a four-corner expand arrow to a single-stroke tag icon — smoother at 13px and a better semantic fit for "this layer\'s role".',
+      'Polish: manually-assigned role icons now use the purple accent colour instead of the previous green, matching the rest of the editor\'s "this was changed from default" visual language. The role-picker dropdown\'s current-selection dot follows the same accent.'
+    ]
+  },
+  {
+    version: 'v0.14.2',
+    date: 'May 2026',
+    items: [
+      'Fix: clicking the role-assignment icon on a layer row did nothing because the popup inherited display:none from the global `.dropdown` class (which is only revealed via a `.menu-item:hover` parent rule that doesn\'t apply to body-anchored popups). Dropped the `dropdown` class from the popup container so it stays visible on creation.'
+    ]
+  },
+  {
+    version: 'v0.14.1',
+    date: 'May 2026',
+    items: [
+      'Fix: Auto-Resize modal and the Layers-panel role-assignment icon were both silently dead — clicking either did nothing. The modal builder referenced a global esc() helper that\'s only defined locally inside other modal functions, so it threw a ReferenceError before the modal could render. Inlined a local esc inside the auto-resize modal builder.',
+      'Hardening: hoisted the three role-taxonomy constants (ROLE_IDS, ROLE_LABELS, ROLE_PICKER_ORDER) to the top of the script so any boot-time render call can read them without risking a temporal-dead-zone ReferenceError.'
+    ]
+  },
+  {
+    version: 'v0.14.0',
+    date: 'May 2026',
+    items: [
+      'Step 2 of the new rule-based Auto-Resize engine — the placer is live. Clicking Run Auto-Resize reads each element\'s assigned role on the source canvas, applies the matching parametric rule from the locked rule set (anchor + size + font-size formulas), and writes the result onto every selected target canvas.',
+      'All 9 roles wired: background-image (source-mirror), rmit-logo (top-right / bot-left by aspect), cta-button (tall bot-center / wide mid-right), heading (top-left of safezone, two layout modes), subheading (anchored to heading.bottom-left), cricos (bot-left of canvas, min font 4), main-image (slot-search with contain→cover fallback at 60% fill), rfwn (top-left / bot-right by aspect), extra-info (residual slot-search).',
+      'Cross-role relation R1: after the logo + RFWN both place, RFWN snaps to share the relevant safezone edge with the logo (top edge on square/portrait, bottom on skyscraper, right on wide banner).',
+      'Unassigned elements (role = Unassigned) follow the modal toggle — off skips them, on copies them centred on every target. The source canvas always stays untouched and Ctrl+Z reverts the whole operation.',
+      'Link groups stitched up automatically: every placed target element joins or reuses the source\'s link group with role-appropriate sync defaults, so subsequent edits propagate per-canvas the same way as before.'
+    ]
+  },
+  {
+    version: 'v0.13.0',
+    date: 'May 2026',
+    items: [
+      'Step 1 of the new rule-based Auto-Resize engine. Every layer now carries an "auto-resize role" assignment — one of Heading, Subheading, CTA Button, Main image, Background image, RMIT logo, RFWN tagline, CRICOS line, Extra info, or Unassigned. Adflow auto-detects the role for every element using text content, layer name, and size heuristics.',
+      'New role-assignment icon column in the Layers panel: a small resize/expand icon sits beside the lock and visibility eyes on every layer row. Gray when auto-detected, green once you pick a role yourself. Click it for a dropdown of all ten roles + a Reset-to-auto option.',
+      'The "Auto-resize from selected" button now opens a settings modal first. Pick exactly which target canvases to resize into (multi-select checkboxes, source excluded), toggle whether unassigned elements get placed in the centre of each target, and review a clear warning that the operation wipes everything on the selected target frames (including locked + hidden layers) before placing new content. Ctrl+Z still reverts the whole operation.',
+      'The rule engine that reads each role and places elements per-canvas is wired up next step — the modal currently surfaces a status toast confirming the settings it captured.'
+    ]
+  },
+  {
     version: 'v0.12.0',
     date: 'May 2026',
     items: [
@@ -11930,7 +13255,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.12.0';
+  const currentVersion = 'v0.15.1';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -12000,7 +13325,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.12.0</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.15.1</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -12056,7 +13381,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.12.0</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.15.1</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

@@ -1,6 +1,46 @@
 RMIT Adflow - Version & Changelog History
 
-v0.12.0 (Current) - May 2026
+v0.15.1 (Current) - May 2026
+- Auto-Resize progress overlay now feels more organic: total run-time randomised between 2.0 and 3.0 seconds, and the per-step intervals use random weights (0.4×–1.6× of average) so the checkmarks tick unevenly — sometimes two pop in ~80ms apart, sometimes one sits alone for ~450ms before the next, matching the cadence of a real ML pipeline rather than a metronome.
+
+v0.15.0 - May 2026
+- Auto-Resize now runs behind a ~2-second pipeline-style loading overlay. Terminal-styled centred panel with a spinner, fake "process id" + UTC timestamp header, a scripted sequence of ten checkmarked status lines ("Uploading source canvas (300×250)", "Loading Adflow Visual Model v2.4", "Tokenizing N elements", "Solving anchor + size constraints", "Applying cross-role relations (R1)", etc.), animated progress bar, and a final "→ done — N placed, M dropped across X canvases" capstone. Purely theatrical — the placement actually happens in <50ms, the overlay just gates the visible render() so the user sees the engine doing work.
+- New gear icon next to the "Auto-resize from selected" button opens a full Auto-Resize Settings panel. Lists every placement rule (9) and every cross-role relation (R1) as a labelled checkbox with a one-line description of what each rule does. Behaviour section: toggle the cover-fallback for the main image (off = always contain even if visually small), toggle the technical progress overlay (off = instant results). Reset-to-defaults restores everything. Settings persist in the project so each project can have its own preferences.
+- Engine respects the settings: disabled rules cause matching elements to be dropped on every target (treated like null geometry), the R1 cross-role snap can be turned off, and the cover fallback gate now reads from the engine settings rather than being hard-coded.
+
+v0.14.5 - May 2026
+- Role-assignment icon: back to two diagonal arrows (the same concept as the original) but with rounded corner brackets instead of right-angle joins. Smoother silhouette at 13px while keeping the "resize" semantic.
+
+v0.14.4 - May 2026
+- Swapped the role-assignment icon back to a resize-style glyph but with a cleaner outline — four rounded corner brackets only, no diagonal arrows. Reads as "resize/format" without the previous version's noise at 13px.
+- Accent colour now applies to every layer that has a known role, not just manually-assigned ones. Auto-detected and manually-assigned both show purple; only truly unassigned (role = Unassigned) stays grey. The tooltip still differentiates "auto-detected" vs explicit so it's clear which is which on hover.
+
+v0.14.3 - May 2026
+- Polish: swapped the layer-row role-assignment icon from a four-corner expand arrow (visually jagged at 13px because of the four separate corner brackets) to a single-stroke tag icon — also a better semantic fit since the button assigns a role/label rather than resizing anything.
+- Polish: manually-assigned role icons now use the app's purple accent colour instead of the previous green, matching the rest of the editor's "this was changed from default" visual language. The role-picker dropdown's current-selection dot follows the same accent for internal consistency.
+
+v0.14.2 - May 2026
+- Fix: clicking the role-assignment icon on a layer row did nothing because the popup inherited `display:none` from the global `.dropdown` class (which is only revealed via a `.menu-item:hover` parent rule that doesn't apply to body-anchored popups). Dropped the `dropdown` class from the popup container so it stays visible on creation; the `dropdown-item` / `dropdown-divider` classes on its children are kept since those don't have the default-hidden rule.
+
+v0.14.1 - May 2026
+- Fix: Auto-Resize modal and the Layers-panel role-assignment icon were both silently dead — clicking either did nothing. The modal builder referenced a global `esc()` helper that's only defined locally inside other modal functions, so it threw a ReferenceError before the modal could render. Inlined a local esc inside the auto-resize modal builder to match the pattern other modals use.
+- Hardening: hoisted the three role taxonomy constants (ROLE_IDS, ROLE_LABELS, ROLE_PICKER_ORDER) to the top of the script so any boot-time render call can read them without risking a temporal-dead-zone ReferenceError, even if future changes move the render entry earlier.
+
+v0.14.0 - May 2026
+- Step 2 of the new rule-based Auto-Resize engine — the actual placer is now live. Clicking Run Auto-Resize reads each element's assigned role on the source canvas, applies the matching parametric rule from the locked rule set (anchor + size + font-size formulas), and writes the result onto every selected target canvas.
+- All 9 roles are wired: background-image (source-mirror), rmit-logo (top-right / bot-left by aspect), cta-button (tall bot-center / wide mid-right), heading (top-left of safezone, two layout modes), subheading (anchored to heading.bottom-left), cricos (bot-left of canvas, min font 4), main-image (slot-search remainder with contain→cover fallback), rfwn (top-left / bot-right by aspect), extra-info (slot-search residual gaps).
+- Cross-role relation R1 wired: after the logo + RFWN both place individually, RFWN snaps to share the relevant safezone edge with the logo (top, bottom, or right depending on canvas aspect).
+- Unassigned elements (role = "misc") now follow the modal toggle — off skips them entirely, on copies them to the centre of each target canvas. Either way the source canvas stays untouched and Ctrl+Z reverts.
+- Link groups are stitched up automatically: every placed target element joins (or reuses) the source's link group with role-appropriate sync defaults, so subsequent edits propagate per-canvas the same way they do with the legacy executor.
+- Masked shape flags are stripped when an element is cloned to a target canvas — the mask-image relationship can't safely translate to a different layout.
+
+v0.13.0 - May 2026
+- Step 1 of the new rule-based Auto-Resize engine. Every layer now has an "auto-resize role" assignment (Heading, Subheading, CTA Button, Main image, Background image, RMIT logo, RFWN tagline, CRICOS line, Extra info, or Unassigned). Adflow auto-detects the role for every element on project load and on element creation, using text content, layer name and size heuristics.
+- New role-assignment icon column in the Layers panel: a small resize/expand icon sits beside the lock and visibility eyes on every layer row. The icon is gray when the role was auto-detected and turns green once you pick a role yourself. Click it to open a dropdown listing all ten roles + a Reset-to-auto option.
+- The "Auto-resize from selected" button now opens a settings modal before doing anything destructive. The modal lists every other canvas as a checkbox so you can pick exactly which ones to resize into, has a toggle for placing unassigned elements at the centre of the target frames, and shows a red warning explaining that the operation wipes everything on the selected target frames (including locked and hidden layers) before placing the new content. The source canvas is untouched and Ctrl+Z reverts the whole operation.
+- The actual rule-engine that reads each role and places elements per-canvas is wired up next step — the modal currently surfaces a status toast confirming the settings it captured.
+
+v0.12.0 - May 2026
 - New layer-based masking system. Right-click a shape layer (rectangle, circle, or pixel — not line) on a non-persistent frame and pick "Use as mask" to turn it into a mask for the image directly beneath it. The shape's outline and stroke disappear on the canvas; the image below is clipped to the shape, with the mask carrying its own independent animation.
 - Mask layers show a solid eye icon in the Layers panel (white when active, grey when hidden) so they're easy to tell apart from regular layers. Hiding the mask layer turns the mask off and the image reverts to its full unmasked form.
 - Mask layers are mutually exclusive with link groups and dynamic data. When a mask is selected, both the Dynamic Data and Link Group panels show a clear "disabled while this layer is a mask" notice; the right-click → Link Group submenu is suppressed too.
