@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.8.0 (Current) - May 2026
+v0.8.1 (Current) - May 2026
+- Added a hover preview thumbnail to the Assets panel: hovering an image asset row now pops a small thumbnail next to it after a short delay, with the popup flipping to the row's other side when it would overflow the viewport.
+- Startup view now always centers on the canvases regardless of last saved scroll position. If a previous scroll position is available, a toast appears with a "Resume previous view" button to jump back to where you left off — same behaviour applies when opening a .flow project file.
+
+v0.8.0 - May 2026
 - Added options to save undo/redo history within the .cook project file and the IndexedDB autosave, allowing full project history recovery upon session reload or project file import.
 - Introduced a "History & Saving" settings section, allowing users to configure the saved history limit (1 to 50 entries, defaulting to 10).
 - Added a prominent warning in the settings panel regarding deleted image and assets persistence across sessions to prevent missing references when undoing past deletions.
