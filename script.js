@@ -2933,8 +2933,10 @@ function elementNode(el, canvasCtx) {
       const maskId = `mask-${el.id}`;
       const mAnim = getElementAnimationCSS(m, false);
       const originStyle = `transform-box:fill-box;transform-origin:center;`;
-      const entryStyle = mAnim.entryConfig ? `style="${originStyle}${mAnim.entryConfig}${mAnim.entryVars}"` : '';
-      const effStyle = mAnim.effConfig ? `style="${originStyle}${mAnim.effConfig}${mAnim.effVars}"` : '';
+      // In the editor workspace, don't apply the entry/effect animations to the mask shape by default so selecting/moving doesn't play animation preview.
+      // But we still apply custom variables (like --zoom-from, --pan-x etc.) so the hover preview has them ready if triggered.
+      const entryStyle = `style="${originStyle}${mAnim.entryVars || ''}"`;
+      const effStyle = `style="${originStyle}${mAnim.effVars || ''}"`;
       const animatedMaskShape = `<g class="mask-g-entry" ${entryStyle}><g class="mask-g-eff" ${effStyle}>${maskShape}</g></g>`;
       // Inline SVG defs sit *inside* the image wrapper — same DOM scope as the
       // image, scoped per-render. width:0/height:0 so it doesn't add a visible box.
@@ -10954,18 +10956,21 @@ const DOCS_SECTIONS = [
     id: 'getting-started', title: 'Getting Started',
     subs: [
       { id: 'welcome', title: 'Welcome to Adflow', body: `
-        <p>Adflow is a browser-based design tool for animated HTML5 display ads. Lay out every banner size side-by-side in one project, sync them with <b>Link Groups</b>, mail-merge a spreadsheet to generate dozens of versions, and export Google-Ads-compliant ZIPs in a click.</p>
+        <div style="text-align: center; margin-bottom: 24px;">
+          <img src="data/Elements/Adflow_logo.svg" alt="Adflow Logo" style="max-width: 140px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));">
+        </div>
+        <p>Adflow is a browser-based design tool for animated HTML5 display ads. Lay out every banner size side-by-side in one project, sync them with <a href="#" data-doc-sec="multi-canvas" data-doc-sub="auto-link" style="color:var(--accent-light); font-weight: 500;">Link Groups</a>, mail-merge a spreadsheet to generate dozens of versions, and export Google-Ads-compliant ZIPs in a click.</p>
         <p style="color:var(--text-muted);">Two ideas to start with — read the next two pages even if you skip the rest:</p>
         <ul><li><b>Multi-canvas + Link Groups</b> — every size in one workspace, edits sync automatically.</li><li><b>Auto-Resize from Selected</b> — design one banner, generate every size, all link-grouped.</li></ul>
       `},
       { id: 'multi-canvas-concept', title: 'The multi-canvas idea', body: `
         <p>Instead of opening one file per banner size, Adflow shows every canvas (300×250, 728×90, 160×600, …) side-by-side on an infinite workspace. You pan with <span class="kbd">Space</span>+drag, zoom with the scroll wheel.</p>
         <p>The win: when you edit a headline on the 728×90, you don't repeat the edit on the other 5 sizes. <b>Link Groups</b> bind siblings across canvases — a change on one propagates to all of them (immediately if Live-link is on, on demand otherwise).</p>
-        <p>See <b>Multi-canvas → Link Groups</b> for the full mechanics.</p>
+        <p>See <a href="#" data-doc-sec="multi-canvas" data-doc-sub="auto-link" style="color:var(--accent-light); font-weight: 500;">Link Groups</a> for the full mechanics.</p>
       `},
       { id: 'auto-resize-glance', title: 'Auto-Resize at a glance', body: `
         <p>Design <b>one</b> canvas exactly how you want it. Click the canvas to select it, hit <b>Auto-resize from selected</b> in the Tools panel. Adflow reads each element (heading, button, logo, background…), wipes the other canvases, and rebuilds them with format-aware layouts — auto-linking everything so future edits stay in sync.</p>
-        <p style="color:var(--text-muted);">Full breakdown under <b>Auto-Resize ✨</b>.</p>
+        <p style="color:var(--text-muted);">Full breakdown under <a href="#" data-doc-sec="auto-resize" data-doc-sub="auto-resize-overview" style="color:var(--accent-light); font-weight: 500;">Auto-Resize ✨</a>.</p>
       `},
       { id: 'first-project', title: 'Your first project', body: `
         <ol>
@@ -11035,8 +11040,17 @@ const DOCS_SECTIONS = [
         <p>Drop image files anywhere onto the workspace or insert via the Add panel. Aspect ratio is locked by default — hold <span class="kbd">Shift</span> while resizing to stretch.</p>
         <p><b>WebP compression:</b> Adflow includes a built-in compressor for PNG/JPEG uploads — quality slider (10–100%), live KB preview, helps you stay under the Google Ads weight limit.</p>
       `},
-      { id: 'shapes', title: 'Shapes', body: `
+      { id: 'shapes', title: 'Shapes & Image Masking', body: `
         <p>Rectangles, circles, and lines from the Add panel. Adjust fill, stroke, corner radius from the Properties panel.</p>
+        <p><b>Image Masking:</b> Right-click a shape layer (rectangle, circle, or pixel) and select <b>Use as Mask</b> to clip the image directly beneath it. The mask constraint validates automatically — if the masked image is deleted or moved, the mask safely reverts to a normal shape layer.</p>
+      `},
+      { id: 'advanced-masking', title: 'Advanced Masking Engine', body: `
+        <p>The image masking system is extremely robust and natively mirrored in the HTML5 exporter.</p>
+        <ul>
+          <li><b>Independent Animation:</b> Mask shapes carry their own independent entry transitions and effects separate from the image they mask. Hovering animation presets previews the mask or image accurately.</li>
+          <li><b>Layer Prefixes:</b> Mask layers display a <span style="color: var(--accent-light);">[mask]</span> prefix, and target images display a <span style="color: var(--accent-light); opacity: 0.7;">[masked]</span> prefix in the Layers panel.</li>
+          <li><b>Link Group Restraint:</b> A mask is a per-canvas effect and cannot be linked across canvases. The <a href="#" data-doc-sec="multi-canvas" data-doc-sub="live-link-mode" style="color:var(--accent-light); font-weight: 500;">Live-Link mode</a> and Dynamic Data panels will display a concise warning when selecting a mask layer.</li>
+        </ul>
       `},
       { id: 'color-picker', title: 'Color picker & gradients', body: `
         <p>The custom picker (powered by Iro.js) supports:</p>
@@ -11315,6 +11329,12 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
   bg.querySelectorAll('.docs-sub').forEach(sub => {
     sub.addEventListener('click', () => {
       renderDocsPanel(bg, sub.dataset.sec, sub.dataset.sub);
+    });
+  });
+  bg.querySelectorAll('a[data-doc-sec]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      renderDocsPanel(bg, link.dataset.docSec, link.dataset.docSub);
     });
   });
 }
