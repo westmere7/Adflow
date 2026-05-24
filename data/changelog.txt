@@ -1,6 +1,14 @@
 RMIT Adflow - Version & Changelog History
 
-v0.11.2 (Current) - May 2026
+v0.12.0 (Current) - May 2026
+- New layer-based masking system. Right-click a shape layer (rectangle, circle, or pixel — not line) on a non-persistent frame and pick "Use as mask" to turn it into a mask for the image directly beneath it. The shape's outline and stroke disappear on the canvas; the image below is clipped to the shape, with the mask carrying its own independent animation.
+- Mask layers show a solid eye icon in the Layers panel (white when active, grey when hidden) so they're easy to tell apart from regular layers. Hiding the mask layer turns the mask off and the image reverts to its full unmasked form.
+- Mask layers are mutually exclusive with link groups and dynamic data. When a mask is selected, both the Dynamic Data and Link Group panels show a clear "disabled while this layer is a mask" notice; the right-click → Link Group submenu is suppressed too.
+- Persistent (Top/Bottom) layers cannot host masks. Dragging a mask into a persistent layer slot drops its mask flag automatically; the "Use as mask" entry is hidden when the shape is already pinned to a persistent layer.
+- Saving a masked shape to the Assets library strips the mask flag so the asset comes back in as a plain shape — useful for treating mask shapes as reusable graphics without dragging the masking relationship across projects.
+- Export pipeline (HTML5 / preview) emits the same SVG-mask construction so masked images export pixel-for-pixel the same way they look in the editor.
+
+v0.11.2 - May 2026
 - Footer pills (zoom + version) are now plain text (no boxes / borders) with a subtle hover background.
 - Renamed the version dropdown placeholder from "Template (no version)" to "No version".
 

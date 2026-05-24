@@ -2485,10 +2485,44 @@ function updatePreviewZoomNotice() {
   document.body.appendChild(notice);
 }
 
+// Layer-based mask helpers — only rect/circle/pixel shapes can act as masks,
+// and only when they're not pinned to a persistent layer. The mask always
+// targets the IMAGE directly beneath it in z-order (previous index in the
+// canvas's elements array; later indices = higher in stack).
+const MASKABLE_SHAPE_TYPES = new Set(['rect', 'circle', 'pixel']);
+function canShapeBeMask(el) {
+  return !!el && MASKABLE_SHAPE_TYPES.has(el.type) && !el.persistent;
+}
+function isActiveMask(el) {
+  return !!(el && el.isMask && !el.persistent && !el.hidden);
+}
+function findImageBeneath(c, maskEl) {
+  if (!c || !maskEl) return null;
+  const idx = c.elements.indexOf(maskEl);
+  if (idx <= 0) return null;
+  const below = c.elements[idx - 1];
+  return (below && below.type === 'image') ? below : null;
+}
+function findMaskAbove(c, imageEl) {
+  if (!c || !imageEl) return null;
+  const idx = c.elements.indexOf(imageEl);
+  if (idx < 0 || idx >= c.elements.length - 1) return null;
+  const above = c.elements[idx + 1];
+  return isActiveMask(above) ? above : null;
+}
+
 function elementNode(el, canvasCtx) {
   const d = document.createElement('div');
   d.className = 'el';
   if (el.hidden) d.style.display = 'none';
+  // Mask layers are functionally invisible — their geometry only drives the
+  // mask SVG below — but stay selectable in the editor so the user can move /
+  // resize / animate them. In preview / export the wrapper is dropped entirely.
+  const _isActiveMask = isActiveMask(el);
+  if (_isActiveMask) {
+    d.classList.add('el-mask');
+    d.dataset.isMask = '1';
+  }
   d.dataset.id = el.id;
   // Tag link-group membership so hovering a group row can highlight siblings directly.
   if (el.linkGroupId) d.dataset.linkGroup = el.linkGroupId;
@@ -2777,6 +2811,64 @@ function elementNode(el, canvasCtx) {
     }
   });
   if (el.hidden) d.style.setProperty('display', 'none', 'important');
+
+  // Mask layer: the shape's visible body is suppressed (fills, strokes etc.
+  // already rendered above are hidden). The wrapper stays in the DOM so the
+  // user can still select / move / resize the mask, but it shows a thin dashed
+  // outline so it's still findable on the canvas.
+  if (_isActiveMask) {
+    Array.from(d.children).forEach(child => {
+      if (child.style) child.style.visibility = 'hidden';
+    });
+    d.style.outline = '1px dashed rgba(124, 92, 255, .55)';
+    d.style.outlineOffset = '-1px';
+  }
+
+  // Image masking: when the IMAGE has an active mask layer directly above it,
+  // build an inline SVG mask + apply CSS mask: url(...). The SVG mask shape
+  // mirrors the mask element's local geometry (so animations on the mask
+  // shape inside the SVG drive the masking in real time).
+  if (el.type === 'image' && canvasCtx) {
+    const maskAbove = findMaskAbove(canvasCtx, el);
+    if (maskAbove) {
+      const m = maskAbove;
+      // Position the mask shape inside the SVG in the IMAGE's local coords.
+      const relX = (m.x + m.width / 2) - (el.x + el.width / 2);
+      const relY = (m.y + m.height / 2) - (el.y + el.height / 2);
+      const mw = Math.max(1, m.width);
+      const mh = Math.max(1, m.height);
+      let maskShape = '';
+      const rot = m.rotation || 0;
+      const tx = relX + el.width / 2 - mw / 2;
+      const ty = relY + el.height / 2 - mh / 2;
+      const transformAttr = rot ? ` transform="rotate(${rot} ${relX + el.width/2} ${relY + el.height/2})"` : '';
+      if (m.type === 'rect') {
+        const r = m.radius || 0;
+        maskShape = `<rect x="${tx}" y="${ty}" width="${mw}" height="${mh}" rx="${r}" ry="${r}" fill="white"${transformAttr}/>`;
+      } else if (m.type === 'circle') {
+        const rx = mw / 2, ry = mh / 2;
+        maskShape = `<ellipse cx="${tx + rx}" cy="${ty + ry}" rx="${rx}" ry="${ry}" fill="white"${transformAttr}/>`;
+      } else if (m.type === 'pixel') {
+        // Pixel shape uses the same SVG path as the visible render, scaled to mw×mh.
+        // Path viewBox is 578.52×556.76; we wrap with a transform that scales+translates.
+        const sx = mw / 578.52, sy = mh / 556.76;
+        const inner = `<path fill="white" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/>`;
+        maskShape = `<g${transformAttr}><g transform="translate(${tx} ${ty}) scale(${sx} ${sy})">${inner}</g></g>`;
+      }
+      const maskId = `mask-${el.id}`;
+      // Inline SVG defs sit *inside* the image wrapper — same DOM scope as the
+      // image, scoped per-render. width:0/height:0 so it doesn't add a visible box.
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '0');
+      svg.setAttribute('height', '0');
+      svg.style.cssText = 'position:absolute; left:0; top:0; pointer-events:none;';
+      svg.innerHTML = `<defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${maskShape}</mask></defs>`;
+      d.appendChild(svg);
+      d.style.setProperty('-webkit-mask', `url(#${maskId})`);
+      d.style.setProperty('mask', `url(#${maskId})`);
+    }
+  }
+
   return d;
 }
 
@@ -4677,10 +4769,16 @@ function renderLinkControl() {
     const firstEl = selectedElements[0];
     const cat = getElementCategory(firstEl);
     const sameCat = selectedElements.every(el => getElementCategory(el) === cat);
+    const hasMaskInSelection = selectedElements.some(el => el.isMask);
 
-    if (sameCat && cat) {
+    if (hasMaskInSelection) {
+      html += `<div style="padding: 10px; border: 1px dashed var(--bg-input); border-radius: 4px; background:rgba(124,92,255,.06); font-size:11px; color:var(--text-muted); line-height:1.45;">
+        <b style="color:var(--accent-light);">Mask layer — link groups disabled.</b><br>
+        A mask is a per-canvas layer effect and can't be shared with siblings on other canvases. Remove the mask (right-click → "Use as mask") to bring it back into a group.
+      </div>`;
+    } else if (sameCat && cat) {
       const groupIds = [...new Set(selectedElements.map(el => el.linkGroupId).filter(Boolean))];
-      
+
       html += `<div style="padding: 10px; border: 1px dashed var(--bg-input); border-radius: 4px; display:flex; flex-direction:column; gap:8px; background:rgba(255,255,255,0.02); align-items:stretch;">`;
 
       if (groupIds.length === 0) {
@@ -5146,6 +5244,9 @@ function saveSelectionAsAsset(folderId) {
   const mp = (state.dataMerge && state.dataMerge.mappings) || {};
   const snapshot = JSON.parse(JSON.stringify(els)).map((e, i) => {
     delete e.linkGroupId;
+    // Mask flag is a per-canvas relationship — it doesn't travel with an asset.
+    // Strip it so re-placed assets come in as plain shapes.
+    if (e.isMask) delete e.isMask;
     // Capture this element's dynamic-data slot bindings — the column mappings live
     // in state.dataMerge keyed by slot id, not on the element, so they'd be lost.
     const sk = dmSlotKey(els[i]) + '::';
@@ -5960,8 +6061,10 @@ function renderLayers() {
           <button class="icon-btn ${el.locked ? 'active' : ''}" data-act="lock" title="Toggle lock">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </button>
-          <button class="icon-btn ${!el.hidden ? 'active' : ''}" data-act="hide" title="Toggle visibility">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          <button class="icon-btn ${!el.hidden ? 'active' : ''} ${el.isMask ? 'mask-eye' : ''}" data-act="hide" title="${el.isMask ? (el.hidden ? 'Mask inactive — click to enable' : 'Mask active — click to disable') : 'Toggle visibility'}">
+            ${el.isMask
+              ? `<svg viewBox="0 0 24 24" fill="${el.hidden ? '#8b8f9c' : '#ffffff'}" stroke="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3" fill="${el.hidden ? '#16181f' : '#16181f'}"/></svg>`
+              : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`}
           </button>
         </div>
       `;
@@ -6060,6 +6163,8 @@ function renderLayers() {
         elementsToMove.forEach(moved => {
           moved.persistent = el.persistent;
           if (el.persistent === false) moved.frameId = el.frameId;
+          // Persistent layers (top/bottom) cannot host masks — drop the flag if set.
+          if (el.persistent !== false && moved.isMask) delete moved.isMask;
         });
 
         const newTargetIdx = c.elements.findIndex(x => x.id === el.id);
@@ -6325,7 +6430,21 @@ function renderProps() {
   let dynamicHtml = '';
   if (typeof dmFieldsForType === 'function') {
     const dmFields = el ? dmFieldsForType(el.type) : [];
-    if (el && dmFields.length) {
+    if (el && el.isMask) {
+      // Masks don't participate in dynamic data — show a permanent notice.
+      dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
+        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
+          <span>Dynamic Data</span>
+          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </h3>
+        <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.45; padding:10px 12px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:5px;">
+          <b style="color:var(--accent-light);">Disabled while this layer is a mask.</b><br>
+          A mask shape is a layer-level effect — it can't carry per-version data. Remove the mask (right-click → "Use as mask" again) to bind data.
+        </div>
+      </div>`;
+    } else if (el && dmFields.length) {
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
         <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
           <span class="dd-marquee" style="flex:1; min-width:0; overflow:hidden; white-space:nowrap;">Dynamic Data<span style="color:var(--text-main);">: ${esc(layerLabel(el))}</span></span>
@@ -8802,6 +8921,9 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
 
   const renderEl = (el) => {
     if (el.hidden) return '';
+    // Mask layer: not rendered visibly — its geometry is baked into the SVG
+    // mask attached to the image below it. Skip here.
+    if (isActiveMask(el)) return '';
     // For rect/circle/button the opacity is the *fill* opacity and is applied to
     // the fill layer below — leave the wrapper at 1 so stroke/text aren't dragged
     // down. All other element types get the opacity on the wrapper as before.
@@ -8996,7 +9118,39 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         const filename = src.split('/').pop();
         src = `assets/${filename}`;
       }
-      return `    <div style="${wrapStyle}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
+      // Layer-based mask: if there's an active mask shape directly above this
+      // image, build an inline SVG mask + apply CSS mask. Static snapshot of
+      // the mask's current geometry; mask animations aren't replicated here.
+      let maskSvg = '';
+      let maskCss = '';
+      const maskAbove = findMaskAbove(c, el);
+      if (maskAbove) {
+        const m = maskAbove;
+        const relX = (m.x + m.width / 2) - (el.x + el.width / 2);
+        const relY = (m.y + m.height / 2) - (el.y + el.height / 2);
+        const mw = Math.max(1, m.width);
+        const mh = Math.max(1, m.height);
+        const tx = relX + el.width / 2 - mw / 2;
+        const ty = relY + el.height / 2 - mh / 2;
+        const rot = m.rotation || 0;
+        const transformAttr = rot ? ` transform="rotate(${rot} ${relX + el.width/2} ${relY + el.height/2})"` : '';
+        let maskShape = '';
+        if (m.type === 'rect') {
+          const r = m.radius || 0;
+          maskShape = `<rect x="${tx}" y="${ty}" width="${mw}" height="${mh}" rx="${r}" ry="${r}" fill="white"${transformAttr}/>`;
+        } else if (m.type === 'circle') {
+          const rx = mw / 2, ry = mh / 2;
+          maskShape = `<ellipse cx="${tx + rx}" cy="${ty + ry}" rx="${rx}" ry="${ry}" fill="white"${transformAttr}/>`;
+        } else if (m.type === 'pixel') {
+          const sx = mw / 578.52, sy = mh / 556.76;
+          const inner = `<path fill="white" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/>`;
+          maskShape = `<g${transformAttr}><g transform="translate(${tx} ${ty}) scale(${sx} ${sy})">${inner}</g></g>`;
+        }
+        const maskId = `mask-${el.id}`;
+        maskSvg = `<svg width="0" height="0" style="position:absolute;left:0;top:0;pointer-events:none;"><defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${maskShape}</mask></defs></svg>`;
+        maskCss = `-webkit-mask:url(#${maskId});mask:url(#${maskId});`;
+      }
+      return `    <div style="${wrapStyle}${maskCss}">${maskSvg}${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
     }
     return '';
   };
@@ -11012,6 +11166,18 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.12.0',
+    date: 'May 2026',
+    items: [
+      'New layer-based masking system. Right-click a shape layer (rectangle, circle, pixel — not line) on a non-persistent frame and pick "Use as mask" to clip the image directly beneath it. The mask carries its own independent animation.',
+      'Mask layers show a solid eye icon in the Layers panel (white when active, grey when hidden). Hiding the mask turns it off and the image reverts to fully visible.',
+      'Mask layers are mutually exclusive with link groups and dynamic data — both panels show a clear notice when a mask is selected; the Link Group context submenu is suppressed too.',
+      'Persistent (Top/Bottom) layers cannot host masks. Dragging a mask into a persistent slot drops the mask flag automatically.',
+      'Saving a masked shape to the Assets library strips the mask flag so the asset comes back in as a plain shape.',
+      'Export pipeline emits the same SVG-mask construction so masked images export pixel-for-pixel the same way they look in the editor.'
+    ]
+  },
+  {
     version: 'v0.11.2',
     date: 'May 2026',
     items: [
@@ -11455,7 +11621,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.11.2';
+  const currentVersion = 'v0.12.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -11525,7 +11691,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.11.2</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.12.0</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -11581,7 +11747,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.11.2</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.12.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -12120,8 +12286,13 @@ document.addEventListener('contextmenu', (e) => {
       const el = c.elements.find(x => x.id === id);
       return el && getElementCategory(el) === cat;
     });
+    // Mask layers don't participate in link groups.
+    const anyMaskInSelection = state.layerSelection?.some(id => {
+      const el = c.elements.find(x => x.id === id);
+      return el && el.isMask;
+    });
 
-    if (cat && sameCat) {
+    if (cat && sameCat && !anyMaskInSelection) {
       const linkedEl = c.elements.filter(x => state.layerSelection.includes(x.id));
       const groupIds = [...new Set(linkedEl.map(x => x.linkGroupId).filter(Boolean))];
       const hasLink = groupIds.length > 0;
@@ -12153,6 +12324,22 @@ document.addEventListener('contextmenu', (e) => {
         html += `<div class="ctx-item" id="ctx-link-delete-all" style="color:#ef4444; white-space:nowrap;">Delete Group & Elements</div>`;
       }
       html += `</div></div>`;
+    }
+
+    // "Use as mask" — only for rect/circle/pixel shapes, only when not on a
+    // persistent layer, and only when there's an image directly beneath them.
+    const singleEl = (state.layerSelection?.length === 1)
+      ? c.elements.find(x => x.id === state.layerSelection[0]) : null;
+    if (singleEl && canShapeBeMask(singleEl)) {
+      const beneath = findImageBeneath(c, singleEl);
+      html += `<div class="ctx-divider"></div>`;
+      if (singleEl.isMask) {
+        html += `<div class="ctx-item" id="ctx-mask-off" style="color:var(--accent-light);">✓ Use as mask</div>`;
+      } else if (beneath) {
+        html += `<div class="ctx-item" id="ctx-mask-on">Use as mask</div>`;
+      } else {
+        html += `<div class="ctx-item" style="color:var(--text-muted); cursor:not-allowed;" title="A mask needs an image layer directly beneath it.">Use as mask <span style="opacity:.55; font-size:10px;">— need image below</span></div>`;
+      }
     }
 
     html += `<div class="ctx-divider"></div>`;
@@ -12227,6 +12414,41 @@ document.addEventListener('contextmenu', (e) => {
 
   const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = (e) => { fn(e); menu.style.display = 'none'; }; };
 
+  bind('ctx-mask-on', () => {
+    const c = getActiveCanvas();
+    if (!c || !state.layerSelection?.length) return;
+    const id = state.layerSelection[0];
+    const el = c.elements.find(x => x.id === id);
+    if (!el || !canShapeBeMask(el)) return;
+    if (!findImageBeneath(c, el)) {
+      showCanvasNotification('Mask needs an image layer directly below it.', { type: 'warning' });
+      return;
+    }
+    el.isMask = true;
+    // Mask layers cannot belong to a link group or carry dynamic data.
+    if (el.linkGroupId) {
+      const gid = el.linkGroupId;
+      el.linkGroupId = null;
+      if (state.linkGroups?.[gid]) {
+        const remaining = state.canvases.flatMap(c2 => c2.elements).filter(x => x.linkGroupId === gid);
+        if (remaining.length === 0) delete state.linkGroups[gid];
+      }
+    }
+    if (el.dynamic) { delete el.dynamic; }
+    if (el._assetDmMap) { delete el._assetDmMap; }
+    pushHistory(); render();
+    showCanvasNotification('Layer set as mask.', { type: 'success' });
+  });
+  bind('ctx-mask-off', () => {
+    const c = getActiveCanvas();
+    if (!c || !state.layerSelection?.length) return;
+    const id = state.layerSelection[0];
+    const el = c.elements.find(x => x.id === id);
+    if (!el) return;
+    delete el.isMask;
+    pushHistory(); render();
+    showCanvasNotification('Mask removed — shape is back to normal.');
+  });
   bind('ctx-bring-fwd', () => { const c = getActiveCanvas(); if (c && state.layerSelection) { state.layerSelection.forEach(id => reorder(c, id, +1)); pushHistory(); render(); } });
   bind('ctx-send-bwd', () => { const c = getActiveCanvas(); if (c && state.layerSelection) { [...state.layerSelection].reverse().forEach(id => reorder(c, id, -1)); pushHistory(); render(); } });
   bind('ctx-copy', () => {
