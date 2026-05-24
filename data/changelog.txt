@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.5 (Current) - May 2026 — Engine v2.7
+v0.16.6 (Current) - May 2026 — Engine v2.7
+- Auto-resize button stripped down to just its label. Removed the sparkle SVG icon on the left and the "AI" pill badge on the right — button now renders as a plain "Auto-resize" label on the purple gradient. The matching CSS rules for `.ar-btn-icon` and `.ar-btn-ai-badge` were dropped from styles.css since they're no longer referenced anywhere.
+
+v0.16.5 - May 2026 — Engine v2.7
 - Auto-Resize documentation completely rewritten and significantly expanded. The previous 4-subsection summary (which referenced the removed Tools panel and the legacy format-preset executor) is replaced with a deep 7-subsection technical reference covering the v2.7 rule-based engine end-to-end.
 - New subsections: (1) Overview & philosophy — design principles, two entry points, engine versioning rationale. (2) The 9-role taxonomy — full role table with priorities, strategies, required flag, and a paragraph on why priority drives placement order. (3) Role detection & manual override — the 5-step heuristic ladder, idempotent refresh behaviour, the layer-panel role icon for manual locks. (4) Placement rules — every rule documented individually with its anchor, size formulas, font formulas, and mode case-analysis (background-image / rmit-logo / cta-button / heading / subheading / cricos / main-image / rfwn / extra-info / misc). (5) Cross-role relations & post-placement passes — R1 / mask post-pass / no-touch collisions / canvas-bounds clamp, with notes on pass ordering. (6) Settings, live linking & engine versioning — every settings option explained, live-linking property semantics, full engine version history v2.0 → v2.7. (7) Workflow & tips — best practices, reference canvas data table, internal architecture pointer.
 - Also updated the Getting Started "Auto-Resize at a glance" snippet and "Your first project" walkthrough to reference the new panel-anchored Auto-resize button and the right-click "Auto-Resize" entry rather than the obsolete Tools-panel button.
