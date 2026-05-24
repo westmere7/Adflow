@@ -1566,6 +1566,9 @@ function applyColorToText(node, colorVal) {
 }
 
 function render(skipProps = false) {
+  if (state.canvases) {
+    state.canvases.forEach(sanitizeMasks);
+  }
   if (state.commitRenderTimer) {
     clearTimeout(state.commitRenderTimer);
     state.commitRenderTimer = null;
@@ -2504,11 +2507,22 @@ function findImageBeneath(c, maskEl) {
   return (below && below.type === 'image') ? below : null;
 }
 function findMaskAbove(c, imageEl) {
-  if (!c || !imageEl) return null;
+  if (!c || !imageEl || imageEl.type !== 'image') return null;
   const idx = c.elements.indexOf(imageEl);
   if (idx < 0 || idx >= c.elements.length - 1) return null;
   const above = c.elements[idx + 1];
   return isActiveMask(above) ? above : null;
+}
+function sanitizeMasks(c) {
+  if (!c || !c.elements) return;
+  c.elements.forEach(el => {
+    if (el.isMask) {
+      const img = findImageBeneath(c, el);
+      if (!img) {
+        delete el.isMask;
+      }
+    }
+  });
 }
 function getElementAnimationCSS(el, isImageExport) {
   const animType = el.animType || 'none';
@@ -4840,7 +4854,7 @@ function renderLinkControl() {
     if (hasMaskInSelection) {
       html += `<div style="padding: 10px; border: 1px dashed var(--bg-input); border-radius: 4px; background:rgba(124,92,255,.06); font-size:11px; color:var(--text-muted); line-height:1.45;">
         <b style="color:var(--accent-light);">Mask layer — link groups disabled.</b><br>
-        A mask is a per-canvas layer effect and can't be shared with siblings on other canvases. Remove the mask (right-click → "Use as mask") to bring it back into a group.
+        A mask is local to its canvas and cannot be linked.
       </div>`;
     } else if (sameCat && cat) {
       const groupIds = [...new Set(selectedElements.map(el => el.linkGroupId).filter(Boolean))];
@@ -6118,9 +6132,9 @@ function renderLayers() {
       div.className = 'layer' + (isSel ? ' selected' : '');
       div.draggable = true;
       div.dataset.id = el.id;
-      const iconHtml = el.isMask
-        ? `<svg class="layer-icon" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zm11 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>`
-        : `<svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${layerIcon(el.type)}</svg>`;
+      const iconHtml = `<svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${layerIcon(el.type)}</svg>`;
+
+      const eyeIconHtml = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
 
       div.innerHTML = `
         ${iconHtml}
@@ -6130,7 +6144,7 @@ function renderLayers() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </button>
           <button class="icon-btn ${!el.hidden ? 'active' : ''} ${el.isMask ? 'mask-eye' : ''}" data-act="hide" title="${el.isMask ? (el.hidden ? 'Mask inactive — click to enable' : 'Mask active — click to disable') : 'Toggle visibility'}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            ${eyeIconHtml}
           </button>
         </div>
       `;
@@ -6255,6 +6269,19 @@ function renderLayers() {
           nameSpan.scrollLeft = 0;
         }
 
+        // Get the clean editable text (without prefix HTML)
+        const base = baseLayerLabel(el);
+        let count = 1;
+        for (let i = 0; i < c.elements.length; i++) {
+          const otherEl = c.elements[i];
+          if (otherEl.id === el.id) break;
+          if (baseLayerLabel(otherEl) === base) {
+            count++;
+          }
+        }
+        const editableText = count > 1 ? `${base} ${count}` : base;
+
+        nameSpan.innerText = editableText;
         nameSpan.contentEditable = 'true';
         div.draggable = false; // Disable dragging to allow text selection
         nameSpan.focus();
@@ -6264,8 +6291,17 @@ function renderLayers() {
         const finishEdit = () => {
           nameSpan.contentEditable = 'false';
           div.draggable = true; // Restore dragging
-          el.customName = nameSpan.innerText.trim() || '';
-          nameSpan.innerText = layerLabel(el);
+          let newName = nameSpan.innerText.trim() || '';
+          
+          // Strip manually typed prefixes to prevent double prefixing
+          if (newName.startsWith('[mask] ')) {
+            newName = newName.slice(7);
+          } else if (newName.startsWith('[masked] ')) {
+            newName = newName.slice(9);
+          }
+
+          el.customName = newName;
+          nameSpan.innerHTML = layerLabel(el);
           pushHistory();
         };
 
@@ -6277,7 +6313,7 @@ function renderLayers() {
           }
           if (ek.key === 'Escape') {
             ek.preventDefault();
-            nameSpan.innerText = layerLabel(el); // Revert back
+            nameSpan.innerHTML = layerLabel(el); // Revert back
             nameSpan.blur();
           }
         });
@@ -6434,7 +6470,14 @@ function layerLabel(el) {
       count++;
     }
   }
-  return count > 1 ? `${base} ${count}` : base;
+  const label = count > 1 ? `${base} ${count}` : base;
+  if (el.isMask) {
+    return `<span style="color: var(--accent-light, #a78bfa); margin-right: 4px; font-weight: 500;">[mask]</span> ${label}`;
+  }
+  if (findMaskAbove(canvas, el)) {
+    return `<span style="color: var(--accent-light, #a78bfa); opacity: 0.7; margin-right: 4px; font-weight: 500;">[masked]</span> ${label}`;
+  }
+  return label;
 }
 
 function reorder(c, id, dir) {
@@ -6506,8 +6549,8 @@ function renderProps() {
           </svg>
         </h3>
         <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.45; padding:10px 12px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:5px;">
-          <b style="color:var(--accent-light);">Disabled while this layer is a mask.</b><br>
-          A mask shape is a layer-level effect — it can't carry per-version data. Remove the mask (right-click → "Use as mask" again) to bind data.
+          <b style="color:var(--accent-light);">Disabled while layer is a mask.</b><br>
+          Right-click to toggle "Use as mask" off to bind data.
         </div>
       </div>`;
     } else if (el && dmFields.length) {
