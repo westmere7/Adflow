@@ -104,6 +104,49 @@
       100% { transform: translateX(220%); }
     }
 
+    /* Splash auth gate — shown to signed-out users in place of the
+       quip + progress bar; logo and breathing glow continue behind it. */
+    #app-splash-gate { display: none; flex-direction: column; gap: 12px; width: 340px; max-width: 86vw; margin-top: -4px; }
+    #app-splash.app-splash-gate-active .app-splash-status,
+    #app-splash.app-splash-gate-active .app-splash-bar { display: none; }
+    #app-splash.app-splash-gate-active #app-splash-gate { display: flex; }
+    .app-splash-gate-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-light, #272c3a); }
+    .app-splash-gate-tab { flex: 1; padding: 9px 0; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-muted, #8b8f9c); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s ease; font-family: inherit; }
+    .app-splash-gate-tab.active { color: var(--text-bright, #f1f5f9); border-bottom-color: var(--accent-base, #7c5cff); }
+    #app-splash-gate form { display: flex; flex-direction: column; gap: 10px; }
+    #app-splash-gate label { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted, #8b8f9c); font-weight: 600; display: flex; flex-direction: column; gap: 5px; text-align: left; }
+    #app-splash-gate input[type="email"],
+    #app-splash-gate input[type="password"] {
+      width: 100%; padding: 9px 11px; font-size: 12px;
+      background: var(--bg-input, #161922); border: 1px solid var(--border-light, #272c3a);
+      color: var(--text-main, #d4d8e0); border-radius: 5px; outline: none; box-sizing: border-box;
+      font-family: inherit;
+    }
+    #app-splash-gate input:focus { border-color: var(--accent-base, #7c5cff); }
+    #app-splash-gate label.app-splash-gate-remember {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted, #8b8f9c);
+      cursor: pointer;
+      user-select: none;
+      letter-spacing: 0;
+      text-transform: none;
+      font-weight: 400;
+      margin-top: 2px;
+    }
+    #app-splash-gate label.app-splash-gate-remember input { margin: 0; }
+    .app-splash-gate-error { font-size: 11px; color: #ef4444; min-height: 14px; text-align: left; }
+    .app-splash-gate-submit { padding: 10px; font-size: 12px; font-weight: 600; background: var(--accent-base, #7c5cff); color: #fff; border: none; border-radius: 5px; cursor: pointer; transition: filter .15s ease, opacity .15s ease; font-family: inherit; }
+    .app-splash-gate-submit:hover { filter: brightness(1.1); }
+    .app-splash-gate-submit:disabled { opacity: .55; cursor: not-allowed; }
+    .app-splash-gate-divider { display: flex; align-items: center; gap: 10px; color: var(--text-muted, #8b8f9c); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; margin: 2px 0; }
+    .app-splash-gate-divider::before,
+    .app-splash-gate-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-light, #272c3a); }
+    .app-splash-gate-local { padding: 9px; font-size: 11px; background: transparent; color: var(--text-muted, #8b8f9c); border: 1px solid var(--border-light, #272c3a); border-radius: 5px; cursor: pointer; transition: all .15s ease; font-family: inherit; }
+    .app-splash-gate-local:hover { color: var(--text-bright, #f1f5f9); border-color: var(--text-muted, #8b8f9c); }
+
     /* Size warning — reuses the splash visual language but is static
        (no logo pulse, no progress bar). Below-min-resolution clients land
        here instead of on the app. */
@@ -179,6 +222,28 @@
       </div>
       <div class="app-splash-status" id="app-splash-status">Warming up…</div>
       <div class="app-splash-bar"><div class="app-splash-bar-fill" id="app-splash-bar-fill"></div></div>
+      <div id="app-splash-gate">
+        <div class="app-splash-gate-tabs">
+          <button type="button" class="app-splash-gate-tab active" data-tab="signin">Sign in</button>
+          <button type="button" class="app-splash-gate-tab" data-tab="signup">Sign up</button>
+        </div>
+        <form id="app-splash-gate-form" autocomplete="on">
+          <label>Email
+            <input type="email" id="splash-gate-email" required autocomplete="email" />
+          </label>
+          <label>Password
+            <input type="password" id="splash-gate-password" required minlength="6" autocomplete="current-password" />
+          </label>
+          <label class="app-splash-gate-remember">
+            <input type="checkbox" id="splash-gate-remember" checked />
+            <span>Remember me on this device</span>
+          </label>
+          <div class="app-splash-gate-error" id="splash-gate-error"></div>
+          <button type="submit" class="app-splash-gate-submit" id="splash-gate-submit">Sign in</button>
+        </form>
+        <div class="app-splash-gate-divider">or</div>
+        <button type="button" class="app-splash-gate-local" id="splash-gate-local">Use locally without signing in</button>
+      </div>
     </div>
   </div>
   <div id="size-overlay">
@@ -316,7 +381,7 @@
         </button>
       </span>
       <span id="zoom-level-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Reset Zoom">Zoom 100%</span>
-      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v0.9.0</span>
+      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v0.10.1</span>
 
       <!-- Auth chip: shows "Sign in" when logged out, avatar + email + dropdown when logged in. -->
       <div id="auth-chip" style="position:relative; margin-right:12px;"></div>

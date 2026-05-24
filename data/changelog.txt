@@ -1,6 +1,17 @@
 RMIT Adflow - Version & Changelog History
 
-v0.9.0 (Current) - May 2026
+v0.10.1 (Current) - May 2026
+- Manage Spaces now supports rename (owner), duplicate (anyone — clones folders + projects to a new space you own), and delete (owner — confirmation by typing the space name; cleans up storage blobs).
+- Signing out now flushes the local autosave and reloads back to the splash + sign-in gate instead of leaving the app open in a half-signed-out state.
+
+v0.10.0 - May 2026
+- Loading screen now doubles as the sign-in gate: tabbed Sign in / Sign up form, "Remember me on this device" checkbox, and a "Use locally without signing in" escape hatch for users who'd rather skip the cloud. The form takes over the splash's quip + progress bar; the logo + glow stay behind it. Remembered sessions skip the gate entirely and the splash auto-dismisses as before.
+- Added team Spaces — multi-workspace collaboration with a switcher in the chip dropdown (Personal + each space you belong to). The current space's name appears next to your email in the top bar.
+- Invitations via shareable join link: from Manage Spaces → Invite, generate a one-time link that's copied to your clipboard. Recipients land at /?invite=… and on sign-in are auto-joined to the space (if the email matches).
+- Cloud Projects panel now scopes to the current context (Personal or active Space) and shows the space's folder tree on the left. Create folders with "+ New folder", assign projects to folders inline, delete folders on hover. Pushes from the current context save into the active space (and selected folder if any).
+- New SQL required in Supabase: spaces, space_members, space_invitations, folders tables + updated RLS policies on projects and storage. See the GitHub Issue / release notes for the SQL block.
+
+v0.9.0 - May 2026
 - Optional account sign-up and log-in (email + password) via a top-bar chip. Anonymous local use is unchanged — sign-in only unlocks cloud features and never blocks the app.
 - New "My Cloud Projects" panel (accessible from the chip dropdown or the File menu) for pushing the current project to Supabase storage and pulling any of your cloud-saved projects back into the workspace. Pushed projects use the same .flow format as local saves, so nothing has to be re-imported.
 - Added a stable per-project ID (`state.projectId`) so cloud pushes update the same record rather than creating duplicates. Existing local projects get one assigned on first open.
