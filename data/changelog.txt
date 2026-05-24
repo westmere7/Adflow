@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.8.3 (Current) - May 2026
+v0.9.0 (Current) - May 2026
+- Optional account sign-up and log-in (email + password) via a top-bar chip. Anonymous local use is unchanged — sign-in only unlocks cloud features and never blocks the app.
+- New "My Cloud Projects" panel (accessible from the chip dropdown or the File menu) for pushing the current project to Supabase storage and pulling any of your cloud-saved projects back into the workspace. Pushed projects use the same .flow format as local saves, so nothing has to be re-imported.
+- Added a stable per-project ID (`state.projectId`) so cloud pushes update the same record rather than creating duplicates. Existing local projects get one assigned on first open.
+
+v0.8.3 - May 2026
 - Loading splash now cycles through a randomised pool of ~45 tech-humour quips (Sims-style — "Reticulating splines…", "Convincing the kerning to behave…", "Locating the perfect shade of RMIT red…"). Shuffled per session and long enough to rarely repeat; if init runs long, more quips appear automatically.
 - Restyled the below-minimum-resolution warning to match the splash visual language — Adflow logo, the existing randomised one-liner as a heading, and a fresh explanation paragraph. Static screen (no loading animation, no progress bar).
 - Bumped minimum supported viewport from 1024 × 768 to 1920 × 1080 to match real banner-production needs.

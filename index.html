@@ -8,6 +8,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="styles.css" />
   <style>
     /* Splash screen — shown on initial load, faded out by initApp.
@@ -206,8 +207,10 @@
             File</div>
           <div class="dropdown-item" id="menu-file-new">New Project…</div>
           <div class="dropdown-item" id="menu-file-open">Open Project...</div>
+          <div class="dropdown-item" id="menu-file-cloud" style="display:none;">Open from Cloud…</div>
           <div class="dropdown-item" id="menu-file-save">Save Project <span class="kbd"
               style="background:transparent;border:none;padding:0">Ctrl+S</span></div>
+          <div class="dropdown-item" id="menu-file-push" style="display:none;">Push to Cloud…</div>
           <div class="dropdown-item" id="menu-project-settings">Project Settings…</div>
           <div class="dropdown-item" id="menu-file-export">Export HTML</div>
           <div class="dropdown-item" id="menu-file-data">Data &amp; Versions…</div>
@@ -313,7 +316,10 @@
         </button>
       </span>
       <span id="zoom-level-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Reset Zoom">Zoom 100%</span>
-      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v0.8.3</span>
+      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v0.9.0</span>
+
+      <!-- Auth chip: shows "Sign in" when logged out, avatar + email + dropdown when logged in. -->
+      <div id="auth-chip" style="position:relative; margin-right:12px;"></div>
 
       <button class="btn" id="btn-preview" title="Preview the interactive banner animation">Preview</button>
       <button class="btn primary" id="btn-export-top" title="Export banner to HTML package">Export</button>

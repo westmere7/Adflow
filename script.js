@@ -50,7 +50,50 @@
 
 const urlSizeCache = {};
 
-const uid = () => Math.random().toString(36).slice(2, 8);
+// ============================================================================
+// Supabase / Auth — optional cloud sign-in. Anonymous local use is unchanged
+// when these credentials are blank or the SDK fails to load. RLS protects
+// data server-side, so the anon key is safe to commit.
+// ============================================================================
+// Paste from Supabase dashboard → Settings → API. Leave blank to disable the
+// cloud features entirely (chip will not render, menu items stay hidden).
+const SUPABASE_URL = 'https://qihoxgcfifqkqusblcdm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Vpadooi4zdATIgCYNESXwQ_sdR8esor';
+
+const sb = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase && typeof window.supabase.createClient === 'function')
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, storage: window.localStorage }
+    })
+  : null;
+
+const authState = (() => {
+  const listeners = new Set();
+  let current = null; // { id, email } | null
+  function setUser(u) {
+    current = u;
+    listeners.forEach(cb => { try { cb(current); } catch (e) { console.warn(e); } });
+  }
+  if (sb) {
+    sb.auth.getSession().then(({ data }) => {
+      const u = data?.session?.user;
+      setUser(u ? { id: u.id, email: u.email } : null);
+    }).catch(() => setUser(null));
+    sb.auth.onAuthStateChange((_event, session) => {
+      const u = session?.user;
+      setUser(u ? { id: u.id, email: u.email } : null);
+    });
+  }
+  return {
+    enabled: !!sb,
+    currentUser: () => current,
+    subscribe: (cb) => { listeners.add(cb); cb(current); return () => listeners.delete(cb); },
+    signUp: ({ email, password }) => sb.auth.signUp({ email, password }),
+    signIn: ({ email, password }) => sb.auth.signInWithPassword({ email, password }),
+    signOut: () => sb.auth.signOut()
+  };
+})();
+
+const uid = (prefix = '') => prefix + Math.random().toString(36).slice(2, 8);
 
 const isLineHeightAuto = (el) => {
   if (el.lineHeightAuto !== undefined) return !!el.lineHeightAuto;
@@ -528,6 +571,7 @@ async function restoreAutosave() {
     const rec = await _idbGet(AUTOSAVE_KEY);
     if (rec && rec.state && Array.isArray(rec.state.canvases) && rec.state.canvases.length) {
       Object.assign(state, rec.state);
+      if (!state.projectId) state.projectId = uid('proj_');
       if (rec.history && Array.isArray(rec.history) && rec.history.length > 0) {
         history.length = 0;
         history.push(...rec.history);
@@ -9326,8 +9370,10 @@ document.getElementById('btn-preview').addEventListener('click', () => {
 // ============================================================================
 // Save / Load Project
 // ============================================================================
-async function saveProjectAsFlow() {
-  if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
+// Build a .flow Blob + sidecar metadata (savedAt, suggestedName, exportState).
+// Reused by both the menu Save (saveProjectAsFlow) and the cloud push.
+async function buildFlowBlob() {
+  if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
 
   const zip = new JSZip();
   const exportState = JSON.parse(JSON.stringify(state));
@@ -9338,14 +9384,13 @@ async function saveProjectAsFlow() {
     exportState.viewScrollTop = ca.scrollTop;
   }
   exportState.zoom = state.zoom || 0.6;
+  if (!exportState.projectId) exportState.projectId = state.projectId = uid('proj_');
 
-  // Embed the capped history stack and index
   const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 10;
   const capped = getCappedHistory(limit);
   exportState.history = capped.history;
   exportState.historyIndex = capped.historyIndex;
 
-  // Prune history from file to keep size small, unless user configured to save it
   const settings = (await _idbGet('settings')) || {};
   if (settings.saveHistoryInProject !== true) {
     delete exportState.history;
@@ -9370,21 +9415,27 @@ async function saveProjectAsFlow() {
     }
   }
 
-  // Metadata sits next to project.json so it's cheap to read for the drag-over
-  // preview without unpacking the whole project payload.
   const savedAt = new Date().toISOString();
   zip.file('meta.json', JSON.stringify({
     magic: 'adflow',
     version: 1,
     savedAt,
-    projectName: state.projectName || 'RMIT_Ad'
+    projectName: state.projectName || 'RMIT_Ad',
+    projectId: exportState.projectId
   }, null, 2));
   zip.file('project.json', JSON.stringify(exportState, null, 2));
 
-  const content = await zip.generateAsync({ type: 'blob' });
+  const blob = await zip.generateAsync({ type: 'blob' });
   const projName = (state.projectName || 'RMIT_Ad').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const datePart = savedAt.slice(0, 10); // YYYY-MM-DD
-  const suggestedName = `${projName}-${datePart}.flow`;
+  const datePart = savedAt.slice(0, 10);
+  return { blob, exportState, savedAt, suggestedName: `${projName}-${datePart}.flow` };
+}
+
+async function saveProjectAsFlow() {
+  let built;
+  try { built = await buildFlowBlob(); }
+  catch (e) { alert(e.message || 'Save failed'); return; }
+  const { blob, exportState, suggestedName } = built;
 
   if (window.showSaveFilePicker) {
     try {
@@ -9393,13 +9444,13 @@ async function saveProjectAsFlow() {
         suggestedName
       });
       const writable = await handle.createWritable();
-      await writable.write(content);
+      await writable.write(blob);
       await writable.close();
       await addRecentProject(exportState);
     } catch (e) { if (e.name !== 'AbortError') console.error('Save failed:', e); }
   } else {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(content);
+    a.href = URL.createObjectURL(blob);
     a.download = suggestedName;
     a.click();
     URL.revokeObjectURL(a.href);
@@ -9508,6 +9559,7 @@ async function loadProjectFromState(loadedState) {
   }
 
   Object.assign(state, JSON.parse(JSON.stringify(loadedState)));
+  if (!state.projectId) state.projectId = uid('proj_');
 
   await syncRmitAssets();
 
@@ -9564,6 +9616,7 @@ async function loadProjectFromBlob(file) {
   }
   Object.assign(state, loadedState);
   state.assets = newAssets || {};
+  if (!state.projectId) state.projectId = uid('proj_');
   await syncRmitAssets();
 
   if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
@@ -10032,6 +10085,7 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
   });
 
   state.projectName = (name || 'RMIT_Ad').trim() || 'RMIT_Ad';
+  state.projectId = uid('proj_');
   state.clickTag = (clickTag || 'https://www.rmit.edu.au/').trim();
   state.adSizeLimit = Math.max(1, parseInt(sizeLimitKb, 10) || 150);
   state.defaultBg = bg;
@@ -10581,6 +10635,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.9.0',
+    date: 'May 2026',
+    items: [
+      'Optional account sign-up and log-in (email + password) via a top-bar chip. Anonymous local use is unchanged — sign-in only unlocks cloud features and never blocks the app.',
+      'New "My Cloud Projects" panel (accessible from the chip dropdown or the File menu) for pushing the current project to Supabase storage and pulling any of your cloud-saved projects back into the workspace. Pushed projects use the same .flow format as local saves, so nothing has to be re-imported.',
+      'Added a stable per-project ID (state.projectId) so cloud pushes update the same record rather than creating duplicates. Existing local projects get one assigned on first open.'
+    ]
+  },
+  {
     version: 'v0.8.3',
     date: 'May 2026',
     items: [
@@ -10965,7 +11028,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.8.3';
+  const currentVersion = 'v0.9.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -11035,7 +11098,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.8.3</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.9.0</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -11091,7 +11154,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.8.3</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.9.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -12812,6 +12875,290 @@ const appSplash = (() => {
 
   return { setPhase, finish };
 })();
+
+// ============================================================================
+// Auth UI — top-bar chip, sign-in/up modal, Cloud Projects modal, push/pull.
+// Hidden entirely when SUPABASE_URL / SUPABASE_ANON_KEY are not configured.
+// ============================================================================
+function renderAuthChip() {
+  const chip = document.getElementById('auth-chip');
+  if (!chip) return;
+  if (!authState.enabled) { chip.style.display = 'none'; return; }
+  const u = authState.currentUser();
+  const cloudMenuItem = document.getElementById('menu-file-cloud');
+  const pushMenuItem = document.getElementById('menu-file-push');
+  if (cloudMenuItem) cloudMenuItem.style.display = u ? '' : 'none';
+  if (pushMenuItem) pushMenuItem.style.display = u ? '' : 'none';
+  if (!u) {
+    chip.innerHTML = `<button class="btn" id="auth-chip-signin" title="Sign in to push projects to the cloud" style="font-size:11px; padding:5px 12px;">Sign in</button>`;
+    chip.querySelector('#auth-chip-signin').addEventListener('click', () => openAuthModal('signin'));
+    return;
+  }
+  const initial = (u.email || '?').charAt(0).toUpperCase();
+  const emailPrefix = (u.email || '').split('@')[0];
+  chip.innerHTML = `
+    <button id="auth-chip-toggle" title="${u.email}" style="display:flex; align-items:center; gap:8px; background:transparent; border:1px solid var(--border-light); padding:3px 8px 3px 3px; border-radius:999px; cursor:pointer; color:var(--text-bright);">
+      <span style="width:22px; height:22px; border-radius:50%; background:var(--accent-base); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">${initial}</span>
+      <span style="font-size:11px; color:var(--text-muted); max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${emailPrefix}</span>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div id="auth-chip-menu" class="dropdown" style="display:none; position:absolute; top:calc(100% + 4px); right:0; min-width:200px; padding:6px 0; background:var(--bg-panel); border:1px solid var(--border-light); border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,.4); z-index:100000;">
+      <div class="dropdown-item" id="auth-chip-cloud">My Cloud Projects…</div>
+      <div class="dropdown-divider"></div>
+      <div class="dropdown-item" id="auth-chip-signout">Sign out</div>
+    </div>`;
+  const toggle = chip.querySelector('#auth-chip-toggle');
+  const menu = chip.querySelector('#auth-chip-menu');
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  });
+  document.addEventListener('click', () => { menu.style.display = 'none'; }, { once: true });
+  chip.querySelector('#auth-chip-cloud').addEventListener('click', () => { menu.style.display = 'none'; openCloudProjectsModal(); });
+  chip.querySelector('#auth-chip-signout').addEventListener('click', async () => {
+    menu.style.display = 'none';
+    await authState.signOut();
+    showCanvasNotification('Signed out');
+  });
+}
+
+function openAuthModal(initialTab = 'signin') {
+  if (!authState.enabled) {
+    showCanvasNotification('Cloud sign-in is not configured in this build.', { type: 'warning' });
+    return;
+  }
+  const tabBtn = (id, label, active) => `<button data-tab="${id}" class="auth-tab" style="flex:1; padding:8px 0; background:transparent; border:none; color:${active ? 'var(--text-bright)' : 'var(--text-muted)'}; font-size:13px; font-weight:600; border-bottom:2px solid ${active ? 'var(--accent-base)' : 'transparent'}; cursor:pointer; transition:all .15s ease;">${label}</button>`;
+  const body = `
+    <div style="display:flex; gap:0; border-bottom:1px solid var(--border-light); margin:-4px -4px 16px;">
+      ${tabBtn('signin', 'Sign in', initialTab === 'signin')}
+      ${tabBtn('signup', 'Sign up', initialTab === 'signup')}
+    </div>
+    <form id="auth-form" autocomplete="on" style="display:flex; flex-direction:column; gap:10px;">
+      <label style="font-size:11px; color:var(--text-muted);">Email
+        <input type="email" id="auth-email" required autocomplete="email" style="width:100%; margin-top:4px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:8px 10px; font-size:12px; outline:none; box-sizing:border-box;" />
+      </label>
+      <label style="font-size:11px; color:var(--text-muted);">Password
+        <input type="password" id="auth-password" required minlength="6" autocomplete="current-password" style="width:100%; margin-top:4px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:8px 10px; font-size:12px; outline:none; box-sizing:border-box;" />
+      </label>
+      <div id="auth-hint" style="font-size:10px; color:var(--text-muted); display:${initialTab === 'signup' ? 'block' : 'none'};">Password must be at least 6 characters.</div>
+      <div id="auth-error" style="font-size:11px; color:#ef4444; min-height:14px;"></div>
+      <button type="submit" id="auth-submit" class="btn primary" style="padding:9px 12px; font-size:12px; font-weight:600;">${initialTab === 'signin' ? 'Sign in' : 'Create account'}</button>
+    </form>`;
+  openModal(initialTab === 'signin' ? 'Sign in' : 'Sign up', body, false);
+
+  let activeTab = initialTab;
+  const setTab = (id) => {
+    activeTab = id;
+    document.querySelectorAll('.auth-tab').forEach(btn => {
+      const active = btn.dataset.tab === id;
+      btn.style.color = active ? 'var(--text-bright)' : 'var(--text-muted)';
+      btn.style.borderBottomColor = active ? 'var(--accent-base)' : 'transparent';
+    });
+    const passwordEl = document.getElementById('auth-password');
+    if (passwordEl) passwordEl.setAttribute('autocomplete', id === 'signup' ? 'new-password' : 'current-password');
+    const hint = document.getElementById('auth-hint');
+    if (hint) hint.style.display = id === 'signup' ? 'block' : 'none';
+    const submit = document.getElementById('auth-submit');
+    if (submit) submit.textContent = id === 'signin' ? 'Sign in' : 'Create account';
+    const head = document.querySelector('.modal-head h2');
+    if (head) head.textContent = id === 'signin' ? 'Sign in' : 'Sign up';
+    document.getElementById('auth-error').textContent = '';
+  };
+  document.querySelectorAll('.auth-tab').forEach(btn => btn.addEventListener('click', () => setTab(btn.dataset.tab)));
+
+  const form = document.getElementById('auth-form');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const errEl = document.getElementById('auth-error');
+    const submit = document.getElementById('auth-submit');
+    errEl.textContent = '';
+    submit.disabled = true;
+    submit.textContent = activeTab === 'signin' ? 'Signing in…' : 'Creating…';
+    try {
+      const { data, error } = activeTab === 'signin'
+        ? await authState.signIn({ email, password })
+        : await authState.signUp({ email, password });
+      if (error) {
+        errEl.textContent = error.message || 'Authentication failed.';
+        submit.disabled = false;
+        submit.textContent = activeTab === 'signin' ? 'Sign in' : 'Create account';
+        return;
+      }
+      const sessionUser = data?.user;
+      const hasSession = !!data?.session;
+      const bg = document.querySelector('.modal-bg');
+      if (bg) bg.remove();
+      if (activeTab === 'signup' && !hasSession) {
+        showCanvasNotification('Check your inbox to confirm your email.', { type: 'info', duration: 6000 });
+      } else {
+        showCanvasNotification(`Signed in as ${sessionUser?.email || email}`, { type: 'success' });
+      }
+    } catch (ex) {
+      errEl.textContent = ex.message || String(ex);
+      submit.disabled = false;
+      submit.textContent = activeTab === 'signin' ? 'Sign in' : 'Create account';
+    }
+  });
+  setTimeout(() => document.getElementById('auth-email')?.focus(), 80);
+}
+
+function _formatRelativeTime(iso) {
+  if (!iso) return '';
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return '';
+  const diff = Date.now() - t;
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function _formatBytes(n) {
+  if (!Number.isFinite(n) || n <= 0) return '';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function openCloudProjectsModal() {
+  const u = authState.currentUser();
+  if (!u) { openAuthModal('signin'); return; }
+  const body = `
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 12px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:6px;">
+        <div style="font-size:11px; color:var(--text-muted);">
+          <div id="cloud-push-note">Loading…</div>
+        </div>
+        <button class="btn primary" id="cloud-push-btn" style="padding:7px 14px; font-size:11px; font-weight:600;">Push current to cloud</button>
+      </div>
+      <div id="cloud-list" style="display:flex; flex-direction:column; gap:6px; min-height:120px;">
+        <div style="font-size:11px; color:var(--text-muted); text-align:center; padding:20px;">Loading projects…</div>
+      </div>
+    </div>`;
+  openModal('My Cloud Projects', body, false);
+
+  const refresh = async () => {
+    const list = document.getElementById('cloud-list');
+    const pushNote = document.getElementById('cloud-push-note');
+    if (!list) return;
+    const { data, error } = await sb.from('projects').select('*').order('updated_at', { ascending: false });
+    if (error) { list.innerHTML = `<div style="color:#ef4444; font-size:11px;">${error.message}</div>`; return; }
+    const localId = state.projectId;
+    const matching = (data || []).find(r => r.id === localId);
+    if (pushNote) pushNote.textContent = matching ? `Will update "${matching.name}" in the cloud.` : 'Will create a new cloud copy of the current project.';
+    if (!data || data.length === 0) {
+      list.innerHTML = `<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:32px 16px; border:1px dashed var(--border-light); border-radius:6px;">No cloud projects yet — push your current project to get started.</div>`;
+      return;
+    }
+    list.innerHTML = data.map(r => `
+      <div data-id="${r.id}" style="display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-panel);">
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:600; color:var(--text-bright); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${(r.name || '(untitled)').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${_formatRelativeTime(r.updated_at)} · ${_formatBytes(r.size_bytes)}${r.id === localId ? ' · current' : ''}</div>
+        </div>
+        <button class="btn" data-act="open" style="padding:5px 10px; font-size:11px;">Open</button>
+        <button class="btn" data-act="del" style="padding:5px 10px; font-size:11px;">Delete</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('[data-act="open"]').forEach(btn => btn.addEventListener('click', async (e) => {
+      const id = btn.closest('[data-id]').dataset.id;
+      const row = data.find(r => r.id === id);
+      btn.disabled = true; btn.textContent = 'Opening…';
+      try { await pullCloudProject(row); }
+      catch (err) { showCanvasNotification(`Open failed: ${err.message || err}`, { type: 'error' }); btn.disabled = false; btn.textContent = 'Open'; }
+    }));
+    list.querySelectorAll('[data-act="del"]').forEach(btn => btn.addEventListener('click', async (e) => {
+      const id = btn.closest('[data-id]').dataset.id;
+      const row = data.find(r => r.id === id);
+      if (!confirm(`Delete "${row.name}" from the cloud? This cannot be undone.`)) return;
+      const { error: e1 } = await sb.from('projects').delete().eq('id', id);
+      if (e1) { showCanvasNotification(e1.message, { type: 'error' }); return; }
+      await sb.storage.from('projects').remove([row.storage_path]).catch(() => {});
+      refresh();
+    }));
+  };
+
+  document.getElementById('cloud-push-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('cloud-push-btn');
+    btn.disabled = true; btn.textContent = 'Pushing…';
+    try {
+      await pushCurrentProjectToCloud();
+      showCanvasNotification('Pushed to cloud', { type: 'success' });
+      btn.disabled = false; btn.textContent = 'Push current to cloud';
+      refresh();
+    } catch (err) {
+      showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' });
+      btn.disabled = false; btn.textContent = 'Push current to cloud';
+    }
+  });
+
+  refresh();
+}
+
+async function pushCurrentProjectToCloud() {
+  const u = authState.currentUser();
+  if (!u) throw new Error('Not signed in.');
+  setSaveStatus('saving');
+  let built;
+  try { built = await buildFlowBlob(); }
+  catch (e) { setSaveStatus('error'); throw e; }
+  const { blob } = built;
+  const path = `${u.id}/${state.projectId}.flow`;
+  const { error: upErr } = await sb.storage.from('projects').upload(path, blob, { upsert: true, contentType: 'application/octet-stream' });
+  if (upErr) { setSaveStatus('error'); throw upErr; }
+  // Upsert the metadata row. Note: state.projectId is our client-side id; the row's id
+  // is a Postgres-generated uuid on first insert. We key the upsert on (user_id, storage_path)
+  // by selecting any existing row first.
+  const { data: existing } = await sb.from('projects').select('id').eq('user_id', u.id).eq('storage_path', path).maybeSingle();
+  if (existing?.id) {
+    const { error: upd } = await sb.from('projects').update({
+      name: state.projectName || 'RMIT_Ad',
+      ad_size_limit_kb: state.adSizeLimit || 150,
+      size_bytes: blob.size,
+      updated_at: new Date().toISOString()
+    }).eq('id', existing.id);
+    if (upd) { setSaveStatus('error'); throw upd; }
+    state.projectId = existing.id;
+  } else {
+    const { data: inserted, error: ins } = await sb.from('projects').insert({
+      user_id: u.id,
+      name: state.projectName || 'RMIT_Ad',
+      ad_size_limit_kb: state.adSizeLimit || 150,
+      size_bytes: blob.size,
+      storage_path: path
+    }).select('id').single();
+    if (ins) { setSaveStatus('error'); throw ins; }
+    if (inserted?.id) state.projectId = inserted.id;
+  }
+  setSaveStatus('saved');
+}
+
+async function pullCloudProject(row) {
+  const { data, error } = await sb.storage.from('projects').download(row.storage_path);
+  if (error) throw error;
+  await loadProjectFromBlob(data);
+  state.projectId = row.id;
+  const bg = document.querySelector('.modal-bg');
+  if (bg) bg.remove();
+  showCanvasNotification(`Opened "${row.name}" from cloud`, { type: 'success' });
+}
+
+// Wire chip + menu items once at boot. Listener fires immediately with the
+// current user (null on first load before auth resolves) and again on every
+// auth state change.
+authState.subscribe(() => renderAuthChip());
+document.getElementById('menu-file-cloud')?.addEventListener('click', () => openCloudProjectsModal());
+document.getElementById('menu-file-push')?.addEventListener('click', async () => {
+  try { await pushCurrentProjectToCloud(); showCanvasNotification('Pushed to cloud', { type: 'success' }); }
+  catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
+});
 
 (async function initApp() {
   appSplash.setPhase(1);
