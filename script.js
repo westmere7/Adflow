@@ -8594,7 +8594,21 @@ window.addEventListener('keydown', (e) => {
 
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault();
-    saveProjectToZip();
+    if (e.shiftKey) {
+      // Ctrl/Cmd + Shift + S → save the local .flow file (browser save dialog).
+      saveProjectToZip();
+    } else {
+      // Ctrl/Cmd + S → push to the cloud. Falls back to the local file save
+      // if Supabase isn't configured or the user is signed out.
+      if (typeof authState !== 'undefined' && authState.enabled && authState.currentUser()) {
+        (async () => {
+          try { await pushCurrentProjectToCloud(); showCanvasNotification('Pushed to cloud', { type: 'success' }); }
+          catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
+        })();
+      } else {
+        saveProjectToZip();
+      }
+    }
     return;
   }
 
@@ -11033,7 +11047,8 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
       .shortcuts-table b { color: #fff; font-weight: 500; }
     </style>
     <table class="shortcuts-table">
-      <tr><td><b>Save Project</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">S</span></td></tr>
+      <tr><td><b>Push to Cloud</b> <span style="color:var(--text-muted);">(falls back to local save when signed out)</span></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">S</span></td></tr>
+      <tr><td><b>Save Project locally (.flow)</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">S</span></td></tr>
       <tr><td><b>Copy Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">C</span></td></tr>
       <tr><td><b>Cut Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">X</span></td></tr>
       <tr><td><b>Paste Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">V</span></td></tr>
@@ -11309,7 +11324,8 @@ const DOCS_SECTIONS = [
         <p><b>History limit:</b> set in <b>File → Settings</b> — 1 to 50 states, default 10.</p>
       `},
       { id: 'flow-files', title: '.flow files', body: `
-        <p><b>File → Save Project</b> (<span class="kbd">Ctrl</span>+<span class="kbd">S</span>) writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. <b>Open Project</b> reads <code>.flow</code> (and legacy <code>.cook</code>/<code>.zip</code>) back in.</p>
+        <p><b>File → Save Project</b> (<span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span>) writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. <b>Open Project</b> reads <code>.flow</code> (and legacy <code>.cook</code>/<code>.zip</code>) back in.</p>
+        <p><b>Ctrl</b>+<b>S</b> pushes to the cloud when you're signed in (see <i>Cloud &amp; Spaces</i>). If you're signed out or Supabase isn't configured, it falls back to the local <code>.flow</code> save dialog.</p>
         <p><b>Open Recent</b> in the File menu shows your last manually-saved projects.</p>
       `},
       { id: 'new-project-wizard', title: 'New Project wizard', body: `
@@ -11349,7 +11365,8 @@ const DOCS_SECTIONS = [
           <thead><tr><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Shortcut</th><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Action</th></tr></thead>
           <tbody>
           ${[
-            ['Ctrl + S','Save project'],
+            ['Ctrl + S','Push to cloud (falls back to local save when signed out)'],
+            ['Ctrl + Shift + S','Save project locally (.flow)'],
             ['Ctrl + C / X / V','Copy / Cut / Paste'],
             ['Ctrl + D','Duplicate selected'],
             ['Ctrl + Z / Y','Undo / Redo'],
