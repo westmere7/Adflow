@@ -50,46 +50,11 @@
 
 const urlSizeCache = {};
 
-// ============================================================================
-// Auto-resize role taxonomy (v2)
-// ============================================================================
-// Hoisted here so render() — which fires early during boot and now calls
-// ensureRolesAssignedAll() — can reach these constants without tripping a
-// temporal-dead-zone ReferenceError. The detector function `autoAssignRole`
-// and the sweeps `ensureRolesAssigned` / `ensureRolesAssignedAll` are
-// declared further down (function declarations hoist, const declarations
-// don't, so only the data tables need to live up here).
-
-const ROLE_IDS = [
-  'background-image',
-  'rmit-logo',
-  'cta-button',
-  'heading',
-  'subheading',
-  'cricos',
-  'main-image',
-  'rfwn',
-  'extra-info',
-  'misc'
-];
-
-const ROLE_LABELS = {
-  'background-image': 'Background image',
-  'rmit-logo':        'RMIT logo',
-  'cta-button':       'CTA button',
-  'heading':          'Heading',
-  'subheading':       'Subheading',
-  'cricos':           'CRICOS line',
-  'main-image':       'Main image',
-  'rfwn':             'RFWN tagline',
-  'extra-info':       'Extra info',
-  'misc':             'Unassigned'
-};
-
-const ROLE_PICKER_ORDER = [
-  'heading', 'subheading', 'cta-button', 'main-image', 'background-image',
-  'rmit-logo', 'rfwn', 'cricos', 'extra-info', 'misc'
-];
+// Auto-resize engine (rule-based v2) lives in `auto-resize-engine.js`. That
+// file is loaded BEFORE this one in index.html, so its constants and
+// functions (ROLE_IDS, ROLE_LABELS, ROLE_PICKER_ORDER, autoAssignRole,
+// ensureRolesAssignedAll, runRuleBasedAutoResize, etc.) are available
+// globally by the time anything in this file runs.
 
 // ============================================================================
 // Supabase / Auth — optional cloud sign-in. Anonymous local use is unchanged
@@ -6854,6 +6819,32 @@ function renderProps() {
           </div>
         </div>
 
+        <div class="prop-row" style="margin-top:12px;">
+          <label>Clear all</label>
+          <div style="display:flex; gap:6px;">
+            <button id="c-btn-clear-current" title="Clear every element on this canvas only" style="
+              flex:1; padding:7px 0; border-radius:6px; cursor:pointer;
+              background:rgba(239, 68, 68, 0.05); color:#ef4444; font-size:11px; font-weight:500;
+              font-family:inherit; display:flex; align-items:center; justify-content:center; gap:4px;
+              border:1px solid rgba(239, 68, 68, 0.25);
+              transition:background 0.15s, border-color 0.15s; white-space:nowrap;
+            ">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              Current canvas
+            </button>
+            <button id="c-btn-clear-all" title="Clear every element on every canvas in the project" style="
+              flex:1; padding:7px 0; border-radius:6px; cursor:pointer;
+              background:rgba(239, 68, 68, 0.05); color:#ef4444; font-size:11px; font-weight:500;
+              font-family:inherit; display:flex; align-items:center; justify-content:center; gap:4px;
+              border:1px solid rgba(239, 68, 68, 0.25);
+              transition:background 0.15s, border-color 0.15s; white-space:nowrap;
+            ">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+              All canvases
+            </button>
+          </div>
+        </div>
+
         <div class="prop-empty" style="padding: 16px 0 0;">Tip: double-click text to edit it inline. Use <span class="kbd">←↑↓→</span> to nudge, <span class="kbd">⌫</span> to delete.</div>
       </div></div>`;
     const wInp = document.getElementById('c-w');
@@ -6952,6 +6943,12 @@ function renderProps() {
 
     const dmOpenBtn = propsEl.querySelector('#dm-open-from-props');
     if (dmOpenBtn) dmOpenBtn.addEventListener('click', () => openDataPanel());
+
+    // Wire the two Clear-all buttons in the canvas Properties panel.
+    const btnClearCurr = document.getElementById('c-btn-clear-current');
+    const btnClearAll  = document.getElementById('c-btn-clear-all');
+    if (btnClearCurr) btnClearCurr.addEventListener('click', clearCurrentCanvasContents);
+    if (btnClearAll)  btnClearAll.addEventListener('click',  clearAllCanvasesContents);
 
     if (typeof syncColorPickerWithSelection === 'function') {
       syncColorPickerWithSelection(null, c);
@@ -9834,82 +9831,11 @@ function canvasFormatClass(c) {
   return 'rectangle';                                 // 300×250
 }
 
-// ============================================================================
-// Rule-based auto-resize — Role taxonomy (v2)
-// ============================================================================
-// 9 named roles + 'misc' fallback. The data tables (ROLE_IDS, ROLE_LABELS,
-// ROLE_PICKER_ORDER) live near the top of the script so render() — which
-// fires during boot — can read them without a TDZ ReferenceError. The
-// detector functions below are function declarations and get hoisted.
-// The legacy `detectElementRole` (further down) is still used by the old
-// `autoResizeFromSelected` executor until that's fully removed.
-
-function autoAssignRole(el, canvas) {
-  if (!el || !canvas) return 'misc';
-  const text = (el.text || '').toLowerCase();
-  const name = (el.customName || '').toLowerCase();
-  const area = (el.width * el.height) / (canvas.width * canvas.height || 1);
-
-  // Name-based first (trust the user's layer name when present).
-  if (name === 'rfwn' || name.includes('ready for')) return 'rfwn';
-  if (name.includes('cricos') || name.includes('compliance')) return 'cricos';
-  if (name.includes('rmit') || name.includes('logo')) return 'rmit-logo';
-  if (name === 'background' || name === 'bg' || name.includes('background image')) return 'background-image';
-  if (name === 'heading' || name.includes('headline')) return 'heading';
-  if (name === 'subheading' || name.includes('subhead')) return 'subheading';
-  if (name === 'extra info' || name.includes('extra-info') || name.includes('extra info')) return 'extra-info';
-  if (name.includes('main image') || name.includes('hero') || name.includes('main-image')) return 'main-image';
-  if (name === 'button' || name.includes('cta')) return 'cta-button';
-
-  // Text-content recognition for the brand-specific lines.
-  if (el.type === 'text') {
-    if (text.includes('cricos') || /\brto\b/i.test(el.text || '')) return 'cricos';
-    if (text.includes('ready for') && text.includes('next')) return 'rfwn';
-    // Largest font in the canvas = heading, second largest = subheading.
-    const ranked = (canvas.elements || [])
-      .filter(e => e.type === 'text' && e.persistent !== 'top')
-      .sort((a, b) => (b.fontSize || 0) - (a.fontSize || 0));
-    if (ranked[0] && ranked[0].id === el.id) return 'heading';
-    if (ranked[1] && ranked[1].id === el.id) return 'subheading';
-    if (el.persistent === 'top') return 'cricos';
-    return 'extra-info';
-  }
-
-  if (el.type === 'button') return 'cta-button';
-
-  if (el.type === 'image') {
-    if (area >= 0.7 || el.persistent === 'bottom') return 'background-image';
-    if (el.persistent === 'top' && area < 0.18) return 'rmit-logo';
-    return 'main-image';
-  }
-
-  if (el.type === 'rect' || el.type === 'circle' || el.type === 'pixel') {
-    if (area >= 0.7 || el.persistent === 'bottom') return 'background-image';
-    return 'misc';
-  }
-
-  return 'misc';
-}
-
-// Walk a canvas and fill in `role` for any element that doesn't have one yet.
-// Auto-assigned elements get `roleAuto = true` so the UI can show them differently
-// from explicitly user-assigned ones (gray vs green).
-function ensureRolesAssigned(canvas) {
-  if (!canvas || !Array.isArray(canvas.elements)) return;
-  canvas.elements.forEach(el => {
-    if (el.role && ROLE_IDS.includes(el.role)) return;
-    el.role = autoAssignRole(el, canvas);
-    el.roleAuto = true;
-  });
-}
-
-// Sweep every canvas in the current project. Safe to call from any boot path.
-function ensureRolesAssignedAll() {
-  if (!state || !Array.isArray(state.canvases)) return;
-  state.canvases.forEach(ensureRolesAssigned);
-}
-
-
+// The new rule-based engine's role detector (autoAssignRole) and sweep
+// helpers (ensureRolesAssigned, ensureRolesAssignedAll) live in
+// `auto-resize-engine.js`. The legacy detectElementRole below is still used
+// by the legacy `autoResizeFromSelected` executor — kept for now since the
+// new engine doesn't replace every legacy code path yet.
 function detectElementRole(el, canvas) {
   const name = (el.customName || '').toLowerCase();
   const area = (el.width * el.height) / (canvas.width * canvas.height || 1);
@@ -10062,1124 +9988,41 @@ function autoResizeFromSelected() {
   render();
 }
 
-// ============================================================================
-// Role-picker dropdown (anchored to the layer-row role icon)
-// ============================================================================
-function openRolePicker(el, anchorBtn) {
-  if (!el || !anchorBtn) return;
-  // Close any existing picker.
-  document.querySelectorAll('.role-picker-popup').forEach(n => n.remove());
+// The auto-resize rule engine (openRolePicker, openAutoResizeModal,
+// runRuleBasedAutoResize, all place* rules, applyRelationR1,
+// resolveNoTouchCollisions, clampToCanvas, openAutoResizeSettingsModal,
+// showFakeAutoResizeProgress, wireLinkGroup, legacyRoleForCategory,
+// AUTO_RESIZE_DEFAULT_SETTINGS / getAutoResizeSettings, plus the
+// btn-ai-resize + btn-ai-resize-settings click listeners) all live in
+// `auto-resize-engine.js`. That file is loaded BEFORE this one in
+// index.html so its functions are globally available by the time any
+// layer-row click handler or render() call fires.
 
-  const pop = document.createElement('div');
-  // NOTE: do NOT add the `dropdown` class here — `.dropdown` has
-  // `display:none` by default and is only revealed by a `.menu-item:hover`
-  // parent. Our popup is body-anchored, so it would stay hidden forever.
-  // We use `dropdown-item` / `dropdown-divider` on children only.
-  pop.className = 'role-picker-popup';
-  const currentRole = el.role || 'misc';
-  const isAuto = el.roleAuto !== false;
-
-  pop.innerHTML = `
-    <div style="padding:8px 12px 4px 12px; font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">
-      Auto-resize role
-    </div>
-    <div style="padding:0 12px 6px 12px; font-size:10px; color:var(--text-muted);">
-      ${isAuto ? 'Auto-detected. Pick one to override.' : 'Manually assigned. Reset clears the override.'}
-    </div>
-    <div class="dropdown-divider"></div>
-    ${ROLE_PICKER_ORDER.map(id => {
-      const isCurrent = id === currentRole;
-      const colorStyle = isCurrent ? 'color:var(--accent-base); font-weight:600;' : '';
-      return `<div class="dropdown-item role-picker-item" data-role-id="${id}" style="display:flex; align-items:center; gap:8px; ${colorStyle}">
-        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${isCurrent ? 'var(--accent-base)' : 'transparent'}; border:1px solid var(--border-light); flex-shrink:0;"></span>
-        <span>${ROLE_LABELS[id]}</span>
-      </div>`;
-    }).join('')}
-    <div class="dropdown-divider"></div>
-    <div class="dropdown-item role-picker-reset" style="font-size:10px; color:var(--text-muted);">↺ Reset to auto-detect</div>
-  `;
-
-  document.body.appendChild(pop);
-
-  // Anchor below the button, right-aligned.
-  const rect = anchorBtn.getBoundingClientRect();
-  Object.assign(pop.style, {
-    position: 'fixed',
-    top: (rect.bottom + 4) + 'px',
-    left: Math.max(8, rect.right - 220) + 'px',
-    minWidth: '220px',
-    background: 'var(--bg-panel)',
-    border: '1px solid var(--border-light)',
-    borderRadius: '6px',
-    boxShadow: '0 10px 30px rgba(0,0,0,.4)',
-    zIndex: 100001,
-    padding: '0 0 4px 0'
-  });
-
-  const closePicker = () => {
-    pop.remove();
-    document.removeEventListener('click', outsideHandler, true);
-    document.removeEventListener('keydown', escHandler);
-  };
-  const outsideHandler = (e) => {
-    if (!pop.contains(e.target) && e.target !== anchorBtn && !anchorBtn.contains(e.target)) {
-      closePicker();
-    }
-  };
-  const escHandler = (e) => { if (e.key === 'Escape') closePicker(); };
-  // Defer attaching so the click that opened us doesn't immediately close.
-  setTimeout(() => {
-    document.addEventListener('click', outsideHandler, true);
-    document.addEventListener('keydown', escHandler);
-  }, 0);
-
-  pop.querySelectorAll('.role-picker-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const newRole = item.dataset.roleId;
-      el.role = newRole;
-      el.roleAuto = false;   // explicit user choice — turns the icon green
-      pushHistory();
-      closePicker();
-      render();
-    });
-  });
-
-  pop.querySelector('.role-picker-reset').addEventListener('click', () => {
-    const c = getActiveCanvas();
-    delete el.role;
-    delete el.roleAuto;
-    ensureRolesAssigned(c);   // re-detect from heuristics
-    pushHistory();
-    closePicker();
-    render();
-  });
+// "Clear all" helpers — surfaced from the canvas context menu and the
+// canvas Properties panel. The legacy Tools-panel "Clear everything" button
+// was removed in v0.16.0; these are the only entry points now.
+function clearCurrentCanvasContents() {
+  const c = getActiveCanvas();
+  if (!c) return;
+  if (!confirm(`Clear every element on "${c.name || c.width + '×' + c.height}"? This cannot be undone (use Ctrl+Z to restore).`)) return;
+  c.elements = [];
+  state.selectedElementId = null;
+  state.layerSelection = [];
+  // Prune any link groups that no longer have members anywhere.
+  if (typeof cleanupLinkGroups === 'function') cleanupLinkGroups();
+  pushHistory();
+  render();
 }
 
-
-// ============================================================================
-// Auto-Resize settings modal (Step 1 of the new rule-based engine)
-// ============================================================================
-// Replaces the legacy `autoResizeFromSelected` confirm() dialog. Collects:
-//   - which target canvases to write into (multi-select, excludes source)
-//   - whether to also propagate elements without an assigned role (drop them
-//     into the centre of the target canvas)
-// Once confirmed, calls `runRuleBasedAutoResize(settings)`. The executor is
-// stubbed in Step 1 — wiring it up to the actual rule engine is Step 2.
-
-function openAutoResizeModal() {
-  const src = getActiveCanvas();
-  if (!src) {
-    showCanvasNotification('Select a source canvas first (click its header).', { type: 'warning' });
-    return;
-  }
-  if (state.canvases.length < 2) {
-    showCanvasNotification('Add at least one more canvas to resize into.', { type: 'warning' });
-    return;
-  }
-
-  // Local HTML-escape helper — matches the pattern used by other modal
-  // builders in this file (line 4645, 5639, 6633, 9280).
-  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, ch =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-
-  // Make sure every element on the source canvas has a role assigned, so the
-  // modal can show an accurate "unassigned count".
-  ensureRolesAssigned(src);
-  const srcEls = src.elements || [];
-  const unassignedCount = srcEls.filter(el => (el.role || 'misc') === 'misc').length;
-  const totalCount = srcEls.length;
-
-  const targets = state.canvases.filter(c => c.id !== src.id);
-
-  const bg = document.createElement('div');
-  bg.className = 'modal-bg';
-  bg.innerHTML = `
-    <div class="modal" style="max-width:560px;">
-      <div class="modal-head">
-        <h2>Auto-Resize</h2>
-        <button class="btn" id="ar-modal-close" title="Close dialog">Close</button>
-      </div>
-      <div class="modal-body">
-        <div style="margin-bottom:14px;">
-          <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:4px;">Source canvas</div>
-          <div style="font-size:13px; font-weight:600; color:var(--text-main);">${esc(src.name || (src.width + '×' + src.height))} <span style="color:var(--text-muted); font-weight:400;">— ${src.width}×${src.height}</span></div>
-          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${totalCount} element${totalCount === 1 ? '' : 's'} on this frame${unassignedCount > 0 ? ` &middot; <span style="color:#f59e0b;">${unassignedCount} unassigned</span>` : ''}</div>
-        </div>
-
-        <div style="margin-bottom:14px;">
-          <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">Apply to these canvases</div>
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-            <button class="btn" id="ar-select-all" style="padding:3px 8px; font-size:10px;">Select all</button>
-            <button class="btn" id="ar-select-none" style="padding:3px 8px; font-size:10px;">Clear</button>
-          </div>
-          <div id="ar-target-list" style="display:grid; grid-template-columns: 1fr 1fr; gap:6px 14px; max-height:200px; overflow-y:auto; padding:8px; background:var(--bg-deep); border:1px solid var(--border-light); border-radius:4px;">
-            ${targets.map(c => `
-              <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; padding:3px 0;">
-                <input type="checkbox" class="ar-target-checkbox" data-canvas-id="${c.id}" checked />
-                <span style="color:var(--text-main);">${esc(c.name || (c.width + '×' + c.height))}</span>
-                <span style="color:var(--text-muted); font-size:10px;">${c.width}×${c.height}</span>
-              </label>
-            `).join('')}
-          </div>
-        </div>
-
-        <div style="margin-bottom:14px;">
-          <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
-            <input type="checkbox" id="ar-include-unassigned" />
-            <span>
-              <span style="color:var(--text-main); font-weight:500;">Place unassigned elements in the centre of each target canvas</span>
-              <br>
-              <span style="color:var(--text-muted); font-size:10.5px;">Off (default): unassigned elements are skipped on target canvases. On: they're copied and centred (no rule-based placement).</span>
-            </span>
-          </label>
-        </div>
-
-        <div style="padding:10px 12px; background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); border-radius:4px; font-size:11.5px; color:#fca5a5; line-height:1.5;">
-          <strong style="color:#f87171;">⚠ Heads up:</strong> This wipes every element on the selected target frames — including locked and hidden layers — before placing the new content. The source canvas is untouched. Undo (Ctrl+Z) restores everything.
-        </div>
-      </div>
-      <div class="modal-foot" style="display:flex; justify-content:flex-end; gap:8px;">
-        <button class="btn" id="ar-cancel">Cancel</button>
-        <button class="btn primary" id="ar-run">Run Auto-Resize</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(bg);
-
-  const close = () => {
-    bg.remove();
-    document.removeEventListener('keydown', escHandler);
-  };
-  const escHandler = (e) => { if (e.key === 'Escape') close(); };
-  document.addEventListener('keydown', escHandler);
-
-  bg.querySelector('#ar-modal-close').onclick = close;
-  bg.querySelector('#ar-cancel').onclick = close;
-  bg.onclick = (e) => { if (e.target === bg) close(); };
-
-  bg.querySelector('#ar-select-all').onclick = () => {
-    bg.querySelectorAll('.ar-target-checkbox').forEach(cb => cb.checked = true);
-  };
-  bg.querySelector('#ar-select-none').onclick = () => {
-    bg.querySelectorAll('.ar-target-checkbox').forEach(cb => cb.checked = false);
-  };
-
-  bg.querySelector('#ar-run').onclick = () => {
-    const targetIds = Array.from(bg.querySelectorAll('.ar-target-checkbox'))
-      .filter(cb => cb.checked)
-      .map(cb => cb.dataset.canvasId);
-    if (targetIds.length === 0) {
-      showCanvasNotification('Pick at least one target canvas.', { type: 'warning' });
-      return;
-    }
-    const includeUnassigned = bg.querySelector('#ar-include-unassigned').checked;
-    close();
-    runRuleBasedAutoResize({
-      sourceId: src.id,
-      targetIds,
-      includeUnassigned
-    });
-  };
-}
-
-// ============================================================================
-// Rule-based Auto-Resize Engine (v2) — Step 2
-// ============================================================================
-// Reads each element's `role` (assigned in the Layers panel) and applies the
-// matching placement rule from `auto-resize-rules.md` to place that element
-// on every selected target canvas. Rules are pure functions:
-//
-//     placer(srcEl, targetCanvas, ctx) → {x, y, width, height, fontSize?} | null
-//
-// Returning null means "drop this element on this canvas". The caller wipes
-// the target canvas first, then iterates rules in priority order so later
-// rules can reference earlier placements via ctx.placedElements[role].
-
-const ROLE_PRIORITIES = {
-  'background-image': 1,
-  'rmit-logo':        3,
-  'cta-button':       4,
-  'heading':          5,
-  'subheading':       6,
-  'cricos':           7,
-  'main-image':       7,
-  'rfwn':             8,
-  'extra-info':       9,
-  'misc':             99
-};
-
-// ----- Shared helpers ------------------------------------------------------
-
-function clampNum(value, lo, hi) {
-  return Math.max(lo, Math.min(hi, value));
-}
-
-function computeSafezone(c) {
-  const w = c.width, h = c.height;
-  const minDim = Math.min(w, h);
-  const aspect = Math.max(w, h) / minDim;
-  const factor = (minDim < 200 && aspect > 3) ? 0.08 : 0.05;
-  const inset = Math.max(4, Math.round(minDim * factor));
-  return {
-    x: inset,
-    y: inset,
-    w: w - 2 * inset,
-    h: h - 2 * inset,
-    right: w - inset,
-    bottom: h - inset,
-    inset
-  };
-}
-
-// Deep-clone a source element for placement on the target canvas. Strips
-// state that doesn't translate (mask flag, original id) and reassigns the
-// frame association for non-persistent elements.
-function cloneSourceElement(srcEl) {
-  const clone = JSON.parse(JSON.stringify(srcEl));
-  clone.id = uid();
-  if (clone.persistent === false) clone.frameId = state.activeFrameId;
-  // Mask flag clipping the wrong image after move — strip it.
-  delete clone.isMask;
-  delete clone.maskTargetId;
-  return clone;
-}
-
-// ----- Per-role placement rules -------------------------------------------
-
-function placeBackgroundImage(srcEl, target, ctx) {
-  const src = ctx.sourceCanvas;
-  const norm = {
-    x: srcEl.x / src.width,
-    y: srcEl.y / src.height,
-    w: srcEl.width / src.width,
-    h: srcEl.height / src.height
-  };
-  // Fast-path: 100% canvas fill
-  if (Math.abs(norm.x) < 0.005 && Math.abs(norm.y) < 0.005 &&
-      Math.abs(norm.w - 1) < 0.01 && Math.abs(norm.h - 1) < 0.01) {
-    return { x: 0, y: 0, width: target.width, height: target.height };
-  }
-  return {
-    x: Math.round(norm.x * target.width),
-    y: Math.round(norm.y * target.height),
-    width:  Math.max(1, Math.round(norm.w * target.width)),
-    height: Math.max(1, Math.round(norm.h * target.height))
-  };
-}
-
-function placeRmitLogo(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const aspect = w / h;
-
-  // Height: banner branch vs standard branch
-  const logoH = (h <= 100)
-    ? clampNum(Math.round(h * 0.2 + 8), 15, 30)
-    : clampNum(Math.round(Math.sqrt(w * h) * 0.075), 15, 40);
-
-  // Width derived from source aspect (default ~2.85 for RMIT lockup)
-  const srcAspect = (srcEl.width && srcEl.height) ? (srcEl.width / srcEl.height) : 2.85;
-  const logoW = Math.round(logoH * srcAspect);
-
-  let x, y;
-  if (aspect < 0.4) {
-    // Bot-left mode (ultra-narrow skyscraper)
-    const offX = clampNum(Math.round(sz.inset * 0.3), 2, 5);
-    const offY = clampNum(Math.round(sz.inset * 0.3), 2, 5);
-    x = sz.x + offX;
-    y = sz.bottom - offY - logoH;
-  } else {
-    // Top-right mode
-    const offX = clampNum(Math.round(sz.inset * 0.15), 0, 3);
-    const offY = clampNum(Math.round(sz.inset * 0.2), 1, 3);
-    x = sz.right - offX - logoW;
-    y = sz.y + offY;
-  }
-  return { x, y, width: logoW, height: logoH };
-}
-
-function placeCtaButton(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const aspect = w / h;
-  const sqArea = Math.sqrt(w * h);
-
-  const btnH = clampNum(Math.round(sqArea * 0.11), 14, 53);
-
-  if (aspect <= 2.0) {
-    // Tall mode: bot-center of safezone
-    const btnW = clampNum(Math.round(btnH * 3.7), 70, Math.min(200, sz.w));
-    const offY = clampNum(Math.round(h * 0.04), 15, 30);
-    return {
-      x: sz.x + Math.round((sz.w - btnW) / 2),
-      y: sz.bottom - offY - btnH,
-      width: btnW,
-      height: btnH
-    };
-  }
-  // Wide mode: button-right at canvas.w × 0.84, vertically centred
-  const btnW = clampNum(Math.round(btnH * 4.2), 70, 200);
-  const btnRight = Math.round(w * 0.84);
-  return {
-    x: btnRight - btnW,
-    y: Math.round((h - btnH) / 2),
-    width: btnW,
-    height: btnH
-  };
-}
-
-function placeHeading(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const aspect = w / h;
-
-  const offX = clampNum(Math.round(w * 0.03), 2, 80);
-  const offY = (h < 100) ? 2 : clampNum(Math.round(h * 0.15), 20, 100);
-
-  let width;
-  const stackMode = h >= 300;
-  if (stackMode) {
-    width = sz.w;
-  } else if (aspect > 2) {
-    width = (h < 120)
-      ? clampNum(Math.round(w * 0.27), 80, 400)
-      : clampNum(Math.round(w * 0.36), 80, 400);
-  } else {
-    width = clampNum(Math.round(sz.w * 0.55), 120, 270);
-  }
-
-  // Height: keep source's text-height ratio, scaled to font (auto-wrap will
-  // adjust at render time for text/button elements with autoSize on).
-  const srcH = srcEl.height || Math.round(h * 0.3);
-  const height = Math.max(20, srcH);
-
-  return {
-    x: sz.x + offX,
-    y: sz.y + offY,
-    width,
-    height
-  };
-}
-
-function placeSubheading(srcEl, target, ctx) {
-  const heading = ctx.placedElements['heading'];
-  if (!heading) return null; // no anchor to attach to
-  const h = target.height;
-  const offY = clampNum(Math.round(h * 0.02), 4, 16);
-  const srcH = srcEl.height || Math.round(h * 0.1);
-  return {
-    x: heading.x,
-    y: heading.y + heading.height + offY,
-    width: heading.width,
-    height: Math.max(12, srcH)
-  };
-}
-
-function placeCricos(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const minDim = Math.min(w, h);
-
-  const fontSize = clampNum(Math.round(minDim * 0.023), 4, 7);
-  const srcFs = srcEl.fontSize || 7;
-  const scale = fontSize / srcFs;
-  const widthRaw = Math.round((srcEl.width || 100) * scale);
-  const width = clampNum(widthRaw, 40, w - 8);
-  const height = Math.max(8, Math.round((srcEl.height || 12) * scale));
-
-  const offX = Math.max(sz.inset, 8);
-  const offY = Math.max(Math.round(fontSize * 0.5), 4);
-  return {
-    x: offX,
-    y: h - offY - height,
-    width,
-    height,
-    fontSize
-  };
-}
-
-function placeMainImage(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const heading    = ctx.placedElements['heading'];
-  const subheading = ctx.placedElements['subheading'];
-  const cta        = ctx.placedElements['cta-button'];
-
-  const gapX = clampNum(Math.round(w * 0.02), 6, 30);
-  const gapY = clampNum(Math.round(h * 0.02), 6, 20);
-
-  const textBottom = subheading
-    ? (subheading.y + subheading.height)
-    : (heading ? heading.y + heading.height : sz.y);
-
-  const textRight = subheading
-    ? Math.max(((heading?.x || 0) + (heading?.width || 0)), subheading.x + subheading.width)
-    : (heading ? heading.x + heading.width : sz.x);
-
-  const ratio = h / w;
-  const stack = ratio >= 1.0;
-  const ctaWideMode = (w / h) > 2.0;
-
-  let slot;
-  if (stack) {
-    slot = {
-      x: sz.x,
-      y: textBottom + gapY,
-      w: sz.w,
-      h: ((cta) ? (cta.y - gapY) : sz.bottom) - (textBottom + gapY)
-    };
-  } else {
-    slot = {
-      x: textRight + gapX,
-      y: sz.y,
-      w: ((cta && ctaWideMode) ? (cta.x - gapX) : sz.right) - (textRight + gapX),
-      h: sz.h
-    };
-  }
-
-  if (slot.w <= 0 || slot.h <= 0) return null;
-
-  const srcAspect = (srcEl.width && srcEl.height) ? (srcEl.width / srcEl.height) : 1;
-  const slotAspect = slot.w / slot.h;
-
-  let imgW, imgH;
-  if (srcAspect >= slotAspect) {
-    imgW = slot.w;
-    imgH = Math.round(imgW / srcAspect);
-  } else {
-    imgH = slot.h;
-    imgW = Math.round(imgH * srcAspect);
-  }
-
-  // Cover fallback when contain leaves the image too small in the slot.
-  // Honour the engine setting — when off, the image stays small (contain).
-  const allowCover = !ctx.engineSettings || ctx.engineSettings.behaviour?.allowCoverFallback !== false;
-  const fillFrac = Math.max(imgW, imgH) / Math.max(slot.w, slot.h);
-  if (allowCover && fillFrac < 0.6) {
-    if (srcAspect >= slotAspect) {
-      imgH = slot.h;
-      imgW = Math.round(imgH * srcAspect);
-    } else {
-      imgW = slot.w;
-      imgH = Math.round(imgW / srcAspect);
-    }
-  }
-
-  if (Math.min(imgW, imgH) < 30) return null;
-
-  return {
-    x: slot.x + Math.round((slot.w - imgW) / 2),
-    y: slot.y + Math.round((slot.h - imgH) / 2),
-    width: imgW,
-    height: imgH
-  };
-}
-
-function placeRfwn(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const aspect = w / h;
-
-  const fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.032), 5, 17);
-  const width    = clampNum(Math.round(fontSize * 7), 35, 90);
-  // RFWN wraps to ~2 lines at chosen font; leading ~1.2.
-  const height   = Math.max(10, Math.round(fontSize * 2.4));
-
-  let x, y;
-  if (aspect >= 0.4 && aspect <= 2.0) {
-    // top-left mode (square-ish / portrait)
-    const offX = Math.max(2, Math.round(sz.inset * 0.2));
-    x = sz.x + offX;
-    y = sz.y;
-  } else {
-    // bot-right mode (skyscraper / banner)
-    const offX = clampNum(Math.round(sz.inset * 0.4), 0, 5);
-    const offY = clampNum(Math.round(sz.inset * 0.4), 0, 5);
-    x = sz.right - offX - width;
-    y = sz.bottom - offY - height;
-  }
-  return { x, y, width, height, fontSize };
-}
-
-function placeExtraInfo(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const heading    = ctx.placedElements['heading'];
-  const subheading = ctx.placedElements['subheading'];
-  const cta        = ctx.placedElements['cta-button'];
-
-  const gapY = clampNum(Math.round(h * 0.015), 4, 12);
-  const gapX = clampNum(Math.round(w * 0.015), 4, 16);
-  const srcW = srcEl.width || 100;
-  const srcH = srcEl.height || 16;
-
-  // Candidate 1 — below subheading (or heading if no subheading)
-  const anchor = subheading || heading;
-  if (anchor) {
-    const x1 = anchor.x;
-    const y1 = anchor.y + anchor.height + gapY;
-    const x2 = anchor.x + anchor.width;
-    const y2 = (cta && cta.y > y1) ? (cta.y - gapY) : sz.bottom;
-    const candW = x2 - x1, candH = y2 - y1;
-    if (candW >= 40 && candH >= 12) {
-      return {
-        x: x1,
-        y: y1,
-        width: Math.min(srcW, candW),
-        height: Math.min(srcH, candH)
-      };
-    }
-  }
-
-  // Candidate 2 — right of subheading (banner / horizontal layouts)
-  if (subheading && cta) {
-    const x1 = subheading.x + subheading.width + gapX;
-    const y1 = subheading.y;
-    const x2 = cta.x - gapX;
-    const y2 = subheading.y + subheading.height;
-    const candW = x2 - x1, candH = y2 - y1;
-    if (candW >= 40 && candH >= 12) {
-      return { x: x1, y: y1, width: Math.min(srcW, candW), height: Math.min(srcH, candH) };
-    }
-  }
-
-  return null; // drop
-}
-
-const PLACEMENT_RULES = {
-  'background-image': placeBackgroundImage,
-  'rmit-logo':        placeRmitLogo,
-  'cta-button':       placeCtaButton,
-  'heading':          placeHeading,
-  'subheading':       placeSubheading,
-  'cricos':           placeCricos,
-  'main-image':       placeMainImage,
-  'rfwn':             placeRfwn,
-  'extra-info':       placeExtraInfo
-};
-
-// ----- Cross-role relations -----------------------------------------------
-
-// R1: rmit-logo ↔ rfwn edge alignment. After both place individually, snap
-// rfwn to share the relevant edge with the logo per mode case-analysis.
-function applyRelationR1(ctx) {
-  const logo = ctx.placedElements['rmit-logo'];
-  const rfwn = ctx.placedElements['rfwn'];
-  if (!logo || !rfwn) return;
-  const w = ctx.target.width, h = ctx.target.height;
-  const aspect = w / h;
-
-  if (aspect >= 0.4 && aspect <= 2.0) {
-    // Both top — share top edge
-    rfwn.y = logo.y;
-  } else if (aspect < 0.4) {
-    // Both bottom (skyscraper) — share bottom edge
-    rfwn.y = logo.y + logo.height - rfwn.height;
-  } else {
-    // Both right (banner) — share right edge
-    rfwn.x = logo.x + logo.width - rfwn.width;
-  }
-}
-
-// ----- Main executor -------------------------------------------------------
-
-function runRuleBasedAutoResize(settings) {
-  const src = state.canvases.find(c => c.id === settings.sourceId);
-  if (!src) {
-    showCanvasNotification('Source canvas no longer exists.', { type: 'error' });
-    return;
-  }
-
-  ensureRolesAssigned(src);
-
-  // Carry over: every element on the active frame + persistent layers from
-  // the source. Matches the legacy executor's filter so the behaviour is
-  // consistent with what users expect from autosave/auth.
-  const srcEls = (src.elements || []).filter(el =>
-    el.persistent !== false || el.frameId === state.activeFrameId
-  );
-
-  if (!state.linkGroups) state.linkGroups = {};
-
-  const engineSettings = getAutoResizeSettings();
-  const rulesEnabled  = engineSettings.rulesEnabled;
-  const relationsOn   = engineSettings.relations;
-
-  let placedTotal = 0;
-  let droppedTotal = 0;
-  let canvasesUpdated = 0;
-
-  settings.targetIds.forEach(targetId => {
-    const target = state.canvases.find(c => c.id === targetId);
-    if (!target || target.id === src.id) return;
-
-    // Wipe everything on the target — including locked and hidden — per spec.
-    target.elements = [];
-
-    const ctx = {
-      sourceCanvas: src,
-      target,
-      safezone: computeSafezone(target),
-      placedElements: {},
-      engineSettings
-    };
-
-    // Sort source elements by role priority so later rules can read earlier
-    // placements via ctx.placedElements.
-    const sorted = [...srcEls].sort((a, b) => {
-      const ap = ROLE_PRIORITIES[a.role || 'misc'] ?? 99;
-      const bp = ROLE_PRIORITIES[b.role || 'misc'] ?? 99;
-      return ap - bp;
-    });
-
-    sorted.forEach(srcEl => {
-      const role = srcEl.role || 'misc';
-      const cat  = getElementCategory(srcEl) || srcEl.type;
-
-      // Misc / unassigned handling
-      if (role === 'misc') {
-        if (!settings.includeUnassigned) {
-          droppedTotal++;
-          return;
-        }
-        const clone = cloneSourceElement(srcEl);
-        // Centre on target canvas, keep source size (clamped to fit).
-        clone.width  = Math.min(srcEl.width  || 100, target.width  - 8);
-        clone.height = Math.min(srcEl.height || 100, target.height - 8);
-        clone.x = Math.max(0, Math.round((target.width  - clone.width)  / 2));
-        clone.y = Math.max(0, Math.round((target.height - clone.height) / 2));
-        wireLinkGroup(srcEl, clone, role, cat);
-        target.elements.push(clone);
-        placedTotal++;
-        return;
-      }
-
-      // Per-role engine toggle — if the user disabled this rule in settings,
-      // drop the element on every target (treat as if rule returned null).
-      if (rulesEnabled[role] === false) {
-        droppedTotal++;
-        return;
-      }
-
-      const placer = PLACEMENT_RULES[role];
-      const geom = placer ? placer(srcEl, target, ctx) : null;
-      if (!geom) { droppedTotal++; return; }
-
-      const clone = cloneSourceElement(srcEl);
-      clone.x = geom.x;
-      clone.y = geom.y;
-      clone.width  = Math.max(1, geom.width);
-      clone.height = Math.max(1, geom.height);
-      if (typeof geom.fontSize === 'number') clone.fontSize = geom.fontSize;
-
-      // Buttons with autoHug need their width recomputed from the new text/font.
-      if (clone.type === 'button' && clone.autoHug && typeof measureButtonWidth === 'function') {
-        clone.width = measureButtonWidth(clone);
-      }
-
-      wireLinkGroup(srcEl, clone, role, cat);
-      target.elements.push(clone);
-      ctx.placedElements[role] = clone;
-      placedTotal++;
-    });
-
-    // Cross-role pass — R1 only for now, gated by settings.
-    if (relationsOn.r1 !== false) applyRelationR1(ctx);
-
-    canvasesUpdated++;
-  });
-
-  cleanupLinkGroups();
-
-  const finalize = () => {
-    pushHistory();
-    render();
-    showCanvasNotification(
-      `Auto-Resize: ${canvasesUpdated} canvas${canvasesUpdated === 1 ? '' : 'es'} updated · ${placedTotal} placed, ${droppedTotal} dropped`,
-      { type: 'success' }
-    );
-  };
-
-  if (engineSettings.showProgress !== false) {
-    showFakeAutoResizeProgress({
-      sourceCanvas: src,
-      sourceElementCount: srcEls.length,
-      targetCount: canvasesUpdated,
-      placedCount: placedTotal,
-      droppedCount: droppedTotal
-    }, finalize);
-  } else {
-    finalize();
-  }
-}
-
-// ----- Auto-resize engine settings (persisted in state) ------------------
-// Each rule + relation can be toggled off. Defaults: everything on,
-// behaviour toggles match the rules-doc defaults.
-const AUTO_RESIZE_DEFAULT_SETTINGS = {
-  rulesEnabled: {
-    'background-image': true,
-    'rmit-logo':        true,
-    'cta-button':       true,
-    'heading':          true,
-    'subheading':       true,
-    'cricos':           true,
-    'main-image':       true,
-    'rfwn':             true,
-    'extra-info':       true
-  },
-  relations: {
-    r1: true   // rmit-logo ↔ rfwn edge alignment
-  },
-  behaviour: {
-    allowCoverFallback: true,   // main-image: contain → cover at <60% fill
-    showProgress:       true    // fake technical loading overlay
-  },
-  showProgress: true             // (mirrored for fast top-level read)
-};
-
-function getAutoResizeSettings() {
-  if (!state.autoResizeSettings) {
-    state.autoResizeSettings = JSON.parse(JSON.stringify(AUTO_RESIZE_DEFAULT_SETTINGS));
-  }
-  // Fill in any missing keys (e.g. project saved before this version).
-  const s = state.autoResizeSettings;
-  if (!s.rulesEnabled) s.rulesEnabled = { ...AUTO_RESIZE_DEFAULT_SETTINGS.rulesEnabled };
-  if (!s.relations)    s.relations    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.relations };
-  if (!s.behaviour)    s.behaviour    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour };
-  // Backwards-compat: showProgress was originally top-level. Honour it if set.
-  if (typeof s.showProgress !== 'boolean') s.showProgress = s.behaviour.showProgress !== false;
-  return s;
-}
-
-// ----- Fake technical loading overlay -------------------------------------
-// Pure theatre. Computes nothing — the placement work has already happened
-// when this is called. The overlay just delays the visible render() so the
-// user gets a satisfying "the engine is working" cue.
-function showFakeAutoResizeProgress(stats, onComplete) {
-  const bg = document.createElement('div');
-  bg.id = 'ar-progress-overlay';
-  bg.style.cssText = `
-    position: fixed; inset: 0; z-index: 100050;
-    background: rgba(8, 10, 18, 0.78); backdrop-filter: blur(4px);
-    display: flex; align-items: center; justify-content: center;
-    font-family: ui-monospace, "SF Mono", Consolas, Menlo, monospace;
-    color: #c8f9e2;
-  `;
-
-  const elemCount = stats.sourceElementCount;
-  const tgtCount  = stats.targetCount;
-  const src = stats.sourceCanvas;
-  const srcLabel = `${src.width}×${src.height}`;
-
-  // Scripted "pipeline" steps. Total run-time is randomised 2.0–3.0s, and
-  // the per-step intervals are random-weighted so the progression stutters
-  // — some steps tick rapidly, others sit for a long beat before the next.
-  // Pure cosmetics: the actual work is already done.
-  const stepLabels = [
-    `Initializing visual analysis pipeline`,
-    `Uploading source canvas (${srcLabel})`,
-    `Loading Adflow Visual Model v2.4`,
-    `Tokenizing ${elemCount} element${elemCount === 1 ? '' : 's'}`,
-    `Detecting roles via heuristic ensemble`,
-    `Computing safezone parametrics (${tgtCount} target${tgtCount === 1 ? '' : 's'})`,
-    `Solving anchor + size constraints`,
-    `Applying cross-role relations (R1)`,
-    `Synchronizing link groups`,
-    `Finalizing per-canvas placements`
-  ];
-
-  // Random total duration in [2000, 3000] ms. Reserve a 280 ms tail for the
-  // "done" capstone so the last checkmark doesn't appear simultaneously
-  // with the overlay closing.
-  const TOTAL_MS = 2000 + Math.floor(Math.random() * 1001);
-  const stepWindow = TOTAL_MS - 280;
-
-  // Each step gets a random weight between 0.4 and 1.6 of average. The
-  // cumulative sum (normalised against stepWindow) gives the delay at which
-  // its checkmark appears. Variance between adjacent weights produces the
-  // stutter — sometimes two steps fire ~80ms apart, sometimes one sits
-  // alone for ~450ms before the next.
-  const weights = stepLabels.map(() => 0.4 + Math.random() * 1.2);
-  const wSum = weights.reduce((a, b) => a + b, 0);
-  let acc = 0;
-  const steps = stepLabels.map((label, i) => {
-    acc += (weights[i] / wSum) * stepWindow;
-    return { label, delay: Math.round(acc) };
-  });
-
-  bg.innerHTML = `
-    <div style="
-      width: 520px; max-width: calc(100vw - 48px);
-      background: #0d111c;
-      border: 1px solid rgba(124, 92, 255, 0.4);
-      border-radius: 8px;
-      box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(124, 92, 255, 0.15) inset;
-      padding: 18px 22px 16px 22px;
-      font-size: 11.5px; line-height: 1.55;
-    ">
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-        <span class="ar-prog-spinner" style="
-          display:inline-block; width:10px; height:10px;
-          border:1.5px solid rgba(124, 92, 255, 0.35);
-          border-top-color: #b7a3ff; border-radius:50%;
-          animation: ar-prog-spin 0.7s linear infinite;
-        "></span>
-        <span style="color:#b7a3ff; font-weight:600; letter-spacing:0.5px;">Adflow Auto-Resize Engine</span>
-        <span style="color:#5b6478; margin-left:auto; font-size:10px;">v2.0 · rule-based</span>
-      </div>
-      <div style="color:#5b6478; font-size:10px; margin-bottom:10px; border-bottom:1px dashed rgba(124, 92, 255, 0.18); padding-bottom:8px;">
-        pid 0x${Math.floor(Math.random() * 0xFFFF).toString(16).padStart(4, '0')} · ${new Date().toISOString().split('T')[1].split('.')[0]} UTC · stream: visual_pipeline.v2
-      </div>
-      <div id="ar-prog-log" style="min-height:200px; max-height:280px; overflow-y:auto;"></div>
-      <div style="margin-top:12px; height:4px; border-radius:2px; background:rgba(124, 92, 255, 0.12); overflow:hidden;">
-        <div id="ar-prog-bar" style="height:100%; width:0%; background:linear-gradient(90deg, #7c5cff, #b7a3ff); transition: width 0.12s linear;"></div>
-      </div>
-      <div style="margin-top:6px; font-size:9.5px; color:#5b6478; display:flex; justify-content:space-between;">
-        <span id="ar-prog-percent">0%</span>
-        <span>${elemCount} layer${elemCount === 1 ? '' : 's'} · ${tgtCount} target${tgtCount === 1 ? '' : 's'}</span>
-      </div>
-    </div>
-  `;
-
-  // Inject keyframes once.
-  if (!document.getElementById('ar-prog-keyframes')) {
-    const style = document.createElement('style');
-    style.id = 'ar-prog-keyframes';
-    style.textContent = `
-      @keyframes ar-prog-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      @keyframes ar-prog-fade { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: translateY(0); } }
-    `;
-    document.head.appendChild(style);
-  }
-
-  document.body.appendChild(bg);
-  const log = bg.querySelector('#ar-prog-log');
-  const bar = bg.querySelector('#ar-prog-bar');
-  const pct = bg.querySelector('#ar-prog-percent');
-
-  // Schedule each step's "checkmark" appearance + progress bar tick.
-  steps.forEach((step, i) => {
-    setTimeout(() => {
-      const row = document.createElement('div');
-      row.style.cssText = `animation: ar-prog-fade 0.18s ease-out; margin-bottom:2px;`;
-      row.innerHTML = `
-        <span style="color:#34d399; font-weight:700; margin-right:8px;">[✓]</span><span style="color:#c8f9e2;">${step.label}</span>
-      `;
-      log.appendChild(row);
-      log.scrollTop = log.scrollHeight;
-      const p = Math.round(((i + 1) / steps.length) * 100);
-      bar.style.width = p + '%';
-      pct.textContent = p + '%';
-    }, step.delay);
-  });
-
-  // Done — close overlay and run the deferred render/toast.
-  setTimeout(() => {
-    bar.style.width = '100%';
-    pct.textContent = '100%';
-    const done = document.createElement('div');
-    done.style.cssText = `margin-top:6px; padding-top:6px; border-top:1px dashed rgba(52, 211, 153, 0.25); animation: ar-prog-fade 0.2s ease-out;`;
-    done.innerHTML = `<span style="color:#34d399; font-weight:700;">→</span> <span style="color:#a7f0d2;">done — ${stats.placedCount} placed, ${stats.droppedCount} dropped across ${stats.targetCount} canvas${stats.targetCount === 1 ? '' : 'es'}.</span>`;
-    log.appendChild(done);
-
-    // Stop the spinner (swap the spinner border to a static check).
-    const spinner = bg.querySelector('.ar-prog-spinner');
-    if (spinner) {
-      spinner.style.animation = 'none';
-      spinner.style.borderColor = '#34d399';
-      spinner.style.borderTopColor = '#34d399';
-    }
-  }, TOTAL_MS - 80);
-
-  setTimeout(() => {
-    bg.remove();
-    if (typeof onComplete === 'function') onComplete();
-  }, TOTAL_MS + 280);
-}
-
-
-// ----- Auto-Resize Settings modal (gear icon) -----------------------------
-function openAutoResizeSettingsModal() {
-  const s = getAutoResizeSettings();
-
-  // Each rule gets a row in the modal listing its role, behaviour summary,
-  // and an on/off checkbox. The summary text mirrors the rules doc so users
-  // can see what each rule actually does.
-  const ruleRows = [
-    { role: 'background-image', label: 'Background image', desc: 'Mirror the source bg coverage proportionally onto every target. Full-fill is a fast path.' },
-    { role: 'rmit-logo',        label: 'RMIT logo',        desc: 'Top-right of safezone, except on ultra-narrow skyscrapers (aspect < 0.4) where it goes bot-left.' },
-    { role: 'cta-button',       label: 'CTA button',       desc: 'Tall canvases: bot-center of safezone. Wide canvases: middle-right at canvas.w × 0.84.' },
-    { role: 'heading',          label: 'Heading',          desc: 'Top-left of safezone. Width adapts by canvas aspect (vertical-stack / wide-banner / square-ish).' },
-    { role: 'subheading',       label: 'Subheading',       desc: 'Anchored to heading.bottom-left with a small gap. Inherits heading width.' },
-    { role: 'cricos',           label: 'CRICOS line',      desc: 'Bot-left of canvas (not safezone). Font auto-scales with min(canvas.w, canvas.h), floor 4.' },
-    { role: 'main-image',       label: 'Main image',       desc: 'Slot-search remainder after text + CTA + logo place. Contain by source aspect; cover fallback at <60% fill.' },
-    { role: 'rfwn',             label: 'RFWN tagline',     desc: 'Top-left if aspect 0.4–2.0; bot-right otherwise. Snaps to logo via the R1 relation.' },
-    { role: 'extra-info',       label: 'Extra info',       desc: 'Slot-searches residual gaps below/beside the text block. Dropped if no slot fits.' }
-  ];
-
-  const relationRows = [
-    { id: 'r1', label: 'Logo ↔ RFWN edge alignment', desc: 'After both place individually, RFWN snaps to share the relevant safezone edge with the logo (top / bottom / right depending on aspect).' }
-  ];
-
-  const bg = document.createElement('div');
-  bg.className = 'modal-bg';
-  bg.innerHTML = `
-    <div class="modal" style="max-width:640px;">
-      <div class="modal-head">
-        <h2>Auto-Resize Settings</h2>
-        <button class="btn" id="ars-modal-close" title="Close dialog">Close</button>
-      </div>
-      <div class="modal-body" style="max-height:70vh; overflow-y:auto;">
-        <div style="font-size:11px; color:var(--text-muted); margin-bottom:14px;">
-          Every rule and behaviour the rule-based engine uses. Toggling a rule off skips its placement and drops matching elements on target canvases.
-        </div>
-
-        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Placement rules</div>
-        <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:18px;">
-          ${ruleRows.map(r => `
-            <label class="ars-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; background:var(--bg-deep); border:1px solid var(--border-light); border-radius:4px; cursor:pointer;">
-              <input type="checkbox" class="ars-rule" data-role="${r.role}" ${s.rulesEnabled[r.role] !== false ? 'checked' : ''} style="margin-top:2px; flex-shrink:0;" />
-              <div style="flex:1; min-width:0;">
-                <div style="font-size:12px; font-weight:600; color:var(--text-main);">${r.label}</div>
-                <div style="font-size:10.5px; color:var(--text-muted); line-height:1.45; margin-top:2px;">${r.desc}</div>
-              </div>
-            </label>
-          `).join('')}
-        </div>
-
-        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Cross-role relations</div>
-        <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:18px;">
-          ${relationRows.map(r => `
-            <label class="ars-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; background:var(--bg-deep); border:1px solid var(--border-light); border-radius:4px; cursor:pointer;">
-              <input type="checkbox" class="ars-rel" data-rel="${r.id}" ${s.relations[r.id] !== false ? 'checked' : ''} style="margin-top:2px; flex-shrink:0;" />
-              <div style="flex:1; min-width:0;">
-                <div style="font-size:12px; font-weight:600; color:var(--text-main);">${r.label}</div>
-                <div style="font-size:10.5px; color:var(--text-muted); line-height:1.45; margin-top:2px;">${r.desc}</div>
-              </div>
-            </label>
-          `).join('')}
-        </div>
-
-        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Behaviour</div>
-        <div style="display:flex; flex-direction:column; gap:4px;">
-          <label class="ars-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; background:var(--bg-deep); border:1px solid var(--border-light); border-radius:4px; cursor:pointer;">
-            <input type="checkbox" id="ars-cover" ${s.behaviour.allowCoverFallback !== false ? 'checked' : ''} style="margin-top:2px; flex-shrink:0;" />
-            <div style="flex:1; min-width:0;">
-              <div style="font-size:12px; font-weight:600; color:var(--text-main);">Allow cover fallback for the main image</div>
-              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.45; margin-top:2px;">When contain would leave the image filling less than 60% of its slot, switch to cover (fill the slot, allow canvas-edge clipping). Off: always contain even if visually small.</div>
-            </div>
-          </label>
-          <label class="ars-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; background:var(--bg-deep); border:1px solid var(--border-light); border-radius:4px; cursor:pointer;">
-            <input type="checkbox" id="ars-progress" ${s.showProgress !== false ? 'checked' : ''} style="margin-top:2px; flex-shrink:0;" />
-            <div style="flex:1; min-width:0;">
-              <div style="font-size:12px; font-weight:600; color:var(--text-main);">Show technical progress overlay</div>
-              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.45; margin-top:2px;">Display a ~2-second pipeline-style loading panel while the engine runs. Off: results appear instantly.</div>
-            </div>
-          </label>
-        </div>
-      </div>
-      <div class="modal-foot" style="display:flex; justify-content:space-between; gap:8px;">
-        <button class="btn" id="ars-reset" style="color:var(--text-muted);">Reset to defaults</button>
-        <div style="display:flex; gap:8px;">
-          <button class="btn" id="ars-cancel">Cancel</button>
-          <button class="btn primary" id="ars-save">Save</button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(bg);
-
-  const close = () => {
-    bg.remove();
-    document.removeEventListener('keydown', escHandler);
-  };
-  const escHandler = (e) => { if (e.key === 'Escape') close(); };
-  document.addEventListener('keydown', escHandler);
-
-  bg.querySelector('#ars-modal-close').onclick = close;
-  bg.querySelector('#ars-cancel').onclick = close;
-  bg.onclick = (e) => { if (e.target === bg) close(); };
-
-  bg.querySelector('#ars-reset').onclick = () => {
-    state.autoResizeSettings = JSON.parse(JSON.stringify(AUTO_RESIZE_DEFAULT_SETTINGS));
-    close();
-    openAutoResizeSettingsModal();   // re-open with defaults applied
-  };
-
-  bg.querySelector('#ars-save').onclick = () => {
-    const next = getAutoResizeSettings();
-    bg.querySelectorAll('.ars-rule').forEach(cb => {
-      next.rulesEnabled[cb.dataset.role] = cb.checked;
-    });
-    bg.querySelectorAll('.ars-rel').forEach(cb => {
-      next.relations[cb.dataset.rel] = cb.checked;
-    });
-    next.behaviour.allowCoverFallback = bg.querySelector('#ars-cover').checked;
-    next.behaviour.showProgress       = bg.querySelector('#ars-progress').checked;
-    next.showProgress                 = next.behaviour.showProgress;
-    state.autoResizeSettings = next;
-    pushHistory();
-    close();
-    showCanvasNotification('Auto-Resize settings saved.', { type: 'success' });
-  };
-}
-
-document.getElementById('btn-ai-resize-settings')?.addEventListener('click', openAutoResizeSettingsModal);
-
-
-// Hook src ↔ target into a link group so cross-canvas style/content sync
-// works just like the legacy executor sets up.
-function wireLinkGroup(srcEl, target, role, cat) {
-  let gid = srcEl.linkGroupId;
-  if (!gid || !state.linkGroups[gid]) {
-    gid = 'lg_' + uid();
-    state.linkGroups[gid] = {
-      id: gid,
-      name: baseLayerLabel(srcEl),
-      category: cat,
-      syncProperties: syncDefaultsForRole(legacyRoleForCategory(role, cat), cat)
-    };
-    srcEl.linkGroupId = gid;
-  } else {
-    // Refresh sync defaults so existing groups get role-appropriate behaviour.
-    state.linkGroups[gid].syncProperties = syncDefaultsForRole(legacyRoleForCategory(role, cat), cat);
-  }
-  target.linkGroupId = gid;
-  applyLinkSync(srcEl, target, state.linkGroups[gid]);
-}
-
-// Map our v2 role IDs to the legacy role names that syncDefaultsForRole
-// already understands. The legacy helper only branches on category really,
-// but we keep the role argument for forward-compat.
-function legacyRoleForCategory(roleV2, cat) {
-  switch (roleV2) {
-    case 'heading':          return 'heading';
-    case 'subheading':       return 'subheading';
-    case 'cta-button':       return 'button';
-    case 'rmit-logo':        return 'logo';
-    case 'cricos':           return 'compliance';
-    case 'rfwn':             return 'compliance';
-    case 'extra-info':       return 'text';
-    case 'main-image':       return 'image';
-    case 'background-image': return 'bgimage';
-    default:                 return 'other';
-  }
-}
-
-document.getElementById('btn-ai-resize').addEventListener('click', openAutoResizeModal);
-
-document.getElementById('btn-clear-everything')?.addEventListener('click', () => {
-  if (!confirm("Are you sure you want to clear all elements from all canvases? This cannot be undone.")) return;
-  state.canvases.forEach(c => {
-    c.elements = [];
-  });
+function clearAllCanvasesContents() {
+  if (!confirm("Clear every element on EVERY canvas? This cannot be undone (use Ctrl+Z to restore).")) return;
+  state.canvases.forEach(c => { c.elements = []; });
   state.linkGroups = {};
   state.selectedElementId = null;
   state.layerSelection = [];
   pushHistory();
   render();
-});
+}
 
 document.getElementById('btn-preview').addEventListener('click', () => {
   const c = getActiveCanvas(); if (!c) return;
@@ -12348,14 +11191,14 @@ const DOCS_SECTIONS = [
         <p>See <a href="#" data-doc-sec="multi-canvas" data-doc-sub="auto-link" style="color:var(--accent-light); font-weight: 500;">Link Groups</a> for the full mechanics.</p>
       `},
       { id: 'auto-resize-glance', title: 'Auto-Resize at a glance', body: `
-        <p>Design <b>one</b> canvas exactly how you want it. Click the canvas to select it, hit <b>Auto-resize from selected</b> in the Tools panel. Adflow reads each element (heading, button, logo, background…), wipes the other canvases, and rebuilds them with format-aware layouts — auto-linking everything so future edits stay in sync.</p>
+        <p>Design <b>one</b> canvas exactly how you want it. Click <b>Auto-resize</b> at the bottom of the left panel (or right-click any canvas and pick <b>Auto-Resize</b> at the top of the menu). A rule-based engine reads each element's role (heading, button, logo, background, CRICOS, RFWN, image…), wipes the other canvases, and rebuilds them with format-aware placements — auto-linking everything so future edits stay in sync.</p>
         <p style="color:var(--text-muted);">Full breakdown under <a href="#" data-doc-sec="auto-resize" data-doc-sub="auto-resize-overview" style="color:var(--accent-light); font-weight: 500;">Auto-Resize ✨</a>.</p>
       `},
       { id: 'first-project', title: 'Your first project', body: `
         <ol>
           <li><b>File → New Project…</b>, tick the sizes you need, name it, set the default background and ad-weight limit.</li>
           <li>Pick the size closest to your intended layout. Add a heading, subheading, button, and your logo.</li>
-          <li>Click that canvas, then <b>Auto-resize from selected</b> to fill in the rest of the sizes.</li>
+          <li>Click that canvas, then hit <b>Auto-resize</b> at the bottom of the left panel to fill in the rest of the sizes.</li>
           <li>Refine. Add per-frame animation if you want movement.</li>
           <li><b>Export</b> from the top bar → ZIP per canvas, ready to upload.</li>
         </ol>
@@ -12483,25 +11326,267 @@ const DOCS_SECTIONS = [
   {
     id: 'auto-resize', title: 'Auto-Resize ✨',
     subs: [
-      { id: 'auto-resize-overview', title: 'What it does', body: `
-        <p>Design one canvas. Click <b>Auto-resize from selected</b> in the Tools panel. The other canvases are cleared (you confirm first) and rebuilt with format-aware layouts of the same elements, all linked back to the source.</p>
-        <p>The whole operation is a single Undo step.</p>
-      `},
-      { id: 'role-detection', title: 'Role detection', body: `
-        <p>Each element on the source canvas is classified — first by its layer name (e.g. <i>heading</i>, <i>logo</i>), then by heuristics if the name is generic. Possible roles: heading, subheading, button, logo, shape, background image (anything filling the canvas), or a generic fallback.</p>
-        <p>Tip: name your layers ahead of time for the best results.</p>
-      `},
-      { id: 'format-presets', title: 'Format presets', body: `
-        <p>Every target canvas is matched to a format class — skyscraper, rectangle, leaderboard, billboard, mobile. Each role has presets per format:</p>
+      { id: 'auto-resize-overview', title: 'Overview & philosophy', body: `
+        <p>Adflow's Auto-Resize is a <b>deterministic rule-based placement engine</b> — not a generative model, not an LLM, not a black box. Given a source canvas you've designed, it propagates every element to every other canvas at format-appropriate positions, sizes, and font sizes, using parametric formulas tuned against a hand-built reference set of six canvas geometries.</p>
+
+        <p>Engine version is tracked independently of the Adflow app version. Bumping the engine on substantive rule or behaviour changes means a project's resize output is reproducible for that specific engine generation. The version pill in the Settings modal (and the technical progress overlay) surfaces the running engine — currently <b>v2.7</b>.</p>
+
+        <p><b>Design principles:</b></p>
         <ul>
-          <li><b>CTA:</b> bottom-centre on tall/rectangle; right-centre on wide/mobile.</li>
-          <li><b>Heading:</b> top-left, reserves space for the button on wide formats.</li>
-          <li><b>Logo:</b> pins top-right.</li>
-          <li><b>Background image:</b> fills the frame full-bleed.</li>
+          <li><b>Per-target independence.</b> Each target canvas is computed from the source independently — no shared state between targets, parallelisable in principle.</li>
+          <li><b>Single undo step.</b> The whole resize collapses into one history entry. <span class="kbd">Ctrl+Z</span> restores every canvas at once.</li>
+          <li><b>Source canvas inviolate.</b> The source is never mutated; only its roles are re-detected.</li>
+          <li><b>No-drop policy.</b> Every element with a known role lands somewhere on every target — never silently lost. Only role <code>misc</code> elements can be dropped, and only when "Include unassigned" is off.</li>
+          <li><b>Parametric, not table-driven.</b> Rule formulas reference <code>canvas.w</code>, <code>canvas.h</code>, <code>sqrt(area)</code>, <code>aspect</code>, <code>min/max</code> — they generalise to canvas sizes the engine has never seen.</li>
+        </ul>
+
+        <p><b>Two entry points:</b></p>
+        <ul>
+          <li>The <b>Auto-resize</b> button anchored at the bottom of the left panel column. Respects the canvas-selection-dialogue setting — can be made one-click instant.</li>
+          <li>The canvas right-click menu → <b>Auto-Resize</b> (top of the menu, directly under Preview). Always opens the canvas-selection dialogue.</li>
         </ul>
       `},
-      { id: 'auto-linking-rebuild', title: 'Auto-linking the rebuild', body: `
-        <p>Every propagated element joins its own Link Group with sync defaults tuned to its role: content and appearance sync (text, typeface, colours, stroke, animation), but <b>position, dimensions and font size stay independent per canvas</b> so later edits to wording or colour ripple everywhere without disturbing each size's tuned layout.</p>
+
+      { id: 'roles-taxonomy', title: 'The 9-role taxonomy', body: `
+        <p>Every element on the source canvas is classified into one of 10 roles. Nine carry placement rules; <code>misc</code> is the unassigned fallback.</p>
+
+        <table style="width:100%; border-collapse:collapse; font-size:12px; margin:8px 0 14px 0;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border-light); text-align:left; color:var(--text-muted);">
+              <th style="padding:6px 8px;">Role</th>
+              <th style="padding:6px 8px;">Priority</th>
+              <th style="padding:6px 8px;">Strategy</th>
+              <th style="padding:6px 8px;">Required</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>background-image</code></td><td style="padding:5px 8px;">1</td><td style="padding:5px 8px;">source-mirror</td><td style="padding:5px 8px;">no</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>rmit-logo</code></td><td style="padding:5px 8px;">3</td><td style="padding:5px 8px;">anchor (top-right)</td><td style="padding:5px 8px;">yes</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>cta-button</code></td><td style="padding:5px 8px;">4</td><td style="padding:5px 8px;">anchor (tall / wide)</td><td style="padding:5px 8px;">no</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>heading</code></td><td style="padding:5px 8px;">5</td><td style="padding:5px 8px;">anchor (top-left)</td><td style="padding:5px 8px;">yes</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>subheading</code></td><td style="padding:5px 8px;">6</td><td style="padding:5px 8px;">anchor → heading</td><td style="padding:5px 8px;">yes</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>cricos</code></td><td style="padding:5px 8px;">7</td><td style="padding:5px 8px;">anchor (canvas bot-left)</td><td style="padding:5px 8px;">yes</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>main-image</code></td><td style="padding:5px 8px;">7</td><td style="padding:5px 8px;">slot-search</td><td style="padding:5px 8px;">no</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>rfwn</code></td><td style="padding:5px 8px;">8</td><td style="padding:5px 8px;">anchor + R1 snap to logo</td><td style="padding:5px 8px;">no</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>extra-info</code></td><td style="padding:5px 8px;">9</td><td style="padding:5px 8px;">slot-search</td><td style="padding:5px 8px;">no</td></tr>
+            <tr><td style="padding:5px 8px;"><code>misc</code></td><td style="padding:5px 8px;">99</td><td style="padding:5px 8px;">centred or dropped</td><td style="padding:5px 8px;">—</td></tr>
+          </tbody>
+        </table>
+
+        <p><b>Priority drives placement order.</b> The engine sorts source elements by their role's priority before placing, so later rules (e.g. main-image at priority 7) can read the geometry of already-placed earlier rules (heading at 5, cta at 4) via <code>ctx.placedElements[role]</code>. This enables slot-search rules to compute "the largest empty rectangle remaining" deterministically.</p>
+
+        <p><b>Required roles</b> never drop. If a placement rule returns null (slot crushed beyond viability), a fallback geometry is supplied so the element always lands somewhere on every target.</p>
+      `},
+
+      { id: 'role-detection', title: 'Role detection & manual override', body: `
+        <p>The detector — <code>autoAssignRole(el, canvas)</code> — runs a layered heuristic ladder. The first match wins:</p>
+
+        <ol>
+          <li><b>Layer name match</b> (highest trust): <code>name === 'rfwn'</code>, <code>name.includes('logo')</code>, <code>name === 'background'</code>, <code>name.includes('headline')</code>, etc. If you've named your layers, the detector trusts you.</li>
+          <li><b>Text content match</b> for text elements: <code>'cricos'</code> or <code>/\\brto\\b/</code> → cricos. <code>'ready for' + 'next'</code> → rfwn.</li>
+          <li><b>Ranking-based match</b> for text elements: largest <code>fontSize</code> on the canvas → heading. Second largest → subheading. <code>persistent === 'top'</code> with no other match → cricos.</li>
+          <li><b>Type + aspect match</b> for images: <code>aspect ≥ 2.0</code> AND <code>area &lt; 0.18</code> → rmit-logo (the RMIT lockup has a 2.85:1 ratio and is typically &lt;10% of canvas area). <code>area ≥ 0.7</code> OR <code>persistent === 'bottom'</code> → background-image.</li>
+          <li><b>Type fallback</b>: buttons → cta-button, images → main-image, shapes → misc, loose text → extra-info.</li>
+        </ol>
+
+        <p><b>Detection is idempotent and refreshing.</b> Every <code>render()</code> call re-runs the detector on auto-assigned roles (where <code>el.roleAuto === true</code>), so improvements to the detector's heuristics take effect on existing projects automatically without manual reset. Roles you've manually set are locked (<code>el.roleAuto === false</code>) and never re-detected.</p>
+
+        <p><b>Manual override.</b> A third icon column in the Layers panel — between the layer name and the lock/visibility eyes — shows each element's role status. Click to open a popup listing all 10 roles plus a "Reset to auto-detect" entry. Manually-assigned roles render the icon in <span style="color:var(--accent-base); font-weight:600;">accent purple</span>; auto-detected ones render in muted grey. Hover the icon for a tooltip naming the current role.</p>
+      `},
+
+      { id: 'placement-rules', title: 'Placement rules — anchors & formulas', body: `
+        <p>Each rule is a pure function — <code>placer(srcEl, target, ctx) → {x, y, width, height, fontSize?, maxFontSize?, textAlign?}</code> or <code>null</code>. Returning these fields produces the final geometry; the executor clones the source element and applies these properties to the clone.</p>
+
+        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">background-image · priority 1</h4>
+        <p><b>Source-mirror strategy.</b> Normalises the source rect against the source canvas (<code>x/srcW</code>, <code>y/srcH</code>, <code>w/srcW</code>, <code>h/srcH</code>), then re-applies the same ratios on the target. Fast-path detects 100% canvas fills (<code>(0, 0, 1, 1)</code>) and emits exact canvas dimensions — covers the most common case where the background is just a coloured rect filling the canvas.</p>
+
+        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">rmit-logo · priority 3 · required</h4>
+        <p>Always top-right of safezone. No mode switching since v2.5.</p>
+        <ul>
+          <li><b>Height:</b> <code>clamp(15, h × 0.2 + 8, 30)</code> on banners (<code>h ≤ 100</code>); <code>clamp(15, sqrt(w × h) × 0.075, 40)</code> otherwise.</li>
+          <li><b>Width:</b> derived from the source asset's intrinsic aspect ratio (~2.85 for the RMIT lockup). Width = <code>height × srcAspect</code>.</li>
+          <li><b>Tall format shrink:</b> on canvases where <code>h &gt; w</code>, height is multiplied by 0.75 so the logo shares the top row comfortably with RFWN top-left.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">cta-button · priority 4</h4>
+        <p>Two modes by canvas aspect.</p>
+        <ul>
+          <li><b>Tall mode</b> (<code>aspect ≤ 2.0</code>): bot-center of safezone. Height <code>clamp(14, sqrt(area) × 0.11, 53)</code>, width <code>clamp(70, height × 3.7, min(200, safezone.w))</code>. Vertical offset from safezone bottom: <code>clamp(15, h × 0.04, 30)</code>.</li>
+          <li><b>Wide mode</b> (<code>aspect &gt; 2.0</code>): mid-right, button-right edge at <code>canvas.w × 0.84</code>, vertically centred in the canvas. Width <code>clamp(70, height × 4.2, 200)</code>.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">heading · priority 5 · required</h4>
+        <p>Top-left of safezone (or vertically centred on wide banners). Width adapts by canvas mode:</p>
+        <ul>
+          <li><b>Stack</b> (<code>h ≥ 300</code>): full <code>safezone.w</code>.</li>
+          <li><b>Wide banner</b> (<code>h ≤ 100</code>, <code>aspect &gt; 2</code>): <code>clamp(80, w × 0.42, 400)</code>; heading box is vertically centred in canvas so the side-by-side heading + subhead pair sits at canvas mid-y.</li>
+          <li><b>Square-ish</b>: <code>clamp(120, safezone.w × 0.55, 270)</code>.</li>
+        </ul>
+        <ul>
+          <li><b>Font size:</b> <code>clamp(9, h × 0.22, 22)</code> on banners (<code>h ≤ 100</code>); <code>clamp(16, sqrt(area) × 0.07, 35)</code> on mid canvases; <code>clamp(22, sqrt(area) × 0.08, 46)</code> on stack mode.</li>
+          <li><b>maxFontSize is locked</b> to the computed font, so the source's autoSize cap (often 68 pt) can't blow past the per-canvas decision.</li>
+          <li><b>Wrap budget</b> (heading.height): 2 lines on banners, 3 lines on stack mode, 4 lines on narrow skyscrapers (<code>w &lt; 200</code>). Sized to track expected text rather than reserve generous trailing padding.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">subheading · priority 6 · required</h4>
+        <p>Anchored to <code>heading.bottom-left</code> with a 4-px gap below the heading box. Width inherits from heading.</p>
+        <ul>
+          <li><b>Font:</b> <code>clamp(8, h × 0.18, 11)</code> for tiny banners (<code>h ≤ 60</code>); <code>clamp(14, h × 0.18, 18)</code> for <code>h ≤ 100</code>; <code>clamp(14, sqrt(area) × 0.06, 28)</code> otherwise.</li>
+          <li><b>Side-by-side mode:</b> on tight horizontal banners (<code>h ≤ 100</code>), subhead sits to the <b>right</b> of heading instead of below — vertically centred on heading's middle.</li>
+          <li><b>No-drop fallback:</b> if no heading was placed (rare), subhead parks at safezone top-left.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">cricos · priority 7 · required</h4>
+        <p>Bot-left of <b>canvas</b> (not safezone — legal compliance text traditionally hugs the canvas edge).</p>
+        <ul>
+          <li><b>Font (dual-source):</b> <code>max(minDim × 0.023, w × 0.008)</code> capped at 7 and floored at 4. Width-based contribution kicks in on banners where minDim is too small to give cricos a legible font.</li>
+          <li><b>Width:</b> hugs content scaled from source.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">main-image · priority 7</h4>
+        <p>Slot-search strategy. Computes the largest empty rectangle remaining after heading + subheading + CTA + logo have placed:</p>
+        <ul>
+          <li><b>Stack mode</b> (<code>h ≥ w</code>): slot from <code>(safezone.x, subheading.bottom + gapY)</code> to <code>(safezone.right, cta.top - gapY)</code>.</li>
+          <li><b>Side-by-side</b> (<code>h &lt; w</code>): slot from <code>(heading.right + gapX, safezone.y)</code> to <code>(cta.left - gapX, safezone.bottom)</code>.</li>
+        </ul>
+        <ul>
+          <li><b>Fitting strategy:</b> contain by source aspect first.</li>
+          <li><b>Cover fallback:</b> when contain would leave the image filling less than 60% of the slot's larger dimension, switch to cover mode (fill the slot, allow canvas-edge clipping). Toggleable in settings.</li>
+          <li><b>No-drop:</b> 24-px floor on width and height — image never shrinks below visibility.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">rfwn · priority 8</h4>
+        <p>Two modes.</p>
+        <ul>
+          <li><b>Top-left</b> (<code>aspect ≤ 2.0</code>): tucked into safezone top-left, <code>textAlign: 'left'</code>.</li>
+          <li><b>Bot-right</b> (<code>aspect &gt; 2.0</code>): tucked into safezone bot-right, <code>textAlign: 'right'</code>.</li>
+        </ul>
+        <ul>
+          <li><b>Text always justifies toward the closest canvas edge — never centred.</b></li>
+          <li><b>Font:</b> <code>clamp(5, sqrt(area) × 0.032, 17)</code>; scaled by 0.8 on tall formats so it doesn't crowd the logo.</li>
+          <li><b>Width:</b> <code>clamp(35, fontSize × 6.8, 100)</code> — sized to fit "what's next" (the longer of the two natural wrap lines) on a single row.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">extra-info · priority 9</h4>
+        <p>Slot-search for residual gaps below or beside the text block. May overlap with main-image and background-image; must not collide with heading / subheading / CTA / logo / RFWN / CRICOS. Falls back to a minimum bot-left placement when no slot fits — no-drop policy.</p>
+
+        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">misc — unassigned fallback</h4>
+        <p>Anything the detector couldn't classify. Behaviour gated by the "Include unassigned" setting:</p>
+        <ul>
+          <li><b>Off (default):</b> dropped on target canvases.</li>
+          <li><b>On:</b> copied to the centre of each target canvas at source dimensions (clamped to fit).</li>
+        </ul>
+        <p><b>Exception:</b> mask shapes (<code>el.isMask === true</code>) are always carried over regardless, because the mask post-pass needs them to overlay the target image.</p>
+      `},
+
+      { id: 'relations-passes', title: 'Cross-role relations & post-placement passes', body: `
+        <p>After per-role placement completes for a target canvas, four post-passes run in sequence:</p>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">1. R1 — logo ↔ RFWN edge alignment</h4>
+        <p>The brand lockup and the tagline read as a pair. R1 snaps RFWN to share the relevant safezone edge with the logo:</p>
+        <ul>
+          <li><code>aspect ≤ 2.0</code> → both top-anchored → <code>rfwn.y = logo.y</code> (share top edge).</li>
+          <li><code>aspect &gt; 2.0</code> → both right-anchored → <code>rfwn.x = logo.x + logo.width - rfwn.width</code> (share right edge).</li>
+        </ul>
+        <p>Toggleable in settings. Disabling it lets RFWN and logo sit at their independently-computed positions.</p>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">2. Mask post-pass</h4>
+        <p>For every cloned shape with <code>isMask: true</code>: looks up its source image's clone via a <code>sourceToTargetId</code> map populated during placement, remaps <code>maskTargetId</code> to the new image id, and aligns the shape's x/y/w/h to the target image's geometry so the mask follows the photo to its new placement. If the target image didn't transfer (e.g. main-image rule disabled, or source image deleted), the mask flag is removed so the shape renders as a normal shape rather than a silent cover.</p>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">3. No-touch collision resolution</h4>
+        <p>Five "no-touch" roles must never overlap each other: <code>rmit-logo</code>, <code>cta-button</code>, <code>heading</code>, <code>subheading</code>, <code>rfwn</code>. The pass walks pairs in priority order; when two overlap, the lower-priority element shrinks along whichever axis the centres are most offset, with a 4-px clearance gap. The higher-priority element never moves.</p>
+        <p>Single-pass (not iterative) — covers the cases the reference set surfaces. Future canvases that need cascading resolution would extend this to a fixed-point loop.</p>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">4. Canvas-bounds clamp</h4>
+        <p>Every role except <code>main-image</code> and <code>background-image</code> is forced fully inside the canvas. Off-canvas portions get clipped by adjusting x / y / width / height. Cover-mode images deliberately bleed past canvas edges, so they're exempt.</p>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Order matters</h4>
+        <p>R1 runs before the collision pass so the snap can't be undone by a clearance shrink. The mask pass runs after R1 but before collision so masks align with their images first, then collisions only run against the five no-touch roles (masks not included). Canvas-clamp runs last so any earlier pass that pushed an element off-canvas gets corrected at the end.</p>
+      `},
+
+      { id: 'settings-engine', title: 'Settings, live linking & engine versioning', body: `
+        <p>Settings live in <code>state.autoResizeSettings</code> and persist with the project. Open via the gear icon next to the Auto-resize button in the left panel.</p>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Cross-role relations</h4>
+        <ul>
+          <li><b>R1: Logo ↔ RFWN edge alignment</b> (default on) — described in the previous section.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Behaviour</h4>
+        <ul>
+          <li><b>Show canvas selection dialogue</b> (default on). On: clicking the Auto-resize button opens the run modal where you pick target canvases. Off: clicks run the engine directly on every other canvas — combined with "Show technical progress overlay" off, the resize is fully instant with no intermediate UI at all.</li>
+          <li><b>Include unassigned elements by default</b> (default off). Used by the bypass path; pre-fills the run modal's checkbox otherwise.</li>
+          <li><b>Allow cover fallback for main image</b> (default on). When contain would leave the image filling less than 60% of its slot, switch to cover. Off: always contain even if visually small.</li>
+          <li><b>Show technical progress overlay</b> (default on). Displays a randomly-timed 2–3 s pipeline-style loading panel during the resize. Pure cosmetics — the placement work has already completed when the overlay appears. Disable for instant results.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Live linking</h4>
+        <p>When enabled, every target element joins the source's link group with <code>group.liveLink = true</code> — edits on the source propagate to every target in real time. Five property toggles drive which properties actually sync:</p>
+        <ul>
+          <li><b>Text content</b> (text changes propagate).</li>
+          <li><b>Font family + weight</b> (typeface and weight sync; size does not).</li>
+          <li><b>Colour / fill</b> (text colour, button fill + stroke, shape fill + stroke, line colour, text background).</li>
+          <li><b>Opacity.</b></li>
+          <li><b>Animations + effects</b> (in-transitions + continuous effects).</li>
+        </ul>
+        <p><b>Position, size, and font size are always independent per canvas</b> — that's the entire point of the resize. Not user-toggleable.</p>
+        <p>When the master toggle is off, no link group is wired during auto-resize and target elements land as fully independent copies.</p>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Engine versioning</h4>
+        <p>The constant <code>ENGINE_VERSION</code> in <code>auto-resize-engine.js</code> tracks rule and behaviour generations:</p>
+        <ul>
+          <li><b>v2.0</b> — initial 9-role rule engine + R1 cross-role relation.</li>
+          <li><b>v2.1</b> — mask post-pass, contain→cover fallback, link-group wiring.</li>
+          <li><b>v2.2</b> — collision resolution + canvas-clamp passes, no-drop policy.</li>
+          <li><b>v2.3</b> — logo always top-right, RFWN skyscraper top-left, canvas-sized subhead font, role-refresh sweep, instant-resize bypass.</li>
+          <li><b>v2.4</b> — full-width stack-mode heading, expanded wrap budget on tall canvases, banner subhead bump, CRICOS dual-source font.</li>
+          <li><b>v2.5</b> — tall-format logo + RFWN shrink, subhead overlap, tighter RFWN width.</li>
+          <li><b>v2.6</b> — heading wrap-budget tightening, subhead font multiplier bump, simplified subhead position.</li>
+          <li><b>v2.7</b> — wide-banner heading vertically centred, RFWN width restored to fit "what's next", live linking control surface.</li>
+        </ul>
+        <p>Surfaced as a glowing pulsing pill in the Settings modal header (2.6 s breathing animation, purple shadow opacity 0 ↔ 0.45). Independent of the Adflow app version so engine output is reproducible for a given engine generation.</p>
+      `},
+
+      { id: 'workflow-tips', title: 'Workflow & tips', body: `
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Run from</h4>
+        <ul>
+          <li><b>The Auto-resize button</b> at the bottom of the left panel column. Respects the canvas-selection-dialogue setting — can be made one-click instant.</li>
+          <li><b>The canvas right-click menu</b> → "Auto-Resize" (top of the menu, directly under Preview). Always opens the canvas-selection dialogue regardless of settings.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Best practices</h4>
+        <ul>
+          <li><b>Verify roles before resizing.</b> Open the Layers panel, scan the role icons. Anything with a grey icon was auto-detected; click to open the picker and override if wrong. Anything with a <span style="color:var(--accent-base); font-weight:600;">purple sparkle</span> icon is manually locked and the detector won't touch it.</li>
+          <li><b>Name your layers when in doubt.</b> The detector trusts layer names first. <code>logo</code>, <code>heading</code>, <code>subheading</code>, <code>cricos</code>, <code>rfwn</code>, <code>background</code>, <code>extra info</code> are all explicit triggers.</li>
+          <li><b>Use 300×250 as your canonical source.</b> It's square-ish, so all rule modes have something to fall back on. Designing first on a wide banner can mean some rules have nothing to anchor to when the target is portrait.</li>
+          <li><b>For iterative tuning, turn off both the canvas dialogue and the progress overlay.</b> Auto-resize then becomes a one-click instant rebuild — useful when you're nudging the source and want to see every target update in real time.</li>
+          <li><b>Mask shapes need a target image.</b> If a shape was a mask on the source but the underlying image was deleted, the post-pass strips the mask flag automatically — no silent failure modes.</li>
+          <li><b>Live linking is on by default.</b> Edits on the source canvas propagate to every linked target. To break the link for a specific layer, set its link group to off via the Link Groups panel.</li>
+        </ul>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Reference canvas set</h4>
+        <p>The engine was tuned against six hand-built canvases. Each rule's formulas were verified to land within ±10 px of the reference data:</p>
+        <table style="width:100%; border-collapse:collapse; font-size:11.5px; margin:8px 0;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border-light); text-align:left; color:var(--text-muted);">
+              <th style="padding:5px 8px;">Canvas</th>
+              <th style="padding:5px 8px;">Aspect</th>
+              <th style="padding:5px 8px;">Class</th>
+              <th style="padding:5px 8px;">Mode notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>300×250</code></td><td style="padding:5px 8px;">1.20</td><td style="padding:5px 8px;">rectangle</td><td style="padding:5px 8px;">Square-ish, side-by-side image</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>300×600</code></td><td style="padding:5px 8px;">0.50</td><td style="padding:5px 8px;">portrait</td><td style="padding:5px 8px;">Stack mode, image below text</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>160×600</code></td><td style="padding:5px 8px;">0.27</td><td style="padding:5px 8px;">skyscraper</td><td style="padding:5px 8px;">Narrow stack, image full-width</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>728×90</code></td><td style="padding:5px 8px;">8.09</td><td style="padding:5px 8px;">leaderboard</td><td style="padding:5px 8px;">Side-by-side, vertically centred</td></tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>970×250</code></td><td style="padding:5px 8px;">3.88</td><td style="padding:5px 8px;">billboard</td><td style="padding:5px 8px;">Side-by-side, larger fonts</td></tr>
+            <tr><td style="padding:5px 8px;"><code>320×50</code></td><td style="padding:5px 8px;">6.40</td><td style="padding:5px 8px;">mobile</td><td style="padding:5px 8px;">Tight banner, max 22 pt heading</td></tr>
+          </tbody>
+        </table>
+
+        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Internal architecture</h4>
+        <p>The engine lives in its own file — <code>auto-resize-engine.js</code> — loaded before <code>script.js</code>. ~1300 lines covering role taxonomy, detector, rule functions, post-passes, settings, the progress overlay, and the two UI modals. Pure functions throughout where geometry is concerned, so unit-testing each rule in isolation is trivial. The executor calls <code>render()</code> exactly once at the end (deferred behind the progress overlay if enabled), so the visible canvas update is atomic.</p>
       `},
     ]
   },
@@ -12724,6 +11809,160 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.16.5',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Auto-Resize documentation completely rewritten and significantly expanded. The previous 4-subsection summary is replaced with a deep 7-subsection technical reference covering the v2.7 rule-based engine end-to-end.',
+      'New subsections: Overview & philosophy / 9-role taxonomy (with priority + strategy table) / Role detection & manual override / Placement rules (each rule with anchor, size, font formulas, and mode case-analysis) / Cross-role relations & post-placement passes (R1, mask post-pass, no-touch collisions, canvas clamp) / Settings, live linking & engine versioning (with full v2.0-v2.7 history) / Workflow & tips (best practices + reference canvas data table + internal architecture pointer).',
+      'Also updated the Getting Started "Auto-Resize at a glance" and "Your first project" entries to reference the new panel-anchored Auto-resize button rather than the obsolete Tools-panel button.'
+    ]
+  },
+  {
+    version: 'v0.16.4',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Canvas context menu: Auto-Resize moved up directly under Preview at the top. Styled identically to Preview (purple accent, ctx-item highlight class, icon-on-left). Sparkle SVG replaces the ✨ emoji. Text shortened to "Auto-Resize".',
+      'Clicking the menu entry now always opens the canvas-selection dialogue regardless of the engine settings — the FAB\'s instant-resize bypass doesn\'t apply here, since reaching for the context menu implies you want to choose targets each time.'
+    ]
+  },
+  {
+    version: 'v0.16.3',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Auto-resize anchor: background switched from --bg-panel to --bg-body (slightly darker), making the strip read as a darker base than the panel sections above.',
+      'Trimmed ~6 px off the anchor height: container padding 10 → 8/10 px, button padding 10/14 → 7/14 px, border-radius 8 → 7 px, settings button 38×38 → 32×32 px.'
+    ]
+  },
+  {
+    version: 'v0.16.2',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Auto-resize button toned down and re-homed. No longer a floating FAB — now a prominent button anchored at the bottom of the left panel column, outside the scroll area so it stays visible regardless of scroll position.',
+      'Resting pulse animation dropped. The button just sits there. Hover lifts 1 px with a stronger purple halo + brightness boost; click scales to 0.97 with a tighter shadow. No animation unless interacted with.',
+      'Form factor lowered: 10/14 px padding (was 13/22), 8 px border-radius (was 14), 12.5 px label (was 13.5), softer 0 2px 8px shadow at rest. Reads as a more prominent version of a regular button rather than a flashy FAB.',
+      'AI badge preserved next to the label — kept from the original Tools-panel button. Settings (gear) button beside it at 38×38 px, dark-input background, subtle hover border highlight.'
+    ]
+  },
+  {
+    version: 'v0.16.1',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Fix: Auto-resize FAB wasn\'t showing because the boot splash overlay (z-index 999999, stays in DOM after fade-out) was claiming the top stacking context above the FAB\'s z-index 9000. Bumped FAB to 999998 with !important on position properties so nothing else can hide it. Hard refresh required if styles.css was cached.',
+      'New "✨ Auto-resize from this canvas" entry in the canvas right-click context menu. Sits above the Clear all submenu, accent-coloured + bold to mark it as the primary creative action. Triggers the same dispatcher the FAB uses, so it honours the canvas-selection-dialogue + include-unassigned settings. Resizes from whichever canvas is currently active.'
+    ]
+  },
+  {
+    version: 'v0.16.0',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Tools panel removed. The Auto-resize button is now a prominent floating action button (FAB) pinned to the bottom-left of the viewport. Gradient purple pill with sparkle icon and "Auto-resize" label.',
+      'FAB has a 3.2-second resting pulse animation (subtle box-shadow breathing), pauses on hover with a 3-px lift + stronger 40-px purple halo + brightness boost. On click, scales to 0.97 with a sharp 50-px halo flash for tactile feedback.',
+      'A smaller, quieter settings (gear) FAB sits beside the main button with backdrop-blur, purple-tinted border, and matching hover/active behaviour. Opens the Auto-Resize Settings modal as before.',
+      '"Clear everything" removed from the Tools panel. Now lives in: (1) the canvas context menu as a "Clear all" submenu with "Current canvas" / "All canvases" options, and (2) the canvas Properties panel as a pair of red-bordered buttons below the Download row.',
+      'Current canvas clears every element on the active canvas; All canvases wipes every canvas and resets linkGroups. Both prompt for confirmation and push history so Ctrl+Z restores.'
+    ]
+  },
+  {
+    version: 'v0.15.11',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'RFWN width loosened to fit "what\'s next" on a single line. Was font × 6.2 / cap 80 which forced 3-line wrap on larger canvases; now font × 6.8 / cap 100 so the tagline stays on 2 lines.',
+      'Wide-banner heading (h ≤ 100, aspect > 2) now vertically centres in the canvas. The side-by-side heading + subhead pair reads as a centred block rather than upper-aligned. 728×90 heading y: 9 → 18.',
+      'New Live linking section in the Auto-Resize Settings modal. Master toggle + 5 property toggles (Text / Font / Colour / Opacity / Animations). When master is on, target elements join the source\'s link group with real-time propagation enabled. When off, targets are independent copies. Position, size, and font size are always independent per canvas.',
+      'Sub-toggles dim when master is off so the hierarchy is visually obvious.',
+      'Auto-Resize engine bumped to v2.7.'
+    ]
+  },
+  {
+    version: 'v0.15.10',
+    date: 'May 2026 — Engine v2.6',
+    items: [
+      'Heading box height tracks actual text more closely. Wrap budget reduced from 4 to 3 lines on stack mode and 5 to 4 on narrow skyscrapers. 300×600 heading box ~135 px (was 180); 160×600 ~132 px (was 165).',
+      'Subhead font bumped on tall canvases. Multiplier 0.05 → 0.06, cap 26 → 28. 300×600 subhead 21 → 25 px; 160×600 16 → 19 px.',
+      'Subhead-to-heading positioning simplified. The v2.5 aggressive negative overlap is gone; subhead sits at heading.bottom + 4 px now that the heading box matches its text closely.',
+      'Auto-Resize Settings modal redesigned. Placement-rules section removed entirely — the 9 rules are now always-on, baked into the engine. Bumping ENGINE_VERSION covers rule changes. Modal slimmed to just Cross-role relations + Behaviour; row sizes restored to more readable padding/fonts.',
+      'Settings header layout: Engine version pill moved to right side next to the Close button, with a subtle 2.6-second pulsing glow to draw the eye to the version.',
+      'Auto-Resize engine bumped to v2.6.'
+    ]
+  },
+  {
+    version: 'v0.15.9',
+    date: 'May 2026 — Engine v2.5',
+    items: [
+      'Logo + RFWN shrink 25% on tall formats (h > w). Tall layouts share the top row, so 300×600 and 160×600 needed breathing room. Logo height × 0.75, RFWN font × 0.8. Wide banners and square canvases unchanged.',
+      'Subhead bounding box now stacks onto heading\'s. Pulls subhead up by ~55% of heading font size so its top overlaps the heading\'s trailing empty padding instead of starting after it. Heading wrap budget is generous (4–5 lines); the overlap eats unused padding without colliding with actual heading lines.',
+      'RFWN bounding box hugs the wrapped text tighter. Width formula changed from fontSize × 7 to fontSize × 6.2, max clamp 90 → 80. Sized to fit "what\'s next" (the longer of the two natural wrap lines) so the box edge sits flush against the text.',
+      'Auto-Resize engine bumped to v2.5.'
+    ]
+  },
+  {
+    version: 'v0.15.8',
+    date: 'May 2026 — Engine v2.4',
+    items: [
+      'Stack-mode heading (h ≥ 300) now uses the full safezone width. Was still being shrunk by the top-right logo constraint even though logo sits well above the heading on tall canvases. 300×600 heading now goes full 270-px column; 160×600 full 134-px column.',
+      'Heading wrap budget bumped on tall canvases: stack mode = 4 lines (was 3), narrow skyscraper (w < 200) = 5 lines. 160×600 heading no longer gets crushed by auto-fit because the box is now tall enough to hold all the wrapped lines.',
+      'Subheading font bumped on horizontal banners (h ≤ 100). 728×90 now renders subhead at 16 px (was 14); 320×50 stays in the 8-11 readable range.',
+      'CRICOS font takes the max of minDim × 0.023 and width × 0.008. Bumps 728×90 from 4 → 6 and 970×250 from 6 → 7 where there\'s plenty of horizontal room. Other sizes unchanged.',
+      'Auto-Resize engine version bumped to v2.4. Surfaced in the settings modal header pill and the progress overlay.'
+    ]
+  },
+  {
+    version: 'v0.15.7',
+    date: 'May 2026',
+    items: [
+      'The auto-resize engine now has its own version number, separate from the Adflow app version. Currently Engine v2.3 — surfaced as a monospaced pill next to the title in the Auto-Resize Settings modal, and in the header of the technical progress overlay. Bumps on substantive rule / behaviour changes so you can tell at a glance which engine generation produced a given resize.',
+      'Auto-Resize Settings modal compacted: max-width 640 → 520 px, per-row padding 8/10 → 4/6 px, hover-only highlight instead of per-row borders, title font 12 → 11 px, description font 10.5 → 10 px. The whole sheet (9 rules + 1 relation + 4 behaviour toggles) fits in a single viewport on most screens without scrolling.'
+    ]
+  },
+  {
+    version: 'v0.15.6',
+    date: 'May 2026',
+    items: [
+      'Auto-Resize role detection now refreshes auto-assigned roles every sweep. Improvements to the detector (like the aspect-ratio logo heuristic) take effect on existing projects without resetting each layer manually. Only auto-assigned roles refresh; manually-set roles are preserved.',
+      'New "Show canvas selection dialogue" setting in the Auto-Resize Settings panel. On (default): the run modal pops up so you can pick targets each time. Off: clicking the Auto-resize button runs the engine on every other canvas immediately. Combined with the progress overlay also off, the resize is fully instant with no intermediate UI.',
+      'New "Include unassigned elements by default" setting. Used directly when the canvas-selection dialogue is bypassed; pre-fills the run modal\'s checkbox otherwise. The run modal also remembers your last choice between sessions.'
+    ]
+  },
+  {
+    version: 'v0.15.5',
+    date: 'May 2026',
+    items: [
+      'RMIT logo: always top-right of safezone now. The previous bot-left mode for ultra-narrow skyscrapers packed the logo against RFWN + CTA in a cramped 30-px-tall bottom strip on 160×600. Top-right is consistent across formats and pairs naturally with RFWN top-left.',
+      'RFWN: top-left mode extended to cover the skyscraper case too (aspect ≤ 2.0). The bot-right mode is now reserved for wide banners only. Text always justifies toward the closest canvas edge. The R1 logo↔RFWN snap is updated accordingly.',
+      'Subheading font now scales from canvas dimensions rather than as a fixed % of heading font — tuned within ±2 of the user\'s reference data. Fixes "sub headline too small" on 728×90 / 970×250 / 320×50.',
+      'No-drop policy: every placement rule returns geometry rather than null. Subheading without a heading-anchor parks at safezone top-left. Main-image without a usable slot falls back to a centred minimum-size box (24-px floor). Extra-info without any candidate slot falls back to a small box at safezone bot-left. Drop behaviour is now reserved exclusively for role=Unassigned when "include unassigned" is off.'
+    ]
+  },
+  {
+    version: 'v0.15.4',
+    date: 'May 2026',
+    items: [
+      'Auto-Resize tuning batch from second real-canvas test. Heading on stacked canvases (300×600 / 160×600) no longer crushes to a one-word-per-line column — the CTA-clearance constraint was firing for tall-mode CTAs too, but those sit below the heading, not to the right. The constraint now only fires when canvas aspect > 2.',
+      'Heading on tight wide banners (728×90, 320×50) gets a roomier column — canvas.w × 0.42 instead of × 0.32 so "It\'s not too late to study in 2026." wraps cleanly across 2 lines without cropping.',
+      'maxFontSize is now set alongside fontSize on every text-bearing rule. Source elements with autoSize:true + maxFontSize:68 no longer blow past the per-canvas computed cap — auto-fit honours whatever the rule decided.',
+      'Logo detection: small horizontal images (aspect ≥ 2.0, area < 18% of canvas) are classified as rmit-logo regardless of the Always-Top persistence flag. Logos dropped into Main Layers no longer fall through to the main-image slot-search rule and disappear from the brand corner.',
+      'Masks survive auto-resize. Shape-with-isMask now preserves the mask flag through cloning, and a post-pass remaps maskTargetId from the source image id to the cloned target image id, then aligns the mask\'s x/y/w/h to the target image\'s new geometry. If the target image didn\'t transfer, the mask flag is removed so the shape renders as a normal shape instead of covering empty space.'
+    ]
+  },
+  {
+    version: 'v0.15.3',
+    date: 'May 2026',
+    items: [
+      'Internal refactor: the auto-resize rule engine has been extracted from script.js into its own file, auto-resize-engine.js. Everything that powers the rule-based auto-resize feature lives there now — role taxonomy, role detection, all 9 placement rules, cross-role relations, post-placement passes, the main executor, settings + modals, the role picker, the fake progress overlay, and the two button click listeners. No behavioural change for the user; the move keeps script.js leaner so the engine can grow without bloating the main script.'
+    ]
+  },
+  {
+    version: 'v0.15.2',
+    date: 'May 2026',
+    items: [
+      'Auto-Resize tuning from the first real test (300×250 → all sizes): heading on tight horizontal banners (h ≤ 100) now caps font at 22 (was 68) and uses a narrower column (canvas.w × 0.32), so the headline no longer crops or bleeds into the image. Width is also constrained by already-placed CTA + logo positions; height is computed from the chosen font + a 2-line wrap budget and clipped to remaining canvas height.',
+      'Subheading: on tight horizontal banners (h ≤ 100) it now sits to the RIGHT of the heading instead of below, vertically centred — there isn\'t enough room to stack them. Subheading font is ~60% of heading font.',
+      'RFWN justification matches placement mode: left-justified when at top-left, right-justified when at bot-right. Never centred.',
+      'Post-placement collision pass: the five "never-touch" roles (logo, CTA, heading, subheading, RFWN) get walked pairwise in priority order. If two overlap, the lower-priority one shrinks along whichever axis the centres are most offset on, with a 4-px clearance gap. Higher-priority element never moves.',
+      'Post-placement canvas-clamp pass: every role except main-image and background-image is forced fully inside the canvas. Off-canvas portions get clipped by adjusting x/y/width/height.'
+    ]
+  },
   {
     version: 'v0.15.1',
     date: 'May 2026',
@@ -13255,7 +12494,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.15.1';
+  const currentVersion = 'v0.16.5';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -13325,7 +12564,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.15.1</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.5</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -13381,7 +12620,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.15.1</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.5</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -13991,6 +13230,11 @@ document.addEventListener('contextmenu', (e) => {
     const inPreview = state.singlePreviewId === state.activeCanvasId;
     const previewSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="${inPreview ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
     html += `<div class="ctx-item highlight" id="ctx-canvas-preview" style="display:flex; align-items:center; gap:8px;">${previewSvg}${inPreview ? 'Exit Preview' : 'Preview'}</div>`;
+    // Auto-Resize sits directly under Preview with the same highlight style.
+    // Click forces the canvas-selection dialogue regardless of the bypass
+    // setting — when the user invokes via this menu they expect to pick targets.
+    const autoResizeSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 L13.4 8.6 L18.5 10 L13.4 11.4 L12 16.5 L10.6 11.4 L5.5 10 L10.6 8.6 Z"/><path d="M19 4 L19.7 5.8 L21.5 6.5 L19.7 7.2 L19 9 L18.3 7.2 L16.5 6.5 L18.3 5.8 Z"/></svg>`;
+    html += `<div class="ctx-item highlight" id="ctx-canvas-auto-resize" style="display:flex; align-items:center; gap:8px;">${autoResizeSvg}Auto-Resize</div>`;
     html += `<div class="ctx-divider"></div>`;
 
     html += `<div class="ctx-item has-submenu">
@@ -14020,7 +13264,12 @@ document.addEventListener('contextmenu', (e) => {
       </div>
     </div>`;
     html += `<div class="ctx-divider"></div>`;
-    html += `<div class="ctx-item" id="ctx-canvas-clear" style="color:#ef4444">Clear contents</div>`;
+    html += `<div class="ctx-item has-submenu" style="color:#ef4444">Clear all
+      <div class="ctx-submenu">
+        <div class="ctx-item" id="ctx-clear-current"  style="white-space:nowrap;">Current canvas</div>
+        <div class="ctx-item" id="ctx-clear-all-canv" style="white-space:nowrap;">All canvases</div>
+      </div>
+    </div>`;
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-toggle-snap">${state.snapEnabled !== false ? '✓ ' : ''}Snapping</div>`;
     html += `<div class="ctx-item" id="ctx-toggle-rulers">${state.showRulers ? 'Hide' : 'Show'} Rulers & Guides</div>`;
@@ -14254,7 +13503,15 @@ document.addEventListener('contextmenu', (e) => {
   });
   bind('ctx-canvas-export-html', () => { const c = getActiveCanvas(); if (c) exportCanvasAsZip(c); });
   bind('ctx-canvas-export-png', () => { const c = getActiveCanvas(); if (c) exportCanvasAsPng(c); });
-  bind('ctx-canvas-clear', () => { const c = getActiveCanvas(); if (c) clearCanvasFrame(c); });
+  bind('ctx-canvas-auto-resize', () => {
+    // Always open the canvas-selection dialogue from this entry — the
+    // FAB's settings-driven instant-resize bypass doesn't apply here.
+    // A user reaching for the context menu's "Auto-Resize" expects to
+    // pick targets each time.
+    if (typeof openAutoResizeModal === 'function') openAutoResizeModal();
+  });
+  bind('ctx-clear-current',   () => clearCurrentCanvasContents());
+  bind('ctx-clear-all-canv',  () => clearAllCanvasesContents());
   bind('ctx-toggle-snap', () => { state.snapEnabled = state.snapEnabled === false ? true : false; render(); });
   bind('ctx-toggle-rulers', () => { state.showRulers = !state.showRulers; render(); });
   bind('ctx-toggle-safezones', () => _toggleSafezones());

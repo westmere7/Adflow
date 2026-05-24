@@ -4041,3 +4041,118 @@ input[type="checkbox"]:disabled {
 }
 
 
+/* ============================================================================
+   Auto-resize anchor — pinned to the bottom of the left panel column.
+   ============================================================================
+   Lives outside .panel-scroll so it stays visible while the sections above
+   scroll. Styled as a prominent accent-purple button (a "more prominent
+   version of a regular button") rather than a floating FAB — no resting
+   animation, only hover + click feedback. */
+
+.panel-anchor-bottom {
+  flex-shrink: 0;                     /* never collapse when scroll grows */
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--bg-btn);
+  background: var(--bg-body);         /* slightly darker than the panel */
+}
+
+.ar-btn-main,
+.ar-btn-settings {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.14s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.14s ease,
+    filter 0.14s ease;
+}
+
+.ar-btn-main {
+  flex: 1;
+  padding: 7px 14px;
+  border-radius: 7px;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  background: linear-gradient(135deg, #7c5cff 0%, #a78bff 100%);
+  box-shadow:
+    0 2px 8px rgba(124, 92, 255, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 1px 0 rgba(255, 255, 255, 0.16) inset;
+}
+
+.ar-btn-main .ar-btn-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.ar-btn-main .ar-btn-label {
+  white-space: nowrap;
+}
+
+/* Small "AI" pill — kept from the original Tools-panel button. */
+.ar-btn-main .ar-btn-ai-badge {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  margin-left: 2px;
+}
+
+.ar-btn-main:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow:
+    0 4px 16px rgba(124, 92, 255, 0.55),
+    0 0 22px rgba(124, 92, 255, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+    0 1px 0 rgba(255, 255, 255, 0.22) inset;
+}
+
+.ar-btn-main:active {
+  transform: translateY(0) scale(0.97);
+  filter: brightness(0.95);
+  box-shadow:
+    0 1px 6px rgba(124, 92, 255, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  transition-duration: 0.07s;
+}
+
+.ar-btn-settings {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light, #272c3a);
+  color: var(--text-main, #d6d6e0);
+}
+
+.ar-btn-settings svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ar-btn-settings:hover {
+  border-color: rgba(124, 92, 255, 0.6);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.3);
+}
+
+.ar-btn-settings:active {
+  transform: scale(0.95);
+  transition-duration: 0.07s;
+}
+
+
