@@ -4001,7 +4001,10 @@ function onCanvasHeaderDrag(e, c) {
   render();
 }
 
-// Click empty workspace area: deselect element (keep active canvas)
+// Click empty workspace area: deselect (on plain click) OR start a marquee
+// selection in workspace coords (on drag). The marquee selects intersecting
+// elements on the currently active canvas, even when the drag starts well
+// outside that canvas's bounds.
 canvasArea.addEventListener('mousedown', (e) => {
   if (isSpaceDown || e.button === 1) {
     isPanning = true;
@@ -4011,17 +4014,114 @@ canvasArea.addEventListener('mousedown', (e) => {
     scrollStartY = canvasArea.scrollTop;
     canvasArea.style.cursor = 'var(--cur-grabbing, grabbing)';
     e.stopPropagation();
-    e.preventDefault(); // Prevents middle mouse autoscroll
+    e.preventDefault();
     return;
   }
-  if (e.target === canvasArea || e.target === workspaceEl) {
-    if (state.singlePreviewId) state.singlePreviewId = null;
+  if (e.target !== canvasArea && e.target !== workspaceEl) return;
+  if (e.button !== 0) return;
+
+  if (state.singlePreviewId) state.singlePreviewId = null;
+  if (!e.shiftKey) {
     state.selectedElementId = null;
     state.editingElementId = null;
     state.layerSelection = [];
     if (state.isolatedGroupId) state.isolatedGroupId = null;
     render();
   }
+
+  // Marquee in workspace coordinates — workspaceEl is the absolute container
+  // every canvas frame is positioned inside.
+  const wsRect = workspaceEl.getBoundingClientRect();
+  const z = state.zoom || 1;
+  const startX = (e.clientX - wsRect.left) / z;
+  const startY = (e.clientY - wsRect.top) / z;
+
+  const selBox = document.createElement('div');
+  selBox.className = 'workspace-marquee';
+  selBox.style.cssText = `position:absolute; border:1px solid #7c5cff; background:rgba(124,92,255,0.1); pointer-events:none; z-index:999999; left:${startX}px; top:${startY}px; width:0; height:0;`;
+  workspaceEl.appendChild(selBox);
+
+  let isDraggingSelection = false;
+
+  const onMove = (ev) => {
+    const curX = (ev.clientX - wsRect.left) / z;
+    const curY = (ev.clientY - wsRect.top) / z;
+    if (!isDraggingSelection && (Math.abs(curX - startX) > 2 || Math.abs(curY - startY) > 2)) {
+      isDraggingSelection = true;
+    }
+    if (!isDraggingSelection) return;
+    const x = Math.min(startX, curX);
+    const y = Math.min(startY, curY);
+    const w = Math.abs(curX - startX);
+    const h = Math.abs(curY - startY);
+    selBox.style.left = x + 'px';
+    selBox.style.top = y + 'px';
+    selBox.style.width = w + 'px';
+    selBox.style.height = h + 'px';
+  };
+
+  const onUp = (ev) => {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    selBox.remove();
+    if (!isDraggingSelection) return;
+
+    const curX = (ev.clientX - wsRect.left) / z;
+    const curY = (ev.clientY - wsRect.top) / z;
+    const rx = Math.min(startX, curX);
+    const ry = Math.min(startY, curY);
+    const rw = Math.abs(curX - startX);
+    const rh = Math.abs(curY - startY);
+
+    // If the marquee touches a canvas that isn't currently active, focus it
+    // first so the user's selection lands on the canvas they're aiming at.
+    let touchedCanvas = state.canvases.find(c => c.id === state.activeCanvasId);
+    for (const cv of state.canvases) {
+      const overlaps = !(rx > cv.workspaceX + cv.width || rx + rw < cv.workspaceX || ry > cv.workspaceY + cv.height || ry + rh < cv.workspaceY);
+      if (overlaps) { touchedCanvas = cv; if (cv.id === state.activeCanvasId) break; }
+    }
+    if (touchedCanvas && touchedCanvas.id !== state.activeCanvasId) {
+      state.activeCanvasId = touchedCanvas.id;
+    }
+    const c = touchedCanvas;
+    if (!c) { render(); return; }
+
+    // Marquee in canvas-local coords.
+    const localX = rx - c.workspaceX;
+    const localY = ry - c.workspaceY;
+
+    const selectedIds = new Set();
+    c.elements.forEach(el => {
+      if (el.hidden || el.locked) return;
+      if (el.persistent === false && el.frameId !== state.activeFrameId) return;
+      if (state.isolatedGroupId && el.groupId !== state.isolatedGroupId) return;
+      const intersect = !(
+        el.x > localX + rw ||
+        el.x + el.width < localX ||
+        el.y > localY + rh ||
+        el.y + el.height < localY
+      );
+      if (!intersect) return;
+      if (el.groupId && !state.isolatedGroupId) {
+        c.elements.filter(x => x.groupId === el.groupId).forEach(x => selectedIds.add(x.id));
+      } else {
+        selectedIds.add(el.id);
+      }
+    });
+
+    if (selectedIds.size > 0) {
+      if (e.shiftKey) {
+        selectedIds.forEach(id => { if (!state.layerSelection.includes(id)) state.layerSelection.push(id); });
+      } else {
+        state.layerSelection = Array.from(selectedIds);
+      }
+      state.selectedElementId = state.layerSelection[state.layerSelection.length - 1];
+    }
+    render();
+  };
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
 });
 
 window.addEventListener('mousemove', (e) => {
@@ -6112,11 +6212,11 @@ function renderLayers() {
 
   const frameIdx = state.frames.findIndex(f => f.id === state.activeFrameId);
   layersEl.innerHTML = `
-    <div class="layer-section-title">Persistent Tier (Top)</div>
+    <div class="layer-section-title" title="Layers that stay on top of every frame — typical for logos and compliance text. Drop a layer here to pin it as a permanent overlay.">Always Top</div>
     <div id="layers-top" class="layer-dropzone" data-persistent="top" style="min-height:16px;margin-bottom:8px"></div>
-    <div class="layer-section-title">Timeline (Frame ${frameIdx + 1})</div>
+    <div class="layer-section-title" title="Layers that only appear in the active frame. The animation timeline drives these.">Main Layers (Frame ${frameIdx + 1})</div>
     <div id="layers-mid" class="layer-dropzone" data-persistent="false" style="min-height:16px;margin-bottom:8px"></div>
-    <div class="layer-section-title">Persistent Tier (Bottom)</div>
+    <div class="layer-section-title" title="Layers that stay under every frame — typical for backgrounds. Drop a layer here to pin it as a permanent background.">Always Bottom</div>
     <div id="layers-bot" class="layer-dropzone" data-persistent="bottom" style="min-height:16px"></div>
   `;
 
@@ -6646,6 +6746,12 @@ function renderProps() {
             <label for="c-full-click" title="Make the entire canvas clickable (landing page redirect)">Use entire canvas as click area</label>
           </div>
         </div>
+        <div class="prop-row" style="margin-top:8px;">
+          <div class="checkbox-row">
+            <input type="checkbox" id="c-show-safezones" title="Show the safezone overlay (centered guides + edge inset) on every canvas" ${state.showSafezones ? 'checked' : ''} />
+            <label for="c-show-safezones" title="Show the safezone overlay (centered guides + edge inset) on every canvas">Show safezones on all canvases</label>
+          </div>
+        </div>
 
         <div class="prop-row" style="margin-top:16px; display:flex; flex-direction:column; gap:8px;">
           <button id="c-btn-preview" title="Toggle preview mode for this canvas" style="
@@ -6723,6 +6829,14 @@ function renderProps() {
       pushHistory();
       render(true);
     });
+
+    const showSafezonesChk = document.getElementById('c-show-safezones');
+    if (showSafezonesChk) {
+      showSafezonesChk.addEventListener('change', e => {
+        state.showSafezones = e.target.checked;
+        render(true);
+      });
+    }
 
     // ── Preview button ──
     const btnPreview = document.getElementById('c-btn-preview');
@@ -9613,11 +9727,13 @@ document.getElementById('app-version-display')?.addEventListener('click', () => 
   openChangelogModal();
 });
 
-document.getElementById('btn-toggle-safezones').addEventListener('click', (e) => {
+// Safezones toggle — entry points live in the canvas Properties panel
+// (Canvas Settings → "Show safezones") and the canvas / workspace right-click
+// menus. There used to be a Tool-panel button; it's gone since v0.12.
+function _toggleSafezones() {
   state.showSafezones = !state.showSafezones;
-  e.currentTarget.classList.toggle('active', state.showSafezones);
   render();
-});
+}
 
 // ============================================================================
 // Auto-resize from selected canvas
@@ -10998,7 +11114,7 @@ const DOCS_SECTIONS = [
         <ul>
           <li><b>Reorder:</b> drag layers, or <span class="kbd">Ctrl</span>+<span class="kbd">[</span> / <span class="kbd">Ctrl</span>+<span class="kbd">]</span>.</li>
           <li><b>Group:</b> select layers, <span class="kbd">Ctrl</span>+<span class="kbd">G</span>. Double-click a group to <b>isolate</b> and edit inside.</li>
-          <li><b>Persistence badge</b> on a layer: <i>Frame</i> (default — visible only on its frame), <i>Bottom</i> (background across all frames), <i>Top</i> (overlay above all frames — typical for logos / persistent CTAs).</li>
+          <li><b>Layer sections</b> in the panel: <i>Main Layers</i> (default — visible only on the active frame, driven by the timeline), <i>Always Bottom</i> (background, painted under every frame), <i>Always Top</i> (overlay painted above every frame — typical for logos and compliance text). Drag a layer between sections to change its persistence.</li>
         </ul>
       `},
       { id: 'assets-panel', title: 'Assets panel', body: `
@@ -12566,12 +12682,14 @@ document.addEventListener('contextmenu', (e) => {
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-toggle-snap">${state.snapEnabled !== false ? '✓ ' : ''}Snapping</div>`;
     html += `<div class="ctx-item" id="ctx-toggle-rulers">${state.showRulers ? 'Hide' : 'Show'} Rulers & Guides</div>`;
+    html += `<div class="ctx-item" id="ctx-toggle-safezones">${state.showSafezones ? '✓ ' : ''}Show Safezones</div>`;
     html += `<div class="ctx-item" id="ctx-clear-guides">Clear All Guides</div>`;
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-open-settings">Settings…</div>`;
   } else {
     html += `<div class="ctx-item" id="ctx-toggle-snap">${state.snapEnabled !== false ? '✓ ' : ''}Snapping</div>`;
     html += `<div class="ctx-item" id="ctx-toggle-rulers">${state.showRulers ? 'Hide' : 'Show'} Rulers & Guides</div>`;
+    html += `<div class="ctx-item" id="ctx-toggle-safezones">${state.showSafezones ? '✓ ' : ''}Show Safezones</div>`;
     html += `<div class="ctx-item" id="ctx-clear-guides">Clear All Guides</div>`;
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-open-settings">Settings…</div>`;
@@ -12797,6 +12915,7 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-canvas-clear', () => { const c = getActiveCanvas(); if (c) clearCanvasFrame(c); });
   bind('ctx-toggle-snap', () => { state.snapEnabled = state.snapEnabled === false ? true : false; render(); });
   bind('ctx-toggle-rulers', () => { state.showRulers = !state.showRulers; render(); });
+  bind('ctx-toggle-safezones', () => _toggleSafezones());
   bind('ctx-clear-guides', () => { state.guides = []; render(); });
   bind('ctx-open-settings', () => { if (typeof openSettings === 'function') openSettings(); });
 });
