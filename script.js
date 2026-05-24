@@ -2510,6 +2510,67 @@ function findMaskAbove(c, imageEl) {
   const above = c.elements[idx + 1];
   return isActiveMask(above) ? above : null;
 }
+function getElementAnimationCSS(el, isImageExport) {
+  const animType = el.animType || 'none';
+  const effType = el.effectType || 'none';
+
+  let entryAnims = [];
+  let entryVars = '';
+  if (animType !== 'none' && !isImageExport) {
+    const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(animType);
+    const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
+    const fadeOn = el.animFade !== false;
+    const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
+    if (el.type !== 'text' || (animType !== 'typing' && animType !== 'fade-typing')) {
+      entryAnims.push(`anim-${animType}${suffix} ${el.animDuration || 1}s ${animType === 'typing' ? 'steps(30, end)' : 'ease-out'} ${el.animDelay || 0}s both`);
+    }
+    if (animType === 'zoom-in') {
+      const zf = el.zoomFrom !== undefined ? el.zoomFrom / 100 : 1.1;
+      entryVars += `--zoom-from:${zf};`;
+    }
+  }
+
+  let effAnims = [];
+  let effVars = '';
+  if (effType !== 'none') {
+    const effDur = el.effDuration !== undefined ? el.effDuration : 2;
+    const effDelay = el.effDelay !== undefined ? el.effDelay : 0;
+    if (effType === 'pan') {
+      const dist = el.panDist !== undefined ? el.panDist : 50;
+      let px = 0, py = 0;
+      if (el.panDir === 'L') px = -dist;
+      else if (el.panDir === 'U') py = -dist;
+      else if (el.panDir === 'D') py = dist;
+      else px = dist; // R
+      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+      const fill = el.effOnce ? 'forwards' : 'infinite';
+      if (!isImageExport) effAnims.push(`eff-pan ${effDur}s ${ease} ${effDelay}s ${fill}`);
+      effVars = `--pan-x:${px}px; --pan-y:${py}px;`;
+    } else if (effType === 'zoom') {
+      const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
+      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+      const fill = el.effOnce ? 'forwards' : 'infinite';
+      if (!isImageExport) effAnims.push(`eff-zoom ${effDur}s ${ease} ${effDelay}s ${fill}`);
+      effVars = `--zoom-target:${zt};`;
+    } else if (effType === 'spin') {
+      const spinT = el.spinTarget !== undefined ? el.spinTarget : 360;
+      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+      const repeat = el.spinRepeat !== undefined ? el.spinRepeat : 1;
+      const fill = Math.max(1, repeat);
+      if (!isImageExport) effAnims.push(`eff-spin ${effDur}s ${ease} ${effDelay}s ${fill} both`);
+      effVars = `--spin-target:${spinT}deg;`;
+    } else {
+      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+      const speed = Math.max(1, Number(speedStr));
+      const duration = 2 / (speed / 100);
+      if (!isImageExport) effAnims.push(`eff-${effType} ${duration}s ease-in-out ${effDelay}s infinite`);
+    }
+  }
+
+  const entryConfig = entryAnims.length > 0 ? `animation: ${entryAnims.join(', ')};` : '';
+  const effConfig = effAnims.length > 0 ? `animation: ${effAnims.join(', ')};` : '';
+  return { entryConfig, entryVars, effConfig, effVars };
+}
 
 function elementNode(el, canvasCtx) {
   const d = document.createElement('div');
@@ -2856,13 +2917,18 @@ function elementNode(el, canvasCtx) {
         maskShape = `<g${transformAttr}><g transform="translate(${tx} ${ty}) scale(${sx} ${sy})">${inner}</g></g>`;
       }
       const maskId = `mask-${el.id}`;
+      const mAnim = getElementAnimationCSS(m, false);
+      const originStyle = `transform-box:fill-box;transform-origin:center;`;
+      const entryStyle = mAnim.entryConfig ? `style="${originStyle}${mAnim.entryConfig}${mAnim.entryVars}"` : '';
+      const effStyle = mAnim.effConfig ? `style="${originStyle}${mAnim.effConfig}${mAnim.effVars}"` : '';
+      const animatedMaskShape = `<g class="mask-g-entry" ${entryStyle}><g class="mask-g-eff" ${effStyle}>${maskShape}</g></g>`;
       // Inline SVG defs sit *inside* the image wrapper — same DOM scope as the
       // image, scoped per-render. width:0/height:0 so it doesn't add a visible box.
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('width', '0');
       svg.setAttribute('height', '0');
       svg.style.cssText = 'position:absolute; left:0; top:0; pointer-events:none;';
-      svg.innerHTML = `<defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${maskShape}</mask></defs>`;
+      svg.innerHTML = `<defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask></defs>`;
       d.appendChild(svg);
       d.style.setProperty('-webkit-mask', `url(#${maskId})`);
       d.style.setProperty('mask', `url(#${maskId})`);
@@ -5244,9 +5310,6 @@ function saveSelectionAsAsset(folderId) {
   const mp = (state.dataMerge && state.dataMerge.mappings) || {};
   const snapshot = JSON.parse(JSON.stringify(els)).map((e, i) => {
     delete e.linkGroupId;
-    // Mask flag is a per-canvas relationship — it doesn't travel with an asset.
-    // Strip it so re-placed assets come in as plain shapes.
-    if (e.isMask) delete e.isMask;
     // Capture this element's dynamic-data slot bindings — the column mappings live
     // in state.dataMerge keyed by slot id, not on the element, so they'd be lost.
     const sk = dmSlotKey(els[i]) + '::';
@@ -6054,17 +6117,20 @@ function renderLayers() {
       const isSel = state.selectedElementId === el.id || state.layerSelection?.includes(el.id);
       div.className = 'layer' + (isSel ? ' selected' : '');
       div.draggable = true;
+      div.dataset.id = el.id;
+      const iconHtml = el.isMask
+        ? `<svg class="layer-icon" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zm11 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>`
+        : `<svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${layerIcon(el.type)}</svg>`;
+
       div.innerHTML = `
-        <svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${layerIcon(el.type)}</svg>
+        ${iconHtml}
         <span class="layer-name" style="${el.hidden ? 'opacity:0.5;text-decoration:line-through' : ''}">${layerLabel(el)}</span>
         <div class="layer-actions">
           <button class="icon-btn ${el.locked ? 'active' : ''}" data-act="lock" title="Toggle lock">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </button>
           <button class="icon-btn ${!el.hidden ? 'active' : ''} ${el.isMask ? 'mask-eye' : ''}" data-act="hide" title="${el.isMask ? (el.hidden ? 'Mask inactive — click to enable' : 'Mask active — click to disable') : 'Toggle visibility'}">
-            ${el.isMask
-              ? `<svg viewBox="0 0 24 24" fill="${el.hidden ? '#8b8f9c' : '#ffffff'}" stroke="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3" fill="${el.hidden ? '#16181f' : '#16181f'}"/></svg>`
-              : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           </button>
         </div>
       `;
@@ -7628,15 +7694,36 @@ function checkButtonFontSizeWarning(el) {
               }
             }
           } else {
+            const activeC = getActiveCanvas();
+            const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+            const targetNode = isMaskedImg ? node.querySelector('img') : node;
+
             if (previewVal === 'zoom-in') {
               const zf = nodeEl.zoomFrom !== undefined ? nodeEl.zoomFrom / 100 : 1.1;
-              node.style.setProperty('--zoom-from', zf);
+              targetNode.style.setProperty('--zoom-from', zf);
             }
             const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(previewVal);
             const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(previewVal);
             const fadeOn = nodeEl.animFade !== false;
             const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
-            node.style.animation = `anim-${previewVal}${suffix} ${nodeEl.animDuration || 1}s ease-out 0s both`;
+            targetNode.style.animation = `anim-${previewVal}${suffix} ${nodeEl.animDuration || 1}s ease-out 0s both`;
+
+            if (nodeEl.isMask) {
+              if (activeC) {
+                const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+                if (imgEl) {
+                  const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
+                  const entryG = imgDom ? imgDom.querySelector('mask g.mask-g-entry') : null;
+                  if (entryG) {
+                    if (previewVal === 'zoom-in') {
+                      const zf = nodeEl.zoomFrom !== undefined ? nodeEl.zoomFrom / 100 : 1.1;
+                      entryG.style.setProperty('--zoom-from', zf);
+                    }
+                    entryG.style.animation = `anim-${previewVal}${suffix} ${nodeEl.animDuration || 1}s ease-out 0s both`;
+                  }
+                }
+              }
+            }
           }
         }
       });
@@ -7648,6 +7735,31 @@ function checkButtonFontSizeWarning(el) {
       domNodes.forEach(node => {
         if (node) {
           node.style.animation = '';
+          const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+          const activeC = getActiveCanvas();
+          const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+
+          if (isMaskedImg) {
+            const innerImg = node.querySelector('img');
+            if (innerImg) {
+              innerImg.style.animation = '';
+              innerImg.style.removeProperty('--zoom-from');
+            }
+          }
+
+          if (nodeEl.isMask) {
+            if (activeC) {
+              const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+              if (imgEl) {
+                const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
+                const entryG = imgDom ? imgDom.querySelector('mask g.mask-g-entry') : null;
+                if (entryG) {
+                  entryG.style.animation = '';
+                  entryG.style.removeProperty('--zoom-from');
+                }
+              }
+            }
+          }
           const target = node.querySelector('.editable') || node.querySelector('span');
           if (target && target.dataset.origHtml !== undefined) {
             target.innerHTML = target.dataset.origHtml;
@@ -7703,37 +7815,58 @@ function checkButtonFontSizeWarning(el) {
       domNodes.forEach(node => {
         if (node && val !== 'none') {
           const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
-          const effDur = nodeEl.effDuration !== undefined ? nodeEl.effDuration : 2;
-          if (val === 'pan') {
-            const dist = nodeEl.panDist !== undefined ? nodeEl.panDist : 50;
-            let px = 0, py = 0;
-            if (nodeEl.panDir === 'L') px = -dist;
-            else if (nodeEl.panDir === 'U') py = -dist;
-            else if (nodeEl.panDir === 'D') py = dist;
-            else px = dist;
-            node.style.setProperty('--pan-x', px + 'px');
-            node.style.setProperty('--pan-y', py + 'px');
-            const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
-            const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
-            node.style.animation = `eff-pan ${effDur}s ${ease} 0s ${fill}`;
-          } else if (val === 'zoom') {
-            const zt = nodeEl.zoomTarget !== undefined ? nodeEl.zoomTarget / 100 : 1.5;
-            node.style.setProperty('--zoom-target', zt);
-            const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
-            const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
-            node.style.animation = `eff-zoom ${effDur}s ${ease} 0s ${fill}`;
-          } else if (val === 'spin') {
-            const spinT = nodeEl.spinTarget !== undefined ? nodeEl.spinTarget : 360;
-            node.style.setProperty('--spin-target', spinT + 'deg');
-            const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
-            const repeat = nodeEl.spinRepeat !== undefined ? nodeEl.spinRepeat : 1;
-            const fill = Math.max(1, repeat);
-            node.style.animation = `eff-spin ${effDur}s ${ease} 0s ${fill} both`;
-          } else {
-            const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
-            const speed = Math.max(1, Number(speedStr));
-            const duration = 2 / (speed / 100);
-            node.style.animation = `eff-${val} ${duration}s ease-in-out 0s infinite`;
+          const activeC = getActiveCanvas();
+          const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+          const targetNode = isMaskedImg ? node.querySelector('img') : node;
+
+          const applyEffAnim = (tNode) => {
+            const effDur = nodeEl.effDuration !== undefined ? nodeEl.effDuration : 2;
+            if (val === 'pan') {
+              const dist = nodeEl.panDist !== undefined ? nodeEl.panDist : 50;
+              let px = 0, py = 0;
+              if (nodeEl.panDir === 'L') px = -dist;
+              else if (nodeEl.panDir === 'U') py = -dist;
+              else if (nodeEl.panDir === 'D') py = dist;
+              else px = dist;
+              tNode.style.setProperty('--pan-x', px + 'px');
+              tNode.style.setProperty('--pan-y', py + 'px');
+              const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
+              const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
+              tNode.style.animation = `eff-pan ${effDur}s ${ease} 0s ${fill}`;
+            } else if (val === 'zoom') {
+              const zt = nodeEl.zoomTarget !== undefined ? nodeEl.zoomTarget / 100 : 1.5;
+              tNode.style.setProperty('--zoom-target', zt);
+              const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
+              const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
+              tNode.style.animation = `eff-zoom ${effDur}s ${ease} 0s ${fill}`;
+            } else if (val === 'spin') {
+              const spinT = nodeEl.spinTarget !== undefined ? nodeEl.spinTarget : 360;
+              tNode.style.setProperty('--spin-target', spinT + 'deg');
+              const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
+              const repeat = nodeEl.spinRepeat !== undefined ? nodeEl.spinRepeat : 1;
+              const fill = Math.max(1, repeat);
+              tNode.style.animation = `eff-spin ${effDur}s ${ease} 0s ${fill} both`;
+            } else {
+              const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
+              const speed = Math.max(1, Number(speedStr));
+              const duration = 2 / (speed / 100);
+              tNode.style.animation = `eff-${val} ${duration}s ease-in-out 0s infinite`;
+            }
+          };
+
+          applyEffAnim(targetNode);
+
+          if (nodeEl.isMask) {
+            if (activeC) {
+              const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+              if (imgEl) {
+                const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
+                const effG = imgDom ? imgDom.querySelector('mask g.mask-g-eff') : null;
+                if (effG) {
+                  applyEffAnim(effG);
+                }
+              }
+            }
           }
         }
       });
@@ -7743,7 +7876,40 @@ function checkButtonFontSizeWarning(el) {
         ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
         : [document.querySelector(`.el[data-id="${el.id}"]`)];
       domNodes.forEach(node => {
-        if (node) node.style.animation = '';
+        if (node) {
+          node.style.animation = '';
+          const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+          const activeC = getActiveCanvas();
+          const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+
+          if (isMaskedImg) {
+            const innerImg = node.querySelector('img');
+            if (innerImg) {
+              innerImg.style.animation = '';
+              innerImg.style.removeProperty('--pan-x');
+              innerImg.style.removeProperty('--pan-y');
+              innerImg.style.removeProperty('--zoom-target');
+              innerImg.style.removeProperty('--spin-target');
+            }
+          }
+
+          if (nodeEl.isMask) {
+            if (activeC) {
+              const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+              if (imgEl) {
+                const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
+                const effG = imgDom ? imgDom.querySelector('mask g.mask-g-eff') : null;
+                if (effG) {
+                  effG.style.animation = '';
+                  effG.style.removeProperty('--pan-x');
+                  effG.style.removeProperty('--pan-y');
+                  effG.style.removeProperty('--zoom-target');
+                  effG.style.removeProperty('--spin-target');
+                }
+              }
+            }
+          }
+        }
       });
     });
   });
@@ -8933,63 +9099,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     const wrapStyle = `position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;transform:rotate(${el.rotation || 0}deg);opacity:${wrapOpacity};`;
 
     const animType = el.animType || 'none';
-    const effType = el.effectType || 'none';
-
-    let entryAnims = [];
-    let entryVars = '';
-    if (animType !== 'none' && !isImageExport) {
-      const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(animType);
-      const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
-      const fadeOn = el.animFade !== false;
-      const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
-      if (el.type !== 'text' || (animType !== 'typing' && animType !== 'fade-typing')) {
-        entryAnims.push(`anim-${animType}${suffix} ${el.animDuration || 1}s ${animType === 'typing' ? 'steps(30, end)' : 'ease-out'} ${el.animDelay || 0}s both`);
-      }
-      if (animType === 'zoom-in') {
-        const zf = el.zoomFrom !== undefined ? el.zoomFrom / 100 : 1.1;
-        entryVars += `--zoom-from:${zf};`;
-      }
-    }
-
-    let effAnims = [];
-    let effVars = '';
-    if (effType !== 'none') {
-      const effDur = el.effDuration !== undefined ? el.effDuration : 2;
-      const effDelay = el.effDelay !== undefined ? el.effDelay : 0;
-      if (effType === 'pan') {
-        const dist = el.panDist !== undefined ? el.panDist : 50;
-        let px = 0, py = 0;
-        if (el.panDir === 'L') px = -dist;
-        else if (el.panDir === 'U') py = -dist;
-        else if (el.panDir === 'D') py = dist;
-        else px = dist; // R
-        const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-        const fill = el.effOnce ? 'forwards' : 'infinite';
-        if (!isImageExport) effAnims.push(`eff-pan ${effDur}s ${ease} ${effDelay}s ${fill}`);
-        effVars = `--pan-x:${px}px; --pan-y:${py}px;`;
-      } else if (effType === 'zoom') {
-            const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
-            const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-            const fill = el.effOnce ? 'forwards' : 'infinite';
-            if (!isImageExport) effAnims.push(`eff-zoom ${effDur}s ${ease} ${effDelay}s ${fill}`);
-            effVars = `--zoom-target:${zt};`;
-      } else if (effType === 'spin') {
-        const spinT = el.spinTarget !== undefined ? el.spinTarget : 360;
-        const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-        const repeat = el.spinRepeat !== undefined ? el.spinRepeat : 1;
-        const fill = Math.max(1, repeat);
-        if (!isImageExport) effAnims.push(`eff-spin ${effDur}s ${ease} ${effDelay}s ${fill} both`);
-        effVars = `--spin-target:${spinT}deg;`;
-      } else {
-        const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
-        const speed = Math.max(1, Number(speedStr));
-        const duration = 2 / (speed / 100);
-        if (!isImageExport) effAnims.push(`eff-${effType} ${duration}s ease-in-out ${effDelay}s infinite`);
-      }
-    }
-
-    const entryConfig = entryAnims.length > 0 ? `animation: ${entryAnims.join(', ')};` : '';
-    const effConfig = effAnims.length > 0 ? `animation: ${effAnims.join(', ')};` : '';
+    const { entryConfig, entryVars, effConfig, effVars } = getElementAnimationCSS(el, isImageExport);
     const openDivs = `<div style="width:100%;height:100%;${entryConfig}${entryVars}"><div style="width:100%;height:100%;${effConfig}${effVars}">`;
     const closeDivs = `</div></div>`;
 
@@ -9147,7 +9257,12 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
           maskShape = `<g${transformAttr}><g transform="translate(${tx} ${ty}) scale(${sx} ${sy})">${inner}</g></g>`;
         }
         const maskId = `mask-${el.id}`;
-        maskSvg = `<svg width="0" height="0" style="position:absolute;left:0;top:0;pointer-events:none;"><defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${maskShape}</mask></defs></svg>`;
+        const mAnim = getElementAnimationCSS(m, isImageExport);
+        const originStyle = `transform-box:fill-box;transform-origin:center;`;
+        const entryStyle = mAnim.entryConfig ? `style="${originStyle}${mAnim.entryConfig}${mAnim.entryVars}"` : '';
+        const effStyle = mAnim.effConfig ? `style="${originStyle}${mAnim.effConfig}${mAnim.effVars}"` : '';
+        const animatedMaskShape = `<g class="mask-g-entry" ${entryStyle}><g class="mask-g-eff" ${effStyle}>${maskShape}</g></g>`;
+        maskSvg = `<svg width="0" height="0" style="position:absolute;left:0;top:0;pointer-events:none;"><defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask></defs></svg>`;
         maskCss = `-webkit-mask:url(#${maskId});mask:url(#${maskId});`;
       }
       return `    <div style="${wrapStyle}${maskCss}">${maskSvg}${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
