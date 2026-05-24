@@ -2889,14 +2889,12 @@ function elementNode(el, canvasCtx) {
 
   // Mask layer: the shape's visible body is suppressed (fills, strokes etc.
   // already rendered above are hidden). The wrapper stays in the DOM so the
-  // user can still select / move / resize the mask, but it shows a thin dashed
-  // outline so it's still findable on the canvas.
+  // user can still select / move / resize the mask via the Layers panel —
+  // when selected, the normal selection outline + handles appear.
   if (_isActiveMask) {
     Array.from(d.children).forEach(child => {
       if (child.style) child.style.visibility = 'hidden';
     });
-    d.style.outline = '1px dashed rgba(124, 92, 255, .55)';
-    d.style.outlineOffset = '-1px';
   }
 
   // Image masking: when the IMAGE has an active mask layer directly above it,
