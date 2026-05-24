@@ -6538,6 +6538,7 @@ function renderProps() {
       });
     }
 
+
     const dmOpenBtn = propsEl.querySelector('#dm-open-from-props');
     if (dmOpenBtn) dmOpenBtn.addEventListener('click', () => openDataPanel());
 
@@ -10636,145 +10637,398 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 
-document.getElementById('menu-help-documentation').addEventListener('click', () => {
-  const body = `
-      <div style="font-size:13px; line-height:1.6; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-height:70vh; overflow-y:auto; padding-right:16px;">
-        
-        <div style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(124, 92, 255, 0.08)); border: 1px solid rgba(124, 92, 255, 0.2); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
-          <h3 style="color:#22d3ee; margin:0 0 6px 0; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-            Key Concept: Multi-Canvas Workflow & Link Groups
-          </h3>
-          <p style="margin:0; font-size:12px; color:var(--text-muted); line-height:1.5;">
-            Design once, propagate everywhere. RMIT Adflow lets you orchestrate every banner size (Canvas) inside a single project. Using <b>Link Groups</b>, you bind elements — headlines, CTA buttons, logos, background shapes — across canvases, so a change syncs automatically (or in real time) instead of being re-done by hand in every size.
-          </p>
+const DOCS_SECTIONS = [
+  {
+    id: 'getting-started', title: 'Getting Started',
+    subs: [
+      { id: 'welcome', title: 'Welcome to Adflow', body: `
+        <p>Adflow is a browser-based design tool for animated HTML5 display ads. Lay out every banner size side-by-side in one project, sync them with <b>Link Groups</b>, mail-merge a spreadsheet to generate dozens of versions, and export Google-Ads-compliant ZIPs in a click.</p>
+        <p style="color:var(--text-muted);">Two ideas to start with — read the next two pages even if you skip the rest:</p>
+        <ul><li><b>Multi-canvas + Link Groups</b> — every size in one workspace, edits sync automatically.</li><li><b>Auto-Resize from Selected</b> — design one banner, generate every size, all link-grouped.</li></ul>
+      `},
+      { id: 'multi-canvas-concept', title: 'The multi-canvas idea', body: `
+        <p>Instead of opening one file per banner size, Adflow shows every canvas (300×250, 728×90, 160×600, …) side-by-side on an infinite workspace. You pan with <span class="kbd">Space</span>+drag, zoom with the scroll wheel.</p>
+        <p>The win: when you edit a headline on the 728×90, you don't repeat the edit on the other 5 sizes. <b>Link Groups</b> bind siblings across canvases — a change on one propagates to all of them (immediately if Live-link is on, on demand otherwise).</p>
+        <p>See <b>Multi-canvas → Link Groups</b> for the full mechanics.</p>
+      `},
+      { id: 'auto-resize-glance', title: 'Auto-Resize at a glance', body: `
+        <p>Design <b>one</b> canvas exactly how you want it. Click the canvas to select it, hit <b>Auto-resize from selected</b> in the Tools panel. Adflow reads each element (heading, button, logo, background…), wipes the other canvases, and rebuilds them with format-aware layouts — auto-linking everything so future edits stay in sync.</p>
+        <p style="color:var(--text-muted);">Full breakdown under <b>Auto-Resize ✨</b>.</p>
+      `},
+      { id: 'first-project', title: 'Your first project', body: `
+        <ol>
+          <li><b>File → New Project…</b>, tick the sizes you need, name it, set the default background and ad-weight limit.</li>
+          <li>Pick the size closest to your intended layout. Add a heading, subheading, button, and your logo.</li>
+          <li>Click that canvas, then <b>Auto-resize from selected</b> to fill in the rest of the sizes.</li>
+          <li>Refine. Add per-frame animation if you want movement.</li>
+          <li><b>Export</b> from the top bar → ZIP per canvas, ready to upload.</li>
+        </ol>
+      `},
+    ]
+  },
+  {
+    id: 'workspace', title: 'Workspace',
+    subs: [
+      { id: 'canvases-navigation', title: 'Canvases & navigation', body: `
+        <ul>
+          <li><b>Add a canvas:</b> the <b>+</b> button in the left Canvases panel — pick a standard IAB size or enter custom dimensions.</li>
+          <li><b>Active canvas:</b> click any canvas to focus the side panels on it. Renames via double-click on its title.</li>
+          <li><b>Navigate:</b> <span class="kbd">Space</span>+drag to pan, scroll wheel to zoom. Click the zoom % in the top bar to reset. <span class="kbd">Tab</span> toggles Fullscreen.</li>
+          <li><b>Canvas right-click:</b> Preview, Export HTML5/PNG, background, clear. The sidebar entry's right-click adds clone/delete.</li>
+          <li><b>Crop to canvas:</b> <b>File → Settings</b> — clips elements that bleed outside a canvas for a true export preview.</li>
+        </ul>
+      `},
+      { id: 'layers-persistence', title: 'Layers & persistence', body: `
+        <p>Each canvas has a layer stack in the left Layers panel.</p>
+        <ul>
+          <li><b>Reorder:</b> drag layers, or <span class="kbd">Ctrl</span>+<span class="kbd">[</span> / <span class="kbd">Ctrl</span>+<span class="kbd">]</span>.</li>
+          <li><b>Group:</b> select layers, <span class="kbd">Ctrl</span>+<span class="kbd">G</span>. Double-click a group to <b>isolate</b> and edit inside.</li>
+          <li><b>Persistence badge</b> on a layer: <i>Frame</i> (default — visible only on its frame), <i>Bottom</i> (background across all frames), <i>Top</i> (overlay above all frames — typical for logos / persistent CTAs).</li>
+        </ul>
+      `},
+      { id: 'assets-panel', title: 'Assets panel', body: `
+        <ul>
+          <li><b>Save:</b> select an element/group → <b>+</b> in the Assets panel header. Preserves styles, content, and animations.</li>
+          <li><b>Folders:</b> the folder icon. Double-click to rename custom folders.</li>
+          <li><b>Drop files in:</b> drag PNG / JPEG / SVG from your file manager into the panel or a folder. Or <b>+</b> → upload.</li>
+          <li><b>Hover-preview thumbnail:</b> hover a row to see a small thumbnail next to it.</li>
+          <li><b>RMIT folder:</b> a read-only set of brand assets (logos, Cricos text) preloaded for you.</li>
+          <li><b>Place on canvas:</b> drag onto a canvas, or double-click to drop in the centre.</li>
+        </ul>
+      `},
+      { id: 'alignment-snapping', title: 'Alignment & snapping', body: `
+        <ul>
+          <li><b>Magnetic snap:</b> canvas edges, centres, sibling layers, custom guides. Toggle in the workspace right-click menu.</li>
+          <li><b>Rulers & guides:</b> enable rulers, drag from a ruler into a canvas to drop a guide. Drag the guide back to the ruler to remove.</li>
+          <li><b>Nudging:</b> arrow keys = 1px; <span class="kbd">Shift</span>+arrows = 10px.</li>
+        </ul>
+      `},
+    ]
+  },
+  {
+    id: 'designing', title: 'Designing Elements',
+    subs: [
+      { id: 'text-typography', title: 'Text & typography', body: `
+        <p>Add a text layer from the left panel (or right-click the canvas). Double-click to edit inline.</p>
+        <ul>
+          <li>Brand fonts pre-installed (Museo Sans, RMIT Lato, Helvetica Neue).</li>
+          <li>Per-layer controls: size, weight, alignment, line-height, letter-spacing.</li>
+          <li>Background fill behind text supports adjustable padding and coverage; with a typing IN animation, sweeps in line-by-line.</li>
+        </ul>
+      `},
+      { id: 'cta-buttons', title: 'CTA buttons', body: `
+        <p>Buttons are specialised text boxes with auto-hug padding, stroke widths, and a fill. Right-click to convert text into a button. Hover state available for interactive previews.</p>
+      `},
+      { id: 'images-svg', title: 'Images & SVG', body: `
+        <p>Drop image files anywhere onto the workspace or insert via the Add panel. Aspect ratio is locked by default — hold <span class="kbd">Shift</span> while resizing to stretch.</p>
+        <p><b>WebP compression:</b> Adflow includes a built-in compressor for PNG/JPEG uploads — quality slider (10–100%), live KB preview, helps you stay under the Google Ads weight limit.</p>
+      `},
+      { id: 'shapes', title: 'Shapes', body: `
+        <p>Rectangles, circles, and lines from the Add panel. Adjust fill, stroke, corner radius from the Properties panel.</p>
+      `},
+      { id: 'color-picker', title: 'Color picker & gradients', body: `
+        <p>The custom picker (powered by Iro.js) supports:</p>
+        <ul>
+          <li>Solid HEX, alpha-aware.</li>
+          <li>Linear and radial gradients with multi-stop editing.</li>
+          <li>Native eyedropper on Chromium browsers.</li>
+        </ul>
+      `},
+    ]
+  },
+  {
+    id: 'animation', title: 'Animation',
+    subs: [
+      { id: 'frames-timeline', title: 'Frames & timeline', body: `
+        <p>Add frames to the timeline at the top of the workspace. Each frame has its own duration (seconds). Toggle global <b>Loop</b> to repeat the whole timeline.</p>
+        <p><b>Skip frame:</b> mark a frame as skipped to hide it in preview/export (max 1 skipped frame).</p>
+      `},
+      { id: 'frame-transitions', title: 'Frame transitions', body: `
+        <p>Set how each frame enters: <b>Fade</b>, <b>Slide</b> (4 directions), <b>Swipe</b> (4 directions — a directional wipe that reveals the next frame). Slide and Swipe also offer an <b>Add Fade</b> toggle and adjustable duration.</p>
+      `},
+      { id: 'entrance-animations', title: 'Entrance animations', body: `
+        <p>Per-element IN animations played when a frame begins: Pop-in, Fade, Slide, Typing. Each has duration, delay, and an optional fade. Stagger them by adjusting delays.</p>
+      `},
+      { id: 'continuous-effects', title: 'Continuous effects', body: `
+        <p>Looping, non-destructive effects that overlay on top of the frame state: Pan, Zoom, Float, Pulse, Wiggle, Spin, Heartbeat, Flash. Toggle <b>Perform once</b> to play a single cycle instead of looping.</p>
+      `},
+    ]
+  },
+  {
+    id: 'multi-canvas', title: 'Link Groups',
+    subs: [
+      { id: 'auto-link', title: 'Auto-Link', body: `
+        <p><b>Auto-Link</b> in the sidebar scans all canvases and groups matching elements by layer name + type. Use <b>Selected only</b> to target just the active layer.</p>
+        <p>Best paired with consistent layer names (rename via the Layers panel).</p>
+      `},
+      { id: 'manual-linking', title: 'Manual linking', body: `
+        <p>Right-click an element → <b>Link Group</b> shows "Linked to: [Name]" if already in the group, or "Link to: [Name]" otherwise. From the Link Groups panel you can also create a new group or merge groups.</p>
+      `},
+      { id: 'sync-properties', title: 'Sync properties', body: `
+        <p>Per group, control what propagates: Text content, Font settings, Font size (separate so you can scale per canvas), Colors (text), Background (text background settings), Colors & Fill, Stroke, Transform (Width/Height), Opacity, IN Animations, Effects.</p>
+      `},
+      { id: 'live-link-mode', title: 'Live-Link mode', body: `
+        <p>The ⚡ lightning-bolt toggle on a group. When on, every edit on one sibling fires the same update on all the others in real time — dragging, resizing, typing, recolouring.</p>
+      `},
+      { id: 'manual-push', title: 'Manual push', body: `
+        <p>Live-link off? Use <b>Push changes to group</b> in the right-click menu (or the side-panel button) to broadcast on demand.</p>
+      `},
+    ]
+  },
+  {
+    id: 'auto-resize', title: 'Auto-Resize ✨',
+    subs: [
+      { id: 'auto-resize-overview', title: 'What it does', body: `
+        <p>Design one canvas. Click <b>Auto-resize from selected</b> in the Tools panel. The other canvases are cleared (you confirm first) and rebuilt with format-aware layouts of the same elements, all linked back to the source.</p>
+        <p>The whole operation is a single Undo step.</p>
+      `},
+      { id: 'role-detection', title: 'Role detection', body: `
+        <p>Each element on the source canvas is classified — first by its layer name (e.g. <i>heading</i>, <i>logo</i>), then by heuristics if the name is generic. Possible roles: heading, subheading, button, logo, shape, background image (anything filling the canvas), or a generic fallback.</p>
+        <p>Tip: name your layers ahead of time for the best results.</p>
+      `},
+      { id: 'format-presets', title: 'Format presets', body: `
+        <p>Every target canvas is matched to a format class — skyscraper, rectangle, leaderboard, billboard, mobile. Each role has presets per format:</p>
+        <ul>
+          <li><b>CTA:</b> bottom-centre on tall/rectangle; right-centre on wide/mobile.</li>
+          <li><b>Heading:</b> top-left, reserves space for the button on wide formats.</li>
+          <li><b>Logo:</b> pins top-right.</li>
+          <li><b>Background image:</b> fills the frame full-bleed.</li>
+        </ul>
+      `},
+      { id: 'auto-linking-rebuild', title: 'Auto-linking the rebuild', body: `
+        <p>Every propagated element joins its own Link Group with sync defaults tuned to its role: content and appearance sync (text, typeface, colours, stroke, animation), but <b>position, dimensions and font size stay independent per canvas</b> so later edits to wording or colour ripple everywhere without disturbing each size's tuned layout.</p>
+      `},
+    ]
+  },
+  {
+    id: 'data-versions', title: 'Data & Versions ✨',
+    subs: [
+      { id: 'dynamic-slots', title: 'Marking dynamic slots', body: `
+        <p>Select an element, open the <b>Dynamic Data</b> section of the Properties panel, and tick fields to make dynamic:</p>
+        <ul>
+          <li><b>Text</b> + <b>Color</b> on text.</li>
+          <li><b>Background</b> on buttons.</li>
+          <li><b>Image</b> on images.</li>
+          <li>Fill <b>Color</b> on shapes.</li>
+        </ul>
+        <p>A small dot marks dynamic elements on the canvas. Unmarked elements are never touched by the merge.</p>
+      `},
+      { id: 'slots-link-groups', title: 'Slots × Link Groups', body: `
+        <p>A dynamic field becomes a <b>slot</b>. If the element is in a Link Group, the slot covers the whole group — so one binding fills that element on every size at once. Toggling a dynamic field on a linked element applies it to all siblings automatically, and your link-group sync settings are never altered.</p>
+      `},
+      { id: 'loading-data', title: 'Loading data', body: `
+        <p>Open <b>File → Data &amp; Versions</b> (or the <b>Data</b> button). <b>Import CSV</b>, or add columns/rows by hand. Map each column to a slot's field, pick the <b>★ version name</b> column (names the exported folders), and optionally bind a column to <b>ClickTag</b>.</p>
+        <p>The sheet stores inside the <code>.flow</code> project; it auto-saves and travels with it.</p>
+        <p><b>Interactions:</b> double-click a column header to rename, drag the header to reorder columns, drag the ⋮⋮ grip on each row to reorder rows, click the sort icon for asc/desc/none.</p>
+      `},
+      { id: 'switching-versions', title: 'Switching versions live', body: `
+        <p>Pick a row from the <b>Version</b> dropdown in the top bar to preview that row on the canvas. Non-destructive — your template defaults are never overwritten, and selecting "No version" returns to them.</p>
+      `},
+      { id: 'edit-in-place-lock', title: 'Edit-in-place & Data lock', body: `
+        <p>While a version is active and the <b>Data lock</b> is OFF, editing a dynamic slot on the canvas writes back to <b>that row's cell</b>. Toggle the lock to ON to make dynamic inputs/textareas read-only — handy when reviewing versions without nudging the data.</p>
+      `},
+      { id: 'export-all-versions', title: 'Export all versions', body: `
+        <p><b>Export All Versions</b> produces one folder per row, named from the version-name column, each containing the full Google-Ads-compliant ZIP set through the standard export pipeline.</p>
+      `},
+    ]
+  },
+  {
+    id: 'cloud-spaces', title: 'Cloud & Spaces',
+    subs: [
+      { id: 'sign-in', title: 'Signing in', body: `
+        <p>The splash screen now doubles as a sign-in gate. New users tap <b>Sign up</b>, enter email + password (≥6 chars), check inbox if email confirmation is on, then sign in.</p>
+        <ul>
+          <li><b>Remember me on this device</b> (default on) — session token stored in localStorage and persists across tabs. Uncheck to scope the session to the current tab only.</li>
+          <li><b>Use locally without signing in</b> — skip the cloud, work entirely against IndexedDB autosave. You can sign in later from the top-bar chip.</li>
+        </ul>
+      `},
+      { id: 'cloud-projects', title: 'Cloud Projects', body: `
+        <p>When signed in, click the chip → <b>My Cloud Projects</b>. Push the current project to the cloud, open one back, or delete. Cloud projects use the same <code>.flow</code> format as local saves, so nothing needs re-importing.</p>
+        <p><b>Same-name push:</b> if a project with the same name already exists in the current context, a toast appears with <b>Replace</b> (overwrite) and <b>Rename</b> (push as a new project with a different name).</p>
+      `},
+      { id: 'spaces', title: 'Spaces (team workspaces)', body: `
+        <p>Spaces are shared pools. The chip dropdown lists all spaces you belong to plus "Personal". The current space's name appears next to your email in the top bar.</p>
+        <ul>
+          <li><b>+ Create new space…</b> spins up a new shared workspace you own.</li>
+          <li><b>Manage Spaces…</b> opens a list with per-space actions: <b>Members</b>, <b>Invite</b>, <b>Rename</b> (owner), <b>Duplicate</b> (clones folders + projects to a new space you own), <b>Delete</b> (owner — type the name to confirm), <b>Leave</b> (non-owner).</li>
+        </ul>
+      `},
+      { id: 'invitations', title: 'Inviting members', body: `
+        <p>From Manage Spaces → <b>Invite</b>, type the teammate's email. Adflow generates a one-time join URL and copies it to your clipboard. Paste it into Slack or email yourself. When the recipient opens it and signs in with the same email, they're auto-added.</p>
+      `},
+      { id: 'cloud-folders', title: 'Folders in spaces', body: `
+        <p>Inside a space, the Cloud Projects modal shows a folder tree on the left. <b>+ New folder</b> creates one, hover a folder to delete, and use the per-row dropdown to move a project between folders.</p>
+      `},
+    ]
+  },
+  {
+    id: 'projects', title: 'Saving & Projects',
+    subs: [
+      { id: 'autosave', title: 'Auto-save', body: `
+        <p>Every change is debounced and persisted to your browser's IndexedDB. Restored on reload — including zoom and scroll position. Top bar shows a live status indicator (saved / saving / unsaved / error).</p>
+        <p><b>History limit:</b> set in <b>File → Settings</b> — 1 to 50 states, default 10.</p>
+      `},
+      { id: 'flow-files', title: '.flow files', body: `
+        <p><b>File → Save Project</b> (<span class="kbd">Ctrl</span>+<span class="kbd">S</span>) writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. <b>Open Project</b> reads <code>.flow</code> (and legacy <code>.cook</code>/<code>.zip</code>) back in.</p>
+        <p><b>Open Recent</b> in the File menu shows your last manually-saved projects.</p>
+      `},
+      { id: 'new-project-wizard', title: 'New Project wizard', body: `
+        <p><b>File → New Project…</b> lets you pick which canvas sizes to include, the project name, ClickTag URL, default canvas background, and ad-weight limit (default 150 KB — the Google Ads standard).</p>
+      `},
+      { id: 'settings', title: 'App settings', body: `
+        <p><b>File → Settings</b>: theme (Dark, RMIT Brand, Ocean, Navy, Light), rulers, snapping, Crop to Canvas, history limit, autosave behaviour. <b>File → Project Settings</b> covers per-project options (name, ClickTag, weight limit).</p>
+      `},
+      { id: 'startup-view', title: 'Startup view & resume', body: `
+        <p>The view is always centred on your canvases at startup. If you had a saved scroll position from your last session, a toast appears with <b>Resume previous view</b> to jump back.</p>
+      `},
+    ]
+  },
+  {
+    id: 'export', title: 'Export & Validation',
+    subs: [
+      { id: 'clicktag', title: 'ClickTag', body: `
+        <p>The exit URL used when someone clicks the banner. Set globally per project, or override per canvas. Can also be bound to a CSV column in Data & Versions for per-row click destinations.</p>
+      `},
+      { id: 'validation', title: 'Validation audits', body: `
+        <p>The left panel runs live checks: missing ClickTag, external asset references, total ad weight. Anything above your configured weight limit flags as an error — the default (150 KB) is the Google Ads standard.</p>
+      `},
+      { id: 'bundling', title: 'Bundling', body: `
+        <p>Per-canvas ZIP from the canvas right-click menu. Whole-project batch from the top-bar <b>Export</b> button.</p>
+        <p>SVG brand assets are fetched and inlined automatically so the ZIPs are self-contained.</p>
+      `},
+      { id: 'static-fallback', title: 'Static PNG fallback', body: `
+        <p>One-click PNG snapshot of any frame for use as a fallback image when an ad network can't render the animation.</p>
+      `},
+    ]
+  },
+  {
+    id: 'reference', title: 'Reference',
+    subs: [
+      { id: 'keyboard-shortcuts', title: 'Keyboard shortcuts', body: `
+        <table style="border-collapse:collapse; font-size:12px; width:100%;">
+          <thead><tr><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Shortcut</th><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Action</th></tr></thead>
+          <tbody>
+          ${[
+            ['Ctrl + S','Save project'],
+            ['Ctrl + C / X / V','Copy / Cut / Paste'],
+            ['Ctrl + D','Duplicate selected'],
+            ['Ctrl + Z / Y','Undo / Redo'],
+            ['Ctrl + G / Shift + G','Group / Ungroup'],
+            ['Ctrl + ] / [','Layer order forward / back'],
+            ['Space + Drag','Pan workspace'],
+            ['Delete / Backspace','Delete selected'],
+            ['Tab','Toggle Fullscreen'],
+            ['Arrow keys','Nudge 1px'],
+            ['Shift + Arrows','Nudge 10px'],
+            ['Shift + Drag corner','Lock aspect ratio'],
+            ['Alt + Drag','Clone element on drag'],
+            ['Alt + Resize handle','Scale font proportionally'],
+            ['Ctrl + Resize','Snap dimensions to 10px'],
+            ['Double-click text','Inline edit'],
+            ['Double-click group','Isolate & edit inside'],
+            ['Escape','Deselect / close modal']
+          ].map(([k,v]) => `<tr><td style="padding:5px 8px; border-bottom:1px solid #1f2330;"><span class="kbd">${k}</span></td><td style="padding:5px 8px; border-bottom:1px solid #1f2330; color:var(--text-muted);">${v}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      `},
+      { id: 'changelog-link', title: 'Changelog', body: `
+        <p>Click the version label in the top bar (e.g. <b>v0.11.0</b>) to open the full changelog modal.</p>
+      `},
+    ]
+  }
+];
+
+function openDocumentation() {
+  const body = `<div id="docs-panel"></div>`;
+  openModal('Documentation', body, false);
+  const bg = document.body.lastElementChild;
+  const modal = bg.querySelector('.modal');
+  if (modal) { modal.style.width = '1100px'; modal.style.maxWidth = '95vw'; }
+  // Initial: first sub of first section.
+  const first = DOCS_SECTIONS[0].subs[0];
+  renderDocsPanel(bg, DOCS_SECTIONS[0].id, first.id);
+}
+
+function renderDocsPanel(bg, activeSecId, activeSubId) {
+  const panel = bg.querySelector('#docs-panel');
+  if (!panel) return;
+  const activeSec = DOCS_SECTIONS.find(s => s.id === activeSecId) || DOCS_SECTIONS[0];
+  const activeSub = activeSec.subs.find(s => s.id === activeSubId) || activeSec.subs[0];
+
+  const sidebarHtml = DOCS_SECTIONS.map(sec => {
+    const isOpen = sec.id === activeSecId;
+    const subs = isOpen ? `<div class="docs-subs">${sec.subs.map(sub => `
+      <div class="docs-sub${sub.id === activeSubId ? ' active' : ''}" data-sec="${sec.id}" data-sub="${sub.id}">
+        ${sub.title}
+      </div>`).join('')}</div>` : '';
+    return `
+      <div class="docs-section${isOpen ? ' open' : ''}">
+        <div class="docs-section-head" data-sec="${sec.id}">
+          <span>${sec.title}</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transform:rotate(${isOpen ? '0' : '-90'}deg); transition:transform .15s ease; opacity:.6;"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-
-        <div style="background: linear-gradient(135deg, rgba(124, 92, 255, 0.14), rgba(167, 139, 250, 0.06)); border: 1px solid rgba(124, 92, 255, 0.35); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
-          <h3 style="color:var(--accent-light); margin:0 0 6px 0; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 9l-4.8 3.5L17 18l-5-3.5L7 18l1.8-5.5L4 9l6.1.2z"></path></svg>
-            Headline Feature: Auto-Resize from Selected (AI)
-          </h3>
-          <p style="margin:0; font-size:12px; color:var(--text-muted); line-height:1.5;">
-            Build your whole size set from one designed canvas. Lay out a single banner exactly how you want it, then hit <b>Auto-resize from selected</b> in the Tools panel — Studio reads every element, figures out its role, rebuilds all the other canvases to fit their proportions, and links everything together so future edits stay in sync. See section 2 for the full breakdown.
-          </p>
-        </div>
-
-        <h2 style="color:#22d3ee; margin-top:0; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">1. Workspace & Multi-Canvas Orchestration</h2>
-        <p>Instead of managing separate files for each banner size, RMIT Adflow arranges all your ad sizes (Canvases) side-by-side on an infinite panning workspace.</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:6px;"><b>Adding Canvases:</b> Click the <b>+</b> button in the left sidebar to add standard IAB display sizes (300×250, 728×90, 160×600, 970×250, 320×50, …) or input custom dimensions.</li>
-          <li style="margin-bottom:6px;"><b>Active Canvas Selection:</b> Click any canvas to make it the active workspace. The side property panels and options automatically scope to the selected canvas.</li>
-          <li style="margin-bottom:6px;"><b>Navigation & Zoom:</b> Hold <span class="kbd">Space</span> and drag to pan. Scroll the mouse wheel (or pinch) to zoom; click the zoom % in the top bar to reset to 100%. Press <span class="kbd">Tab</span> to toggle Fullscreen Mode.</li>
-          <li style="margin-bottom:6px;"><b>Canvas Controls:</b> Double-click a canvas title to rename it. Right-click a canvas for Preview, Export HTML5 / PNG, change background, or clear contents. Right-click its sidebar entry to clone or delete.</li>
-          <li style="margin-bottom:6px;"><b>Crop to Canvas:</b> Enable in <b>Settings</b> to clip anything that bleeds outside a canvas's bounds — an Illustrator-style trim preview of the exported result.</li>
-        </ul>
-
-        <h2 style="color:var(--accent-light); margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">2. Auto-Resize from Selected ✨ (AI)</h2>
-        <p>The flagship workflow accelerator. Design one canvas, then propagate it across every other size in a single click via the <b>Auto-resize from selected</b> button in the left <b>Tools</b> panel.</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:10px;">
-          <li style="margin-bottom:8px;"><b>Role detection (hybrid):</b> Each element on the source canvas is classified by layer name first, then by smart heuristics — <i>heading</i>, <i>subheading</i>, <i>button</i>, <i>logo</i>, <i>shape</i>, <i>background image</i> (anything filling the canvas), or a generic fallback for anything unrecognised.</li>
-          <li style="margin-bottom:8px;"><b>Format-aware placement & sizing:</b> Every target canvas is matched to a format class — skyscraper, rectangle, leaderboard, billboard, mobile — and each role is positioned and scaled with presets tuned for that shape (e.g. CTAs anchor bottom-centre on tall/rectangle formats and right-centre on wide/mobile strips; headings stack top-left and reserve space for the button on wide units; logos pin top-right; full-bleed images fill the frame).</li>
-          <li style="margin-bottom:8px;"><b>Clean slate:</b> Before rebuilding, the other canvases are <b>cleared</b> so only source-derived elements remain — you'll be asked to confirm first, and the whole operation is a single undo.</li>
-          <li style="margin-bottom:8px;"><b>Auto-linking:</b> Every propagated element is placed in its own Link Group with role-appropriate sync defaults. Content and appearance (text, typeface, colours, stroke, animation) stay in sync across canvases, while <b>position, dimensions and font-size remain independent</b> per format — so later edits to wording or colour ripple everywhere without disturbing each size's tuned layout.</li>
-        </ul>
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Tip: results are a strong starting point, not a final layout — nudge anything afterwards, and your manual tweaks to size/position won't be overwritten by content syncs.</p>
-
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">3. Link Groups & Synchronization (Real-time & Manual)</h2>
-        <p>Link Groups are the engine behind the multi-canvas workflow, binding sibling elements across canvases.</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:8px;"><b>Auto-Link:</b> Click <b>Auto-Link</b> in the sidebar to scan all canvases and group matching elements by layer name and type. Toggle <b>Selected only</b> to match against just the currently selected layer.</li>
-          <li style="margin-bottom:8px;"><b>Manual Linking:</b> Right-click an element → <b>Link Group</b> to join an existing group (which lists existing groups as "Linked to: [Name]" if the element is already part of the group, or "Link to: [Name]" otherwise), or create a new group from the Link panel.</li>
-          <li style="margin-bottom:8px;"><b>Sync Properties:</b> Define exactly which properties sync within a group — <i>Text content</i>, <i>Font settings</i> (family/weight/spacing/alignment), the standalone <i>Font size</i>, <i>Colors</i> (text color), <i>Background</i> (text background color &amp; settings), <i>Colors &amp; Fill</i>, <i>Stroke</i>, <i>Transform (Width/Height)</i>, <i>Opacity</i>, <i>IN Animations</i>, and <i>Effects</i>. Splitting Font size from Font settings lets you keep one typeface across canvases while each size keeps its own scale.</li>
-          <li style="margin-bottom:8px;"><b>Live-Link Mode (Real-time Sync):</b> Toggle the lightning-bolt icon in the Link Groups panel (or the <b>Live-link mode</b> checkbox under Sync Properties). When active, any edit — moving, resizing, editing text, changing colour — propagates to all siblings instantly.</li>
-          <li style="margin-bottom:8px;"><b>Manual Push:</b> With Live-link off, broadcast changes on demand via <b>Push changes to group</b> in the context menu or the side-panel button.</li>
-        </ul>
-
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">4. Element Creation & Customization</h2>
-        <p>Right-click inside any canvas to add design layers. Adjust their visuals using the right-hand Properties Panel:</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:6px;"><b>Text & Typography:</b> Supports custom styling (size, alignment, weight, line-height, leading, and tracking). Includes pre-installed brand typography (Museo Sans, RMIT Lato, etc.). Double-click text layers to edit content inline.</li>
-          <li style="margin-bottom:6px;"><b>CTA Buttons:</b> Specialized text boxes with integrated auto-hug layout padding, stroke widths, and background fills. Excellent for responsive Call-to-Actions.</li>
-          <li style="margin-bottom:6px;"><b>Images & Brand Assets:</b> Insert SVG/PNG assets. Supports RMIT logo configurations and custom file uploads. Holds aspect ratio bounds automatically (press <span class="kbd">Shift</span> to stretch).</li>
-          <li style="margin-bottom:6px;"><b>Vector Shapes:</b> Add editable rectangles, circles, or custom shapes with stroke and fill adjustments.</li>
-          <li style="margin-bottom:6px;"><b>Advanced Color Picker:</b> Swatches support linear and radial gradients, hex inputs, alpha opacity settings, and saved project swatches.</li>
-        </ul>
-
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">5. Assets Panel &amp; Reusable Elements</h2>
-        <p>The Assets panel (bottom-left) allows you to store, organize, and reuse design elements and image uploads:</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:6px;"><b>Saving Custom Assets:</b> Select any canvas element (text, shape, button, image, or group) and click the <b>+</b> button in the Assets panel header (or right-click the element and select <b>Save to Assets</b>) to store it. Custom assets preserve all styles, contents, and animations.</li>
-          <li style="margin-bottom:6px;"><b>Asset Folders:</b> Create folders via the folder icon in the panel header. Double-click custom folder names to rename them (read-only preloaded folders cannot be renamed).</li>
-          <li style="margin-bottom:6px;"><b>External Files &amp; Drag-and-Drop:</b> Drag image files (PNG, JPEG, SVG) directly from your computer into the Assets panel or onto a specific folder. Alternatively, click the <b>+</b> button to trigger a prompt to upload new files.</li>
-          <li style="margin-bottom:6px;"><b>Organizing Assets:</b> Supports single/multiple selection (hold <span class="kbd">Ctrl</span> or <span class="kbd">Shift</span>). Drag selected assets into folders or out to the left margin to move them back to the root list. Press <span class="kbd">Delete</span> or <span class="kbd">Backspace</span> to delete selected custom assets.</li>
-          <li style="margin-bottom:6px;"><b>RMIT Folder:</b> A read-only collection of RMIT brand assets is preloaded automatically. These assets are protected against deletion or renaming and support WebP compression when placed on canvas.</li>
-          <li style="margin-bottom:6px;"><b>Adding to Canvas:</b> Drag assets from the panel onto any canvas, or double-click an asset to place it in the center. Placed elements are registered correctly in the Layers list.</li>
-        </ul>
-
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">6. Layer Stacking & Persistence</h2>
-        <p>Order and target layers across frames via the left Layers Panel:</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:6px;"><b>Arranging:</b> Drag layers up and down the stack, or use <span class="kbd">Ctrl</span>+<span class="kbd">[</span> and <span class="kbd">Ctrl</span>+<span class="kbd">]</span> to order.</li>
-          <li style="margin-bottom:6px;"><b>Group & Isolate:</b> Select multiple items and press <span class="kbd">Ctrl</span>+<span class="kbd">G</span> to group. Double-click a group to isolate it, focusing edits solely inside its bounds.</li>
-          <li style="margin-bottom:6px;"><b>Persistence (Frame vs Top vs Bottom):</b> Click the persistence badge on a layer. <i>Frame</i> limits the element to the current timeline frame. <i>Bottom</i> locks it as a background across all frames. <i>Top</i> forces it to overlay above all frames (useful for branding logos and persistent CTAs).</li>
-        </ul>
-
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">7. Timeline, Animations & Loop</h2>
-        <p>Animate your display ads using the frame-based sequencer at the top of the workspace:</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:6px;"><b>Frames:</b> Create sequence steps with individual display durations. The per-frame transition selector covers <i>Fade</i>, <i>Slide</i> (L/R/U/D), and <i>Swipe</i> (L/R/U/D, a wipe that reveals the next frame). Slide/Swipe also offer an <b>Add Fade</b> toggle and a transition duration.</li>
-          <li style="margin-bottom:6px;"><b>Entrance Animations:</b> Apply IN animations (Pop-in, Fade, Slide, Typing) per layer to animate them onto the screen when a frame begins, with duration, delay and an optional fade toggle.</li>
-          <li style="margin-bottom:6px;"><b>Continuous Effects:</b> Apply looping effects (Pan, Zoom, Float, Pulse, Wiggle, Spin, Heartbeat, Flash) to keep banners dynamic. Toggle "Perform once" to play a single cycle instead of looping.</li>
-          <li style="margin-bottom:6px;"><b>Text background animation:</b> Text layers can carry a coloured background with adjustable padding and coverage; with a typing IN animation it can sweep in line-by-line alongside the text.</li>
-          <li style="margin-bottom:6px;"><b>Timeline Loop:</b> Toggle the global Loop option to repeat the whole timeline continuously.</li>
-        </ul>
-
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">8. Alignment, Guides & Snapping</h2>
-        <p>Ensure precise layout alignment across your banners:</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:6px;"><b>Magnetic Snapping:</b> Elements align and snap to canvas edges, centers, guidelines, and sibling layers. Toggle Snapping in the workspace context menu.</li>
-          <li style="margin-bottom:6px;"><b>Guides & Rulers:</b> Toggle rulers on. Drag from the horizontal or vertical ruler into a canvas to position alignment guides. Drag a guide back to the ruler to delete.</li>
-          <li style="margin-bottom:6px;"><b>Precision Nudging:</b> Use arrow keys to nudge elements 1px, or hold <span class="kbd">Shift</span> to nudge 10px.</li>
-        </ul>
-
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">9. Saving, Auto-Save & Project Management</h2>
-        <p>Your work is protected automatically, and projects are easy to start, reopen and configure:</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:16px;">
-          <li style="margin-bottom:6px;"><b>Seamless auto-save:</b> Every change is continuously persisted to this browser (IndexedDB) and restored when you return — including your zoom and scroll position. The top bar shows a live status: <i>All changes saved</i>, <i>Saving…</i>, or <i>Unsaved changes</i>. No prompt on close.</li>
-          <li style="margin-bottom:6px;"><b>Project History:</b> Undo/redo history is saved directly within the browser session autosave and inside <code>.flow</code> project files, allowing full history recovery upon reopening or importing a project. The history limit is configurable from <b>File → Settings</b> (1 to 50 states, default 10). <i>Warning: Storing history does not persist deleted assets (like images) from a past session. Undoing after reopening a project might result in missing images if those assets were deleted and pruned.</i></li>
-          <li style="margin-bottom:6px;"><b>Manual save / open (.flow):</b> <b>File → Save Project</b> (<span class="kbd">⌘ / Ctrl</span>+<span class="kbd">S</span>) writes a portable <b>.flow</b> file (project + embedded assets); <b>Open Project</b> loads <code>.flow</code> (and legacy <code>.cook</code>/<code>.zip</code>) back in.</li>
-          <li style="margin-bottom:6px;"><b>Open Recent:</b> The File menu lists your last manually-saved projects with timestamps for one-click restore.</li>
-          <li style="margin-bottom:6px;"><b>New Project wizard:</b> Choose which canvas sizes to include (all on by default), the project name, ClickTag URL, the default canvas background colour, and a configurable <b>maximum ad weight (KB)</b> used by the live validator.</li>
-          <li style="margin-bottom:6px;"><b>Project Settings &amp; Settings:</b> Edit project name / ClickTag in <b>File → Project Settings</b>; app-level preferences (theme, rulers, snapping, Crop to Canvas, and history limit) live in <b>File → Settings</b>.</li>
-        </ul>
-
-        <h2 style="color:var(--accent-light); margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">10. Data &amp; Versions ✨ (Dynamic Creative)</h2>
-        <p>Design <b>one</b> template, then mail-merge a spreadsheet of data into it to produce a finished ad set per row — perfect for running the same banner set across many RMIT courses. Open it from <b>File → Data &amp; Versions…</b> or the <b>Data</b> button in the top bar.</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:10px;">
-          <li style="margin-bottom:8px;"><b>1 · Mark what's dynamic:</b> Select an element and, in the <b>Dynamic Data</b> section of the Properties panel, tick the fields that should vary per version — <i>Text</i> &amp; <i>Color</i> on text, plus <i>Background</i> on buttons, <i>Image</i> on images, or fill <i>Color</i> on shapes. A small dot marks dynamic elements on the canvas. Unmarked elements are never touched by the merge.</li>
-          <li style="margin-bottom:8px;"><b>Slots &amp; link groups:</b> A dynamic field becomes a <b>slot</b>. If the element belongs to a Link Group, the slot covers the <b>whole group</b> — so one binding fills that element on every size at once. Toggling a field on a linked element automatically applies it to all its siblings, and your link-group sync settings are never altered.</li>
-          <li style="margin-bottom:8px;"><b>2 · Load your sheet:</b> In the panel, <b>Import CSV</b> (or add columns/rows by hand). Map each spreadsheet column to a slot's field, choose the <b>★ version name</b> column (used to name exported folders), and optionally bind a column to the <b>ClickTag</b> exit URL. The whole sheet is stored inside the <code>.flow</code> project, auto-saves with it, and can be exported back to CSV for the team to edit.</li>
-          <li style="margin-bottom:8px;"><b>3 · Switch versions live:</b> Pick a row from the <b>Version</b> dropdown in the top bar to preview it on the canvas — in both editing and preview modes. Substitution is <b>non-destructive</b>: your template defaults are never overwritten, and choosing "Template (no version)" returns to them.</li>
-          <li style="margin-bottom:8px;"><b>Edit-in-place &amp; Data lock:</b> While a version is active, editing a dynamic slot on the canvas (typing into text, recolouring, swapping an image) writes back to <b>that row's cell</b> rather than the template. Click the <b>lock</b> button next to the dropdown to make dynamic slots read-only so you can review versions without nudging the data.</li>
-          <li style="margin-bottom:8px;"><b>4 · Export every version:</b> In the Export dialog, <b>Export All Versions</b> generates one folder per row (named from the version-name column), each containing the full Google-Ads-compliant ZIP set, through the standard export pipeline.</li>
-        </ul>
-        <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Image columns should reference an asset filename already used in the project (or a full URL). Frames need no special handling — a frame-1 and frame-2 headline are simply two differently-named slots.</p>
-
-        <h2 style="color:#22d3ee; margin-top:20px; border-bottom:1px solid #272c3a; padding-bottom:8px; font-size:15px; font-weight:600;">11. Exporting & Google Ads Validation</h2>
-        <p>Export ready-to-run HTML5 ad packages tailored for Google Ads compliance:</p>
-        <ul style="padding-left:20px; color:var(--text-muted); margin-bottom:8px;">
-          <li style="margin-bottom:6px;"><b>ClickTag Configuration:</b> Set target redirects globally or override individual click destinations per canvas.</li>
-          <li style="margin-bottom:6px;"><b>Validation Audits:</b> The left panel runs live checks on assets, external links and weight, flagging errors when a canvas exceeds your configured size limit (default 150&nbsp;KB, the Google Ads standard) or contains non-compliant external assets.</li>
-          <li style="margin-bottom:6px;"><b>Production Bundling:</b> Exports as self-contained ZIP files with inline code and embedded assets — per canvas, or batch-export the whole set.</li>
-          <li style="margin-bottom:6px;"><b>PNG backup:</b> One-click static raster capture of any frame for use as a fallback image.</li>
-        </ul>
-
+        ${subs}
       </div>`;
-  openModal('RMIT Adflow Documentation', body, false);
-});
+  }).join('');
+
+  panel.innerHTML = `
+    <div style="display:flex; gap:0; height:calc(86vh - 80px); min-height:480px;">
+      <div id="docs-sidebar" style="width:240px; flex-shrink:0; overflow-y:auto; border-right:1px solid var(--border-light); padding:8px 0;">
+        ${sidebarHtml}
+      </div>
+      <div id="docs-content" style="flex:1; overflow-y:auto; padding:18px 28px;">
+        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:6px;">${activeSec.title}</div>
+        <h2 style="margin:0 0 14px; font-size:18px; font-weight:600; color:var(--text-bright);">${activeSub.title}</h2>
+        <div class="docs-body" style="font-size:13px; line-height:1.65; color:var(--text-main);">${activeSub.body}</div>
+      </div>
+    </div>`;
+
+  // Wire interactions
+  bg.querySelectorAll('.docs-section-head').forEach(head => {
+    head.addEventListener('click', () => {
+      const sec = head.dataset.sec;
+      // Click on a section header toggles open and selects the first sub.
+      const target = DOCS_SECTIONS.find(s => s.id === sec);
+      if (!target) return;
+      // If already open and clicked again, collapse by switching to a different section's first sub.
+      if (sec === activeSecId) {
+        // Toggle: open another section would lose current state, so instead keep current.
+        // Allow collapse only if user clicks again — show first sub of same section.
+        renderDocsPanel(bg, sec, target.subs[0].id);
+      } else {
+        renderDocsPanel(bg, sec, target.subs[0].id);
+      }
+    });
+  });
+  bg.querySelectorAll('.docs-sub').forEach(sub => {
+    sub.addEventListener('click', () => {
+      renderDocsPanel(bg, sub.dataset.sec, sub.dataset.sub);
+    });
+  });
+}
+
+document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.11.2',
+    date: 'May 2026',
+    items: [
+      'Footer pills (zoom + version) are now plain text (no boxes / borders) with a subtle hover background.',
+      'Renamed the version dropdown placeholder from "Template (no version)" to "No version".'
+    ]
+  },
+  {
+    version: 'v0.11.1',
+    date: 'May 2026',
+    items: [
+      'Rebuilt the Documentation modal as a two-column menu: 11 top-level sections each with focused subsections. Click a section to expand its subs, click a sub to load just that page on the right.',
+      'Wider modal (~1100px), accent-coloured active row in the sidebar, scoped scrollbars, and a Keyboard Shortcuts table under Reference.',
+      'Added a dedicated Cloud & Spaces section covering the splash sign-in gate, cloud projects, spaces, invitations, and folders.',
+      'Moved the zoom and version labels out of the top bar and into a static footer strip at the bottom of the right panel — zoom pill on the left, version pill on the right. Both are now styled as clickable pill buttons; the strip stays put as the panel scrolls.'
+    ]
+  },
   {
     version: 'v0.11.0',
     date: 'May 2026',
@@ -11201,7 +11455,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.11.0';
+  const currentVersion = 'v0.11.2';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -11271,7 +11525,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.11.0</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.11.2</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -11327,7 +11581,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.11.0</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.11.2</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -12480,7 +12734,7 @@ function renderVersionSwitcher() {
   if (!dm || !dm.enabled || !dm.rows.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
-  sel.innerHTML = '<option value="">— Template (no version) —</option>' +
+  sel.innerHTML = '<option value="">No version</option>' +
     dm.rows.map((r, i) => `<option value="${i}">${dmEsc(r[keyCol] || ('Row ' + (i + 1)))}</option>`).join('');
   sel.value = dm.activeVersion == null ? '' : String(dm.activeVersion);
   const lockBtn = document.getElementById('btn-data-lock');
@@ -12524,7 +12778,7 @@ function renderPreviewVersionBar() {
   bar.style.display = 'flex';
   const sel = bar.querySelector('#preview-version-select');
   const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
-  sel.innerHTML = '<option value="">— Template (no version) —</option>' +
+  sel.innerHTML = '<option value="">No version</option>' +
     dm.rows.map((r, i) => `<option value="${i}">${dmEsc(r[keyCol] || ('Row ' + (i + 1)))}</option>`).join('');
   sel.value = dm.activeVersion == null ? '' : String(dm.activeVersion);
 }

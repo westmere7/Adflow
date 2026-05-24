@@ -380,9 +380,6 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </button>
       </span>
-      <span id="zoom-level-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Reset Zoom">Zoom 100%</span>
-      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v0.11.0</span>
-
       <!-- Auth chip: shows "Sign in" when logged out, avatar + email + dropdown when logged in. -->
       <div id="auth-chip" style="position:relative; margin-right:12px;"></div>
 
@@ -567,6 +564,10 @@
       <div class="panel right">
         <div class="panel-scroll" id="props">
           <div class="prop-empty">Select an element to edit its properties.</div>
+        </div>
+        <div class="workspace-footer" id="workspace-footer">
+          <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.11.2</button>
         </div>
       </div>
     </div>

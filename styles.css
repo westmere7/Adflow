@@ -3878,4 +3878,87 @@ input[type="checkbox"]:disabled {
 #dm-panel .dm-row > td.dm-key-col { background-color: rgba(124, 92, 255, .05); }
 #dm-panel .dm-row:nth-child(even) > td.dm-key-col { background-color: rgba(124, 92, 255, .075); }
 
+/* Workspace footer — static strip at the bottom of the right panel,
+   holding the zoom and version pills (left + right). */
+.panel.right { position: relative; }
+.panel.right > .panel-scroll { flex: 1 1 0; min-height: 0; }
+.workspace-footer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-panel);
+}
+.workspace-footer-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 4px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  user-select: none;
+  transition: color .12s ease, background-color .12s ease;
+}
+.workspace-footer-btn:hover {
+  color: var(--text-bright);
+  background: rgba(255, 255, 255, .05);
+}
+
+/* Documentation modal — sidebar navigation with sections + collapsible subs. */
+#docs-panel .docs-section { border-bottom: 1px solid transparent; }
+#docs-panel .docs-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px;
+  padding: 9px 16px;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-bright);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color .12s ease;
+}
+#docs-panel .docs-section-head:hover { background-color: rgba(255, 255, 255, .04); }
+#docs-panel .docs-section.open .docs-section-head { color: var(--accent-light); }
+#docs-panel .docs-subs { padding: 2px 0 8px; }
+#docs-panel .docs-sub {
+  padding: 6px 16px 6px 28px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+}
+#docs-panel .docs-sub:hover { background-color: rgba(255, 255, 255, .03); color: var(--text-main); }
+#docs-panel .docs-sub.active {
+  color: var(--text-bright);
+  background-color: rgba(124, 92, 255, .12);
+  border-left-color: var(--accent-base);
+  font-weight: 500;
+}
+#docs-panel .docs-body p { margin: 0 0 12px; }
+#docs-panel .docs-body ul,
+#docs-panel .docs-body ol { padding-left: 22px; margin: 0 0 12px; color: var(--text-muted); }
+#docs-panel .docs-body li { margin-bottom: 6px; }
+#docs-panel .docs-body li b,
+#docs-panel .docs-body p b { color: var(--text-bright); font-weight: 600; }
+#docs-panel .docs-body code {
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--text-bright);
+}
+#docs-panel #docs-sidebar::-webkit-scrollbar,
+#docs-panel #docs-content::-webkit-scrollbar { width: 6px; }
+#docs-panel #docs-sidebar::-webkit-scrollbar-thumb,
+#docs-panel #docs-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .08); border-radius: 3px;
+}
+
 

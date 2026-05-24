@@ -1,6 +1,16 @@
 RMIT Adflow - Version & Changelog History
 
-v0.11.0 (Current) - May 2026
+v0.11.2 (Current) - May 2026
+- Footer pills (zoom + version) are now plain text (no boxes / borders) with a subtle hover background.
+- Renamed the version dropdown placeholder from "Template (no version)" to "No version".
+
+v0.11.1 - May 2026
+- Rebuilt the Documentation modal as a two-column menu: 11 top-level sections (Getting Started, Workspace, Designing, Animation, Link Groups, Auto-Resize, Data & Versions, Cloud & Spaces, Saving & Projects, Export & Validation, Reference) each with focused subsections. Click a section to expand its subs, click a sub to load just that page on the right.
+- Wider modal (~1100px), accent-coloured active row in the sidebar, scoped scrollbars, and a Keyboard Shortcuts table under Reference.
+- Added a dedicated Cloud & Spaces section covering the splash sign-in gate, cloud projects, spaces, invitations, and folders.
+- Moved the zoom and version labels out of the top bar and into a static footer strip at the bottom of the right panel — zoom pill on the left, version pill on the right. Both are now styled as clickable pill buttons; the strip stays put as the panel scrolls.
+
+v0.11.0 - May 2026
 - Rebuilt the Data & Versions panel as a spreadsheet-style editor. The modal is now ~1180px wide with a two-column layout: controls (import/export, slot mapping, enable toggle, export-all) stay on the left, the data sheet fills the right.
 - Inline column rename — double-click a column header to edit; Enter to commit, Esc to cancel. Column header now has separate buttons for the naming-key star (★), sort cycle (↕/↑/↓), and delete (×).
 - Drag-and-drop reordering for both rows (grip ⋮⋮ at the left of each row) and columns (drag the column header). Active-preview index follows the row it was attached to.
