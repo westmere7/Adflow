@@ -5064,6 +5064,81 @@ function createAssetFolder() {
   render();
 }
 
+// Hover-preview popup for asset rows: a small floating thumbnail that
+// appears next to the row after a short delay. Flips to the row's other
+// side if it would overflow the viewport; hides on scroll or drag.
+const assetHoverPreview = (() => {
+  let popup = null;
+  let imgEl = null;
+  let showTimer = null;
+  let currentRow = null;
+  let scrollHooked = false;
+
+  const ensure = () => {
+    if (popup) return popup;
+    popup = document.createElement('div');
+    popup.id = 'asset-hover-preview';
+    popup.style.cssText = 'position:fixed;z-index:1000050;pointer-events:none;background:var(--bg-panel);border:1px solid var(--border-light);border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:4px;opacity:0;transform:translateY(-2px);transition:opacity .12s ease,transform .12s ease;display:none';
+    imgEl = document.createElement('img');
+    imgEl.style.cssText = 'display:block;max-width:160px;max-height:160px;min-width:32px;min-height:32px;width:auto;height:auto;object-fit:contain;background:rgba(255,255,255,.04);border-radius:3px';
+    imgEl.alt = '';
+    imgEl.draggable = false;
+    popup.appendChild(imgEl);
+    document.body.appendChild(popup);
+    if (!scrollHooked) {
+      document.addEventListener('scroll', () => hide(), true);
+      window.addEventListener('blur', () => hide());
+      scrollHooked = true;
+    }
+    return popup;
+  };
+
+  const position = (rowEl) => {
+    const r = rowEl.getBoundingClientRect();
+    const p = popup.getBoundingClientRect();
+    const m = 8;
+    let left = r.right + m;
+    if (left + p.width > window.innerWidth - m) left = r.left - m - p.width;
+    if (left < m) left = m;
+    let top = r.top + r.height / 2 - p.height / 2;
+    if (top < m) top = m;
+    if (top + p.height > window.innerHeight - m) top = window.innerHeight - m - p.height;
+    popup.style.left = Math.round(left) + 'px';
+    popup.style.top = Math.round(top) + 'px';
+  };
+
+  const hide = () => {
+    if (showTimer) { clearTimeout(showTimer); showTimer = null; }
+    currentRow = null;
+    if (!popup) return;
+    popup.style.opacity = '0';
+    popup.style.transform = 'translateY(-2px)';
+    setTimeout(() => { if (popup && popup.style.opacity === '0') popup.style.display = 'none'; }, 120);
+  };
+
+  const show = (rowEl, dataUrl) => {
+    if (!dataUrl) return;
+    ensure();
+    currentRow = rowEl;
+    if (showTimer) clearTimeout(showTimer);
+    showTimer = setTimeout(() => {
+      if (currentRow !== rowEl) return;
+      imgEl.src = dataUrl;
+      popup.style.display = 'block';
+      const apply = () => {
+        if (currentRow !== rowEl) return;
+        position(rowEl);
+        popup.style.opacity = '1';
+        popup.style.transform = 'translateY(0)';
+      };
+      if (imgEl.complete && imgEl.naturalWidth) apply();
+      else imgEl.onload = apply;
+    }, 220);
+  };
+
+  return { show, hide };
+})();
+
 // Asset library panel — a 1-level folder tree of saved elements/groups. Rows
 // rename inline (double-click); drag an asset onto a canvas to place it, or onto
 // a folder row to move it in (drop on empty space sends it back to top level).
@@ -5258,7 +5333,18 @@ function renderAssets() {
       const idsToDrag = isSelected ? state.assetSelection.join(',') : asset.id;
       e.dataTransfer.setData('application/x-asset', idsToDrag);
       e.dataTransfer.effectAllowed = 'copyMove';
+      assetHoverPreview.hide();
     });
+
+    if (asset.iconType === 'image') {
+      const imgEl = (asset.elements || []).find(el => el.type === 'image' && el.assetId);
+      const dataUrl = imgEl ? state.assets[imgEl.assetId] : null;
+      if (dataUrl) {
+        div.addEventListener('mouseenter', () => assetHoverPreview.show(div, dataUrl));
+        div.addEventListener('mouseleave', () => assetHoverPreview.hide());
+        div.addEventListener('mousedown', () => assetHoverPreview.hide());
+      }
+    }
     return div;
   };
 
