@@ -3090,9 +3090,9 @@ body.theme-navy {
 
 
 
-    @media (max-width: 1919px),
+    @media (max-width: 1365px),
 
-    (max-height: 1079px),
+    (max-height: 767px),
 
     (pointer: coarse) and (hover: none) {
 

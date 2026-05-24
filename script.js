@@ -10780,7 +10780,9 @@ const CHANGELOG_DATA = [
     date: 'May 2026',
     items: [
       'Manage Spaces now supports rename (owner), duplicate (anyone — clones folders + projects to a new space you own), and delete (owner — confirmation by typing the space name; cleans up storage blobs).',
-      'Signing out now flushes the local autosave and reloads back to the splash + sign-in gate instead of leaving the app open in a half-signed-out state.'
+      'Signing out now flushes the local autosave and reloads back to the splash + sign-in gate instead of leaving the app open in a half-signed-out state.',
+      'Pushing to the cloud now checks for a same-name collision in the current context. If another project shares the name, a warning toast appears with "Replace" and "Rename" buttons; pushes with unique names go through silently as before.',
+      'Lowered the minimum supported viewport from 1920 × 1080 back to 1366 × 768 — closer to what most laptops can give without external displays.'
     ]
   },
   {
@@ -13395,13 +13397,63 @@ async function openCloudProjectsModal() {
 async function pushCurrentProjectToCloud(opts = {}) {
   const u = authState.currentUser();
   if (!u) throw new Error('Not signed in.');
+  const spaceId = spacesState.currentId();
+  const folderId = opts.folderId || null;
+  const projectName = state.projectName || 'RMIT_Ad';
+
+  // Same-name collision check: any OTHER project in this context with the
+  // same name forces the user to choose Replace or Rename before we touch
+  // storage. Caller can bypass via skipCollisionCheck (used by the toast).
+  if (!opts.skipCollisionCheck) {
+    let q = sb.from('projects').select('id, name').eq('name', projectName);
+    if (spaceId) q = q.eq('space_id', spaceId);
+    else q = q.is('space_id', null).eq('user_id', u.id);
+    if (state.projectId) q = q.neq('id', state.projectId);
+    const { data: dupes } = await q;
+    if (dupes && dupes.length > 0) {
+      const existing = dupes[0];
+      await new Promise((resolve) => {
+        showCanvasNotification(`A cloud project named "${projectName}" already exists here.`, {
+          type: 'warning',
+          duration: 12000,
+          buttons: [
+            { text: 'Replace', onClick: async () => {
+              try {
+                state.projectId = existing.id;
+                await pushCurrentProjectToCloud({ ...opts, skipCollisionCheck: true });
+                showCanvasNotification(`Replaced "${projectName}" in the cloud`, { type: 'success' });
+              } catch (err) { showCanvasNotification(`Replace failed: ${err.message || err}`, { type: 'error' }); }
+              finally { resolve(); }
+            }},
+            { text: 'Rename', onClick: async () => {
+              const proposed = `${projectName} (copy)`;
+              const newName = (prompt('Save this push as:', proposed) || '').trim();
+              if (!newName) { resolve(); return; }
+              if (newName === projectName) {
+                showCanvasNotification('Name unchanged — push cancelled. Pick a different name or use Replace.', { type: 'warning' });
+                resolve(); return;
+              }
+              state.projectName = newName;
+              state.projectId = undefined;
+              try { render(); } catch (e) {}
+              try {
+                await pushCurrentProjectToCloud({ ...opts, skipCollisionCheck: true });
+                showCanvasNotification(`Pushed as "${newName}"`, { type: 'success' });
+              } catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
+              finally { resolve(); }
+            }}
+          ]
+        });
+      });
+      return; // Resolution path either pushed or cancelled.
+    }
+  }
+
   setSaveStatus('saving');
   let built;
   try { built = await buildFlowBlob(); }
   catch (e) { setSaveStatus('error'); throw e; }
   const { blob } = built;
-  const spaceId = spacesState.currentId();
-  const folderId = opts.folderId || null;
   // Storage path: personal under {uid}/, space under spaces/{space_id}/.
   // Use a fresh uuid-like suffix so we don't collide with the local short id.
   const blobName = (state.projectId && state.projectId.length >= 20) ? state.projectId : crypto.randomUUID();
@@ -14299,10 +14351,11 @@ function showCanvasNotification(message, options = {}) {
     else iconHtml = successIcon;
   }
 
-  let buttonHtml = '';
-  if (options.button) {
-    buttonHtml = `<button class="toast-btn">${options.button.text}</button>`;
-  }
+  // Accept either `button` (singular, legacy) or `buttons` (plural array).
+  const buttonList = Array.isArray(options.buttons)
+    ? options.buttons
+    : (options.button ? [options.button] : []);
+  const buttonHtml = buttonList.map((b, i) => `<button class="toast-btn" data-btn-i="${i}">${b.text}</button>`).join('');
 
   toast.innerHTML = `
     <span class="icon">${iconHtml}</span>
@@ -14310,17 +14363,17 @@ function showCanvasNotification(message, options = {}) {
     ${buttonHtml}
   `;
 
-  // Attach interactive button click event
-  if (options.button && options.button.onClick) {
-    const btn = toast.querySelector('.toast-btn');
-    if (btn) {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        options.button.onClick(e);
-        toast.classList.remove('show');
-      });
-    }
-  }
+  // Wire each button's click — dismisses the toast on any choice.
+  buttonList.forEach((b, i) => {
+    const el = toast.querySelector(`.toast-btn[data-btn-i="${i}"]`);
+    if (!el || !b.onClick) return;
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      try { b.onClick(e); } catch (err) { console.warn(err); }
+      toast.classList.remove('show');
+    });
+  });
+  const hasButton = buttonList.length > 0;
 
   toast.classList.remove('show');
   void toast.offsetWidth; // Force reflow
@@ -14330,7 +14383,7 @@ function showCanvasNotification(message, options = {}) {
     clearTimeout(window.canvasNotificationTimeout);
   }
 
-  const duration = options.duration || (options.button ? 6000 : 2500);
+  const duration = options.duration || (hasButton ? 6000 : 2500);
   window.canvasNotificationTimeout = setTimeout(() => {
     toast.classList.remove('show');
   }, duration);
