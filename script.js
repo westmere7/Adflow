@@ -1503,8 +1503,13 @@ function render(skipProps = false) {
   scheduleAutosave();
 }
 
-function centerWorkspace() {
-  if (state.canvases.length === 0) return;
+function centerWorkspace(behavior = 'smooth') {
+  const area = document.getElementById('canvas-area');
+  if (!area) return;
+  if (!state.canvases || state.canvases.length === 0) {
+    area.scrollTo({ left: 2000, top: 2000, behavior });
+    return;
+  }
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   state.canvases.forEach(c => {
     if (c.workspaceX < minX) minX = c.workspaceX;
@@ -1516,11 +1521,30 @@ function centerWorkspace() {
   const centerY = (minY + maxY) / 2;
 
   const z = state.zoom || 0.6;
-  const area = document.getElementById('canvas-area');
   const targetScrollLeft = centerX * z - area.clientWidth / 2;
   const targetScrollTop = centerY * z - area.clientHeight / 2;
 
-  area.scrollTo({ left: Math.max(0, targetScrollLeft), top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+  area.scrollTo({ left: Math.max(0, targetScrollLeft), top: Math.max(0, targetScrollTop), behavior });
+}
+
+// Show a toast offering to jump back to the user's last saved scroll position.
+// Called on startup and on Open Project, after we've already centered the view.
+function offerResumeView(savedScrollLeft, savedScrollTop) {
+  if (savedScrollLeft === undefined || savedScrollTop === undefined) return;
+  if (typeof showCanvasNotification !== 'function') return;
+  showCanvasNotification('View centered.', {
+    type: 'info',
+    duration: 6000,
+    button: {
+      text: 'Resume previous view',
+      onClick: () => {
+        const area = document.getElementById('canvas-area');
+        if (area && area.scrollTo) {
+          area.scrollTo({ left: savedScrollLeft, top: savedScrollTop, behavior: 'smooth' });
+        }
+      }
+    }
+  });
 }
 
 // Smooth view transition: animate zoom + scroll together with rAF, no intermediate
@@ -9486,7 +9510,7 @@ async function loadProjectFromState(loadedState) {
   Object.assign(state, JSON.parse(JSON.stringify(loadedState)));
 
   await syncRmitAssets();
-  
+
   if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
     history.length = 0;
     history.push(...restoredHistory);
@@ -9498,12 +9522,7 @@ async function loadProjectFromState(loadedState) {
   }
 
   render();
-  if (loadedState.viewScrollLeft !== undefined) {
-    setTimeout(() => {
-      const ca = document.getElementById('canvas-area');
-      if (ca && ca.scrollTo) ca.scrollTo({ left: loadedState.viewScrollLeft, top: loadedState.viewScrollTop, behavior: 'instant' });
-    }, 10);
-  }
+  // Startup view: always centered. initApp() owns the scroll + resume toast.
 }
 
 // Shared inflater used by the menu Open dialog AND the drag-drop overlay. Both
@@ -9558,12 +9577,14 @@ async function loadProjectFromBlob(file) {
   }
 
   render();
-  if (loadedState.viewScrollLeft !== undefined) {
-    setTimeout(() => {
-      const ca = document.getElementById('canvas-area');
-      if (ca && ca.scrollTo) ca.scrollTo({ left: loadedState.viewScrollLeft, top: loadedState.viewScrollTop, behavior: 'instant' });
-    }, 10);
-  }
+  // Open Project: drop into the canvas-centered view, then offer to restore
+  // wherever the user last left off.
+  const savedLeft = loadedState.viewScrollLeft;
+  const savedTop = loadedState.viewScrollTop;
+  setTimeout(() => {
+    centerWorkspace('instant');
+    offerResumeView(savedLeft, savedTop);
+  }, 10);
 }
 
 async function openProjectFromZip() {
@@ -12662,14 +12683,13 @@ function initCollapsiblePanels() {
   initCollapsiblePanels();
   checkVersionUpdate();
   queueSizeUpdate();
+  // Always boot to a centered view, regardless of last saved scroll. If the
+  // user had a non-default position saved, offer a toast to jump back to it.
+  const savedLeft = restored ? state.viewScrollLeft : undefined;
+  const savedTop = restored ? state.viewScrollTop : undefined;
   setTimeout(() => {
-    const canvasArea = document.getElementById('canvas-area');
-    if (!canvasArea || !canvasArea.scrollTo) return;
-    if (restored && state.viewScrollLeft !== undefined) {
-      canvasArea.scrollTo({ left: state.viewScrollLeft, top: state.viewScrollTop, behavior: 'instant' });
-    } else {
-      canvasArea.scrollTo({ left: 2000, top: 2000, behavior: 'instant' });
-    }
+    centerWorkspace('instant');
+    offerResumeView(savedLeft, savedTop);
   }, 10);
   // Enable autosave now that the initial state is settled, and persist the seed
   // project once if there was nothing to restore.
