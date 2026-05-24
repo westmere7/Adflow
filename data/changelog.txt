@@ -1,6 +1,14 @@
 RMIT Adflow - Version & Changelog History
 
-v0.8.1 (Current) - May 2026
+v0.8.3 (Current) - May 2026
+- Loading splash now cycles through a randomised pool of ~45 tech-humour quips (Sims-style — "Reticulating splines…", "Convincing the kerning to behave…", "Locating the perfect shade of RMIT red…"). Shuffled per session and long enough to rarely repeat; if init runs long, more quips appear automatically.
+- Restyled the below-minimum-resolution warning to match the splash visual language — Adflow logo, the existing randomised one-liner as a heading, and a fresh explanation paragraph. Static screen (no loading animation, no progress bar).
+- Bumped minimum supported viewport from 1024 × 768 to 1920 × 1080 to match real banner-production needs.
+
+v0.8.2 - May 2026
+- Added a themed loading splash that appears on startup with the Adflow logo, a subtle accent-color glow, a rapidly-cycling status line, and a sheen-animated progress bar. Tied to real initialisation phases (session restore, brand library, workspace build, polish) and held visible for at least 1.5 seconds so it never flashes by.
+
+v0.8.1 - May 2026
 - Added a hover preview thumbnail to the Assets panel: hovering an image asset row now pops a small thumbnail next to it after a short delay, with the popup flipping to the row's other side when it would overflow the viewport.
 - Startup view now always centers on the canvases regardless of last saved scroll position. If a previous scroll position is available, a toast appears with a "Resume previous view" button to jump back to where you left off — same behaviour applies when opening a .flow project file.
 

@@ -9,12 +9,184 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Splash screen — shown on initial load, faded out by initApp.
+       Inlined so it paints before styles.css finishes parsing. */
+    #app-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-panel, #121419);
+      opacity: 1;
+      transition: opacity .38s ease, transform .38s ease;
+    }
+    #app-splash::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 38%, var(--accent-base, #7c5cff) 0%, transparent 55%);
+      opacity: .14;
+      animation: app-splash-glow 4.2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    #app-splash.app-splash-out {
+      opacity: 0;
+      transform: scale(1.03);
+      pointer-events: none;
+    }
+    .app-splash-inner {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 26px;
+      transform: translateY(-12px);
+    }
+    .app-splash-logo {
+      width: 320px;
+      max-width: 60vw;
+      animation: app-splash-logo-pulse 2.6s ease-in-out infinite;
+      filter: drop-shadow(0 8px 30px rgba(0,0,0,.45));
+    }
+    .app-splash-logo img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+    .app-splash-status {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 10.5px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--text-muted, #8b8f9c);
+      font-weight: 500;
+      min-height: 14px;
+      transition: opacity .14s ease, transform .14s ease;
+    }
+    .app-splash-status.app-splash-status-fade {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+    .app-splash-bar {
+      width: 200px;
+      height: 2px;
+      background: rgba(255,255,255,.07);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+    .app-splash-bar-fill {
+      height: 100%;
+      width: 4%;
+      background: var(--accent-base, #7c5cff);
+      border-radius: 2px;
+      transition: width .42s cubic-bezier(.4, 0, .2, 1);
+      position: relative;
+    }
+    .app-splash-bar-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+      transform: translateX(-100%);
+      animation: app-splash-sheen 1.6s linear infinite;
+    }
+    @keyframes app-splash-logo-pulse {
+      0%, 100% { transform: scale(1); opacity: .94; }
+      50%      { transform: scale(1.025); opacity: 1; }
+    }
+    @keyframes app-splash-glow {
+      0%, 100% { opacity: .12; transform: scale(1); }
+      50%      { opacity: .22; transform: scale(1.05); }
+    }
+    @keyframes app-splash-sheen {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(220%); }
+    }
+
+    /* Size warning — reuses the splash visual language but is static
+       (no logo pulse, no progress bar). Below-min-resolution clients land
+       here instead of on the app. */
+    #size-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999998;
+      background: var(--bg-body, #0b0c0f);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px;
+    }
+    #size-overlay::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 38%, var(--accent-base, #7c5cff) 0%, transparent 55%);
+      opacity: .14;
+      animation: app-splash-glow 4.2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .size-overlay-inner {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      max-width: 540px;
+      transform: translateY(-10px);
+    }
+    .size-overlay-logo {
+      width: 320px;
+      max-width: 60vw;
+      filter: drop-shadow(0 8px 30px rgba(0,0,0,.45));
+    }
+    .size-overlay-logo img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+    #size-overlay h2 {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -.01em;
+      color: var(--text-bright, #f1f5f9);
+      line-height: 1.3;
+    }
+    #size-overlay p {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-muted, #8b8f9c);
+      max-width: 460px;
+    }
+    .size-overlay-spec {
+      margin-top: -10px;
+      font-size: 10.5px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--accent-base, #7c5cff);
+      opacity: .85;
+      font-weight: 600;
+    }
+  </style>
 </head>
 
 <body>
+  <div id="app-splash" aria-hidden="true">
+    <div class="app-splash-inner">
+      <div class="app-splash-logo">
+        <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" />
+      </div>
+      <div class="app-splash-status" id="app-splash-status">Warming up…</div>
+      <div class="app-splash-bar"><div class="app-splash-bar-fill" id="app-splash-bar-fill"></div></div>
+    </div>
+  </div>
   <div id="size-overlay">
-    <h2>Get a real work equipment</h2>
-    <p style="color:var(--text-label);margin-top:12px;">This app doesn't support mobile devices, only desktop with mouse and keyboard.</p>
+    <div class="size-overlay-inner">
+      <div class="size-overlay-logo"><img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" /></div>
+      <h2>Get a real work equipment</h2>
+      <div class="size-overlay-spec">Minimum 1920 × 1080</div>
+      <p>Adflow is a desktop-class workspace — the canvas, panels, rulers, and timeline need real estate to breathe. Please open it on a 1920 × 1080 (or larger) monitor with a mouse and keyboard.</p>
+    </div>
   </div>
   <div id="ctx-menu"></div>
   <div class="app">
@@ -141,7 +313,7 @@
         </button>
       </span>
       <span id="zoom-level-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Reset Zoom">Zoom 100%</span>
-      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v0.8.1</span>
+      <span id="app-version-display" style="font-weight: 500; font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: 12px; user-select: none; transition: color 0.2s;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="View Changelog">v0.8.3</span>
 
       <button class="btn" id="btn-preview" title="Preview the interactive banner animation">Preview</button>
       <button class="btn primary" id="btn-export-top" title="Export banner to HTML package">Export</button>

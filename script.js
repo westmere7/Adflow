@@ -10581,6 +10581,22 @@ document.getElementById('menu-help-documentation').addEventListener('click', () 
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.8.3',
+    date: 'May 2026',
+    items: [
+      'Loading splash now cycles through a randomised pool of ~45 tech-humour quips (Sims-style — "Reticulating splines…", "Convincing the kerning to behave…", "Locating the perfect shade of RMIT red…"). Shuffled per session and long enough to rarely repeat; if init runs long, more quips appear automatically.',
+      'Restyled the below-minimum-resolution warning to match the splash visual language — Adflow logo, the existing randomised one-liner as a heading, and a fresh explanation paragraph. Static screen (no loading animation, no progress bar).',
+      'Bumped minimum supported viewport from 1024 × 768 to 1920 × 1080 to match real banner-production needs.'
+    ]
+  },
+  {
+    version: 'v0.8.2',
+    date: 'May 2026',
+    items: [
+      'Added a themed loading splash that appears on startup with the Adflow logo, a subtle accent-color glow, a rapidly-cycling status line, and a sheen-animated progress bar. Tied to real initialisation phases (session restore, brand library, workspace build, polish) and held visible for at least 1.5 seconds so it never flashes by.'
+    ]
+  },
+  {
     version: 'v0.8.1',
     date: 'May 2026',
     items: [
@@ -10949,7 +10965,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.8.1';
+  const currentVersion = 'v0.8.3';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -11019,7 +11035,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.8.1</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.8.3</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -11075,7 +11091,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.8.1</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.8.3</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -12682,28 +12698,147 @@ function initCollapsiblePanels() {
   });
 }
 
+// Splash controller — bar tracks the real initialisation phases while the
+// status line cycles through randomised quips (Sims-style). Shuffled per
+// session, long enough that repeats are unlikely on a normal cold boot.
+// If init takes longer than expected, more quips appear automatically.
+const SPLASH_QUIPS = [
+  'Reticulating splines…',
+  'Polishing the canvases…',
+  'Compiling pixels into shape…',
+  'Convincing the kerning to behave…',
+  'Rounding the corners (literally)…',
+  'Hydrating the bezier curves…',
+  'Bribing the render loop…',
+  'Aligning chakras to baselines…',
+  'Untangling the z-index spaghetti…',
+  'Brewing a fresh batch of pixels…',
+  'Asking the SVGs nicely…',
+  'Garbage-collecting yesterday\'s bad ideas…',
+  'Mounting brand assets to spec…',
+  'Sharpening the snap guides…',
+  'Booting the typography department…',
+  'Spawning serifs…',
+  'Waking up the auto-resize AI…',
+  'Defragmenting the timeline…',
+  'Greasing the undo stack…',
+  'Calibrating the eyedropper…',
+  'Wrangling rogue iframes…',
+  'Pre-heating the export oven…',
+  'Indexing the colour wheel…',
+  'Persuading gradient stops to cooperate…',
+  'Locating the missing semicolon…',
+  'Counting layers — losing count — starting over…',
+  'Asking Helvetica for permission…',
+  'Decrypting the client\'s actual intent…',
+  'Aligning to the nearest half-pixel…',
+  'Negotiating ClickTag rates…',
+  'Synchronising link groups telepathically…',
+  'Importing the brand book…',
+  'Locating the perfect shade of RMIT red…',
+  'Pre-rendering the inevitable…',
+  'Hot-swapping the kerning tables…',
+  'Practicing minimalism (loudly)…',
+  'Re-aligning the grid in three dimensions…',
+  'Pretending we know what the brief meant…',
+  'Generating tasteful drop shadows…',
+  'Auditing every pixel — twice…',
+  'Buffing the rounded corners…',
+  'Whispering sweet nothings to the timeline…',
+  'Coaxing SVG paths into formation…',
+  'Performing emergency lorem ipsum…',
+  'Negotiating with the layout engine…',
+  'Putting the "ad" in "adflow"…'
+];
+
+const appSplash = (() => {
+  const root = document.getElementById('app-splash');
+  const statusEl = document.getElementById('app-splash-status');
+  const barEl = document.getElementById('app-splash-bar-fill');
+  const startedAt = performance.now();
+  const MIN_DISPLAY_MS = 1500;
+  const QUIP_CYCLE_MS = 700;
+  const TOTAL_PHASES = 5;
+
+  // Fisher-Yates-ish shuffle so each session feels fresh.
+  const pool = SPLASH_QUIPS.slice().sort(() => Math.random() - 0.5);
+  let poolIdx = 0;
+  let progress = 0;
+  let finished = false;
+  let cycleTimer = null;
+
+  function setText(text) {
+    if (!statusEl || finished) return;
+    statusEl.classList.add('app-splash-status-fade');
+    setTimeout(() => {
+      if (finished) return;
+      statusEl.textContent = text;
+      statusEl.classList.remove('app-splash-status-fade');
+    }, 130);
+  }
+
+  function nextQuip() {
+    if (finished) return;
+    setText(pool[poolIdx % pool.length]);
+    poolIdx++;
+    cycleTimer = setTimeout(nextQuip, QUIP_CYCLE_MS);
+  }
+
+  function setPhase(idx) {
+    if (!root || finished) return;
+    const p = Math.min(1, (idx + 1) / TOTAL_PHASES);
+    if (p > progress) progress = p;
+    if (barEl) barEl.style.width = Math.round(progress * 100) + '%';
+  }
+
+  let finishing = false;
+  async function finish() {
+    if (!root || finishing || finished) return;
+    finishing = true;
+    if (barEl) barEl.style.width = '100%';
+    // Keep quips cycling through the min-display wait — only mark `finished`
+    // and stop the cycle when we're actually about to fade out.
+    const elapsed = performance.now() - startedAt;
+    const remaining = Math.max(0, MIN_DISPLAY_MS - elapsed);
+    if (remaining > 0) await new Promise(r => setTimeout(r, remaining));
+    finished = true;
+    if (cycleTimer) { clearTimeout(cycleTimer); cycleTimer = null; }
+    root.classList.add('app-splash-out');
+    setTimeout(() => { if (root) root.style.display = 'none'; }, 420);
+  }
+
+  if (barEl) barEl.style.width = '5%';
+  nextQuip();
+
+  return { setPhase, finish };
+})();
+
 (async function initApp() {
+  appSplash.setPhase(1);
   let restored = false;
   try { restored = await restoreAutosave(); } catch (e) { console.warn(e); }
+  appSplash.setPhase(2);
   await syncRmitAssets();
+  appSplash.setPhase(3);
   updateRecentProjectsMenu();
   render();
   initCollapsiblePanels();
+  appSplash.setPhase(4);
   checkVersionUpdate();
   queueSizeUpdate();
   // Always boot to a centered view, regardless of last saved scroll. If the
-  // user had a non-default position saved, offer a toast to jump back to it.
+  // user had a non-default position saved, offer a toast to jump back to it
+  // — but only after the splash has finished so the toast isn't hidden under it.
   const savedLeft = restored ? state.viewScrollLeft : undefined;
   const savedTop = restored ? state.viewScrollTop : undefined;
-  setTimeout(() => {
-    centerWorkspace('instant');
-    offerResumeView(savedLeft, savedTop);
-  }, 10);
+  setTimeout(() => centerWorkspace('instant'), 10);
   // Enable autosave now that the initial state is settled, and persist the seed
   // project once if there was nothing to restore.
   _autosaveSuspended = false;
   setSaveStatus('saved');
   if (!restored) writeAutosave();
+  await appSplash.finish();
+  offerResumeView(savedLeft, savedTop);
 })();
 
 
