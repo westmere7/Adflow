@@ -658,6 +658,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.40',
+    date: 'May 2026 — Engine v2.14',
+    items: [
+      'Fix: critical regression from v0.16.39. A comment block I added inside generateExportHTML\'s embedded CSS contained backticks around c.bgColor — but that CSS is itself a JavaScript template literal, so the inner backticks broke out of the template and turned the rest of the function into a JS parse error. Result: export-pipeline.js failed to load and both single-preview and full-preview canvases threw ReferenceError, rendering as a black workspace.',
+      'Replaced the offending backticks with plain quotes. The v0.16.39 fixes (transparent canvas, GPU compositing, clip-path, transparent body in export) are all intact — only the comment changed.'
+    ]
+  },
+  {
     version: 'v0.16.39',
     date: 'May 2026 — Engine v2.14',
     items: [

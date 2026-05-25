@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.39 (Current) - May 2026 — Engine v2.14
+v0.16.40 (Current) - May 2026 — Engine v2.14
+- Fix: critical regression from v0.16.39. The comment block I added inside `generateExportHTML`'s embedded CSS contained backticks around `c.bgColor` — but that CSS is itself a JavaScript template literal (wrapped in backticks), so my inner backticks broke out of the template literal and turned the rest of the function into a JS parse error. Result: `export-pipeline.js` failed to load on app boot, `generateExportHTML` was undefined, both single-preview and full-preview canvases threw `ReferenceError` and rendered as a black workspace.
+- Replaced the offending backticks with plain quotes. `node -c` clean. Verified: full preview now renders all canvas frames + iframes correctly. The v0.16.39 fixes (transparent canvas, GPU compositing, clip-path, transparent body in export) are all intact — only the comment is rewritten.
+
+v0.16.39 - May 2026 — Engine v2.14
 - Canvas-bg hairline leak fixed. The thin coloured line visible around the canvas in full preview (and at non-100% zoom in single preview / browser HTML5 preview) was the canvas div's own background colour leaking through a 1–2px sub-pixel gap between the canvas div and the iframe inside it. Both were trying to paint the same `c.bgColor`, but browsers round the iframe's 100% width/height against the canvas div's pixel-explicit width/height differently under zoom — leaving a hairline strip on one or two sides.
 - Three defensive changes in `previewFrameNode` and the single-preview branch of `canvasFrameNode`:
   • Canvas div background set to `transparent`. Now the iframe is the only thing painting `c.bgColor`, so there's no double-layer that can mismatch.

@@ -647,7 +647,17 @@ ${fontFaceRules.join('\n')}
   @keyframes eff-pan { 0% { translate: 0 0; } 100% { translate: var(--pan-x, 0px) var(--pan-y, 0px); } }
   @keyframes eff-zoom { 0% { scale: 1; } 100% { scale: var(--zoom-target, 1.5); } }
 
-  html, body { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; background: ${c.bgColor}; }
+  /* html/body intentionally transparent (no width/height/background).
+     When the ad is served via an iframe (the normal display-ad case)
+     the iframe is sized exactly to the ad, so transparency just shows
+     the iframe's bg beneath the ad container -- no visible effect.
+     When index.html is opened DIRECTLY in a desktop browser, leaving
+     html/body transparent prevents the page-wide flood of the canvas
+     bg colour that used to drown the viewport in green. The ad sits
+     as a contained block in the top-left and the browser shows its
+     default page bg around it. The ad's own container div carries
+     the explicit pixel size and bg colour. */
+  html, body { margin: 0; padding: 0; overflow: hidden; background: transparent; }
   #ad {
     width: ${c.width}px;
     height: ${c.height}px;
