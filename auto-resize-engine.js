@@ -116,7 +116,21 @@
 //           within the source image, scaled to the target image's
 //           dimensions. Together: mask groups now stay proportional
 //           through any resize.
-const ENGINE_VERSION = 'v2.14';
+//   v2.15 — "Fixed shape" role (renamed from "Main image") is now
+//           defined as strictly aspect-preserved. Three matching
+//           changes: (a) cover-fallback REMOVED from placeMainImage
+//           entirely — contain-only, always. (b) No-drop floor now
+//           scales uniformly (single multiplier on both dims)
+//           instead of independently raising imgW/imgH with
+//           Math.max, which previously broke aspect when only one
+//           dim was below 24px. (c) Mask post-pass switched from
+//           per-axis relative scaling (relW/relH separately) to a
+//           single uniform `below.width / srcImg.width` scale —
+//           mathematically equivalent when image aspect is preserved
+//           (always true now), but explicit so there's zero
+//           possibility of mask-shape stretch from rounding drift
+//           between two separate ratio computations.
+const ENGINE_VERSION = 'v2.15';
 
 
 // ----- Role taxonomy data tables ------------------------------------------
@@ -141,7 +155,13 @@ const ROLE_LABELS = {
   'heading':          'Heading',
   'subheading':       'Subheading',
   'cricos':           'CRICOS line',
-  'main-image':       'Main image',
+  // Display label for the role with ID 'main-image'. Renamed from
+  // "Main image" → "Fixed shape" in v0.16.42 to convey the new
+  // semantic: this role's element is strictly aspect-preserved through
+  // any auto-resize — cover-fallback and size-floor inflation are
+  // both off for it. The role ID stays 'main-image' so existing
+  // saved projects keep working without migration.
+  'main-image':       'Fixed shape',
   'rfwn':             'RFWN tagline',
   'extra-info':       'Extra info',
   'misc':             'Unassigned'
@@ -209,6 +229,21 @@ function autoAssignRole(el, canvas) {
   if (el.type === 'button') return 'cta-button';
 
   if (el.type === 'image') {
+    // Mask-group special case (v2.15): if this image has a mask shape
+    // directly above it in z-order, force the "main-image" role
+    // ("Fixed shape") regardless of size. Background-image stretches
+    // to fill the target canvas (different aspect → image stretches),
+    // which then drags the mask shape on top off into negative
+    // territory because the mask post-pass scales relative to the
+    // image. Keeping the image in main-image/fixed-shape mode means
+    // it's contain-fit at source aspect, and the mask stays in
+    // proportion. Triggered only when the editor's `findMaskAbove`
+    // recognises the pair (loaded later from script.js, so feature-
+    // check the function).
+    if (typeof findMaskAbove === 'function') {
+      const maskAbove = findMaskAbove(canvas, el);
+      if (maskAbove && maskAbove.isMask) return 'main-image';
+    }
     if (area >= 0.7 || el.persistent === 'bottom') return 'background-image';
     if (el.persistent === 'top' && area < 0.18) return 'rmit-logo';
     // Aspect-ratio heuristic — a small horizontal image (wider than 2:1,
@@ -872,49 +907,29 @@ function placeMainImage(srcEl, target, ctx) {
     imgW = Math.round(imgH * srcAspect);
   }
 
-  // Cover fallback. Skipped entirely in two cases:
-  //   (1) Thin banners (canvasAspect > 3 — 728×90, 320×50, 970×250,
-  //       160×600). User explicitly doesn't want the main image to
-  //       crop/overflow there.
-  //   (2) Masked images (the source image has a mask shape above it
-  //       in z-order). v2.14: cover changes the image's aspect ratio
-  //       relative to the source, which forces the mask shape to
-  //       stretch when the post-pass resizes it to match the image
-  //       bounds. Mask groups are designed compositions — keep them
-  //       in contain so neither side stretches.
-  // Normal-aspect canvases with unmasked images use the v2.8 threshold
-  // of 0.6 fillFrac.
-  const allowCover = !ctx.engineSettings || ctx.engineSettings.behaviour?.allowCoverFallback !== false;
-  const canvasAspect = Math.max(w / h, h / w);
-  const srcMaskAbove = (typeof findMaskAbove === 'function')
-    ? findMaskAbove(ctx.sourceCanvas, srcEl)
-    : null;
-  const hasMask = !!(srcMaskAbove && srcMaskAbove.isMask);
-  const fillFrac = Math.max(imgW, imgH) / Math.max(slot.w, slot.h);
-  if (allowCover && canvasAspect <= 3 && !hasMask && fillFrac < 0.6) {
-    if (srcAspect >= slotAspect) {
-      imgH = slot.h;
-      imgW = Math.round(imgH * srcAspect);
-    } else {
-      imgW = slot.w;
-      imgH = Math.round(imgW / srcAspect);
-    }
-  }
+  // v2.15: cover-fallback REMOVED entirely. The "main image" role was
+  // renamed to "fixed shape" in v0.16.42 and is now defined as a
+  // strictly-aspect-preserved element — under no circumstance does
+  // auto-resize change its proportions. Cover-fallback previously gave
+  // the element bigger bounds (which technically still preserved its
+  // ratio, since both dims scaled by the same srcAspect), but it
+  // forced overflow into the canvas margins and that overflow
+  // visually-stretched the mask shape on top via the post-pass.
+  // Removing cover entirely means the fixed shape always fits its
+  // slot in contain mode; it might come out smaller on extreme
+  // aspects, but the proportions are guaranteed exact.
 
-  // No-drop floor: keep at least a 24-px-square image so it remains visible.
-  if (Math.min(imgW, imgH) < 24) {
-    const floor = 24;
-    imgW = Math.max(imgW, floor);
-    imgH = Math.max(imgH, floor);
+  // No-drop floor: keep the smaller dimension ≥ 24px so the element
+  // stays visible. Scale UNIFORMLY (multiply both dims by the same
+  // factor) so the aspect ratio is preserved — pre-v2.15 this bumped
+  // imgW and imgH independently with Math.max, which broke aspect
+  // for non-square sources whenever the floor kicked in.
+  const FLOOR_MIN = 24;
+  if (Math.min(imgW, imgH) < FLOOR_MIN) {
+    const upScale = FLOOR_MIN / Math.min(imgW, imgH);
+    imgW = Math.max(1, Math.round(imgW * upScale));
+    imgH = Math.max(1, Math.round(imgH * upScale));
   }
-
-  // (v2.10's thin-banner "size floor" was removed in v2.13. It used to
-  // inflate the image to ≥ 40% of the canvas's larger dim on thin
-  // banners — but combined with cover-fallback that gave the
-  // wide-strip-crop look the user explicitly didn't want. Without
-  // cover or floor, the image stays at its natural aspect and
-  // contain-fits the slot, accepting a smaller render on extreme
-  // aspect canvases.)
 
   return {
     x: slot.x + Math.round((slot.w - imgW) / 2),
@@ -1328,14 +1343,27 @@ function runRuleBasedAutoResize(settings) {
       const srcMask = srcMaskId && srcElById[srcMaskId];
       const srcImg  = srcImgId  && srcElById[srcImgId];
       if (srcMask && srcImg && srcImg.width > 0 && srcImg.height > 0) {
-        const relX = (srcMask.x - srcImg.x) / srcImg.width;
-        const relY = (srcMask.y - srcImg.y) / srcImg.height;
-        const relW = srcMask.width  / srcImg.width;
-        const relH = srcMask.height / srcImg.height;
-        el.x = Math.round(below.x + relX * below.width);
-        el.y = Math.round(below.y + relY * below.height);
-        el.width  = Math.max(1, Math.round(relW * below.width));
-        el.height = Math.max(1, Math.round(relH * below.height));
+        // v2.15: UNIFORM scale (not per-axis). Pre-v2.15 we computed
+        // relW = srcMask.w/srcImg.w and relH = srcMask.h/srcImg.h
+        // separately, then multiplied by below.width / below.height —
+        // which mathematically preserves mask aspect only when the
+        // target image's aspect exactly matches the source image's
+        // aspect. The new contract for the "fixed shape" role (the
+        // role formerly known as "Main image") is that aspect is
+        // strictly preserved through any resize, no exceptions; so
+        // we use a single scale factor based on the image's width
+        // (since the image is now guaranteed contain-only, width and
+        // height scale by the same factor, but using one of them
+        // explicitly removes any possibility of rounding drift). The
+        // mask ends up at the source mask's exact aspect, positioned
+        // relative to the target image.
+        const scale = below.width / srcImg.width;
+        const offX = (srcMask.x - srcImg.x) * scale;
+        const offY = (srcMask.y - srcImg.y) * scale;
+        el.x = Math.round(below.x + offX);
+        el.y = Math.round(below.y + offY);
+        el.width  = Math.max(1, Math.round(srcMask.width  * scale));
+        el.height = Math.max(1, Math.round(srcMask.height * scale));
       } else {
         // Fallback — shouldn't normally happen, but if source refs are
         // missing, cover the image fully (legacy behaviour).

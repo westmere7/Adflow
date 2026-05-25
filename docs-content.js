@@ -658,6 +658,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.42',
+    date: 'May 2026 — Engine v2.15',
+    items: [
+      '"Main image" auto-resize role renamed to "Fixed shape". The role ID stays `main-image` under the hood — only the display label changes, so existing saved projects keep working.',
+      'New contract: "Fixed shape" is now strictly aspect-preserved through any auto-resize. Cover-fallback removed entirely from placeMainImage — contain-only, always. No-drop floor switched to uniform scaling (single multiplier) instead of independent Math.max bumps on each axis, which preserves aspect when the floor kicks in.',
+      'Mask post-pass switched to uniform scale (single `below.width / srcImg.width` factor) instead of per-axis relative scaling. Mathematically equivalent under v2.14\'s "preserve image aspect on masked images" rule, but explicit so rounding drift between two ratios can\'t accidentally stretch the mask shape. End result: heavily-cropped mask groups in the source produce exact-aspect mask shapes on every target canvas.'
+    ]
+  },
+  {
     version: 'v0.16.41',
     date: 'May 2026 — Engine v2.14',
     items: [

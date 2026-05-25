@@ -553,8 +553,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   const frameData = [];
   activeFrames.forEach((f, i) => {
     const frameEls = c.elements.filter(e => e.persistent === false && e.frameId === f.id).map(renderEl).join('\n');
-    const displayStyle = isImageExport 
-      ? (f.id === state.activeFrameId ? 'block' : 'none') 
+    const displayStyle = isImageExport
+      ? (f.id === state.activeFrameId ? 'block' : 'none')
       : (i === 0 ? 'block' : 'none');
     framesHTML += `<div class="frame" id="frame-${f.id}" style="display:${displayStyle};width:100%;height:100%;position:absolute;inset:0;">\n${frameEls}\n</div>\n`;
     frameData.push({ id: f.id, duration: f.duration || 2, transition: i === 0 ? 'none' : (f.transition || 'fade'), transitionDuration: f.transitionDuration || 0.5, transitionFade: f.transitionFade });
