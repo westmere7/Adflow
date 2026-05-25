@@ -1,6 +1,14 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.7 (Current) - May 2026 — Engine v2.7
+v0.16.8 (Current) - May 2026 — Engine v2.7
+- Undo/redo system overhauled. Default depth jumps from 10 to 50 steps, and the long-standing bug where the engine capped at a hardcoded 15 entries regardless of the configured limit is fixed — the configured limit now actually applies.
+- Snapshot fields expanded. The undo stack now also captures `frames` (timeline durations / transitions / skip flags), `activeFrameId` (which frame you were on), and `projectName` (renames). Previously those weren't undoable. Settings-toggle-style state — theme, auto-resize behaviour toggles, view preferences (rulers / safezones / snap), zoom, scroll position, history-limit itself — intentionally remains EXCLUDED, since "undoing a preference" isn't expected behaviour.
+- Re-entrancy guard added. A new `_restoringHistory` flag short-circuits any `pushHistory()` call that fires DURING a restore — prevents the restore itself from polluting history with a duplicate of the snapshot we just popped (could happen via downstream render→handler chains).
+- Settings UI: history-limit max raised from 50 to 100. Default value in the field is now 50. Minimum 5 (the old minimum was 1, which made undo functionally useless).
+- One-time migration on autosave restore: projects with the old default (savedHistoryLimit ≤ 10) get bumped to 50 automatically. Customised values above 10 are preserved.
+- Cleanup: removed the clever-but-fragile non-increment trick in the trim path; historyIndex is now set explicitly after each push, and decremented explicitly on each oldest-shift. Easier to reason about, identical behaviour.
+
+v0.16.7 - May 2026 — Engine v2.7
 - Light theme now uses a dedicated Adflow wordmark — `data/Elements/Adflow_lighttheme.svg` — so the brand reads cleanly against the lighter panel background. Every other theme (default dark, ocean, navy, RMIT) continues to use `Adflow_logo.svg`.
 - The swap is JS-driven via a new `syncAdflowLogos()` helper that walks every `<img data-adflow-logo>` in the DOM and sets the right src based on `state.theme === 'light'`. Called from `render()` immediately after the theme class is applied, so theme changes update every wordmark in place without a reload.
 - Four locations marked with the `data-adflow-logo` attribute and swapped on theme change: boot splash logo, topbar logo, size-overlay logo (shown on tiny viewports), Documentation "Welcome to Adflow" hero image. The docs welcome image is generated inside a template literal at modal-open time, so the docs renderer now calls `syncAdflowLogos()` after the panel HTML is inserted to catch that one.

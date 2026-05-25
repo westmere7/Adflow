@@ -393,7 +393,7 @@ const state = {
   showSafezones: false,
   adSizeLimit: 150,      // max exported ad weight in KB (IAB display-ad standard)
   defaultBg: '#0f172a',  // default background for newly created canvases
-  savedHistoryLimit: 10,
+  savedHistoryLimit: 50,    // undo-stack depth — bumped from 10 in v0.16.8
   clipboard: null,
   linkGroups: {},
   assetNames: {},        // assetId -> original filename (for data-merge image lookup)
@@ -523,27 +523,45 @@ function calculateAutoSize(el, text) {
 
 
 
+// Re-entrancy guard: any pushHistory() call that fires DURING a restore
+// (e.g. via render() → some downstream side-effect) gets short-circuited.
+// Prevents the restore itself from polluting history with a duplicate of
+// the snapshot we just popped.
+let _restoringHistory = false;
+
 function pushHistory() {
+  if (_restoringHistory) return;
   const snapshot = JSON.stringify({
-    canvases: state.canvases,
-    activeCanvasId: state.activeCanvasId,
+    canvases:          state.canvases,
+    frames:            state.frames,
+    activeCanvasId:    state.activeCanvasId,
+    activeFrameId:     state.activeFrameId,
     selectedElementId: state.selectedElementId,
-    layerSelection: state.layerSelection,
-    guides: state.guides,
-    linkGroups: state.linkGroups,
-    dataMerge: state.dataMerge
+    layerSelection:    state.layerSelection,
+    guides:            state.guides,
+    linkGroups:        state.linkGroups,
+    dataMerge:         state.dataMerge,
+    projectName:       state.projectName
   });
+  // Skip exact duplicates (e.g. a no-op drag).
   if (historyIndex >= 0 && history[historyIndex] === snapshot) return;
+  // Drop any forward (redo) branch — making a new change invalidates redo.
   history.splice(historyIndex + 1);
   history.push(snapshot);
-  if (history.length > 15) history.shift();
-  else historyIndex++;
+  historyIndex = history.length - 1;
+  // Trim from the oldest end until we're at/below the configured limit.
+  // The default jumped from 10 to 50 in v0.16.8; max 100 from Settings.
+  const limit = Math.max(5, Math.min(100, state.savedHistoryLimit || 50));
+  while (history.length > limit) {
+    history.shift();
+    historyIndex--;
+  }
   queueSizeUpdate();
   scheduleAutosave();
 }
 
 function getCappedHistory(limit) {
-  const l = limit !== undefined ? limit : (state.savedHistoryLimit || 10);
+  const l = limit !== undefined ? limit : (state.savedHistoryLimit || 50);
   if (history.length <= l) {
     return {
       history: [...history],
@@ -690,10 +708,10 @@ function setSaveStatus(status) {
 async function writeAutosave() {
   try {
     setSaveStatus('saving');
-    const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 10;
+    const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50;
     const capped = getCappedHistory(limit);
-    await _idbPut(AUTOSAVE_KEY, { 
-      savedAt: Date.now(), 
+    await _idbPut(AUTOSAVE_KEY, {
+      savedAt: Date.now(),
       state: buildStateSnapshot(),
       history: capped.history,
       historyIndex: capped.historyIndex
@@ -719,6 +737,12 @@ async function restoreAutosave() {
     if (rec && rec.state && Array.isArray(rec.state.canvases) && rec.state.canvases.length) {
       Object.assign(state, rec.state);
       if (!state.projectId) state.projectId = uid('proj_');
+      // v0.16.8 migration — default jumped from 10 → 50. Bump projects
+      // that were stuck on the old default (or never had the field).
+      // User-customised values above 10 are preserved.
+      if (state.savedHistoryLimit === undefined || state.savedHistoryLimit <= 10) {
+        state.savedHistoryLimit = 50;
+      }
       if (rec.history && Array.isArray(rec.history) && rec.history.length > 0) {
         history.length = 0;
         history.push(...rec.history);
@@ -749,16 +773,27 @@ function redo() {
 }
 
 function restoreSnapshot(snapStr) {
-  const snap = JSON.parse(snapStr);
-  state.canvases = snap.canvases;
-  state.activeCanvasId = snap.activeCanvasId;
-  state.selectedElementId = snap.selectedElementId;
-  state.layerSelection = snap.layerSelection || [];
-  state.guides = snap.guides || [];
-  state.linkGroups = snap.linkGroups || {};
-  if (snap.dataMerge) state.dataMerge = snap.dataMerge;
-  state.editingElementId = null;
-  render();
+  _restoringHistory = true;
+  try {
+    const snap = JSON.parse(snapStr);
+    state.canvases          = snap.canvases;
+    state.activeCanvasId    = snap.activeCanvasId;
+    state.selectedElementId = snap.selectedElementId;
+    state.layerSelection    = snap.layerSelection || [];
+    state.guides            = snap.guides         || [];
+    state.linkGroups        = snap.linkGroups     || {};
+    // Fields added in v0.16.8 — guard with `undefined` checks so older
+    // snapshots (still in autosave from v0.16.7 and earlier) don't blank
+    // out the live values.
+    if (snap.frames        !== undefined) state.frames        = snap.frames;
+    if (snap.activeFrameId !== undefined) state.activeFrameId = snap.activeFrameId;
+    if (snap.dataMerge     !== undefined) state.dataMerge     = snap.dataMerge;
+    if (snap.projectName   !== undefined) state.projectName   = snap.projectName;
+    state.editingElementId = null;
+    render();
+  } finally {
+    _restoringHistory = false;
+  }
 }
 
 pushHistory();
@@ -10081,7 +10116,7 @@ async function buildFlowBlob() {
   exportState.zoom = state.zoom || 0.6;
   if (!exportState.projectId) exportState.projectId = state.projectId = uid('proj_');
 
-  const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 10;
+  const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50;
   const capped = getCappedHistory(limit);
   exportState.history = capped.history;
   exportState.historyIndex = capped.historyIndex;
@@ -11832,6 +11867,17 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.8',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Undo/redo overhaul. Default depth bumped from 10 to 50 steps. Long-standing bug where the engine capped at a hardcoded 15 entries regardless of the configured limit is fixed — the configured limit now actually applies.',
+      'Snapshot fields expanded: frames (timeline durations / transitions / skip flags), activeFrameId, and projectName are now undoable. Settings-toggle state (theme, auto-resize behaviour, view prefs, zoom/scroll, history-limit itself) intentionally remains EXCLUDED.',
+      'Re-entrancy guard added. A `_restoringHistory` flag short-circuits any pushHistory() call fired DURING a restore — prevents the restore from polluting history with a duplicate of the snapshot just popped.',
+      'Settings UI: history-limit max raised 50 → 100, default value 10 → 50, minimum bumped from 1 to 5 (1 made undo functionally useless).',
+      'Migration: projects with old default (savedHistoryLimit ≤ 10) get bumped to 50 automatically on autosave restore. Customised values above 10 are preserved.'
+    ]
+  },
+  {
     version: 'v0.16.7',
     date: 'May 2026 — Engine v2.7',
     items: [
@@ -12532,7 +12578,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.7';
+  const currentVersion = 'v0.16.8';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -12602,7 +12648,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.7</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.8</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -12658,7 +12704,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.7</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.8</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -12686,7 +12732,7 @@ function openSettings() {
               <div style="display:flex; flex-direction:column; gap:8px; padding:4px 10px;">
                 <label style="display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-main); cursor:pointer;">
                   <span>Save History Limit:</span>
-                  <input type="number" id="set-history-limit" value="${state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 10}" min="1" max="50" style="width:55px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 6px; font-family:inherit; font-size:12px;" />
+                  <input type="number" id="set-history-limit" value="${state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50}" min="5" max="100" style="width:55px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 6px; font-family:inherit; font-size:12px;" />
                 </label>
                 <div style="font-size:10px; color:#f59e0b; line-height:1.4; display:flex; align-items:flex-start; gap:6px; margin-top:2px;">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0; margin-top:1px;">
@@ -12732,8 +12778,8 @@ function openSettings() {
 
   bg.querySelector('#set-history-limit').addEventListener('change', (e) => {
     let val = parseInt(e.target.value, 10);
-    if (isNaN(val) || val < 1) val = 1;
-    if (val > 50) val = 50;
+    if (isNaN(val) || val < 5) val = 5;
+    if (val > 100) val = 100;
     e.target.value = val;
     state.savedHistoryLimit = val;
     scheduleAutosave();
