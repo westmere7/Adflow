@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.16 (Current) - May 2026 — Engine v2.7
+v0.16.17 (Current) - May 2026 — Engine v2.7
+- New "Clear all" option: "Other canvases" wipes every canvas EXCEPT the active one. Sits between "Current canvas" and "All canvases" in the right-click context menu submenu, and as a middle red-bordered button in the canvas Properties panel's Clear-all row.
+- The active canvas (its elements, selection, and any link-group memberships on it) stays untouched. Link groups whose only remaining members were on wiped canvases are automatically pruned via cleanupLinkGroups. If there's only one canvas in the project, the action shows a "No other canvases to clear" toast instead of prompting.
+- Properties-panel button labels shortened from "Current canvas" / "All canvases" to "Current" / "Others" / "All" so three buttons fit comfortably in the narrow right panel; tooltips on hover still spell out the full scope.
+
+v0.16.16 - May 2026 — Engine v2.7
 - Removed the fake "AI" progress overlay from Auto-Resize entirely. The terminal-styled pipeline panel with the spinner, scripted pid + UTC header, and 10 random-weighted "[✓] Initializing visual analysis pipeline" status lines is gone — it was pure theatre that gated the render() for 2–3 seconds while the placement work had already completed. Results now render instantly when Auto-Resize finishes.
 - The `showFakeAutoResizeProgress` function (about 130 lines) and the `showProgress` setting (both the `behaviour.showProgress` flag and the mirrored top-level field) are removed from `auto-resize-engine.js`. The "Show technical progress overlay" checkbox in the Auto-Resize Settings modal is gone. The "Show canvas selection dialogue" hint text no longer references the now-deleted progress overlay.
 - Existing projects with `showProgress` keys in their autosave blobs get those keys quietly stripped on load via `getAutoResizeSettings()` — no migration banner, no data loss elsewhere.

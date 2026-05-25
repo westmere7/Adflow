@@ -6700,7 +6700,17 @@ function renderProps() {
               transition:background 0.15s, border-color 0.15s; white-space:nowrap;
             ">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              Current canvas
+              Current
+            </button>
+            <button id="c-btn-clear-others" title="Clear every other canvas; keep this one untouched" style="
+              flex:1; padding:7px 0; border-radius:6px; cursor:pointer;
+              background:rgba(239, 68, 68, 0.05); color:#ef4444; font-size:11px; font-weight:500;
+              font-family:inherit; display:flex; align-items:center; justify-content:center; gap:4px;
+              border:1px solid rgba(239, 68, 68, 0.25);
+              transition:background 0.15s, border-color 0.15s; white-space:nowrap;
+            ">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="12" y1="11" x2="12" y2="17"></line></svg>
+              Others
             </button>
             <button id="c-btn-clear-all" title="Clear every element on every canvas in the project" style="
               flex:1; padding:7px 0; border-radius:6px; cursor:pointer;
@@ -6710,7 +6720,7 @@ function renderProps() {
               transition:background 0.15s, border-color 0.15s; white-space:nowrap;
             ">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-              All canvases
+              All
             </button>
           </div>
         </div>
@@ -6814,11 +6824,13 @@ function renderProps() {
     const dmOpenBtn = propsEl.querySelector('#dm-open-from-props');
     if (dmOpenBtn) dmOpenBtn.addEventListener('click', () => openDataPanel());
 
-    // Wire the two Clear-all buttons in the canvas Properties panel.
-    const btnClearCurr = document.getElementById('c-btn-clear-current');
-    const btnClearAll  = document.getElementById('c-btn-clear-all');
-    if (btnClearCurr) btnClearCurr.addEventListener('click', clearCurrentCanvasContents);
-    if (btnClearAll)  btnClearAll.addEventListener('click',  clearAllCanvasesContents);
+    // Wire the three Clear-all buttons in the canvas Properties panel.
+    const btnClearCurr   = document.getElementById('c-btn-clear-current');
+    const btnClearOthers = document.getElementById('c-btn-clear-others');
+    const btnClearAll    = document.getElementById('c-btn-clear-all');
+    if (btnClearCurr)   btnClearCurr.addEventListener('click',   clearCurrentCanvasContents);
+    if (btnClearOthers) btnClearOthers.addEventListener('click', clearOtherCanvasesContents);
+    if (btnClearAll)    btnClearAll.addEventListener('click',    clearAllCanvasesContents);
 
     if (typeof syncColorPickerWithSelection === 'function') {
       syncColorPickerWithSelection(null, c);
@@ -8959,6 +8971,24 @@ function clearAllCanvasesContents() {
   render();
 }
 
+// Clear every canvas except the active one. Selection stays put because it
+// only ever lives on the active canvas, which we're preserving.
+function clearOtherCanvasesContents() {
+  const active = getActiveCanvas();
+  if (!active) return;
+  const others = state.canvases.filter(c => c.id !== active.id);
+  if (others.length === 0) {
+    showCanvasNotification('No other canvases to clear.', { type: 'info' });
+    return;
+  }
+  const activeLabel = active.name || (active.width + '×' + active.height);
+  if (!confirm(`Clear every element on EVERY canvas EXCEPT "${activeLabel}"? This cannot be undone (use Ctrl+Z to restore).`)) return;
+  others.forEach(c => { c.elements = []; });
+  if (typeof cleanupLinkGroups === 'function') cleanupLinkGroups();
+  pushHistory();
+  render();
+}
+
 document.getElementById('btn-preview').addEventListener('click', () => {
   const c = getActiveCanvas(); if (!c) return;
   const area = document.getElementById('canvas-area');
@@ -10019,7 +10049,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.16';
+  const currentVersion = 'v0.16.17';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10082,7 +10112,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.16</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.17</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10138,7 +10168,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.16</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.17</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -10784,8 +10814,9 @@ document.addEventListener('contextmenu', (e) => {
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item has-submenu" style="color:#ef4444">Clear all
       <div class="ctx-submenu">
-        <div class="ctx-item" id="ctx-clear-current"  style="white-space:nowrap;">Current canvas</div>
-        <div class="ctx-item" id="ctx-clear-all-canv" style="white-space:nowrap;">All canvases</div>
+        <div class="ctx-item" id="ctx-clear-current"    style="white-space:nowrap;">Current canvas</div>
+        <div class="ctx-item" id="ctx-clear-others"     style="white-space:nowrap;">Other canvases</div>
+        <div class="ctx-item" id="ctx-clear-all-canv"   style="white-space:nowrap;">All canvases</div>
       </div>
     </div>`;
     html += `<div class="ctx-divider"></div>`;
@@ -11029,6 +11060,7 @@ document.addEventListener('contextmenu', (e) => {
     if (typeof openAutoResizeModal === 'function') openAutoResizeModal();
   });
   bind('ctx-clear-current',   () => clearCurrentCanvasContents());
+  bind('ctx-clear-others',    () => clearOtherCanvasesContents());
   bind('ctx-clear-all-canv',  () => clearAllCanvasesContents());
   bind('ctx-toggle-snap', () => { state.snapEnabled = state.snapEnabled === false ? true : false; render(); });
   bind('ctx-toggle-rulers', () => { state.showRulers = !state.showRulers; render(); });

@@ -658,6 +658,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.17',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'New "Clear all" option: "Other canvases" wipes every canvas EXCEPT the active one. Sits between "Current canvas" and "All canvases" in the canvas right-click context menu submenu, and as a middle red-bordered button in the canvas Properties panel\'s Clear-all row.',
+      'The active canvas (its elements, selection, and any link-group memberships on it) stays untouched. Link groups whose only remaining members were on wiped canvases are automatically pruned. If there\'s only one canvas in the project, the action shows a "No other canvases to clear" toast instead of prompting.',
+      'Properties-panel button labels shortened from "Current canvas" / "All canvases" to "Current" / "Others" / "All" so three buttons fit comfortably in the narrow right panel; tooltips still spell out the full scope.'
+    ]
+  },
+  {
     version: 'v0.16.16',
     date: 'May 2026 — Engine v2.7',
     items: [
