@@ -658,6 +658,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.45',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Text link-group "Background" sync now also propagates the text-bg padding (`bgPadL` / `bgPadV` — the "L/R Pad" + "T/B Pad" fields in the Properties panel). Edit padding on one linked text element and every other element in the group updates too, matching the intuition that "Background" covers the bg shape\'s full appearance including its inset around the text. Other bg props in the sync (colour, hasBg, animate, time offset) are unchanged.'
+    ]
+  },
+  {
     version: 'v0.16.44',
     date: 'May 2026 — Engine v2.16',
     items: [

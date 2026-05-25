@@ -489,6 +489,17 @@ function openDataPanel() {
     modal.style.width = '1180px';
     modal.style.maxWidth = '95vw';
   }
+  // Relabel the generic Close button as Save for this panel. The data
+  // panel already auto-commits each edit (cell input handlers call
+  // pushHistory + render immediately), so the top-right action is
+  // semantically a confirm/save rather than a discard. Promote it to
+  // the `primary` style so it reads as the affirmative action.
+  const closeBtn = bg.querySelector('#modal-close');
+  if (closeBtn) {
+    closeBtn.textContent = 'Save';
+    closeBtn.title = 'Save and close';
+    closeBtn.classList.add('primary');
+  }
   dmRenderPanel(bg);
 }
 
