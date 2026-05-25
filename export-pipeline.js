@@ -422,7 +422,12 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:50%;opacity:${fillOpacity};"></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
     }
     if (el.type === 'pixel') {
-      return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;opacity:${fillOpacity};"><svg viewBox="0 0 578.52 556.76" width="100%" height="100%" preserveAspectRatio="none"><path fill="${el.color}" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+      // Match editor behaviour: gradient fills need an inline <linearGradient>
+      // def referenced via url(#id) because SVG fill="" can't take CSS strings.
+      const svgGrad = (typeof svgFillForCssColor === 'function') ? svgFillForCssColor(el.color, 'exp_' + el.id) : null;
+      const pathFillAttr = svgGrad ? svgGrad.fillAttr : el.color;
+      const defs = svgGrad ? svgGrad.defs : '';
+      return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;opacity:${fillOpacity};"><svg viewBox="0 0 578.52 556.76" width="100%" height="100%" preserveAspectRatio="none">${defs}<path fill="${pathFillAttr}" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
     }
     if (el.type === 'button') {
       const ff = el.fontFamily ? el.fontFamily + ',sans-serif' : 'Arial,Helvetica,sans-serif';

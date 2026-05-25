@@ -3431,6 +3431,46 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
       box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 0 6px var(--accent-base);
     }
 
+    /* Midpoint (transition-balance) markers — diamond shaped, smaller and
+       below the colour-stop markers so they're visually distinct. They
+       sit between two colour stops and biasing is via drag. Double-click
+       resets to 0.5 (linear). */
+    .cp-grad-mid-marker {
+      position: absolute;
+      top: 2px;
+      width: 8px;
+      height: 8px;
+      background: var(--text-muted, #888);
+      border: 1px solid #fff;
+      transform: translateX(-50%) rotate(45deg);
+      cursor: ew-resize;
+      box-sizing: border-box;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
+      opacity: 0.85;
+    }
+    .cp-grad-mid-marker:hover {
+      background: var(--accent-base);
+      opacity: 1;
+    }
+
+    /* Saved-gradients row — flex of wide swatches, scrollable. */
+    .cp-grad-swatch-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .cp-grad-swatch {
+      flex: 0 0 calc(25% - 5px);
+      height: 22px;
+      border-radius: 4px;
+      border: 1px solid var(--border-light);
+      cursor: pointer;
+      background-color: #888;
+    }
+    .cp-grad-swatch:hover {
+      border-color: var(--accent-base);
+    }
+
 
     /* Linked-element highlight (visual only — siblings of the selected element, or a
        hovered link-group row). Non-live = static dashed border; live adds the marching-

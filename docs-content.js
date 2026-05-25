@@ -658,6 +658,62 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.25',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Fix: gradient fills now render correctly on RMIT Pixel shapes. Previously, assigning a gradient — via the picker or the new Saved Gradients swatches — left the pixel black, because SVG\'s fill="..." attribute silently ignores CSS gradient strings. New helper svgFillForCssColor() materialises the CSS gradient as an inline <linearGradient> def and references it via url(#id). SVG color hints (midpoint balance) are approximated with a synthetic 50/50 mix stop at the hint position. Same fix applied to the HTML5 export pipeline. Rect/circle/line/button/text were unaffected — they use CSS background which natively supports linear-gradient.'
+    ]
+  },
+  {
+    version: 'v0.16.24',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Gradient picker — midpoint balance markers. Each pair of adjacent colour stops now has a small diamond-shaped midpoint marker between them on the gradient track. Drag the diamond to bias where the 50/50 transition sits (clamped to 5–95% of the gap). Double-click resets to linear. Each stop carries a new `mid` field (0..1); cpBuildGradient emits a CSS color hint between stops where mid ≠ 0.5; cpParseGradient round-trips it. Existing gradients are unchanged (default mid 0.5 = linear).',
+      'Gradient picker — saved gradients row. New "Saved Gradients" section above the solid palette. Click + to save the current gradient (only while editing one). Click a saved swatch to load it. Right-click to remove. Stored as structured {angle, stops} entries in state.savedGradients rather than CSS strings.',
+      'Gradient picker — hide-for-incompatible-keys. The Saved Gradients row hides entirely when the picker is open on a property that doesn\'t accept gradients (currently just strokeColor — the gradient tab was already hidden there, the swatch row now follows suit).',
+      'Both state.savedPalette and the new state.savedGradients are deep-cloned into the project file by buildFlowBlob — they persist with the working file across saves, loads, and cloud pushes.'
+    ]
+  },
+  {
+    version: 'v0.16.23',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'The RMIT theme is a light-background theme (color-scheme: light, --bg-body: #f4f4f4), so it now also gets the dedicated Adflow_lighttheme.svg wordmark — same as the Light theme. Previously only state.theme === "light" swapped to the light-theme logo, so the dark wordmark looked muddy against RMIT\'s light panels.',
+      'Refactor: syncAdflowLogos() now consults a small LIGHT_BG_THEMES set (currently {"light", "rmit"}) instead of comparing to a hardcoded string. Adding future light themes is a one-line edit to that set.'
+    ]
+  },
+  {
+    version: 'v0.16.22',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Fix regression from v0.16.20: middle-click panning works again. The earlier middle-click guard was too aggressive — it swallowed every middle-mouse mousedown in capture phase, which also killed the workspace pan-by-middle-drag affordance (canvasArea + onElementMouseDown both start a pan on e.button === 1). Guard now scoped to <button> and [role="button"] targets only, so it still blocks middle-click from firing the per-canvas frame controls and single-preview toggle, but canvas and element layers see middle-click through as before.'
+    ]
+  },
+  {
+    version: 'v0.16.21',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Auto-Resize engine bumped to v2.9: CRICOS font sizer gains a third candidate (height × 0.012) alongside the existing minDim and width formulas. fontSize is now max(minDim × 0.023, width × 0.008, height × 0.012), all clamped to [4, 7]. Specifically fixes 160×600 (Wide Skyscraper) where minDim and width were both 160 and both clamped to the floor of 4 — the new height-driven candidate gives 7 there instead. CRICOS goes from 4 → 7 on 160×600. No effect on other listed ad formats.'
+    ]
+  },
+  {
+    version: 'v0.16.20',
+    date: 'May 2026 — Engine v2.8',
+    items: [
+      'Middle-click no longer triggers buttons. Several mousedown-based handlers (per-canvas frame controls — prev/next/add/remove frame, the single-preview toggle) weren\'t filtering e.button, so middle-clicking them fired the same action as left-click. Added a global capture-phase mousedown guard that swallows button=1 events. Also kills the browser\'s middle-click autoscroll cursor inside the app.',
+      'Auto-Resize engine bumped to v2.8: main-image cover-fallback threshold is now canvas-aspect-aware. On thin banners (canvas aspect > 3 either direction — 728×90, 320×50, 970×250, 160×600) the contain→cover trigger lifts from 0.6 fill to 0.9 fill, so cover almost always fires there. Result: main image fills the slot\'s smaller dimension fully, with the larger dimension overflowing into the canvas margins. Canvas overflow:hidden handles the crop during preview/export. Normal-aspect canvases keep the 0.6 threshold and are unchanged.'
+    ]
+  },
+  {
+    version: 'v0.16.19',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Swapped the two Auto-Resize entry points. The workspace Auto-Resize button (bottom-left, anchored to the left panel) now ALWAYS opens the picker dialogue — source canvas + multi-select targets — regardless of any setting. The canvas right-click "Auto-Resize" entry now ALWAYS resizes instantly from the active canvas into every other canvas, no popup. Previously the button honoured the showCanvasSelection flag (default on → popup) and the context menu was hardcoded to popup.',
+      'Removed the now-dead showCanvasSelection setting. The "Show canvas selection dialogue" checkbox is gone from the Auto-Resize Settings modal, replaced by a one-line caption that explains the new split. Older autosave blobs get the field stripped on load — same migration pattern used for showProgress in v0.16.16.',
+      'The "Include unassigned by default" toggle still applies to both entry points: it is the default for the dialogue\'s misc-elements checkbox, and the value the context menu uses for its instant run.'
+    ]
+  },
+  {
     version: 'v0.16.18',
     date: 'May 2026 — Engine v2.7',
     items: [

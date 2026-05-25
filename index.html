@@ -552,7 +552,7 @@
         </div>
         <div class="workspace-footer" id="workspace-footer">
           <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
-          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.16.18</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.16.25</button>
         </div>
       </div>
     </div>
@@ -604,6 +604,15 @@
       </div>
       <div class="cp-divider"></div>
       <div class="cp-palettes">
+        <div id="cp-gradient-palette-section" style="margin-bottom:10px;">
+          <div
+            style="font-size:10px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; display:flex; justify-content:space-between;">
+            <span>Saved Gradients</span>
+            <button id="cp-add-gradient" title="Save current gradient (only while editing one)"
+              style="background:none;border:none;color:var(--accent-base);cursor:pointer;font-size:16px;line-height:10px;">+</button>
+          </div>
+          <div id="cp-gradients" class="cp-grad-swatch-row"></div>
+        </div>
         <div
           style="font-size:10px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; display:flex; justify-content:space-between;">
           <span>Saved Palette</span>

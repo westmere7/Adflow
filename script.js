@@ -1423,14 +1423,15 @@ function applyColorToText(node, colorVal) {
   }
 }
 
-// Swap the Adflow wordmark SVG based on theme. The light theme uses a
-// dedicated `Adflow_lighttheme.svg` so the wordmark reads against a
-// light background; every other theme uses the dark-original
-// `Adflow_logo.svg`. Walks every `<img data-adflow-logo>` in the DOM —
-// the splash logo, the top-bar logo, the size-overlay logo, and the
-// docs-modal welcome image all have this attribute.
+// Swap the Adflow wordmark SVG based on theme. Light-background themes
+// use the dedicated `Adflow_lighttheme.svg` so the wordmark reads against
+// a light background; dark themes use `Adflow_logo.svg`. Walks every
+// `<img data-adflow-logo>` in the DOM — the splash logo, the top-bar
+// logo, the size-overlay logo, and the docs-modal welcome image all have
+// this attribute. Add a new light theme by extending LIGHT_BG_THEMES below.
+const LIGHT_BG_THEMES = new Set(['light', 'rmit']);
 function syncAdflowLogos() {
-  const isLight = state.theme === 'light';
+  const isLight = LIGHT_BG_THEMES.has(state.theme);
   const src = isLight
     ? 'data/Elements/Adflow_lighttheme.svg'
     : 'data/Elements/Adflow_logo.svg';
@@ -2466,6 +2467,61 @@ function getElementAnimationCSS(el, isImageExport) {
   return { entryConfig, entryVars, effConfig, effVars };
 }
 
+// SVG fill helper for elements rendered via inline SVG (pixel shapes).
+// SVG's `fill` attribute does NOT accept CSS linear-gradient strings — a
+// gradient value silently falls back to default black. To support
+// gradients on SVG-rendered elements, we materialise the CSS gradient as
+// an SVG <linearGradient> def and reference it via fill="url(#id)".
+// Returns { defs, fillAttr } when input is a CSS gradient, null otherwise.
+// `idSeed` should be unique per element (the el.id works) so multiple
+// pixels with different gradients don't collide on the same <defs> id.
+function svgFillForCssColor(value, idSeed) {
+  if (typeof value !== 'string' || !value.includes('gradient')) return null;
+  if (typeof cpParseGradient !== 'function') return null;
+  const parsed = cpParseGradient(value);
+  if (!parsed || !parsed.stops || parsed.stops.length < 2) return null;
+
+  // CSS angle → SVG endpoints. CSS 0° = upwards, 90° = rightwards.
+  // Direction vector: (sin θ, -cos θ). Endpoints sit symmetrically
+  // around the bounding-box centre at (0.5, 0.5).
+  const rad = (parsed.angle || 0) * Math.PI / 180;
+  const dx = Math.sin(rad), dy = -Math.cos(rad);
+  const x1 = (0.5 - dx / 2).toFixed(4);
+  const y1 = (0.5 - dy / 2).toFixed(4);
+  const x2 = (0.5 + dx / 2).toFixed(4);
+  const y2 = (0.5 + dy / 2).toFixed(4);
+
+  // SVG doesn't natively support CSS color hints. To approximate a
+  // midpoint-biased transition we insert a synthetic stop at the hint
+  // position whose colour is the 50/50 mix of its two neighbours.
+  const stops = parsed.stops.slice().sort((a, b) => a.pos - b.pos);
+  const toRgb = (hex) => {
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  };
+  const stopXml = [];
+  for (let i = 0; i < stops.length; i++) {
+    const s = stops[i];
+    const op = (s.opacity !== undefined ? s.opacity : 100) / 100;
+    stopXml.push(`<stop offset="${s.pos}%" stop-color="${s.color}" stop-opacity="${op}"/>`);
+    if (i < stops.length - 1) {
+      const mid = (typeof s.mid === 'number') ? s.mid : 0.5;
+      if (Math.abs(mid - 0.5) > 0.005) {
+        const a = toRgb(s.color), b = toRgb(stops[i + 1].color);
+        const mix = a.map((v, j) => Math.round(v + (b[j] - v) * 0.5));
+        const midColor = '#' + mix.map(v => v.toString(16).padStart(2, '0')).join('');
+        const midOp = (op + ((stops[i + 1].opacity !== undefined ? stops[i + 1].opacity : 100) / 100)) / 2;
+        const hintPos = s.pos + mid * (stops[i + 1].pos - s.pos);
+        stopXml.push(`<stop offset="${hintPos}%" stop-color="${midColor}" stop-opacity="${midOp}"/>`);
+      }
+    }
+  }
+  const id = 'svgrad_' + idSeed;
+  const defs = `<defs><linearGradient id="${id}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">${stopXml.join('')}</linearGradient></defs>`;
+  return { defs, fillAttr: `url(#${id})` };
+}
+
 function elementNode(el, canvasCtx) {
   const d = document.createElement('div');
   d.className = 'el';
@@ -2611,7 +2667,13 @@ function elementNode(el, canvasCtx) {
     const fillOpacity = (el.opacity !== undefined ? el.opacity : 100) / 100;
     const fill = document.createElement('div');
     fill.style.cssText = `position:absolute;inset:0;opacity:${fillOpacity};pointer-events:none;`;
-    fill.innerHTML = `<svg viewBox="0 0 578.52 556.76" width="100%" height="100%" preserveAspectRatio="none"><path fill="${dColor}" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg>`;
+    // Gradient support for pixel shapes: SVG fill="" can't accept CSS
+    // linear-gradient strings, so we materialise the gradient as an
+    // inline <linearGradient> def and reference it via url(#id).
+    const svgGrad = svgFillForCssColor(dColor, el.id);
+    const pathFillAttr = svgGrad ? svgGrad.fillAttr : dColor;
+    const defs = svgGrad ? svgGrad.defs : '';
+    fill.innerHTML = `<svg viewBox="0 0 578.52 556.76" width="100%" height="100%" preserveAspectRatio="none">${defs}<path fill="${pathFillAttr}" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg>`;
     d.appendChild(fill);
     const stroke = strokeOverlayNode(el);
     if (stroke) d.appendChild(stroke);
@@ -10049,7 +10111,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.18';
+  const currentVersion = 'v0.16.25';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10112,7 +10174,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.18</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.25</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10168,7 +10230,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.18</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.25</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -10612,6 +10674,25 @@ function shiftLayerOrder(direction) {
   }
 }
 
+
+// Middle-mouse guard for buttons. Several of our mousedown-based handlers
+// (the per-canvas frame controls, single-preview toggle, etc.) don't
+// filter `e.button`, so middle-clicking them fires the same action as
+// left-click — surprising for users. Capture-phase so we run before any
+// other mousedown listener on the button.
+//
+// Scoped to `<button>` / `[role="button"]` only — the canvas area and
+// elements need middle-click for the pan-by-drag affordance (see
+// onElementMouseDown + canvasArea mousedown handlers, which both start
+// panning on `e.button === 1`). Earlier this guard was global and broke
+// panning entirely.
+document.addEventListener('mousedown', (e) => {
+  if (e.button !== 1) return;
+  if (e.target.closest('button, [role="button"]')) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
 
 document.addEventListener('contextmenu', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
@@ -11065,11 +11146,28 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-canvas-export-html', () => { const c = getActiveCanvas(); if (c) exportCanvasAsZip(c); });
   bind('ctx-canvas-export-png', () => { const c = getActiveCanvas(); if (c) exportCanvasAsPng(c); });
   bind('ctx-canvas-auto-resize', () => {
-    // Always open the canvas-selection dialogue from this entry — the
-    // FAB's settings-driven instant-resize bypass doesn't apply here.
-    // A user reaching for the context menu's "Auto-Resize" expects to
-    // pick targets each time.
-    if (typeof openAutoResizeModal === 'function') openAutoResizeModal();
+    // Context-menu Auto-Resize is now the instant path — resize from the
+    // active canvas (the one whose menu was just opened) into every other
+    // canvas, no popup. The bottom-left workspace button is the entry
+    // point for the popup-first flow.
+    const src = getActiveCanvas();
+    if (!src) {
+      showCanvasNotification('Select a source canvas first (click its header).', { type: 'warning' });
+      return;
+    }
+    const targetIds = state.canvases.filter(c => c.id !== src.id).map(c => c.id);
+    if (targetIds.length === 0) {
+      showCanvasNotification('No other canvases to resize into.', { type: 'warning' });
+      return;
+    }
+    const settings = (typeof getAutoResizeSettings === 'function') ? getAutoResizeSettings() : { behaviour: {} };
+    if (typeof runRuleBasedAutoResize === 'function') {
+      runRuleBasedAutoResize({
+        sourceId: src.id,
+        targetIds,
+        includeUnassigned: settings.behaviour?.includeUnassigned === true
+      });
+    }
   });
   bind('ctx-clear-current',   () => clearCurrentCanvasContents());
   bind('ctx-clear-others',    () => clearOtherCanvasesContents());

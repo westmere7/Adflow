@@ -27,12 +27,15 @@
 let iroPicker = null;
 let currentCpKey = null;
 let cpIsGradient = false;
-// Each stop carries color (hex), opacity (0-100) and pos (0-100). Output is a
-// linear-gradient using rgba() so opacity bakes into the CSS string the rest of
-// the app already consumes.
+// Each stop carries color (hex), opacity (0-100), pos (0-100) and mid (0..1
+// — the normalised position of the *transition midpoint* in the gap to the
+// next stop in pos-sorted order; 0.5 = linear; the last stop's mid is
+// unused). Output is a linear-gradient using rgba() so opacity bakes into
+// the CSS string the rest of the app already consumes, with CSS color
+// hints between stops when mid ≠ 0.5.
 let cpGradStops = [
-  { color: '#7c5cff', opacity: 100, pos: 0 },
-  { color: '#2a1f55', opacity: 100, pos: 100 }
+  { color: '#7c5cff', opacity: 100, pos: 0, mid: 0.5 },
+  { color: '#2a1f55', opacity: 100, pos: 100, mid: 0.5 }
 ];
 let cpActiveStop = 0;
 
@@ -40,14 +43,34 @@ function cpStopCss(s) {
   return `${hexToRgba(s.color, (s.opacity !== undefined ? s.opacity : 100) / 100)} ${s.pos}%`;
 }
 
+// Build a linear-gradient string. Between two adjacent pos-sorted stops we
+// emit a CSS color hint when the midpoint is biased — `linear-gradient(...
+// color 0%, 30%, color 100%)`. CSS treats a bare position between two
+// colour stops as the location of the 50/50 colour value (i.e. exactly the
+// "balance" the user adjusts with the midpoint marker). We skip emitting
+// the hint when it's essentially 0.5 to keep the round-trip representation
+// compact and stable.
 function cpBuildGradient() {
   const angle = document.getElementById('cp-grad-angle').value || 90;
   const ordered = [...cpGradStops].sort((a, b) => a.pos - b.pos);
-  return `linear-gradient(${angle}deg, ${ordered.map(cpStopCss).join(', ')})`;
+  const parts = [];
+  for (let i = 0; i < ordered.length; i++) {
+    parts.push(cpStopCss(ordered[i]));
+    if (i < ordered.length - 1) {
+      const mid = (typeof ordered[i].mid === 'number') ? ordered[i].mid : 0.5;
+      if (Math.abs(mid - 0.5) > 0.005) {
+        const hintPos = ordered[i].pos + mid * (ordered[i + 1].pos - ordered[i].pos);
+        parts.push(`${(Math.round(hintPos * 100) / 100)}%`);
+      }
+    }
+  }
+  return `linear-gradient(${angle}deg, ${parts.join(', ')})`;
 }
 
-// Parse a linear-gradient string back into {angle, stops}. Handles both bare hex
-// stops (legacy gradients) and rgba()+position stops (the new format).
+// Parse a linear-gradient string back into {angle, stops}. Handles bare hex
+// stops (legacy), rgba()+position stops (modern), and CSS color hints — a
+// bare "X%" between two colour stops is treated as the midpoint hint and
+// stored as the preceding stop's `mid` (0..1 relative to the gap).
 function cpParseGradient(str) {
   const m = str.match(/linear-gradient\(\s*(-?\d+(?:\.\d+)?)deg\s*,\s*(.+)\)\s*$/i);
   if (!m) return null;
@@ -61,23 +84,60 @@ function cpParseGradient(str) {
     else cur += ch;
   }
   if (cur.trim()) parts.push(cur);
-  let stops = parts.map((p, i) => {
+
+  // First pass: classify each segment as a colour stop or a bare-position hint.
+  const tokens = [];
+  parts.forEach((p, i) => {
     p = p.trim();
-    const posM = p.match(/\s+(\d+(?:\.\d+)?)%\s*$/);
+    if (!p) return;
+    // Bare position (color hint) — just "X%" with no colour.
+    const bareM = p.match(/^(-?\d+(?:\.\d+)?)%$/);
+    if (bareM) { tokens.push({ kind: 'hint', pos: parseFloat(bareM[1]) }); return; }
+    const posM = p.match(/\s+(-?\d+(?:\.\d+)?)%\s*$/);
     const pos = posM ? parseFloat(posM[1]) : (i === 0 ? 0 : 100);
     const colorStr = (posM ? p.slice(0, posM.index) : p).trim();
     const rgbaM = colorStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)/i);
+    let stop;
     if (rgbaM) {
       const hex = '#' + [rgbaM[1], rgbaM[2], rgbaM[3]].map(n => (+n).toString(16).padStart(2, '0')).join('');
       const op = rgbaM[4] !== undefined ? Math.round(parseFloat(rgbaM[4]) * 100) : 100;
-      return { color: hex, opacity: op, pos };
+      stop = { color: hex, opacity: op, pos };
+    } else {
+      stop = { color: colorStr, opacity: 100, pos };
     }
-    return { color: colorStr, opacity: 100, pos };
+    tokens.push({ kind: 'stop', stop });
   });
-  // The UI supports 2-5 stops; keep the first 5, ensure at least 2.
-  if (stops.length > 5) stops = stops.slice(0, 5);
-  if (stops.length === 1) stops.push({ color: stops[0].color, opacity: stops[0].opacity, pos: 100 });
-  return { angle, stops };
+
+  // Second pass: walk tokens, attaching pending hints to the preceding stop's
+  // `mid` (normalised against the gap to the NEXT stop).
+  const stops = [];
+  let pendingHint = null;
+  tokens.forEach(t => {
+    if (t.kind === 'stop') {
+      if (pendingHint != null && stops.length > 0) {
+        const prev = stops[stops.length - 1];
+        const span = t.stop.pos - prev.pos;
+        prev.mid = span > 0
+          ? Math.max(0, Math.min(1, (pendingHint - prev.pos) / span))
+          : 0.5;
+        pendingHint = null;
+      }
+      stops.push(t.stop);
+    } else {
+      pendingHint = t.pos;
+    }
+  });
+
+  // Fill in any missing `mid` with the linear default.
+  stops.forEach((s, i) => {
+    if (typeof s.mid !== 'number' || i === stops.length - 1) s.mid = 0.5;
+  });
+
+  // UI supports 2-5 stops; clamp and pad.
+  let out = stops;
+  if (out.length > 5) out = out.slice(0, 5);
+  if (out.length === 1) out.push({ color: out[0].color, opacity: out[0].opacity, pos: 100, mid: 0.5 });
+  return { angle, stops: out };
 }
 
 // Lightweight per-frame update: positions, colors, active states, inputs and the
@@ -93,17 +153,43 @@ function cpSyncGradientUI() {
   if (active) {
     if (opInput && document.activeElement !== opInput) opInput.value = active.opacity !== undefined ? active.opacity : 100;
   }
+  // Preview bar mirrors the actual CSS — color hints included — so the
+  // visual matches the output.
   const bar = document.getElementById('cp-grad-bar');
   if (bar) {
     const ordered = [...cpGradStops].sort((a, b) => a.pos - b.pos);
-    bar.style.backgroundImage = `linear-gradient(to right, ${ordered.map(cpStopCss).join(', ')})`;
+    const parts = [];
+    for (let i = 0; i < ordered.length; i++) {
+      parts.push(cpStopCss(ordered[i]));
+      if (i < ordered.length - 1) {
+        const mid = (typeof ordered[i].mid === 'number') ? ordered[i].mid : 0.5;
+        if (Math.abs(mid - 0.5) > 0.005) {
+          const hintPos = ordered[i].pos + mid * (ordered[i + 1].pos - ordered[i].pos);
+          parts.push(`${(Math.round(hintPos * 100) / 100)}%`);
+        }
+      }
+    }
+    bar.style.backgroundImage = `linear-gradient(to right, ${parts.join(', ')})`;
   }
+  // Color-stop markers.
   document.querySelectorAll('#cp-grad-track .cp-grad-marker').forEach(m => {
     const idx = +m.dataset.stop;
     if (!cpGradStops[idx]) return;
     m.style.left = cpGradStops[idx].pos + '%';
     m.style.background = cpGradStops[idx].color;
     m.classList.toggle('active', idx === cpActiveStop);
+  });
+  // Midpoint (balance) markers — indexed in pos-sorted order. Position
+  // each one between its two surrounding colour stops using the leading
+  // stop's `mid` value.
+  const ordered = [...cpGradStops].sort((a, b) => a.pos - b.pos);
+  document.querySelectorAll('#cp-grad-track .cp-grad-mid-marker').forEach(m => {
+    const i = +m.dataset.midIndex;
+    if (!ordered[i] || !ordered[i + 1]) { m.style.display = 'none'; return; }
+    m.style.display = '';
+    const mid = (typeof ordered[i].mid === 'number') ? ordered[i].mid : 0.5;
+    const hintPos = ordered[i].pos + mid * (ordered[i + 1].pos - ordered[i].pos);
+    m.style.left = hintPos + '%';
   });
   const removeBtn = document.getElementById('cp-grad-remove');
   const addBtn = document.getElementById('cp-grad-add');
@@ -146,6 +232,54 @@ function cpRebuildStops() {
       marker.addEventListener('dblclick', (e) => { e.preventDefault(); cpRemoveStop(idx); });
       track.appendChild(marker);
     });
+    // Midpoint (balance) markers — one between every pair of pos-sorted
+    // colour stops. Indexed by pos-sorted position; drag adjusts the
+    // leading stop's `mid`. Double-click resets to 0.5 (linear).
+    const ordered = [...cpGradStops].sort((a, b) => a.pos - b.pos);
+    for (let i = 0; i < ordered.length - 1; i++) {
+      const midMarker = document.createElement('div');
+      midMarker.className = 'cp-grad-mid-marker';
+      midMarker.dataset.midIndex = i;
+      midMarker.title = 'Drag to bias the transition. Double-click to reset.';
+      midMarker.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const bar = document.getElementById('cp-grad-bar');
+        const rect = bar.getBoundingClientRect();
+        // Re-resolve the pair from the current pos-sorted order on each
+        // tick so dragging a colour stop past another doesn't corrupt
+        // which gap this midpoint belongs to.
+        const onMove = (ev) => {
+          const ord = [...cpGradStops].sort((a, b) => a.pos - b.pos);
+          if (!ord[i] || !ord[i + 1]) return;
+          const lo = ord[i].pos, hi = ord[i + 1].pos;
+          const span = hi - lo;
+          if (span <= 0) return;
+          let pct = ((ev.clientX - rect.left) / rect.width) * 100;
+          pct = Math.max(lo, Math.min(hi, pct));
+          // Clamp mid into a small interior range so the marker never
+          // collides visually with the colour stops on either side.
+          const mid = Math.max(0.05, Math.min(0.95, (pct - lo) / span));
+          ord[i].mid = mid;
+          cpSyncGradientUI();
+          emitColorUpdate();
+        };
+        const onUp = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+      midMarker.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        const ord = [...cpGradStops].sort((a, b) => a.pos - b.pos);
+        if (ord[i]) ord[i].mid = 0.5;
+        cpSyncGradientUI();
+        emitColorUpdate();
+      });
+      track.appendChild(midMarker);
+    }
   }
   if (swatches) {
     swatches.innerHTML = '';
@@ -195,7 +329,7 @@ function cpAddStop(pos) {
     pos = Math.round(bestPos);
   }
   const opacity = (cpGradStops[cpActiveStop] && cpGradStops[cpActiveStop].opacity) ?? 100;
-  cpGradStops.push({ color: cpColorAtPos(pos), opacity, pos });
+  cpGradStops.push({ color: cpColorAtPos(pos), opacity, pos, mid: 0.5 });
   cpActiveStop = cpGradStops.length - 1;
   if (iroPicker) iroPicker.color.set(cpGradStops[cpActiveStop].color);
   cpRebuildStops();
@@ -213,6 +347,51 @@ function cpRemoveStop(idx) {
 
 if (!state.savedPalette) {
   state.savedPalette = ['#ffffff', '#000000', '#000054', '#e61e2a', '#00bcd4', '#4caf50', '#ff9800', '#f44336'];
+}
+
+// Saved gradients live alongside savedPalette in state, so they're
+// included in the project save/load blob (state is serialised whole via
+// buildFlowBlob in script.js). Each entry is {angle, stops:[...]}.
+if (!state.savedGradients) {
+  state.savedGradients = [];
+}
+
+// Build a quick CSS preview string for a saved-gradient swatch — fixed
+// horizontal direction so the swatch reads the same regardless of the
+// gradient's angle.
+function cpSavedGradientCss(g) {
+  const stops = (g && g.stops) || [];
+  if (stops.length < 2) return '#888';
+  const parts = [];
+  for (let i = 0; i < stops.length; i++) {
+    parts.push(cpStopCss(stops[i]));
+    if (i < stops.length - 1) {
+      const mid = (typeof stops[i].mid === 'number') ? stops[i].mid : 0.5;
+      if (Math.abs(mid - 0.5) > 0.005) {
+        const hintPos = stops[i].pos + mid * (stops[i + 1].pos - stops[i].pos);
+        parts.push(`${(Math.round(hintPos * 100) / 100)}%`);
+      }
+    }
+  }
+  return `linear-gradient(to right, ${parts.join(', ')})`;
+}
+
+// Cheap deep-equality check to deduplicate saves. Compares angle, stop
+// count, and each stop's pos/color/opacity/mid.
+function cpGradientsEqual(a, b) {
+  if (!a || !b) return false;
+  if (a.angle !== b.angle) return false;
+  if (a.stops.length !== b.stops.length) return false;
+  for (let i = 0; i < a.stops.length; i++) {
+    const x = a.stops[i], y = b.stops[i];
+    if (x.color !== y.color) return false;
+    if ((x.opacity || 100) !== (y.opacity || 100)) return false;
+    if (x.pos !== y.pos) return false;
+    const xm = (typeof x.mid === 'number') ? x.mid : 0.5;
+    const ym = (typeof y.mid === 'number') ? y.mid : 0.5;
+    if (Math.abs(xm - ym) > 0.005) return false;
+  }
+  return true;
 }
 
 function initColorPicker() {
@@ -275,6 +454,31 @@ function initColorPicker() {
       renderPalettes();
     }
   });
+
+  // Save the currently-edited gradient to the saved-gradients row. Only
+  // meaningful when the gradient tab is active; disabled otherwise.
+  const addGradientBtn = document.getElementById('cp-add-gradient');
+  if (addGradientBtn) {
+    addGradientBtn.addEventListener('click', () => {
+      if (!cpIsGradient) return;
+      const angle = parseFloat(document.getElementById('cp-grad-angle').value) || 90;
+      const stops = cpGradStops
+        .slice()
+        .sort((a, b) => a.pos - b.pos)
+        .map(s => ({
+          color: s.color,
+          opacity: s.opacity !== undefined ? s.opacity : 100,
+          pos: s.pos,
+          mid: (typeof s.mid === 'number') ? s.mid : 0.5
+        }));
+      const entry = { angle, stops };
+      if ((state.savedGradients || []).some(g => cpGradientsEqual(g, entry))) return;
+      state.savedGradients = state.savedGradients || [];
+      state.savedGradients.unshift(entry);
+      if (state.savedGradients.length > 16) state.savedGradients.pop();
+      renderGradientPalette();
+    });
+  }
 
   document.querySelectorAll('.cp-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
@@ -362,6 +566,53 @@ function renderPalettes() {
     });
     container.appendChild(s);
   });
+  renderGradientPalette();
+}
+
+// Renders the row of saved-gradient swatches above the solid palette.
+// Click loads the gradient into the editor; right-click removes it.
+function renderGradientPalette() {
+  const container = document.getElementById('cp-gradients');
+  if (!container) return;
+  container.innerHTML = '';
+  const list = state.savedGradients || [];
+  if (list.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'font-size:10px; color:var(--text-muted); padding:4px 0; font-style:italic;';
+    empty.textContent = 'Save a gradient with + to add it here.';
+    container.appendChild(empty);
+    return;
+  }
+  list.forEach((g, idx) => {
+    const s = document.createElement('div');
+    s.className = 'cp-grad-swatch';
+    s.style.backgroundImage = cpSavedGradientCss(g);
+    s.title = 'Apply this gradient. Right-click to remove.';
+    s.addEventListener('click', () => {
+      // Flip to gradient tab if we're not already there.
+      const gradTab = document.querySelector('.cp-tab[data-tab="gradient"]');
+      if (gradTab && !cpIsGradient) gradTab.click();
+      // Deep-clone the saved entry so editing doesn't mutate the saved one.
+      cpGradStops = g.stops.map(st => ({
+        color: st.color,
+        opacity: st.opacity !== undefined ? st.opacity : 100,
+        pos: st.pos,
+        mid: (typeof st.mid === 'number') ? st.mid : 0.5
+      }));
+      cpActiveStop = 0;
+      const angleInput = document.getElementById('cp-grad-angle');
+      if (angleInput) angleInput.value = g.angle;
+      if (iroPicker) iroPicker.color.set(cpGradStops[0].color);
+      cpRebuildStops();
+      emitColorUpdate();
+    });
+    s.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      state.savedGradients.splice(idx, 1);
+      renderGradientPalette();
+    });
+    container.appendChild(s);
+  });
 }
 
 function updateCurrentColor(hex) {
@@ -405,10 +656,13 @@ function openColorPicker(btn, key, initialValue) {
   const modal = document.getElementById('color-picker-modal');
 
   const gradientTab = document.querySelector('.cp-tab[data-tab="gradient"]');
+  const gradPaletteSection = document.getElementById('cp-gradient-palette-section');
   if (key === 'strokeColor') {
     gradientTab.style.display = 'none';
+    if (gradPaletteSection) gradPaletteSection.style.display = 'none';
   } else {
     gradientTab.style.display = '';
+    if (gradPaletteSection) gradPaletteSection.style.display = '';
   }
 
   if (initialValue && initialValue.includes('gradient') && key !== 'strokeColor') {

@@ -193,7 +193,6 @@ interface State {
     relations: { r1: boolean };
     behaviour: {
       allowCoverFallback:  boolean;
-      showCanvasSelection: boolean;
       includeUnassigned:   boolean;
       liveLink: {
         enabled:        boolean;
@@ -382,8 +381,8 @@ function computeSafezone(c) {
 
 Two UI surfaces, both wired through `auto-resize-engine.js`:
 
-- **Panel button** — anchored at the bottom of the left panel column (outside `.panel-scroll`). Dispatches via `handleAutoResizeClick()` which honours `behaviour.showCanvasSelection` — opens the run modal or runs immediately.
-- **Canvas right-click menu** — "Auto-Resize" at the top of the menu, styled like Preview. Always calls `openAutoResizeModal()` directly, regardless of settings.
+- **Panel button** — anchored at the bottom of the left panel column (outside `.panel-scroll`). `handleAutoResizeClick()` always opens the run modal so the user picks source + targets.
+- **Canvas right-click menu** — "Auto-Resize" at the top of the menu, styled like Preview. Always runs instantly from the active canvas (the one whose menu was opened) into every other canvas — no popup. This is the bypass / fast-path entry.
 
 ### The run modal — `openAutoResizeModal()`
 
@@ -396,7 +395,7 @@ checkbox + red destructive-clear warning. Run button calls
 Gear button next to the panel auto-resize button opens this. Three sections:
 
 - **Cross-role relations** — R1 toggle.
-- **Behaviour** — `showCanvasSelection`, `includeUnassigned`, `allowCoverFallback`.
+- **Behaviour** — `includeUnassigned`, `allowCoverFallback`.
 - **Live linking** — master toggle + 5 property toggles (`syncText`, `syncFont`, `syncColor`, `syncOpacity`, `syncAnimations`). Position, size, and font size are always independent per canvas; not user-toggleable.
 
 Engine version pill in the modal header has a 2.6 s `ar-engine-pulse` animation

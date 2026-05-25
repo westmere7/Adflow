@@ -54,7 +54,19 @@
 //          a single line (font × 6.8, cap 100); per-element live-linking
 //          property toggles in Settings (text / font / colour / opacity /
 //          animations), driven by user choice rather than role defaults
-const ENGINE_VERSION = 'v2.7';
+//   v2.8 — main-image cover-fallback threshold is now canvas-aspect-aware.
+//          Thin banners (canvas aspect > 3 either direction — 728×90,
+//          320×50, 970×250, 160×600) flip from contain→cover at 0.9 fill
+//          instead of 0.6, so the main image fills the slot's smaller
+//          dimension and crops the larger one. Stops thin formats from
+//          showing a tiny marooned image in the middle of the layout.
+//   v2.9 — CRICOS font sizer gains a third candidate (`height × 0.012`)
+//          alongside the existing minDim and width formulas. Specifically
+//          fixes 160×600 where minDim=width=160 both clamped to 4; the
+//          height-driven candidate gives 7 there instead. No effect on
+//          other listed formats — they already hit ≥ this size via the
+//          minDim or width formula.
+const ENGINE_VERSION = 'v2.9';
 
 
 // ----- Role taxonomy data tables ------------------------------------------
@@ -687,20 +699,23 @@ function placeCricos(srcEl, target, ctx) {
   const w = target.width, h = target.height;
   const minDim = Math.min(w, h);
 
-  // Font: take the larger of two candidates so wide banners don't end up
-  // with a floor-of-4 cricos when there's plenty of horizontal real estate.
+  // Font: take the larger of three candidates so neither wide banners nor
+  // tall skyscrapers end up with a floor-of-4 cricos when there's plenty
+  // of real estate in the OTHER axis.
   //   minDim × 0.023 — original formula, drives portrait / square sizes
   //   width  × 0.008 — kicks in for wide canvases (970×250, 728×90)
-  // Both capped at 7.
-  //   300×250 → max(6, 4) = 6
-  //   300×600 → max(7, 4) = 7
-  //   160×600 → max(4, 4) = 4
-  //   728×90  → max(4, 6) = 6   (was 4)
-  //   970×250 → max(6, 7) = 7   (was 6)
-  //   320×50  → max(4, 4) = 4
-  const fontFromMin   = clampNum(Math.round(minDim * 0.023), 4, 7);
-  const fontFromWidth = clampNum(Math.round(w * 0.008),       4, 7);
-  const fontSize = Math.max(fontFromMin, fontFromWidth);
+  //   height × 0.012 — kicks in for tall thin canvases (160×600)
+  // All capped at 7.
+  //   300×250 → max(6, 4, 4) = 6
+  //   300×600 → max(7, 4, 7) = 7
+  //   160×600 → max(4, 4, 7) = 7   (was 4 — too small on tall skyscraper)
+  //   728×90  → max(4, 6, 4) = 6
+  //   970×250 → max(6, 7, 4) = 7
+  //   320×50  → max(4, 4, 4) = 4
+  const fontFromMin    = clampNum(Math.round(minDim * 0.023), 4, 7);
+  const fontFromWidth  = clampNum(Math.round(w * 0.008),       4, 7);
+  const fontFromHeight = clampNum(Math.round(h * 0.012),       4, 7);
+  const fontSize = Math.max(fontFromMin, fontFromWidth, fontFromHeight);
   const srcFs = srcEl.fontSize || 7;
   const scale = fontSize / srcFs;
   const widthRaw = Math.round((srcEl.width || 100) * scale);
@@ -785,9 +800,22 @@ function placeMainImage(srcEl, target, ctx) {
 
   // Cover fallback when contain leaves the image too small in the slot.
   // Honour the engine setting — when off, the image stays small (contain).
+  //
+  // Threshold is canvas-aspect-aware (added v2.8): on thin banners
+  // (728×90, 320×50, 970×250, 160×600, etc.) the slot is so squat or so
+  // narrow that contain mode leaves the main image looking marooned at
+  // 60–70% fill — technically above the old 0.6 threshold, so cover never
+  // fired. We lift the trigger to 0.9 for canvases with aspect ratio > 3
+  // (either direction), so cover almost always fires there. The result:
+  // main image crops to fill the slot's smaller dimension, with the
+  // larger dimension overflowing into the canvas margins. clampToCanvas
+  // already exempts main-image from overflow clamping, so the crop is
+  // handled by the canvas's overflow:hidden during preview/export.
   const allowCover = !ctx.engineSettings || ctx.engineSettings.behaviour?.allowCoverFallback !== false;
+  const canvasAspect = Math.max(w / h, h / w);
+  const coverThreshold = canvasAspect > 3 ? 0.9 : 0.6;
   const fillFrac = Math.max(imgW, imgH) / Math.max(slot.w, slot.h);
-  if (allowCover && fillFrac < 0.6) {
+  if (allowCover && fillFrac < coverThreshold) {
     if (srcAspect >= slotAspect) {
       imgH = slot.h;
       imgW = Math.round(imgH * srcAspect);
@@ -1297,7 +1325,6 @@ const AUTO_RESIZE_DEFAULT_SETTINGS = {
   },
   behaviour: {
     allowCoverFallback:   true,   // main-image: contain → cover at <60% fill
-    showCanvasSelection:  true,   // run modal pops up before resize; off → instant
     includeUnassigned:    false,  // remembered value for the misc-elements toggle
     // Live linking config for auto-resized elements. When enabled, each
     // placed target joins the source's link group with group.liveLink =
@@ -1325,7 +1352,6 @@ function getAutoResizeSettings() {
   if (!s.behaviour)    s.behaviour    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour };
   // Backfill any behaviour keys missing on projects saved before this version.
   if (typeof s.behaviour.allowCoverFallback  !== 'boolean') s.behaviour.allowCoverFallback  = true;
-  if (typeof s.behaviour.showCanvasSelection !== 'boolean') s.behaviour.showCanvasSelection = true;
   if (typeof s.behaviour.includeUnassigned   !== 'boolean') s.behaviour.includeUnassigned   = false;
   if (!s.behaviour.liveLink) s.behaviour.liveLink = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour.liveLink };
   const ll = s.behaviour.liveLink;
@@ -1335,11 +1361,14 @@ function getAutoResizeSettings() {
   if (typeof ll.syncColor      !== 'boolean') ll.syncColor      = true;
   if (typeof ll.syncOpacity    !== 'boolean') ll.syncOpacity    = true;
   if (typeof ll.syncAnimations !== 'boolean') ll.syncAnimations = true;
-  // Legacy `showProgress` (the fake "AI" pipeline overlay) was removed in
-  // v0.16.16. If present on disk from older saves, strip it so it doesn't
-  // hang around in autosave blobs.
-  if ('showProgress' in s)           delete s.showProgress;
-  if ('showProgress' in s.behaviour) delete s.behaviour.showProgress;
+  // Legacy fields stripped from older autosave blobs:
+  //  - `showProgress` — the fake "AI" pipeline overlay, removed in v0.16.16.
+  //  - `showCanvasSelection` — split into two hardcoded entry points in
+  //    v0.16.19 (the workspace button always opens the modal; the canvas
+  //    right-click menu always runs instantly from the active canvas).
+  if ('showProgress'        in s)           delete s.showProgress;
+  if ('showProgress'        in s.behaviour) delete s.behaviour.showProgress;
+  if ('showCanvasSelection' in s.behaviour) delete s.behaviour.showCanvasSelection;
   return s;
 }
 
@@ -1410,14 +1439,10 @@ function openAutoResizeSettingsModal() {
         </div>
 
         <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin:14px 0 6px 0;">Behaviour</div>
+        <div style="font-size:10.5px; color:var(--text-muted); line-height:1.45; margin:0 0 8px 0;">
+          The workspace <strong>Auto-Resize</strong> button always opens the picker dialogue. The canvas right-click <strong>Auto-Resize</strong> entry always resizes instantly from the active canvas into every other canvas.
+        </div>
         <div style="display:flex; flex-direction:column; gap:2px;">
-          <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
-            <input type="checkbox" id="ars-show-selection" ${s.behaviour.showCanvasSelection !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
-            <div style="flex:1; min-width:0;">
-              <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Show canvas selection dialogue</div>
-              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">On (default): the run modal pops up to pick targets each time. Off: skip the modal and resize into every other canvas instantly.</div>
-            </div>
-          </label>
           <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
             <input type="checkbox" id="ars-include-unassigned" ${s.behaviour.includeUnassigned ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
             <div style="flex:1; min-width:0;">
@@ -1536,7 +1561,6 @@ function openAutoResizeSettingsModal() {
     bg.querySelectorAll('.ars-rel').forEach(cb => {
       next.relations[cb.dataset.rel] = cb.checked;
     });
-    next.behaviour.showCanvasSelection = bg.querySelector('#ars-show-selection').checked;
     next.behaviour.includeUnassigned   = bg.querySelector('#ars-include-unassigned').checked;
     next.behaviour.allowCoverFallback  = bg.querySelector('#ars-cover').checked;
     next.behaviour.liveLink = {
@@ -1560,30 +1584,13 @@ function openAutoResizeSettingsModal() {
 // by the time this script runs — script tags are at the end of <body>, so
 // the buttons are already parsed when we get here.
 
-// Auto-Resize button dispatcher. When the canvas-selection setting is on
-// (default), opens the run modal. When off, skips straight to the engine
-// with all other canvases as targets — fully instant (no intermediate UI).
+// Auto-Resize button dispatcher (bottom-left of the workspace). Always
+// opens the run modal so the user can pick the source + targets. The
+// instant-resize path is now reached via the canvas right-click menu's
+// "Auto-Resize" entry, which resizes from the active canvas into every
+// other canvas without prompting.
 function handleAutoResizeClick() {
-  const settings = getAutoResizeSettings();
-  if (settings.behaviour.showCanvasSelection !== false) {
-    openAutoResizeModal();
-    return;
-  }
-  const src = getActiveCanvas();
-  if (!src) {
-    showCanvasNotification('Select a source canvas first (click its header).', { type: 'warning' });
-    return;
-  }
-  const targetIds = state.canvases.filter(c => c.id !== src.id).map(c => c.id);
-  if (targetIds.length === 0) {
-    showCanvasNotification('No other canvases to resize into.', { type: 'warning' });
-    return;
-  }
-  runRuleBasedAutoResize({
-    sourceId: src.id,
-    targetIds,
-    includeUnassigned: settings.behaviour.includeUnassigned === true
-  });
+  openAutoResizeModal();
 }
 
 document.getElementById('btn-ai-resize')?.addEventListener('click', handleAutoResizeClick);
