@@ -710,7 +710,7 @@ function syncColorPickerWithSelection(el, c) {
 
   let val;
   if (currentCpKey === 'canvas-bg' && c) {
-    val = c.bgColor;
+    val = (typeof getCanvasBg === 'function') ? getCanvasBg(c, state.activeFrameId) : c.bgColor;
   } else if (el && el[currentCpKey] !== undefined) {
     val = el[currentCpKey];
   } else {

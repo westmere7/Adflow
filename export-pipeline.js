@@ -286,7 +286,12 @@ async function exportCanvasAsPng(c, options = {}) {
     cnv.width = c.width;
     cnv.height = c.height;
     const ctx = cnv.getContext('2d');
-    ctx.fillStyle = c.bgColor || '#000';
+    // PNG export captures the active frame, so paint that frame's bg
+    // beneath the SVG-rendered foreignObject.
+    const _pngBg = (typeof getCanvasBg === 'function')
+      ? getCanvasBg(c, state.activeFrameId)
+      : c.bgColor;
+    ctx.fillStyle = _pngBg || '#000';
     ctx.fillRect(0, 0, c.width, c.height);
     const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${c.width}" height="${c.height}"><foreignObject x="0" y="0" width="100%" height="100%">${xhtml}</foreignObject></svg>`;
     const base64Svg = btoa(unescape(encodeURIComponent(svgStr)));
@@ -549,6 +554,12 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     (isImageExport && f.id === state.activeFrameId)
   );
 
+  // Each frame div paints its own bg so animations show bg changes
+  // correctly between frames. Falls back to c.bgColor when no override.
+  const _frameBgOf = (fid) => (typeof getCanvasBg === 'function')
+    ? getCanvasBg(c, fid)
+    : ((c.bgByFrame && c.bgByFrame[fid] !== undefined) ? c.bgByFrame[fid] : c.bgColor);
+
   let framesHTML = '';
   const frameData = [];
   activeFrames.forEach((f, i) => {
@@ -556,7 +567,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     const displayStyle = isImageExport
       ? (f.id === state.activeFrameId ? 'block' : 'none')
       : (i === 0 ? 'block' : 'none');
-    framesHTML += `<div class="frame" id="frame-${f.id}" style="display:${displayStyle};width:100%;height:100%;position:absolute;inset:0;">\n${frameEls}\n</div>\n`;
+    const frameBg = _frameBgOf(f.id);
+    framesHTML += `<div class="frame" id="frame-${f.id}" style="display:${displayStyle};width:100%;height:100%;position:absolute;inset:0;background:${frameBg};">\n${frameEls}\n</div>\n`;
     frameData.push({ id: f.id, duration: f.duration || 2, transition: i === 0 ? 'none' : (f.transition || 'fade'), transitionDuration: f.transitionDuration || 0.5, transitionFade: f.transitionFade });
   });
 

@@ -950,6 +950,19 @@ function cleanupLinkGroups() {
   });
 }
 
+// Canvas bg, optionally scoped per-frame.
+//  • If `c.bgByFrame[frameId]` exists, use it (per-frame mode).
+//  • Otherwise fall back to `c.bgColor` (the canvas-level value).
+// `state.bgPerFrame` / `state.bgPerCanvas` are UI flags that control
+// the *write* scope only; reads always honour any override present.
+function getCanvasBg(c, frameId) {
+  if (!c) return '#000';
+  if (frameId != null && c.bgByFrame && c.bgByFrame[frameId] !== undefined) {
+    return c.bgByFrame[frameId];
+  }
+  return c.bgColor;
+}
+
 function createAndLinkGroup(name) {
   const c = getActiveCanvas();
   if (!c || !state.layerSelection?.length) return;
@@ -1781,7 +1794,13 @@ function previewFrameNode(c) {
   iframe.style.position = 'absolute';
   iframe.style.left = '0';
   iframe.style.top = '0';
-  iframe.style.background = c.bgColor;
+  // Full-preview iframe lands on the first non-skipped frame initially;
+  // paint that frame's bg so the first frame doesn't flash the wrong
+  // colour before frame-level CSS kicks in.
+  {
+    const firstF = (state.frames || []).find(f => !f.skip) || (state.frames || [])[0];
+    iframe.style.background = getCanvasBg(c, firstF && firstF.id);
+  }
   iframe.style.display = 'block';
   iframe.scrolling = 'no';
   iframe.srcdoc = html;
@@ -2063,7 +2082,9 @@ function canvasFrameNode(c) {
   canvas.className = 'canvas' + (state.dropTargetCanvasId === c.id ? ' drop-target' : '');
   canvas.style.width = c.width + 'px';
   canvas.style.height = c.height + 'px';
-  canvas.style.background = c.bgColor;
+  // Editor canvas shows the active frame's bg so per-frame overrides
+  // are visible during editing.
+  canvas.style.background = getCanvasBg(c, state.activeFrameId);
 
   // In single-preview the canvas should read like the deployed ad — no
   // editor outline. The active-canvas accent box-shadow at
@@ -2091,7 +2112,12 @@ function canvasFrameNode(c) {
     iframe.style.height = c.height + 'px';
     iframe.style.border = 'none';
     iframe.style.display = 'block';
-    iframe.style.background = c.bgColor;
+    // Single-preview iframe lands on the first non-skipped frame —
+    // paint that frame's bg so the first paint matches.
+    {
+      const firstF = (state.frames || []).find(f => !f.skip) || (state.frames || [])[0];
+      iframe.style.background = getCanvasBg(c, firstF && firstF.id);
+    }
     iframe.style.position = 'absolute';
     iframe.style.left = '0';
     iframe.style.top = '0';
@@ -6765,15 +6791,17 @@ function renderProps() {
         </div>
         <div class="prop-row" style="margin-top:12px;">
           <label>Background Color</label>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button class="cp-trigger" data-k="canvas-bg" id="c-bg-color" title="Choose canvas background color" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(c.bgColor) || '#000'}"></button>
-            ${hexInputBox('canvas-bg', c.bgColor, 'c-bg-color-hex')}
-          </div>
-        </div>
-        <div class="prop-row" style="margin-top:4px;">
-          <div class="checkbox-row">
-            <input type="checkbox" id="c-bg-apply-all" title="Apply background color to all canvas sizes" ${state.bgApplyAll !== false ? 'checked' : ''} />
-            <label for="c-bg-apply-all" title="Apply background color to all canvas sizes">Apply to all canvases</label>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <button class="cp-trigger" data-k="canvas-bg" id="c-bg-color" title="Choose canvas background color" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(getCanvasBg(c, state.activeFrameId)) || '#000'}"></button>
+            <span style="display:none;">${hexInputBox('canvas-bg', getCanvasBg(c, state.activeFrameId), 'c-bg-color-hex')}</span>
+            <div class="checkbox-row">
+              <input type="checkbox" id="c-bg-per-frame" title="When ON, the background colour you pick applies to the current frame only (other frames keep their own colour). When OFF, every frame on this canvas unifies to the current colour." ${state.bgPerFrame === true ? 'checked' : ''} />
+              <label for="c-bg-per-frame" title="When ON, the background colour you pick applies to the current frame only (other frames keep their own colour). When OFF, every frame on this canvas unifies to the current colour.">Per frame</label>
+            </div>
+            <div class="checkbox-row">
+              <input type="checkbox" id="c-bg-per-canvas" title="When ON, the background colour you pick applies to this canvas only (other canvas sizes keep their own colour). When OFF, every canvas unifies to the current colour." ${state.bgPerCanvas === true ? 'checked' : ''} />
+              <label for="c-bg-per-canvas" title="When ON, the background colour you pick applies to this canvas only (other canvas sizes keep their own colour). When OFF, every canvas unifies to the current colour.">Per canvas</label>
+            </div>
           </div>
         </div>
         <div class="prop-row" style="margin-top:12px;">
@@ -6870,31 +6898,82 @@ function renderProps() {
 
     const bgColor = document.getElementById('c-bg-color');
     const bgHex = document.getElementById('c-bg-color-hex');
-    const bgAll = document.getElementById('c-bg-apply-all');
+    const bgPerFrame = document.getElementById('c-bg-per-frame');
+    const bgPerCanvas = document.getElementById('c-bg-per-canvas');
     const fullClick = document.getElementById('c-full-click');
 
-    bgAll.addEventListener('change', e => {
-      state.bgApplyAll = e.target.checked;
-      if (state.bgApplyAll) {
-        state.canvases.forEach(cv => cv.bgColor = c.bgColor);
-        render(true);
-        pushHistory();
-      }
-    });
+    // Write a bg colour using the current Per-frame / Per-canvas mode:
+    //  • Per-frame OFF: writes c.bgColor (every frame on this canvas
+    //    reads it as fallback) and clears c.bgByFrame so prior per-frame
+    //    overrides don't linger.
+    //  • Per-frame ON: writes the active frame's slot in c.bgByFrame.
+    //    First-frame writes also mirror to c.bgColor so legacy code
+    //    paths reading c.bgColor see the right colour.
+    //  • Per-canvas OFF: the above applies to every canvas in state.
+    //  • Per-canvas ON: only the active canvas is touched.
+    const writeBg = (val) => {
+      const perFrame = state.bgPerFrame === true;
+      const perCanvas = state.bgPerCanvas === true;
+      const targets = perCanvas ? [c] : state.canvases;
+      const fid = state.activeFrameId;
+      const firstId = state.frames && state.frames[0] ? state.frames[0].id : null;
+      targets.forEach(cv => {
+        if (perFrame) {
+          if (!cv.bgByFrame) cv.bgByFrame = {};
+          cv.bgByFrame[fid] = val;
+          if (fid === firstId) cv.bgColor = val;
+        } else {
+          cv.bgColor = val;
+          cv.bgByFrame = {};
+        }
+      });
+    };
 
     if (bgColor) {
-      bgColor.addEventListener('click', () => openColorPicker(bgColor, 'canvas-bg', c.bgColor));
+      bgColor.addEventListener('click', () => openColorPicker(bgColor, 'canvas-bg', getCanvasBg(c, state.activeFrameId)));
     }
 
     bgHex.addEventListener('input', e => {
       let val = e.target.value;
       if (!val.startsWith('#') && val.length > 0 && !val.includes('gradient')) val = '#' + val;
-      c.bgColor = val;
+      writeBg(val);
       if (bgColor) bgColor.style.background = val;
-      if (bgAll.checked) state.canvases.forEach(cv => cv.bgColor = val);
       render(true);
     });
     bgHex.addEventListener('change', () => pushHistory());
+
+    if (bgPerFrame) {
+      bgPerFrame.addEventListener('change', e => {
+        state.bgPerFrame = e.target.checked;
+        if (!e.target.checked) {
+          // Toggle OFF: unify every frame on this canvas to the
+          // currently visible colour. Clears any per-frame overrides
+          // so all frames read c.bgColor uniformly.
+          const val = getCanvasBg(c, state.activeFrameId);
+          c.bgColor = val;
+          c.bgByFrame = {};
+          render(true);
+        }
+        pushHistory();
+      });
+    }
+    if (bgPerCanvas) {
+      bgPerCanvas.addEventListener('change', e => {
+        state.bgPerCanvas = e.target.checked;
+        if (!e.target.checked) {
+          // Toggle OFF: unify every canvas to the currently visible
+          // colour. Clears per-frame overrides on every canvas so the
+          // entire project reads a single bg.
+          const val = getCanvasBg(c, state.activeFrameId);
+          state.canvases.forEach(cv => {
+            cv.bgColor = val;
+            cv.bgByFrame = {};
+          });
+          render(true);
+        }
+        pushHistory();
+      });
+    }
 
     fullClick.addEventListener('change', e => {
       c.fullClickArea = e.target.checked;
@@ -10311,7 +10390,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.42';
+  const currentVersion = 'v0.16.43';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10374,7 +10453,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.42</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.43</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10430,7 +10509,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.42</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.43</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

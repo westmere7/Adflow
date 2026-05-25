@@ -658,6 +658,18 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.43',
+    date: 'May 2026 — Engine v2.15',
+    items: [
+      '"Apply to all canvases" checkbox replaced by two scope flags next to the BG colour swatch: "Per frame" and "Per canvas". Both default OFF — picking a colour edits every frame on every canvas (the same broadcast behaviour as before, expressed as flags instead of a single toggle).',
+      'Tick "Per frame" to confine future bg edits to the current frame only. Tick "Per canvas" to confine future edits to this canvas size only. The two scopes compose: both ON edits exactly one frame on one canvas; only "Per frame" ON edits the current frame on every canvas; only "Per canvas" ON edits every frame on this canvas.',
+      'Toggling either flag OFF auto-unifies on that axis: "Per frame" off propagates the visible colour to every frame on this canvas (clearing stale per-frame overrides); "Per canvas" off propagates it to every canvas in the project. One-click collapse back to a single colour without having to re-pick.',
+      'Hex text input next to the swatch is hidden (the row was crowded with two scope flags). Use the picker; the hex element stays in the DOM so the picker still writes through it.',
+      'Data model: `c.bgColor` stays as the canvas-level fallback; new `c.bgByFrame[frameId]` map stores per-frame overrides only when "Per frame" is ticked during a write. "Per frame" OFF writes clear `c.bgByFrame` so stale per-frame data never lingers under a "global" colour.',
+      'Editor canvas shows the active frame\'s bg, preview iframes use the first non-skipped frame\'s bg as fallback, PNG export captures the active frame\'s bg, and HTML5 export paints each frame\'s bg on the frame div itself so animated transitions show bg changes correctly between frames.'
+    ]
+  },
+  {
     version: 'v0.16.42',
     date: 'May 2026 — Engine v2.15',
     items: [

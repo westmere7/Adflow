@@ -1,6 +1,14 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.42 (Current) - May 2026 — Engine v2.15
+v0.16.43 (Current) - May 2026 — Engine v2.15
+- "Apply to all canvases" checkbox replaced by two scope checkboxes next to the BG colour swatch: "Per frame" and "Per canvas". Both default OFF — picking a colour broadcasts to every frame on every canvas (the same global behaviour as before, just without a separate "apply to all" toggle).
+- Tick "Per frame" to confine future bg edits to the current frame only (other frames keep their colour). Tick "Per canvas" to confine future edits to this canvas size only (other sizes keep their colour). The two scope flags compose — both ON edits exactly one frame on one canvas; only "Per frame" ON edits the current frame on every canvas; only "Per canvas" ON edits every frame on this canvas; both OFF edits everything.
+- Toggling either flag OFF auto-unifies on that axis: turning "Per frame" off propagates the currently-visible colour to every frame on this canvas (and clears stale per-frame overrides); turning "Per canvas" off propagates it to every canvas in the project. Lets you collapse a per-frame / per-canvas story back to a single colour without having to re-pick.
+- Hex text input next to the swatch is hidden — colour is set through the picker only, since with two scope flags + a typed hex field the row got crowded. The hex input element stays in the DOM (the picker writes through it), just visually hidden.
+- Data model: existing `c.bgColor` stays as the canvas-level fallback; new `c.bgByFrame[frameId]` map stores per-frame overrides only when "Per frame" is ticked during a write. With "Per frame" OFF, writes clear `c.bgByFrame` so per-frame data never lingers stale under a "global" colour.
+- Read paths follow per-frame overrides everywhere: editor canvas surface shows the active frame's bg, preview iframes use the first non-skipped frame's bg as fallback, PNG export captures the active frame, and HTML5 export now paints each frame's bg on the frame div itself so animated frame transitions correctly show bg changes between frames.
+
+v0.16.42 - May 2026 — Engine v2.15
 - The "Main image" auto-resize role is renamed to "Fixed shape". The role ID stays `main-image` under the hood so existing saved projects keep working without migration — only the display label changes (Layers panel role chip, Role picker dropdown).
 - New contract for the role: it is now STRICTLY aspect-preserved through any auto-resize, no exceptions. Cover-fallback is removed from placeMainImage entirely. On a 728×90 target with a 100×100 square source, the result is e.g. 80×80 (contain) rather than 80×80 in slot but with cover sometimes producing a wide-strip-crop. Trade-off: image is smaller on extreme aspects, but its proportions are guaranteed exact.
 - No-drop floor (keeps a tiny minimum visible) now scales UNIFORMLY (single multiplier applied to both dims) instead of independently bumping width and height with Math.max — pre-v2.15 the floor would break aspect on non-square sources whenever it kicked in.
