@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.6 (Current) - May 2026 — Engine v2.7
+v0.16.7 (Current) - May 2026 — Engine v2.7
+- Light theme now uses a dedicated Adflow wordmark — `data/Elements/Adflow_lighttheme.svg` — so the brand reads cleanly against the lighter panel background. Every other theme (default dark, ocean, navy, RMIT) continues to use `Adflow_logo.svg`.
+- The swap is JS-driven via a new `syncAdflowLogos()` helper that walks every `<img data-adflow-logo>` in the DOM and sets the right src based on `state.theme === 'light'`. Called from `render()` immediately after the theme class is applied, so theme changes update every wordmark in place without a reload.
+- Four locations marked with the `data-adflow-logo` attribute and swapped on theme change: boot splash logo, topbar logo, size-overlay logo (shown on tiny viewports), Documentation "Welcome to Adflow" hero image. The docs welcome image is generated inside a template literal at modal-open time, so the docs renderer now calls `syncAdflowLogos()` after the panel HTML is inserted to catch that one.
+
+v0.16.6 - May 2026 — Engine v2.7
 - Auto-resize button stripped down to just its label. Removed the sparkle SVG icon on the left and the "AI" pill badge on the right — button now renders as a plain "Auto-resize" label on the purple gradient. The matching CSS rules for `.ar-btn-icon` and `.ar-btn-ai-badge` were dropped from styles.css since they're no longer referenced anywhere.
 
 v0.16.5 - May 2026 — Engine v2.7

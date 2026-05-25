@@ -1571,6 +1571,22 @@ function applyColorToText(node, colorVal) {
   }
 }
 
+// Swap the Adflow wordmark SVG based on theme. The light theme uses a
+// dedicated `Adflow_lighttheme.svg` so the wordmark reads against a
+// light background; every other theme uses the dark-original
+// `Adflow_logo.svg`. Walks every `<img data-adflow-logo>` in the DOM —
+// the splash logo, the top-bar logo, the size-overlay logo, and the
+// docs-modal welcome image all have this attribute.
+function syncAdflowLogos() {
+  const isLight = state.theme === 'light';
+  const src = isLight
+    ? 'data/Elements/Adflow_lighttheme.svg'
+    : 'data/Elements/Adflow_logo.svg';
+  document.querySelectorAll('img[data-adflow-logo]').forEach(img => {
+    if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+  });
+}
+
 function render(skipProps = false) {
   if (state.canvases) {
     state.canvases.forEach(sanitizeMasks);
@@ -1694,6 +1710,8 @@ function render(skipProps = false) {
   document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
   if (isFs) document.body.classList.add('fullscreen-mode');
   if (isPreview) document.body.classList.add('preview-active');
+  // Theme-swap the Adflow wordmark — light theme gets a different SVG.
+  syncAdflowLogos();
 
   // Catch-all autosave trigger: render() runs after virtually every state change
   // (element edits, project settings, theme, etc.). Debounced + suspended during the
@@ -11179,7 +11197,7 @@ const DOCS_SECTIONS = [
     subs: [
       { id: 'welcome', title: 'Welcome to Adflow', body: `
         <div style="text-align: center; margin-bottom: 24px;">
-          <img src="data/Elements/Adflow_logo.svg" alt="Adflow Logo" style="max-width: 140px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));">
+          <img src="data/Elements/Adflow_logo.svg" alt="Adflow Logo" data-adflow-logo style="max-width: 140px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));">
         </div>
         <p>Adflow is a browser-based design tool for animated HTML5 display ads. Lay out every banner size side-by-side in one project, sync them with <a href="#" data-doc-sec="multi-canvas" data-doc-sub="auto-link" style="color:var(--accent-light); font-weight: 500;">Link Groups</a>, mail-merge a spreadsheet to generate dozens of versions, and export Google-Ads-compliant ZIPs in a click.</p>
         <p style="color:var(--text-muted);">Two ideas to start with — read the next two pages even if you skip the rest:</p>
@@ -11775,6 +11793,10 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
       </div>
     </div>`;
 
+  // Welcome page contains the Adflow wordmark — sync it to the active
+  // theme now that the dynamic HTML has been inserted into the DOM.
+  if (typeof syncAdflowLogos === 'function') syncAdflowLogos();
+
   // Wire interactions
   bg.querySelectorAll('.docs-section-head').forEach(head => {
     head.addEventListener('click', () => {
@@ -11809,6 +11831,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.16.7',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Light theme now uses a dedicated Adflow wordmark — `data/Elements/Adflow_lighttheme.svg` — so the brand reads cleanly against the lighter panel background. Every other theme continues to use `Adflow_logo.svg`.',
+      'The swap is JS-driven via syncAdflowLogos() — walks every <img data-adflow-logo> in the DOM and sets the right src based on state.theme. Called from render() right after the theme class is applied, so theme changes update every wordmark in place without a reload.',
+      'Four locations now carry the data-adflow-logo attribute: boot splash, topbar, size-overlay (tiny-viewport warning), Documentation welcome page. The docs renderer calls syncAdflowLogos() after its dynamic HTML is inserted to catch the welcome-page image too.'
+    ]
+  },
   {
     version: 'v0.16.6',
     date: 'May 2026 — Engine v2.7',
@@ -12501,7 +12532,7 @@ function generateChangelogHtml(limitVersion = null) {
 }
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.6';
+  const currentVersion = 'v0.16.7';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -12571,7 +12602,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.6</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.7</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -12627,7 +12658,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.6</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.7</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
