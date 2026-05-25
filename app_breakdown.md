@@ -193,7 +193,6 @@ interface State {
     relations: { r1: boolean };
     behaviour: {
       allowCoverFallback:  boolean;
-      showProgress:        boolean;
       showCanvasSelection: boolean;
       includeUnassigned:   boolean;
       liveLink: {
@@ -205,7 +204,6 @@ interface State {
         syncAnimations: boolean;
       };
     };
-    showProgress: boolean;       // Mirrored top-level
   };
 
   // ----- Auth (transient) -----
@@ -393,21 +391,12 @@ Source canvas summary + multi-select target canvas list + "Include unassigned"
 checkbox + red destructive-clear warning. Run button calls
 `runRuleBasedAutoResize({ sourceId, targetIds, includeUnassigned })`.
 
-### The fake progress overlay — `showFakeAutoResizeProgress()`
-
-Pure theatre. Terminal-styled centred panel with a pulsing spinner, fake pid +
-UTC timestamp header, 10 scripted pipeline-step status lines staggered over
-**2.0–3.0 s (randomised per run)**. Step delays are random-weighted so the
-progression stutters realistically. The actual placement work has already
-completed when the overlay appears — it just gates the `render()` call so the
-user sees the engine "doing work."
-
 ### Settings modal — `openAutoResizeSettingsModal()`
 
 Gear button next to the panel auto-resize button opens this. Three sections:
 
 - **Cross-role relations** — R1 toggle.
-- **Behaviour** — `showCanvasSelection`, `includeUnassigned`, `allowCoverFallback`, `showProgress`.
+- **Behaviour** — `showCanvasSelection`, `includeUnassigned`, `allowCoverFallback`.
 - **Live linking** — master toggle + 5 property toggles (`syncText`, `syncFont`, `syncColor`, `syncOpacity`, `syncAnimations`). Position, size, and font size are always independent per canvas; not user-toggleable.
 
 Engine version pill in the modal header has a 2.6 s `ar-engine-pulse` animation
@@ -442,7 +431,7 @@ for each target in settings.targetIds:
   clampToCanvas(ctx)
 
 cleanupLinkGroups()
-showFakeAutoResizeProgress(stats, () => { pushHistory(); render(); toast(); })
+pushHistory(); render(); toast();
 ```
 
 Single history entry — `pushHistory()` runs once at the end so the whole resize

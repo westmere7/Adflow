@@ -10,7 +10,7 @@
 //   - The 9 per-role placement rules + cross-role relations
 //   - The main executor (runRuleBasedAutoResize)
 //   - Engine settings (toggle each rule + behaviour options)
-//   - UI: role picker dropdown, run modal, settings modal, fake loading overlay
+//   - UI: role picker dropdown, run modal, settings modal
 //
 // Loaded BEFORE script.js so its top-level functions and constants are
 // available globally. This file does NOT depend on anything from script.js
@@ -28,8 +28,8 @@
 
 // ----- Engine version -----------------------------------------------------
 // Bump on substantive rule / behaviour changes. Surfaced in the Settings
-// modal header and the fake progress overlay so the user can tell at a
-// glance which engine generation produced a given resize.
+// modal header so the user can tell at a glance which engine generation
+// produced a given resize.
 //
 //   v2.0 — initial 9-role rule engine + R1 logo↔RFWN relation
 //   v2.1 — mask post-pass, contain→cover fallback, link-group wiring
@@ -1180,26 +1180,12 @@ function runRuleBasedAutoResize(settings) {
 
   cleanupLinkGroups();
 
-  const finalize = () => {
-    pushHistory();
-    render();
-    showCanvasNotification(
-      `Auto-Resize: ${canvasesUpdated} canvas${canvasesUpdated === 1 ? '' : 'es'} updated · ${placedTotal} placed, ${droppedTotal} dropped`,
-      { type: 'success' }
-    );
-  };
-
-  if (engineSettings.showProgress !== false) {
-    showFakeAutoResizeProgress({
-      sourceCanvas: src,
-      sourceElementCount: srcEls.length,
-      targetCount: canvasesUpdated,
-      placedCount: placedTotal,
-      droppedCount: droppedTotal
-    }, finalize);
-  } else {
-    finalize();
-  }
+  pushHistory();
+  render();
+  showCanvasNotification(
+    `Auto-Resize: ${canvasesUpdated} canvas${canvasesUpdated === 1 ? '' : 'es'} updated · ${placedTotal} placed, ${droppedTotal} dropped`,
+    { type: 'success' }
+  );
 }
 
 // Hook src ↔ target into a link group so cross-canvas style/content sync
@@ -1311,7 +1297,6 @@ const AUTO_RESIZE_DEFAULT_SETTINGS = {
   },
   behaviour: {
     allowCoverFallback:   true,   // main-image: contain → cover at <60% fill
-    showProgress:         true,   // fake technical loading overlay
     showCanvasSelection:  true,   // run modal pops up before resize; off → instant
     includeUnassigned:    false,  // remembered value for the misc-elements toggle
     // Live linking config for auto-resized elements. When enabled, each
@@ -1327,8 +1312,7 @@ const AUTO_RESIZE_DEFAULT_SETTINGS = {
       syncOpacity:  true,
       syncAnimations: true
     }
-  },
-  showProgress: true             // mirrored for fast top-level read
+  }
 };
 
 function getAutoResizeSettings() {
@@ -1341,7 +1325,6 @@ function getAutoResizeSettings() {
   if (!s.behaviour)    s.behaviour    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour };
   // Backfill any behaviour keys missing on projects saved before this version.
   if (typeof s.behaviour.allowCoverFallback  !== 'boolean') s.behaviour.allowCoverFallback  = true;
-  if (typeof s.behaviour.showProgress        !== 'boolean') s.behaviour.showProgress        = true;
   if (typeof s.behaviour.showCanvasSelection !== 'boolean') s.behaviour.showCanvasSelection = true;
   if (typeof s.behaviour.includeUnassigned   !== 'boolean') s.behaviour.includeUnassigned   = false;
   if (!s.behaviour.liveLink) s.behaviour.liveLink = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour.liveLink };
@@ -1352,143 +1335,12 @@ function getAutoResizeSettings() {
   if (typeof ll.syncColor      !== 'boolean') ll.syncColor      = true;
   if (typeof ll.syncOpacity    !== 'boolean') ll.syncOpacity    = true;
   if (typeof ll.syncAnimations !== 'boolean') ll.syncAnimations = true;
-  if (typeof s.showProgress !== 'boolean') s.showProgress = s.behaviour.showProgress !== false;
+  // Legacy `showProgress` (the fake "AI" pipeline overlay) was removed in
+  // v0.16.16. If present on disk from older saves, strip it so it doesn't
+  // hang around in autosave blobs.
+  if ('showProgress' in s)           delete s.showProgress;
+  if ('showProgress' in s.behaviour) delete s.behaviour.showProgress;
   return s;
-}
-
-
-// ----- Fake technical loading overlay (pure theatre) ----------------------
-// Computes nothing — the placement work has already happened when this is
-// called. The overlay just delays the visible render() so the user gets
-// a satisfying "the engine is working" cue.
-function showFakeAutoResizeProgress(stats, onComplete) {
-  const bg = document.createElement('div');
-  bg.id = 'ar-progress-overlay';
-  bg.style.cssText = `
-    position: fixed; inset: 0; z-index: 100050;
-    background: rgba(8, 10, 18, 0.78); backdrop-filter: blur(4px);
-    display: flex; align-items: center; justify-content: center;
-    font-family: ui-monospace, "SF Mono", Consolas, Menlo, monospace;
-    color: #c8f9e2;
-  `;
-
-  const elemCount = stats.sourceElementCount;
-  const tgtCount  = stats.targetCount;
-  const src = stats.sourceCanvas;
-  const srcLabel = `${src.width}×${src.height}`;
-
-  const stepLabels = [
-    `Initializing visual analysis pipeline`,
-    `Uploading source canvas (${srcLabel})`,
-    `Loading Adflow Visual Model v2.4`,
-    `Tokenizing ${elemCount} element${elemCount === 1 ? '' : 's'}`,
-    `Detecting roles via heuristic ensemble`,
-    `Computing safezone parametrics (${tgtCount} target${tgtCount === 1 ? '' : 's'})`,
-    `Solving anchor + size constraints`,
-    `Applying cross-role relations (R1)`,
-    `Synchronizing link groups`,
-    `Finalizing per-canvas placements`
-  ];
-
-  // Random total duration in [2000, 3000] ms. Reserve a 280 ms tail.
-  const TOTAL_MS = 2000 + Math.floor(Math.random() * 1001);
-  const stepWindow = TOTAL_MS - 280;
-
-  // Each step gets a random weight (0.4×–1.6× of average), then cumulative
-  // sums give the step delay. Produces "stutter" — sometimes two ticks
-  // ~80ms apart, sometimes one sits alone for ~450ms.
-  const weights = stepLabels.map(() => 0.4 + Math.random() * 1.2);
-  const wSum = weights.reduce((a, b) => a + b, 0);
-  let acc = 0;
-  const steps = stepLabels.map((label, i) => {
-    acc += (weights[i] / wSum) * stepWindow;
-    return { label, delay: Math.round(acc) };
-  });
-
-  bg.innerHTML = `
-    <div style="
-      width: 520px; max-width: calc(100vw - 48px);
-      background: #0d111c;
-      border: 1px solid rgba(124, 92, 255, 0.4);
-      border-radius: 8px;
-      box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(124, 92, 255, 0.15) inset;
-      padding: 18px 22px 16px 22px;
-      font-size: 11.5px; line-height: 1.55;
-    ">
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-        <span class="ar-prog-spinner" style="
-          display:inline-block; width:10px; height:10px;
-          border:1.5px solid rgba(124, 92, 255, 0.35);
-          border-top-color: #b7a3ff; border-radius:50%;
-          animation: ar-prog-spin 0.7s linear infinite;
-        "></span>
-        <span style="color:#b7a3ff; font-weight:600; letter-spacing:0.5px;">Adflow Auto-Resize Engine</span>
-        <span style="color:#5b6478; margin-left:auto; font-size:10px;">${ENGINE_VERSION} · rule-based</span>
-      </div>
-      <div style="color:#5b6478; font-size:10px; margin-bottom:10px; border-bottom:1px dashed rgba(124, 92, 255, 0.18); padding-bottom:8px;">
-        pid 0x${Math.floor(Math.random() * 0xFFFF).toString(16).padStart(4, '0')} · ${new Date().toISOString().split('T')[1].split('.')[0]} UTC · stream: visual_pipeline.v2
-      </div>
-      <div id="ar-prog-log" style="min-height:200px; max-height:280px; overflow-y:auto;"></div>
-      <div style="margin-top:12px; height:4px; border-radius:2px; background:rgba(124, 92, 255, 0.12); overflow:hidden;">
-        <div id="ar-prog-bar" style="height:100%; width:0%; background:linear-gradient(90deg, #7c5cff, #b7a3ff); transition: width 0.12s linear;"></div>
-      </div>
-      <div style="margin-top:6px; font-size:9.5px; color:#5b6478; display:flex; justify-content:space-between;">
-        <span id="ar-prog-percent">0%</span>
-        <span>${elemCount} layer${elemCount === 1 ? '' : 's'} · ${tgtCount} target${tgtCount === 1 ? '' : 's'}</span>
-      </div>
-    </div>
-  `;
-
-  if (!document.getElementById('ar-prog-keyframes')) {
-    const style = document.createElement('style');
-    style.id = 'ar-prog-keyframes';
-    style.textContent = `
-      @keyframes ar-prog-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      @keyframes ar-prog-fade { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: translateY(0); } }
-    `;
-    document.head.appendChild(style);
-  }
-
-  document.body.appendChild(bg);
-  const log = bg.querySelector('#ar-prog-log');
-  const bar = bg.querySelector('#ar-prog-bar');
-  const pct = bg.querySelector('#ar-prog-percent');
-
-  steps.forEach((step, i) => {
-    setTimeout(() => {
-      const row = document.createElement('div');
-      row.style.cssText = `animation: ar-prog-fade 0.18s ease-out; margin-bottom:2px;`;
-      row.innerHTML = `
-        <span style="color:#34d399; font-weight:700; margin-right:8px;">[✓]</span><span style="color:#c8f9e2;">${step.label}</span>
-      `;
-      log.appendChild(row);
-      log.scrollTop = log.scrollHeight;
-      const p = Math.round(((i + 1) / steps.length) * 100);
-      bar.style.width = p + '%';
-      pct.textContent = p + '%';
-    }, step.delay);
-  });
-
-  setTimeout(() => {
-    bar.style.width = '100%';
-    pct.textContent = '100%';
-    const done = document.createElement('div');
-    done.style.cssText = `margin-top:6px; padding-top:6px; border-top:1px dashed rgba(52, 211, 153, 0.25); animation: ar-prog-fade 0.2s ease-out;`;
-    done.innerHTML = `<span style="color:#34d399; font-weight:700;">→</span> <span style="color:#a7f0d2;">done — ${stats.placedCount} placed, ${stats.droppedCount} dropped across ${stats.targetCount} canvas${stats.targetCount === 1 ? '' : 'es'}.</span>`;
-    log.appendChild(done);
-
-    const spinner = bg.querySelector('.ar-prog-spinner');
-    if (spinner) {
-      spinner.style.animation = 'none';
-      spinner.style.borderColor = '#34d399';
-      spinner.style.borderTopColor = '#34d399';
-    }
-  }, TOTAL_MS - 80);
-
-  setTimeout(() => {
-    bg.remove();
-    if (typeof onComplete === 'function') onComplete();
-  }, TOTAL_MS + 280);
 }
 
 
@@ -1563,7 +1415,7 @@ function openAutoResizeSettingsModal() {
             <input type="checkbox" id="ars-show-selection" ${s.behaviour.showCanvasSelection !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
             <div style="flex:1; min-width:0;">
               <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Show canvas selection dialogue</div>
-              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">On (default): the run modal pops up to pick targets each time. Off + progress overlay off = fully instant resize with no intermediate UI.</div>
+              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">On (default): the run modal pops up to pick targets each time. Off: skip the modal and resize into every other canvas instantly.</div>
             </div>
           </label>
           <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
@@ -1578,13 +1430,6 @@ function openAutoResizeSettingsModal() {
             <div style="flex:1; min-width:0;">
               <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Allow cover fallback for main image</div>
               <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Switch from contain to cover when fill &lt; 60% of slot. Off: always contain even if visually small.</div>
-            </div>
-          </label>
-          <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
-            <input type="checkbox" id="ars-progress" ${s.showProgress !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
-            <div style="flex:1; min-width:0;">
-              <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Show technical progress overlay</div>
-              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">~2–3s pipeline-style loading panel during the run. Off: results appear instantly.</div>
             </div>
           </label>
         </div>
@@ -1694,7 +1539,6 @@ function openAutoResizeSettingsModal() {
     next.behaviour.showCanvasSelection = bg.querySelector('#ars-show-selection').checked;
     next.behaviour.includeUnassigned   = bg.querySelector('#ars-include-unassigned').checked;
     next.behaviour.allowCoverFallback  = bg.querySelector('#ars-cover').checked;
-    next.behaviour.showProgress        = bg.querySelector('#ars-progress').checked;
     next.behaviour.liveLink = {
       enabled:        bg.querySelector('#ars-ll-enabled').checked,
       syncText:       bg.querySelector('#ars-ll-text').checked,
@@ -1703,7 +1547,6 @@ function openAutoResizeSettingsModal() {
       syncOpacity:    bg.querySelector('#ars-ll-opacity').checked,
       syncAnimations: bg.querySelector('#ars-ll-anim').checked
     };
-    next.showProgress                  = next.behaviour.showProgress;
     state.autoResizeSettings = next;
     pushHistory();
     close();
@@ -1719,8 +1562,7 @@ function openAutoResizeSettingsModal() {
 
 // Auto-Resize button dispatcher. When the canvas-selection setting is on
 // (default), opens the run modal. When off, skips straight to the engine
-// with all other canvases as targets — combined with `showProgress` off,
-// the resize is fully instant (no intermediate UI at all).
+// with all other canvases as targets — fully instant (no intermediate UI).
 function handleAutoResizeClick() {
   const settings = getAutoResizeSettings();
   if (settings.behaviour.showCanvasSelection !== false) {

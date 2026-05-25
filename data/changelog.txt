@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.15 (Current) - May 2026 — Engine v2.7
+v0.16.16 (Current) - May 2026 — Engine v2.7
+- Removed the fake "AI" progress overlay from Auto-Resize entirely. The terminal-styled pipeline panel with the spinner, scripted pid + UTC header, and 10 random-weighted "[✓] Initializing visual analysis pipeline" status lines is gone — it was pure theatre that gated the render() for 2–3 seconds while the placement work had already completed. Results now render instantly when Auto-Resize finishes.
+- The `showFakeAutoResizeProgress` function (about 130 lines) and the `showProgress` setting (both the `behaviour.showProgress` flag and the mirrored top-level field) are removed from `auto-resize-engine.js`. The "Show technical progress overlay" checkbox in the Auto-Resize Settings modal is gone. The "Show canvas selection dialogue" hint text no longer references the now-deleted progress overlay.
+- Existing projects with `showProgress` keys in their autosave blobs get those keys quietly stripped on load via `getAutoResizeSettings()` — no migration banner, no data loss elsewhere.
+
+v0.16.15 - May 2026 — Engine v2.7
 - Faster cold loads on the deployed Netlify build. Removed `?_t=Date.now()` cache-busters from the RMIT asset fetches (`data/assets/manifest.json`, the directory-listing fallback, and every per-file fetch in `syncRmitAssets`). Those query strings were forcing the browser AND the Netlify edge to bypass cache on every page load, so each visit re-downloaded the manifest + every RMIT image fresh. Locally that's a microsecond filesystem read; on Netlify it's a full HTTP round-trip per file.
 - Parallelised the RMIT asset preload loop. The `for (const filename of filenames)` with sequential `await fetch(url)` calls inside `syncRmitAssets` was costing N× RTT on cold loads. Switched to `Promise.all(filenames.map(...))` so all assets fetch concurrently; final library order is still preserved by iterating the resolved results.
 - No behaviour change otherwise — same fallback chain (manifest → directory listing → hardcoded defaults), same error handling per asset.

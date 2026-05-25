@@ -8926,7 +8926,7 @@ function _toggleSafezones() {
 // The auto-resize rule engine (openRolePicker, openAutoResizeModal,
 // runRuleBasedAutoResize, all place* rules, applyRelationR1,
 // resolveNoTouchCollisions, clampToCanvas, openAutoResizeSettingsModal,
-// showFakeAutoResizeProgress, wireLinkGroup, legacyRoleForCategory,
+// wireLinkGroup, legacyRoleForCategory,
 // AUTO_RESIZE_DEFAULT_SETTINGS / getAutoResizeSettings, plus the
 // btn-ai-resize + btn-ai-resize-settings click listeners) all live in
 // `auto-resize-engine.js`. That file is loaded BEFORE this one in
