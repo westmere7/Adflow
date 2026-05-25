@@ -658,6 +658,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.48',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Data & Versions modal: added Cancel button next to Save. Cancel snapshots `state.dataMerge` when the modal opens and restores it on click, discarding every cell edit / column rename / mapping change / row reorder made during the session. A single `pushHistory()` follows the restore so Cancel is a discrete undoable step. Save behaves as before — close and keep edits. ESC / outside-click still behave like Save (keep changes) so Cancel can\'t fire by accident.'
+    ]
+  },
+  {
     version: 'v0.16.47',
     date: 'May 2026 — Engine v2.16',
     items: [

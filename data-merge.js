@@ -481,6 +481,14 @@ function _dmState(bg) {
 }
 
 function openDataPanel() {
+  // Snapshot the current state.dataMerge so Cancel can roll back to
+  // exactly the pre-modal state, including any per-cell edits that
+  // happened while the modal was open (cell input handlers still
+  // commit live to state.dataMerge — Cancel just replays the snapshot
+  // over that). JSON-round-trip is sufficient because dataMerge is a
+  // plain shape of strings / arrays / objects.
+  const snapshot = state.dataMerge ? JSON.parse(JSON.stringify(state.dataMerge)) : null;
+
   openModal('Data &amp; Versions', '<div id="dm-panel"></div>', false);
   const bg = document.body.lastElementChild;
   // Widen the modal so the sheet has real room.
@@ -489,17 +497,51 @@ function openDataPanel() {
     modal.style.width = '1180px';
     modal.style.maxWidth = '95vw';
   }
-  // Relabel the generic Close button as Save for this panel. The data
-  // panel already auto-commits each edit (cell input handlers call
-  // pushHistory + render immediately), so the top-right action is
-  // semantically a confirm/save rather than a discard. Promote it to
-  // the `primary` style so it reads as the affirmative action.
+
+  const head = bg.querySelector('.modal-head');
   const closeBtn = bg.querySelector('#modal-close');
+
+  // Relabel the generic close button as Save. The data panel commits
+  // each edit live (cell handlers call pushHistory + render), so Save
+  // is effectively "close and keep everything you just did". Promote
+  // it to the `primary` style so it reads as the affirmative action.
   if (closeBtn) {
     closeBtn.textContent = 'Save';
     closeBtn.title = 'Save and close';
     closeBtn.classList.add('primary');
   }
+
+  // Add a Cancel button alongside Save. Cancel restores the snapshot
+  // taken when the modal opened, discarding any cell edits / column
+  // changes / mapping changes / row reorders that happened while the
+  // modal was open, then fires the modal's normal close path. The
+  // intermediate per-edit history entries still exist, but a single
+  // pushHistory() after restore makes the discard itself a discrete
+  // undoable step — so Cmd-Z right after Cancel undoes the discard.
+  // ESC / outside-click are intentionally NOT cancel: those keep
+  // changes (same path as Save). Cancel must be an explicit click so
+  // it can't fire by accident.
+  if (head && closeBtn && !head.querySelector('#dm-cancel')) {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn';
+    cancelBtn.id = 'dm-cancel';
+    cancelBtn.title = 'Discard changes made in this session and close';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.marginRight = '6px';
+    head.insertBefore(cancelBtn, closeBtn);
+    cancelBtn.onclick = () => {
+      if (snapshot) {
+        state.dataMerge = snapshot;
+      } else {
+        state.dataMerge = null;
+      }
+      renderVersionSwitcher();
+      pushHistory();
+      render();
+      closeBtn.click();
+    };
+  }
+
   dmRenderPanel(bg);
 }
 
