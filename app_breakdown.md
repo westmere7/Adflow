@@ -5,10 +5,16 @@
 </p>
 
 This document is a context dump for agents picking up the codebase. It covers the
-current architecture (Adflow **v0.16.7**, Auto-Resize **engine v2.7**) — file
+current architecture (Adflow **v0.16.14**, Auto-Resize **engine v2.7**) — file
 layout, state model, the auto-resize engine in depth, cloud / auth / spaces,
 theme system, masking, link groups, and the rest. Read this in full before
 making non-trivial changes.
+
+> **Heads up (v0.16.14):** the codebase was a single ~16k-line `script.js`
+> monolith until late v0.16. Over five minor releases (v0.16.9 → v0.16.14)
+> it was split into seven focused JS files (see §2). When the doc says
+> "in script.js around line X", check `app_breakdown.md`'s file-routing
+> table in §2 to find which file actually holds that code now.
 
 ## Table of Contents
 - [1. Core Architecture & Tech Stack](#1-core-architecture--tech-stack)
@@ -35,14 +41,28 @@ making non-trivial changes.
 Adflow is a vanilla-JS single-page application — no framework, no bundler, no
 build step. Edit the files directly, refresh the browser. The whole app is:
 
-- **Structure** — `index.html` (one big skeleton, ~620 lines).
+- **Structure** — `index.html` (~620 lines).
 - **Styling** — `styles.css` (~4050 lines, CSS variables drive 5 named themes).
-- **Logic** — `script.js` (~16,000 lines, single monolith) + `auto-resize-engine.js` (~1300 lines, the rule-based placement engine — loaded BEFORE `script.js` so its globals are available everywhere).
+- **Logic** — seven JS files loaded in order, classic `<script>` tags
+  sharing the global lexical realm (so `const`/`let` declarations in earlier
+  files are visible to later files at call-time). Counts as of v0.16.14:
+  - `auto-resize-engine.js` (~1750 lines) — rule-based placement engine
+  - `docs-content.js`       (~1430 lines) — in-app docs + changelog data/UI
+  - `auth-ui.js`            (~950 lines)  — Supabase auth + Cloud Projects + Spaces
+  - `export-pipeline.js`    (~890 lines)  — HTML5 ZIP / PNG / GIF export
+  - `data-merge.js`         (~825 lines)  — Live Data / Versions (CSV → ads)
+  - `color-picker.js`       (~510 lines)  — iro.js wrapper, gradient editor
+  - `script.js`             (~11,480 lines) — everything else (state, render,
+    elements, link groups, masking, frames, project save/load, splash boot,
+    settings, hamburger menu, asset library, layer panel, properties panel,
+    color helpers, undo/redo, autosave, context menus, drag/drop)
 - **Persistence** — IndexedDB (`adflow-autosave` DB) for autosave; `.flow` ZIP archives (JSZip) for project export/import.
 - **Cloud (optional)** — Supabase auth + Storage. Users can sign in or use locally; data sync is explicit (push/pull) rather than continuous.
 
-JSZip and Supabase SDK are loaded from CDN tags in `index.html`. Everything else
-runs from the local files.
+JSZip, Supabase SDK, and iro.js are loaded from CDN tags in `index.html`.
+Everything else runs from the local files. The seven JS files have no
+circular load-time dependencies — see the file-routing table in §2 for
+which globals each file exposes / consumes.
 
 ---
 
@@ -52,19 +72,62 @@ runs from the local files.
 /
 ├── index.html                ← UI skeleton + inline splash CSS
 ├── styles.css                ← All non-splash styles (themes, panels, modals)
-├── script.js                 ← Main app logic (state, render, modals, persistence, …)
-├── auto-resize-engine.js     ← Rule-based resize engine (loaded before script.js)
+│
+├── auto-resize-engine.js     ← Loaded 1st — rule-based resize engine
+├── docs-content.js           ← Loaded 2nd — in-app docs + changelog
+├── auth-ui.js                ← Loaded 3rd — Supabase auth + Cloud + Spaces
+├── data-merge.js             ← Loaded 4th — Live Data / Versions
+├── export-pipeline.js        ← Loaded 5th — HTML5 export
+├── color-picker.js           ← Loaded 6th — iro.js wrapper
+├── script.js                 ← Loaded last — everything else
+├── font_assets.js            ← Loaded inline at top (brand font base64 blobs)
+│
 ├── data/
 │   ├── version.txt           ← Plain text, single line: vX.Y.Z
 │   ├── changelog.txt         ← Human-readable changelog
 │   ├── Elements/
 │   │   ├── Adflow_logo.svg            ← Dark-theme wordmark
-│   │   ├── Adflow_lighttheme.svg      ← Light-theme wordmark (used when state.theme === 'light')
+│   │   ├── Adflow_lighttheme.svg      ← Light-theme wordmark (state.theme === 'light')
 │   │   ├── RMIT_*.svg / Pixel.svg     ← Brand assets used in canvas content
 │   │   └── favicon.*
-│   └── assets/               ← Pre-loaded brand creative (jpg/png/svg) — scanned at startup
-└── app_breakdown.md          ← This file
+│   └── assets/               ← Pre-loaded brand creative (jpg/png/svg)
+├── app_breakdown.md          ← This file
+└── README.md                 ← User-facing entrypoint
 ```
+
+### File-routing table — "where does X live now?"
+
+The big v0.16.9–v0.16.14 split moved several feature areas out of script.js.
+When hunting code, look in the right file first. Each extracted file has a
+header comment block documenting its public API and dependencies on
+script.js globals — read that before editing.
+
+| Feature area | File | Notable globals |
+|---|---|---|
+| Auto-resize engine (rules, placement, settings modal, FAB) | `auto-resize-engine.js` | `ENGINE_VERSION`, `ROLE_IDS`, `runRuleBasedAutoResize`, `autoAssignRole`, `ensureRolesAssignedAll`, `openAutoResizeModal`, `openRolePicker`, `wireLinkGroup` |
+| In-app documentation (Help → Documentation modal) | `docs-content.js` | `DOCS_SECTIONS`, `openDocumentation`, `renderDocsPanel` |
+| Changelog data + modal | `docs-content.js` | `CHANGELOG_DATA`, `generateChangelogHtml`, `openChangelogModal` |
+| Supabase client + session | `auth-ui.js` | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `sb`, `authState`, `spacesState` |
+| Auth chip, sign-in/up modal, Cloud Projects modal | `auth-ui.js` | `renderAuthChip`, `openAuthModal`, `openCloudProjectsModal`, `pushCurrentProjectToCloud`, `pullCloudProject` |
+| Space management + members + invites | `auth-ui.js` | `openSpaceManagementModal`, `openMembersModal`, `openInviteModal` |
+| Splash auth gate | `auth-ui.js` | `showSplashGate` |
+| Live Data slots + CSV in/out | `data-merge.js` | All `dm*` helpers (~38 of them), `DM_FIELD_LABEL` |
+| Data panel UI + version switcher | `data-merge.js` | `openDataPanel`, `dmRenderPanel`, `dmWirePanel`, `renderVersionSwitcher`, `renderPreviewVersionBar`, `cycleVersion` |
+| HTML5 / PNG export + Export modal | `export-pipeline.js` | `getRequiredFonts`, `exportCanvasAsZip`, `exportCanvasAsPng`, `clearCanvasFrame`, `generateExportHTML`, `_generateExportHTMLRaw`, `openExportModal` |
+| Color picker (iro.js wrapper, gradient editor) | `color-picker.js` | `openColorPicker`, `closeColorPicker`, `syncColorPickerWithSelection`, `renderPalettes`, all `cp*` helpers |
+| **Everything else** — state, render, elements, link groups, masking, frames, project save/load, splash boot, settings modal, hamburger menu, asset library, layer panel, properties panel, undo/redo, autosave, context menus, drag/drop, color math (`hexToRgba`), `openModal`, `showCanvasNotification`, `checkVersionUpdate`, `currentVersion`, `uid`, `appSplash`, etc. | `script.js` | — |
+
+### Load-order rules
+
+- All files except `script.js` reference script.js globals **only at call-time**
+  (inside function bodies). They don't read e.g. `state` or `openModal` at
+  load-time, so the order of script tags doesn't matter to them.
+- The boot IIFE inside `script.js` references `authState.enabled` / `.ready` /
+  `.currentUser()` at load-time → `auth-ui.js` must precede `script.js`.
+- One micro-edit during extraction: `data-merge.js`'s `propsEl?.addEventListener`
+  was changed to `document.getElementById('props')?.addEventListener` so it
+  doesn't read script.js's `propsEl` variable at load-time.
+- All seven JS files pass `node --check` independently.
 
 A "Resize ref" sibling folder (outside the app dir) holds the rules document
 the auto-resize engine is tuned against — `auto-resize-rules.md`. Not
@@ -720,6 +783,20 @@ Documenting the v0.16.x reorganisation so it doesn't surprise future agents:
 - **Auto-resize in context menu** (v0.16.1+). Top of the canvas right-click
   menu, directly under Preview, styled with the same `ctx-item highlight`
   class. Always opens the canvas-selection dialogue regardless of settings.
+- **Undo/redo overhaul** (v0.16.8). Default depth bumped 10 → 50, hardcoded
+  15-entry bug fixed (configured limit now actually applies), snapshot now
+  captures `frames` + `activeFrameId` + `projectName`, re-entrancy guard
+  via `_restoringHistory` flag. One-time migration on autosave restore
+  bumps old `savedHistoryLimit ≤ 10` defaults to 50.
+- **Multi-file refactor — Option A** (v0.16.9 → v0.16.14). The 16k-line
+  `script.js` monolith was split into seven focused files over five minor
+  releases. v0.16.9 deleted ~170 lines of dead legacy auto-resize code.
+  v0.16.10 extracted `docs-content.js` (~1430 lines). v0.16.11 extracted
+  `auth-ui.js` (~950 lines). v0.16.12 extracted `data-merge.js` (~825 lines).
+  v0.16.13 extracted `export-pipeline.js` (~890 lines). v0.16.14 extracted
+  `color-picker.js` (~510 lines). Final result: script.js down 29% (16,082
+  → 11,481 lines), zero user-facing change. See §2 file-routing table for
+  where each feature now lives.
 
 ---
 
@@ -738,12 +815,14 @@ After each user-visible edit, **bump version + add changelog entry across 5 file
 
 1. `data/version.txt` — single-line `vX.Y.Z`.
 2. `data/changelog.txt` — prose at the top, newest first.
-3. `script.js` `CHANGELOG_DATA` array — first object, `version` + `date` + `items` array.
-4. `script.js` `currentVersion = 'vX.Y.Z'` constant (in the changelog modal rendering function).
+3. `docs-content.js` `CHANGELOG_DATA` array — first object, `version` + `date` + `items` array. *(Moved out of script.js in v0.16.10.)*
+4. `script.js` `currentVersion = 'vX.Y.Z'` constant inside `checkVersionUpdate()` — drives the post-update splash and the version pills in the About / Settings modals (two `<span>vX.Y.Z</span>` spots in those modal templates also need bumping).
 5. `index.html` footer `#app-version-display` button label.
 
-Use `replace_all: true` on the `<span style="...">vX.Y.Z</span>` line in
-`script.js` because that style is repeated in two places.
+The two `<span>vX.Y.Z</span>` spots in script.js (About modal + Settings
+modal pill) sit a few hundred lines apart and have different surrounding
+markup, so the existing pattern is to update each with a targeted Edit
+(no `replace_all` needed once they have unique anchor strings).
 
 Engine changes (rules / behaviour) also bump `ENGINE_VERSION` in
 `auto-resize-engine.js` and that version sticks at the end of the changelog
@@ -762,4 +841,4 @@ change) can skip the bump. Use judgement.
 
 ---
 
-_Last updated: v0.16.7 — Adflow app version, Engine v2.7._
+_Last updated: v0.16.14 — Adflow app version, Engine v2.7._
