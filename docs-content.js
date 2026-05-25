@@ -658,6 +658,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.15',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Faster cold loads on the deployed Netlify build. Removed `?_t=Date.now()` cache-busters from the RMIT asset fetches in `syncRmitAssets` — they were forcing both the browser and the Netlify edge to bypass cache on every page load, so each visit re-downloaded the manifest + every RMIT image fresh.',
+      'Parallelised the RMIT asset preload loop. The sequential `for...of` + `await fetch(url)` was costing N× RTT on cold loads. Switched to `Promise.all(filenames.map(...))` so all assets fetch concurrently; final library order is preserved by iterating the resolved results.',
+      'No behaviour change otherwise — same fallback chain (manifest → directory listing → hardcoded defaults), same per-asset error handling.'
+    ]
+  },
+  {
     version: 'v0.16.14',
     date: 'May 2026 — Engine v2.7',
     items: [

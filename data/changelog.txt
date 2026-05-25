@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.14 (Current) - May 2026 — Engine v2.7
+v0.16.15 (Current) - May 2026 — Engine v2.7
+- Faster cold loads on the deployed Netlify build. Removed `?_t=Date.now()` cache-busters from the RMIT asset fetches (`data/assets/manifest.json`, the directory-listing fallback, and every per-file fetch in `syncRmitAssets`). Those query strings were forcing the browser AND the Netlify edge to bypass cache on every page load, so each visit re-downloaded the manifest + every RMIT image fresh. Locally that's a microsecond filesystem read; on Netlify it's a full HTTP round-trip per file.
+- Parallelised the RMIT asset preload loop. The `for (const filename of filenames)` with sequential `await fetch(url)` calls inside `syncRmitAssets` was costing N× RTT on cold loads. Switched to `Promise.all(filenames.map(...))` so all assets fetch concurrently; final library order is still preserved by iterating the resolved results.
+- No behaviour change otherwise — same fallback chain (manifest → directory listing → hardcoded defaults), same error handling per asset.
+
+v0.16.14 - May 2026 — Engine v2.7
 - Internal refactor: extracted the custom color picker (iro.js wrapper) into a new file `color-picker.js`. Moved the top-level picker state (iroPicker, currentCpKey, cpIsGradient, cpGradStops, cpActiveStop), gradient helpers (cpStopCss, cpBuildGradient, cpParseGradient, cpSyncGradientUI, cpRebuildStops, cpColorAtPos, cpAddStop, cpRemoveStop), and the public API — initColorPicker, renderPalettes, updateCurrentColor, emitColorUpdate, openColorPicker, closeColorPicker, syncColorPickerWithSelection — about 484 lines.
 - script.js dropped from 11,966 → 11,482 lines.
 - This completes the Option A refactor. Over five minor versions (v0.16.9 → v0.16.14), the script.js monolith has gone from 16,082 lines down to 11,482 lines — a 29% reduction. Pulled out into focused files: auto-resize-engine.js, docs-content.js, auth-ui.js, data-merge.js, export-pipeline.js, color-picker.js (plus the existing font_assets.js). Each file is independently node-checkable, has a header comment documenting its dependencies and load order, and depends on script.js globals only at call-time.
