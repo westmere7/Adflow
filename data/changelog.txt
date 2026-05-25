@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.45 (Current) - May 2026 — Engine v2.16
+v0.16.46 (Current) - May 2026 — Engine v2.16
+- Version cycle buttons (‹ / › next to the version dropdown) now skip the "No version" slot. Pre-fix the cycle was `null → 0 → 1 → … → L−1 → null → 0`, which made the buttons feel unresponsive: hitting Next on the last row landed on "No version" (canvas reverted to template defaults, looking like the click had been swallowed) and a second click was needed to wrap to row 0. Same issue going Prev from row 0. New behaviour is a pure `0 … L−1` wrap, so every click visibly advances to a real row. The "No version" state is still reachable via the dropdown — only the cycle buttons skip it.
+
+v0.16.45 - May 2026 — Engine v2.16
 - Text link-group "Background" sync now also propagates the text-bg padding (`bgPadL` / `bgPadV` — Properties panel "L/R Pad" + "T/B Pad" fields) along with the bg colour, hasBg toggle, animate toggle, and time offset that were already in the sync list. Editing padding on one linked text element now updates every other element in the group, matching the user's mental model that "Background" covers the bg shape's full appearance including its inset around the text.
 
 v0.16.44 - May 2026 — Engine v2.16

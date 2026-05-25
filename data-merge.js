@@ -789,24 +789,24 @@ function cycleVersion(dir) {
   const dm = state.dataMerge;
   if (!dm || !dm.enabled || !dm.rows.length) return;
   const L = dm.rows.length;
-  let current = dm.activeVersion; // null or number
+  const current = dm.activeVersion; // null or number
   let next;
-  if (dir === 'prev') {
-    if (current === null) {
-      next = L - 1;
-    } else if (current === 0) {
-      next = null;
-    } else {
-      next = current - 1;
-    }
+  // v0.16.46: the cycle buttons now skip the "no version" slot — it's
+  // still reachable via the dropdown, but a user clicking ‹/› clearly
+  // wants to move between actual versions. Pre-fix the cycle went
+  // null→0→1…→L−1→null→0, which made the buttons feel unresponsive:
+  // hitting Next on the last row landed on "No version" (template
+  // defaults reappeared, looking like the click had been swallowed)
+  // and a second click was needed to wrap to row 0. New behaviour is
+  // a pure 0…L−1 wrap. The only time `null` is the starting state is
+  // when no version has been picked yet — then Next enters at 0 and
+  // Prev enters at L−1.
+  if (current === null) {
+    next = (dir === 'prev') ? L - 1 : 0;
+  } else if (dir === 'prev') {
+    next = (current - 1 + L) % L;
   } else {
-    if (current === null) {
-      next = 0;
-    } else if (current === L - 1) {
-      next = null;
-    } else {
-      next = current + 1;
-    }
+    next = (current + 1) % L;
   }
   dmSetActiveVersion(next);
 }

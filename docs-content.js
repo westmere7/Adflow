@@ -658,6 +658,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.46',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Version cycle buttons (‹ / › next to the version dropdown) now skip the "No version" slot. Pre-fix the cycle was `null → 0 → 1 → … → L−1 → null → 0`, which made the buttons feel unresponsive: Next on the last row landed on "No version" (canvas reverted to template defaults, looking like the click had been swallowed) and a second click was needed to wrap to row 0. New behaviour is a pure `0 … L−1` wrap so every click visibly advances. The "No version" state is still reachable via the dropdown.'
+    ]
+  },
+  {
     version: 'v0.16.45',
     date: 'May 2026 — Engine v2.16',
     items: [
