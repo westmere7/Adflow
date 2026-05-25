@@ -130,7 +130,35 @@
 //           (always true now), but explicit so there's zero
 //           possibility of mask-shape stretch from rounding drift
 //           between two separate ratio computations.
-const ENGINE_VERSION = 'v2.15';
+//   v2.16 — Fixed shape carries cropping over to small targets. Pre-
+//           v2.16 the contain-fit slot logic always shrank the element
+//           to fit between text and CTA, regardless of how much of the
+//           source element was visible — so a pixel-shape that bled
+//           off the right of the 300×250 source would politely shrink
+//           into a tiny visible-inside-canvas thumbnail on 160×600 /
+//           728×90 / 320×50, losing the design's intended visual
+//           presence. v2.16: when the source element extends past the
+//           source canvas (any side cropped) AND the target is "small"
+//           (at least one dim < source's), placeMainImage switches to
+//           area-scale sizing — element dims = source dims ×
+//           sqrt((target area) / (source area)) — positioned at the
+//           source's normalized centre. The element ends up roughly
+//           the same fraction of the target canvas as on source, and
+//           the per-side overflow carries across. "Big" targets (both
+//           dims ≥ source's, e.g. 970×250 + 300×600 from a 300×250
+//           source) fall through to the v2.15 contain path and the
+//           element appears fully inside. Slot edges that abut a text
+//           or CTA neighbour still act as clamps so the larger element
+//           doesn't dip into copy/button territory; the OTHER edges
+//           can overshoot the canvas freely (that's the cropping).
+//           Also adds `enforceHeadingSubheadAdjacency` post-pass: if
+//           heading + subheading land side-by-side on the target, any
+//           other element overlapping the strip between them gets
+//           shrunk clear. The placement rules already structurally
+//           satisfy this (main-image's slot starts at max(heading.r,
+//           subhead.r) etc.) but the pass enforces it defensively
+//           against future rule changes / misc-role intrusion.
+const ENGINE_VERSION = 'v2.16';
 
 
 // ----- Role taxonomy data tables ------------------------------------------
@@ -827,6 +855,7 @@ function placeCricos(srcEl, target, ctx) {
 }
 
 function placeMainImage(srcEl, target, ctx) {
+  const src = ctx.sourceCanvas;
   const sz = ctx.safezone;
   const w = target.width, h = target.height;
   const heading    = ctx.placedElements['heading'];
@@ -893,6 +922,67 @@ function placeMainImage(srcEl, target, ctx) {
       width: minDim,
       height: minDim
     };
+  }
+
+  // v2.16: crop-preservation branch.
+  //
+  // When the source element extends past the source canvas edge AND the
+  // target is "small" (any target dim smaller than source's), we abandon
+  // the slot's contain-fit and instead size the element by source-vs-
+  // canvas area ratio, positioned at the source's normalized centre.
+  // The element ends up roughly the same visual fraction of the canvas
+  // as on source, and the per-side crop carries over.
+  //
+  // "Big" targets (both dims ≥ source's) ignore source cropping and
+  // fall through to the contain-fit path below, so the element appears
+  // fully inside the canvas with no edge clipping. This matches the
+  // intent that 970×250 and 300×600 (when source is 300×250) get the
+  // element shown in full, not cropped like 160×600 / 728×90 / 320×50.
+  //
+  // Roles:
+  //   - main-image (Fixed shape): aspect-locked. Uniform scale by
+  //     sqrt(area ratio), centred on source's normalized centre.
+  //   - background-image: not handled here — placeBackgroundImage's
+  //     existing proportional rule already preserves cropping for free-
+  //     aspect bgs (W and H scale independently with canvas dims).
+  if (src) {
+    const srcCropL = Math.max(0, -srcEl.x);
+    const srcCropR = Math.max(0, (srcEl.x + srcEl.width)  - src.width);
+    const srcCropT = Math.max(0, -srcEl.y);
+    const srcCropB = Math.max(0, (srcEl.y + srcEl.height) - src.height);
+    const srcIsCropped = (srcCropL + srcCropR + srcCropT + srcCropB) > 0;
+    const targetIsBig = (w >= src.width) && (h >= src.height);
+
+    if (srcIsCropped && !targetIsBig) {
+      const areaScale = Math.sqrt((w * h) / (src.width * src.height));
+      const cropW = Math.max(1, Math.round(srcEl.width  * areaScale));
+      const cropH = Math.max(1, Math.round(srcEl.height * areaScale));
+
+      // Source centre as a fraction of source canvas — extends beyond
+      // [0,1] when the element overflows the source edge.
+      const cxNorm = (srcEl.x + srcEl.width  / 2) / src.width;
+      const cyNorm = (srcEl.y + srcEl.height / 2) / src.height;
+
+      let cropX = Math.round(cxNorm * w - cropW / 2);
+      let cropY = Math.round(cyNorm * h - cropH / 2);
+
+      // Clamp the side of the element that abuts a text/CTA neighbour
+      // in the slot, so the bigger area-scaled image doesn't dip into
+      // copy / button territory. Other sides can freely overshoot the
+      // canvas edge — that's the cropping we want preserved.
+      if (stack) {
+        // Slot is below the text stack, above the CTA.
+        if (heading || subheading) cropY = Math.max(cropY, slot.y);
+        if (cta) cropY = Math.min(cropY, slot.y + slot.h - cropH);
+      } else {
+        // Slot is to the right of the text, optionally left of the CTA
+        // (only in wide-banner mode where CTA sits at right).
+        if (heading || subheading) cropX = Math.max(cropX, slot.x);
+        if (cta && ctaWideMode) cropX = Math.min(cropX, slot.x + slot.w - cropW);
+      }
+
+      return { x: cropX, y: cropY, width: cropW, height: cropH };
+    }
   }
 
   const srcAspect = (srcEl.width && srcEl.height) ? (srcEl.width / srcEl.height) : 1;
@@ -1118,6 +1208,52 @@ function resolveNoTouchCollisions(ctx) {
       _shrinkToClear(low, high, 4);
     }
   }
+}
+
+// v2.16 post-pass: when heading and subheading end up side-by-side on
+// the target (e.g. the h≤100 wide-banner case where subhead is anchored
+// to heading.right + gap), no other element may sit in the strip
+// BETWEEN them. The engine's placement rules already structurally
+// satisfy this — main-image's slot starts at max(heading.right,
+// subhead.right), CTA goes top-/right-center, logo top-right, etc. —
+// but this defensive pass enforces the rule against any future rule
+// change or misc-role intrusion: if another element's bounding box
+// overlaps the heading→subhead gap zone, it's shrunk away from that
+// zone in the same shrink-from-axis-of-greatest-divergence pattern
+// resolveNoTouchCollisions uses.
+function enforceHeadingSubheadAdjacency(ctx) {
+  const heading = ctx.placedElements['heading'];
+  const subheading = ctx.placedElements['subheading'];
+  if (!heading || !subheading) return;
+
+  // Detect side-by-side: their Y bands overlap by more than half of the
+  // shorter element's height (so a slightly mis-aligned pair still
+  // counts) AND heading is to the left of subheading.
+  const hCy = heading.y + heading.height / 2;
+  const sCy = subheading.y + subheading.height / 2;
+  const sharedH = Math.min(heading.y + heading.height, subheading.y + subheading.height)
+                - Math.max(heading.y, subheading.y);
+  const sideBySide = sharedH > Math.min(heading.height, subheading.height) * 0.5
+                  && heading.x + heading.width <= subheading.x + 1;
+  if (!sideBySide) return;
+
+  // The zone other elements must not intrude on. We extend it slightly
+  // above and below so something sneaking ABOVE the heading's top edge
+  // still gets pushed clear of the visual H↔S pair.
+  const zone = {
+    x: heading.x,
+    y: Math.min(heading.y, subheading.y),
+    width: (subheading.x + subheading.width) - heading.x,
+    height: Math.max(heading.y + heading.height, subheading.y + subheading.height)
+          - Math.min(heading.y, subheading.y)
+  };
+
+  Object.entries(ctx.placedElements).forEach(([role, el]) => {
+    if (role === 'heading' || role === 'subheading') return;
+    // main-image and background-image are allowed to overflow the
+    // canvas, but not the text pair. Still shrink them out.
+    _shrinkToClear(el, zone, 4);
+  });
 }
 
 // Post-placement pass: every role except main-image and background-image
@@ -1388,6 +1524,7 @@ function runRuleBasedAutoResize(settings) {
 
     // Post-placement collision + canvas-bounds passes.
     resolveNoTouchCollisions(ctx);
+    enforceHeadingSubheadAdjacency(ctx);
     clampToCanvas(ctx);
 
     canvasesUpdated++;

@@ -658,6 +658,16 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.44',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Auto-Resize engine v2.16: "Fixed shape" role now carries source-canvas cropping over to small target canvases. Pre-v2.16 always contain-fitted the element into the slot between text and CTA, so a pixel-shape that bled off the source canvas edge would shrink to a tiny in-canvas thumbnail on 160×600 / 728×90 / 320×50. v2.16 detects when the source element extends past any source edge AND the target is "small" (any dim < source\'s), then sizes the element by `srcDim × sqrt(target_area / source_area)` placed at the source\'s normalized centre.',
+      '"Big" targets — both dims ≥ source\'s, so 970×250 and 300×600 from a 300×250 source — ignore source cropping and fall through to v2.15 contain. The element appears fully inside the canvas (no overflow), since the bigger canvas has room.',
+      'Slot edges that abut text/CTA neighbours still clamp the area-scaled element so it doesn\'t dip into copy or button territory; OTHER edges (canvas perimeter) can freely overshoot, which is the preserved cropping. Background-image (free-aspect) was already preserving cropping correctly via the proportional `norm × target` rule — no change needed there.',
+      'New `enforceHeadingSubheadAdjacency` post-pass: when heading + subheading land side-by-side on the target (h ≤ 100 wide-banner case), any other element overlapping the strip between them is shrunk clear. Existing rules already structurally satisfy this (main-image\'s slot starts at `max(heading.right, subheading.right)`); the pass is a defensive guard for future rule changes / misc-role intrusion.'
+    ]
+  },
+  {
     version: 'v0.16.43',
     date: 'May 2026 — Engine v2.15',
     items: [
