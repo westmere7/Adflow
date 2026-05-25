@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.48 (Current) - May 2026 — Engine v2.16
+v0.16.49 (Current) - May 2026 — Engine v2.16
+- Mask shapes can now join link groups. Pre-fix the Link panel showed a "Mask layer — link groups disabled" notice whenever the selection included any element with `isMask: true`, blocking mask shapes from cross-canvas linking. The constraint was overly defensive: mask geometry on auto-resize is handled by the engine's mask post-pass (which positions mask relative to its image via `below.width / srcImg.width`), and that pass is independent from any link-group sync. Removed the gate at script.js:4982 so mask shapes go through the normal same-category link-group UI; you can now sync mask fill / stroke / radius across canvases like any other shape.
+
+v0.16.48 - May 2026 — Engine v2.16
 - Data & Versions modal: added Cancel button next to Save. Cancel snapshots `state.dataMerge` when the modal opens and restores it on click, discarding every cell edit / column rename / mapping change / row reorder that happened during the session. A single `pushHistory()` follows the restore so Cancel is a discrete undoable step (Cmd-Z right after Cancel undoes the discard). Save behaves as before — close and keep edits. ESC and outside-click intentionally still behave like Save (close-and-keep), so Cancel can't fire by accident; it must be an explicit click.
 
 v0.16.47 - May 2026 — Engine v2.16

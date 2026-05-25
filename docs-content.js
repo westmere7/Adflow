@@ -658,6 +658,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.49',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Mask shapes can now join link groups. The Link panel previously showed a "Mask layer — link groups disabled" notice and blocked any selection containing a mask. Mask geometry on auto-resize is handled by the engine\'s mask post-pass independently from link-group sync, so the gate was overly defensive. Mask shapes now route through the normal same-category link UI — sync fill / stroke / radius / etc. across canvases like any other shape.'
+    ]
+  },
+  {
     version: 'v0.16.48',
     date: 'May 2026 — Engine v2.16',
     items: [
