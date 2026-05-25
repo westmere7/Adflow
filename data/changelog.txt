@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.46 (Current) - May 2026 — Engine v2.16
+v0.16.47 (Current) - May 2026 — Engine v2.16
+- Text elements no longer break words mid-letter. Pre-fix every text-rendering path (editor span, editor edit-mode `.editable`, measureDiv used by auto-size, multi-line bg span, and HTML5 export span) hard-coded `word-break: break-word`, which split long words like "Interactivity" into "Interactiv\ny" when the container was narrower than the word. New default is `word-break: normal; overflow-wrap: normal` everywhere, so words stay whole and the auto-size shrink logic handles fit instead. If a single word genuinely can't fit at the minimum auto-size, it overflows — but that's a clearer signal to the designer (resize the box, shorten the copy, drop the font floor) than a silently mid-word-broken line. Applies to both editor preview and exported HTML.
+
+v0.16.46 - May 2026 — Engine v2.16
 - Version cycle buttons (‹ / › next to the version dropdown) now skip the "No version" slot. Pre-fix the cycle was `null → 0 → 1 → … → L−1 → null → 0`, which made the buttons feel unresponsive: hitting Next on the last row landed on "No version" (canvas reverted to template defaults, looking like the click had been swallowed) and a second click was needed to wrap to row 0. Same issue going Prev from row 0. New behaviour is a pure `0 … L−1` wrap, so every click visibly advances to a real row. The "No version" state is still reachable via the dropdown — only the cycle buttons skip it.
 
 v0.16.45 - May 2026 — Engine v2.16

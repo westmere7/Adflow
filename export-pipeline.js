@@ -430,8 +430,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       const spanClass = el.autoSize ? ' class="auto-size-span"' : '';
 
       const innerSpan = el.hasBg
-        ? `<span${bgDataAttrs}${spanClass} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:break-word;${bgStyle}">${content}</span>`
-        : `<span${spanClass} style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:break-word;">${content}</span>`;
+        ? `<span${bgDataAttrs}${spanClass} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:normal;overflow-wrap:normal;${bgStyle}">${content}</span>`
+        : `<span${spanClass} style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:normal;overflow-wrap:normal;">${content}</span>`;
       // font-size + line-height on the wrapper div eliminates the inherited body strut
       // (browser default ~16px * normal) which would push small-font text downward.
       const inner = `<div${blockClass} style="text-align:${ta};width:100%;font-size:${el.fontSize}px;line-height:${resolvedLH};">${innerSpan}</div>`;

@@ -658,6 +658,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.47',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Text elements no longer break words mid-letter. Every text-rendering path (editor span, editable edit-mode, measureDiv used by auto-size, multi-line bg span, HTML5 export) was hard-coded to `word-break: break-word`, which split long words like "Interactivity" into "Interactiv\\ny" when the container was narrow. New default is `word-break: normal; overflow-wrap: normal` everywhere; auto-size shrinks to fit instead. A word that can\'t fit at the minimum font size now overflows (clearer signal than a silently mid-word-broken line).'
+    ]
+  },
+  {
     version: 'v0.16.46',
     date: 'May 2026 — Engine v2.16',
     items: [

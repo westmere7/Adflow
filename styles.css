@@ -2231,7 +2231,9 @@ body.theme-navy {
 
       white-space: pre-wrap;
 
-      word-break: break-word;
+      word-break: normal;
+
+      overflow-wrap: normal;
 
     }
 
@@ -2322,7 +2324,9 @@ body.theme-navy {
 
       white-space: pre-wrap;
 
-      word-break: break-word;
+      word-break: normal;
+
+      overflow-wrap: normal;
 
     }
 
