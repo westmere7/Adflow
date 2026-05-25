@@ -631,7 +631,7 @@ body.theme-navy {
 
     
 
-    .dropdown-item.has-sub:hover .sub-dropdown {
+    .dropdown-item.has-sub:hover > .sub-dropdown {
 
       display: block;
 
@@ -968,6 +968,24 @@ body.theme-navy {
 
     }
 
+    /* In full preview the ads should render exactly as they would in
+       the wild — no editor outlines, no active-canvas accent rings.
+       previewFrameNode already sets `canvas.style.boxShadow = 'none'`
+       inline, but we belt-and-braces it here with !important so any
+       stray rule (e.g. .canvas-frame.active .canvas) can't sneak the
+       accent-coloured ring back in. Same for outline/border. */
+
+    body.preview-active .canvas,
+    body.preview-active .canvas-frame.active .canvas {
+
+      box-shadow: none !important;
+
+      outline: none !important;
+
+      border: 0 !important;
+
+    }
+
 
 
     /* ---------- panels ---------- */
@@ -1086,13 +1104,24 @@ body.theme-navy {
 
 
 
-    .panel-header-collapsible {
+    /* `.panel h3.panel-header-collapsible` instead of bare class —
+       needed to outrank the `.panel h3` rule above which sets
+       `justify-content: space-between` (specificity 0,1,1). */
+    .panel h3.panel-header-collapsible {
 
       cursor: pointer;
 
       user-select: none;
 
       transition: color 0.2s ease;
+
+      /* Override .panel h3's space-between so we can place the chevron
+         immediately before the label on the left, with any action
+         buttons pushed to the far right via `margin-left: auto`. */
+
+      justify-content: flex-start;
+
+      gap: 8px;
 
     }
 
@@ -1108,9 +1137,23 @@ body.theme-navy {
 
     .panel-header-collapsible .collapse-icon {
 
-      transition: transform 0.2s ease, color 0.2s ease;
+      /* Flex `order: -1` flips the chevron in front of the label
+         without touching the HTML. Accent-coloured, slightly thicker
+         stroke, and flex-shrink:0 so it never gets squeezed. Negative
+         margin-left tugs the chevron a bit closer to the panel's
+         left edge so the label still starts where it used to. */
 
-      color: var(--text-muted);
+      order: -1;
+
+      flex-shrink: 0;
+
+      margin-left: -4px;
+
+      color: var(--accent-base);
+
+      stroke-width: 2.5;
+
+      transition: transform 0.2s ease, color 0.2s ease;
 
     }
 
@@ -1118,7 +1161,16 @@ body.theme-navy {
 
     .panel-header-collapsible:hover .collapse-icon {
 
-      color: var(--text-bright);
+      color: var(--accent-light);
+
+    }
+
+    /* Push any non-label, non-chevron child (i.e. an actions span or
+       the dynamically-injected fullscreen button) to the far right. */
+
+    .panel-header-collapsible > *:not(:first-child):not(.collapse-icon) {
+
+      margin-left: auto;
 
     }
 
@@ -1138,13 +1190,13 @@ body.theme-navy {
 
     }
 
-
-
-    .panel-section.collapsed .collapse-icon {
-
-      transform: rotate(-90deg);
-
-    }
+    /* Collapse-state visual is driven by the polyline-points swap in
+       initCollapsiblePanels (script.js) — the SVG `<polyline>` is
+       rewritten between a down chevron (▼) and a right chevron (▶)
+       on each toggle. CSS rotation was a v0.16.34 fallback but was
+       compounding with the points swap when the browser DID honour
+       SVG transforms — net result: ▲ instead of ▶. So no transform
+       rule here anymore; the JS-driven points swap is canonical. */
 
 
 
@@ -1408,6 +1460,47 @@ body.theme-navy {
 
       color: var(--text-main);
 
+      position: relative;
+
+    }
+
+    /* Mask connector: a short vertical line sitting *between* the two
+       layer icons (the mask shape above, its image below). Horizontally
+       aligned to the icon column centre (.layer-icon is 13px wide at
+       6px left padding → icon centre ≈ x=12.5, so the 2px line sits at
+       left:12). Vertically clipped to the row padding zones so it
+       fills the small gap between adjacent icons and nothing more. A
+       gentle fade at the icon-side end keeps it from butting up
+       against the icon glyph. */
+    .layer.mask-link-down::before,
+    .layer.mask-link-up::before {
+      content: '';
+      position: absolute;
+      left: 12px;
+      width: 2px;
+      pointer-events: none;
+    }
+    .layer.mask-link-down::before {
+      /* below the mask icon to the row bottom edge */
+      top: calc(50% + 7px);
+      bottom: 0;
+      background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        var(--accent-base) 70%,
+        var(--accent-base) 100%
+      );
+    }
+    .layer.mask-link-up::before {
+      /* row top edge to just above the image icon */
+      top: 0;
+      bottom: calc(50% + 7px);
+      background: linear-gradient(
+        to bottom,
+        var(--accent-base) 0%,
+        var(--accent-base) 30%,
+        transparent 100%
+      );
     }
 
 

@@ -118,22 +118,39 @@ async function addCanvasAssetsToZip(c, zip) {
   }
 }
 
-// Shared single-canvas exporters — used by both the Canvas Properties panel buttons
-// and the canvas right-click context menu so the two paths can't drift apart.
-async function exportCanvasAsZip(c) {
+// Shared single-canvas exporters — used by the Canvas Properties panel
+// buttons, the canvas right-click context menu, and the Export dialogue.
+// `options.filenamePrefix` overrides the auto-derived safe project name
+// (lets the Export dialogue's filename input change just the download
+// name without touching `state.projectName`). `options.includeSkippedFrames`
+// flips the default "skip frames marked with f.skip" behaviour off, so
+// the user can force-include flagged frames when they want.
+async function exportCanvasAsZip(c, options = {}) {
   if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
   const zip = new JSZip();
   const projName = state.projectName || 'Ad';
-  const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const fallbackSafe = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const prefix = (options.filenamePrefix && String(options.filenamePrefix).trim())
+    ? String(options.filenamePrefix).trim().replace(/[^a-zA-Z0-9_-]/g, '_')
+    : fallbackSafe;
 
-  await dmRunExport(dmActiveRowForOutput(), async () => {
-    await addCanvasAssetsToZip(c, zip);
-    zip.file('index.html', generateExportHTML(c, zip));
-  });
+  // generateExportHTML reads this transient flag to decide whether to
+  // honour `f.skip`. Saved/restored around the call so concurrent
+  // exports of multiple canvases don't leak state across each other.
+  const prevIncludeSkipped = state._exportIncludeSkippedFrames;
+  if (options.includeSkippedFrames) state._exportIncludeSkippedFrames = true;
+  try {
+    await dmRunExport(dmActiveRowForOutput(), async () => {
+      await addCanvasAssetsToZip(c, zip);
+      zip.file('index.html', generateExportHTML(c, zip));
+    });
+  } finally {
+    state._exportIncludeSkippedFrames = prevIncludeSkipped;
+  }
   const content = await zip.generateAsync({ type: 'blob' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(content);
-  a.download = `${safeName}_${c.width}x${c.height}.zip`;
+  a.download = `${prefix}_${c.width}x${c.height}.zip`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -159,7 +176,7 @@ async function getFontAsDataUrl(filename) {
   }
 }
 
-async function exportCanvasAsPng(c) {
+async function exportCanvasAsPng(c, options = {}) {
   try {
     // 1. Fetch and inline required fonts for this canvas
     const req = getRequiredFonts(c);
@@ -283,8 +300,11 @@ async function exportCanvasAsPng(c) {
     const pngUrl = cnv.toDataURL('image/png');
     const a = document.createElement('a');
     const projName = state.projectName || 'Ad';
-    const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
-    a.download = `${safeName}_${c.width}x${c.height}.png`;
+    const fallbackSafe = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const prefix = (options.filenamePrefix && String(options.filenamePrefix).trim())
+      ? String(options.filenamePrefix).trim().replace(/[^a-zA-Z0-9_-]/g, '_')
+      : fallbackSafe;
+    a.download = `${prefix}_${c.width}x${c.height}.png`;
     a.href = pngUrl;
     a.click();
   } catch (err) {
@@ -518,8 +538,16 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   const elsBot = c.elements.filter(e => e.persistent === 'bottom').map(renderEl).join('\n');
   const elsTop = c.elements.filter(e => e.persistent === 'top').map(renderEl).join('\n');
 
-  // Filter out skipped frames unless it is a static image export of that active frame
-  const activeFrames = state.frames.filter(f => !f.skip || (isImageExport && f.id === state.activeFrameId));
+  // Filter out skipped frames unless (a) it's a static image export of the
+  // active frame, OR (b) the caller explicitly requested skipped frames be
+  // included via `state._exportIncludeSkippedFrames` (set by the Export
+  // dialogue's "Skip flagged frames" toggle).
+  const includeSkipped = !!state._exportIncludeSkippedFrames;
+  const activeFrames = state.frames.filter(f =>
+    includeSkipped ||
+    !f.skip ||
+    (isImageExport && f.id === state.activeFrameId)
+  );
 
   let framesHTML = '';
   const frameData = [];
@@ -796,17 +824,34 @@ ${elsTop}
 }
 
 function openExportModal() {
+  const projName = state.projectName || 'Ad';
+  const defaultPrefix = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const flaggedFrameCount = (state.frames || []).filter(f => f.skip).length;
+  const dm = state.dataMerge;
+  const hasVersions = !!(dm && dm.rows && dm.rows.length);
+  // Build version dropdown options when we have data rows. The active row
+  // (or current selection in the version switcher) is selected by default;
+  // the user can pick any other row, or "All versions" which routes to
+  // dmExportAllVersions instead of the per-canvas Export Selected path.
+  const versionKeyCol = hasVersions
+    ? ((dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0])
+    : null;
+  const versionLabel = (i) => {
+    if (!hasVersions) return '';
+    const v = dm.rows[i] && versionKeyCol ? dm.rows[i][versionKeyCol] : '';
+    return (v && String(v).trim()) ? String(v) : `Version ${i + 1}`;
+  };
+  const activeVersionIdx = (hasVersions && dm.activeVersion != null) ? dm.activeVersion : 0;
+
   const tbody = state.canvases.map((c) => {
     const html = generateExportHTML(c);
     const kb = (new Blob([html]).size / 1024).toFixed(1);
     const ct = state.clickTag || 'No clickTag';
-    const projName = state.projectName || 'Ad';
-    const fullName = `${projName}_${c.width}x${c.height}`;
     return `
       <tr data-cid="${c.id}">
-        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;"><input type="checkbox" class="export-chk" data-cid="${c.id}" checked title="Select this canvas size for export" /></td>
-        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${fullName}</td>
-        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.width}x${c.height}</td>
+        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;"><input type="checkbox" class="export-chk" data-cid="${c.id}" checked title="Include this canvas size in the export" /></td>
+        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.name || (c.width + '×' + c.height)}</td>
+        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.width}×${c.height}</td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330; color:${kb > 150 ? '#ef4444' : '#c7ccdb'}">${kb} KB</td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330; font-family:monospace; font-size:10px; color:var(--text-label); word-break:break-all; max-width:200px;">${ct}</td>
       </tr>
@@ -814,13 +859,51 @@ function openExportModal() {
   }).join('');
 
   const bodyHTML = `
-    <div style="margin-bottom: 16px; display: flex; gap: 8px; align-items:center;">
-      <button class="btn primary" id="btn-export-selected" title="Export selected canvases as individual zip packages inside a main zip">Export Selected (ZIP)</button>
-      ${(state.dataMerge && state.dataMerge.rows && state.dataMerge.rows.length)
-        ? `<button class="btn" id="btn-export-versions" title="Generate and export all data versions for the selected configurations">Export All Versions (${state.dataMerge.rows.length})</button>
-           <span style="font-size:10px;color:var(--text-muted);">one folder per row</span>`
-        : ''}
+    <!-- Header: filename, format, skip-frames toggle, version (when data
+         versions exist). The filename is a build-time override only —
+         it doesn't touch state.projectName. -->
+    <div style="display:grid; grid-template-columns: ${hasVersions ? '1.3fr 1fr 0.9fr' : '1.4fr 1fr'}; gap:14px; margin-bottom:14px;">
+      <div>
+        <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Filename prefix</label>
+        <input type="text" id="exp-filename" value="${defaultPrefix}" placeholder="${defaultPrefix}" style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; font-family:ui-monospace,Consolas,monospace;" title="Just renames the download files. Does NOT change the project name." />
+        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Each file is named <code style="background:var(--bg-input); padding:1px 4px; border-radius:3px;">prefix_WxH</code>. Renaming here doesn't change the project name.</div>
+      </div>
+      <div>
+        <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Format</label>
+        <div style="display:flex; gap:6px;">
+          <label style="flex:1; display:flex; align-items:center; gap:6px; padding:7px 9px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; cursor:pointer; font-size:12px;">
+            <input type="radio" name="exp-format" value="zip" checked style="margin:0;" />
+            <span>HTML5 ZIP</span>
+          </label>
+          <label style="flex:1; display:flex; align-items:center; gap:6px; padding:7px 9px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; cursor:pointer; font-size:12px;">
+            <input type="radio" name="exp-format" value="png" style="margin:0;" />
+            <span>PNG</span>
+          </label>
+        </div>
+        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">PNG exports the active frame as a static image (one file per canvas).</div>
+      </div>
+      ${hasVersions ? `
+      <div>
+        <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Data version</label>
+        <select id="exp-version" style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; outline:none; font-family:inherit;" title="Pick which data row to bake into the export, or All versions for one folder per row (ZIP only).">
+          ${dm.rows.map((row, i) => `<option value="${i}" ${i === activeVersionIdx ? 'selected' : ''}>${(versionLabel(i) || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</option>`).join('')}
+          <option value="all">All versions (separate folders)</option>
+        </select>
+        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">"All versions" forces HTML5 ZIP — one folder per data row.</div>
+      </div>
+      ` : ''}
     </div>
+
+    <div style="margin-bottom:14px; padding:8px 10px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px;">
+      <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="exp-skip-frames" checked style="margin-top:3px; flex-shrink:0;" ${flaggedFrameCount === 0 ? 'disabled' : ''} />
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:12px; font-weight:600; color:var(--text-main);">Skip frames marked as skipped${flaggedFrameCount > 0 ? ` (${flaggedFrameCount} flagged)` : ''}</div>
+          <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">${flaggedFrameCount === 0 ? 'No frames are currently flagged. Toggle "Skip Frame" on the timeline to flag one.' : 'On (default): flagged frames are excluded from HTML5 exports. Off: they\'re included. PNG always exports the active frame regardless.'}</div>
+        </div>
+      </label>
+    </div>
+
     <table style="width:100%; text-align:left; border-collapse:collapse; font-size:13px; color:var(--text-main);">
       <thead>
         <tr>
@@ -833,9 +916,13 @@ function openExportModal() {
       </thead>
       <tbody>${tbody}</tbody>
     </table>
+
+    <div style="margin-top: 16px; display: flex; gap: 8px; align-items:center; justify-content:flex-end;">
+      <button class="btn primary" id="btn-export-selected" title="Export the selected canvases in the chosen format using the filename above${hasVersions ? '. Honours the Data version dropdown — pick "All versions" to export every row as separate folders' : ''}">Export Selected</button>
+    </div>
   `;
 
-  openModal('Export Ads', bodyHTML, false);
+  openModal('Export', bodyHTML, false);
 
   const modalBg = document.body.lastElementChild;
 
@@ -845,39 +932,80 @@ function openExportModal() {
     chks.forEach(chk => chk.checked = e.target.checked);
   });
 
-  const verBtn = modalBg.querySelector('#btn-export-versions');
-  if (verBtn) verBtn.addEventListener('click', () => dmExportAllVersions());
-
   modalBg.querySelector('#btn-export-selected').addEventListener('click', async () => {
-    if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
-
     const selectedIds = Array.from(chks).filter(c => c.checked).map(c => c.dataset.cid);
     if (selectedIds.length === 0) { alert('No ads selected.'); return; }
 
-    // If a data version is active, export reflects it (WYSIWYG).
-    const zip = new JSZip();
-    await dmRunExport(dmActiveRowForOutput(), async () => {
-      for (const cid of selectedIds) {
-        const c = state.canvases.find(x => x.id === cid);
-        const adZip = new JSZip();
-        await addCanvasAssetsToZip(c, adZip);
-        const html = generateExportHTML(c, adZip);
-        const projName = state.projectName || 'Ad';
-        const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const fnameInput = modalBg.querySelector('#exp-filename');
+    const filenamePrefix = (fnameInput && fnameInput.value.trim()) ? fnameInput.value.trim() : defaultPrefix;
+    const skipChk = modalBg.querySelector('#exp-skip-frames');
+    const includeSkippedFrames = !(skipChk && skipChk.checked);
+    const format = (modalBg.querySelector('input[name="exp-format"]:checked') || {}).value || 'zip';
+    const versionSelect = modalBg.querySelector('#exp-version');
+    const versionChoice = versionSelect ? versionSelect.value : null; // 'all' | '<row-index>' | null
+    const selectedCanvases = selectedIds.map(id => state.canvases.find(x => x.id === id)).filter(Boolean);
 
-        adZip.file('index.html', html);
-        const adContent = await adZip.generateAsync({ type: 'blob' });
-        zip.file(`${safeName}_${c.width}x${c.height}.zip`, adContent);
-      }
-    });
+    // "All versions" routes to the existing dmExportAllVersions path,
+    // which already handles its own ZIP-of-folders output. PNG/format
+    // selector and filename input are ignored in this mode (matches the
+    // old standalone-button behaviour).
+    if (hasVersions && versionChoice === 'all') {
+      await dmExportAllVersions();
+      return;
+    }
+
+    // Resolve which data row to bake into the export. When the dropdown
+    // is present we honour its current value; otherwise fall back to
+    // whatever is currently active in the version switcher (or null).
+    let exportVersionIdx = dmActiveRowForOutput();
+    if (hasVersions && versionChoice !== null && versionChoice !== 'all') {
+      const idx = parseInt(versionChoice, 10);
+      if (!isNaN(idx) && dm.rows[idx]) exportVersionIdx = idx;
+    }
+
+    if (format === 'png') {
+      // PNG path: one file per canvas. Wrap in dmRunExport so the
+      // selected version bakes into each render before exportCanvasAsPng
+      // snapshots it; otherwise PNGs would silently reflect whatever
+      // version was active in the editor.
+      await dmRunExport(exportVersionIdx, async () => {
+        for (const c of selectedCanvases) {
+          await exportCanvasAsPng(c, { filenamePrefix });
+        }
+      });
+      return;
+    }
+
+    // ZIP path: outer-zip of per-canvas inner-zips.
+    if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
+    const safePrefix = filenamePrefix.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const prevIncludeSkipped = state._exportIncludeSkippedFrames;
+    if (includeSkippedFrames) state._exportIncludeSkippedFrames = true;
+    const zip = new JSZip();
+    try {
+      await dmRunExport(exportVersionIdx, async () => {
+        for (const c of selectedCanvases) {
+          const adZip = new JSZip();
+          await addCanvasAssetsToZip(c, adZip);
+          const html = generateExportHTML(c, adZip);
+          adZip.file('index.html', html);
+          const adContent = await adZip.generateAsync({ type: 'blob' });
+          zip.file(`${safePrefix}_${c.width}x${c.height}.zip`, adContent);
+        }
+      });
+    } finally {
+      state._exportIncludeSkippedFrames = prevIncludeSkipped;
+    }
 
     const content = await zip.generateAsync({ type: 'blob' });
+    const outerName = `${safePrefix || 'exported_ads'}.zip`;
 
     if (window.showSaveFilePicker) {
       try {
         const handle = await window.showSaveFilePicker({
           types: [{ description: 'Exported Ads ZIP', accept: { 'application/zip': ['.zip'] } }],
-          suggestedName: 'exported_ads.zip'
+          suggestedName: outerName
         });
         const writable = await handle.createWritable();
         await writable.write(content);
@@ -886,7 +1014,7 @@ function openExportModal() {
     } else {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(content);
-      a.download = 'exported_ads.zip';
+      a.download = outerName;
       a.click();
       URL.revokeObjectURL(a.href);
     }

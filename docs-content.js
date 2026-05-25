@@ -658,6 +658,127 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.39',
+    date: 'May 2026 — Engine v2.14',
+    items: [
+      'Canvas-bg hairline leak fixed. The thin coloured line around the canvas in full preview (and at non-100% zoom) was the canvas div\'s own bg leaking through a sub-pixel gap between the canvas div and the iframe inside it. Both were painting c.bgColor, but browsers round the iframe\'s 100% size differently from the canvas div\'s pixel-explicit size under zoom.',
+      'Fix: canvas div bg is now transparent in preview (iframe alone paints the bg, so no double layer can mismatch); iframe uses explicit pixel dims instead of 100%; canvas div gets transform:translateZ(0) + clip-path:inset(0) for stricter sub-pixel handling.'
+    ]
+  },
+  {
+    version: 'v0.16.38',
+    date: 'May 2026 — Engine v2.14',
+    items: [
+      'Auto-Resize engine v2.14: mask groups no longer stretch through a resize. This was also the root cause of the "thin red line" that varied across previews — the masked image was cover-overflowing the canvas, and the mask post-pass was stretching the mask shape to match.',
+      'Two fixes: (1) placeMainImage skips cover-fallback when the source image has a mask above it, keeping the image in pure contain-mode so its aspect matches the source. (2) Mask post-pass uses RELATIVE source geometry (mask\'s normalized x/y/w/h within its source image) and applies those ratios to the target image — the mask scales proportionally instead of being stretched to cover.'
+    ]
+  },
+  {
+    version: 'v0.16.37',
+    date: 'May 2026 — Engine v2.13',
+    items: [
+      'Auto-Resize engine v2.13: main image aspect ratio preserved unconditionally on thin banners. Removed the v2.10 size floor and the v2.8 thin-banner cover-threshold (0.9) — both produced the wide-strip-crop look on 728×90 and 320×50 that read as "stretched". Cover-fallback now only fires on normal-aspect canvases (canvasAspect ≤ 3) with the v2.8 threshold of 0.6; thin banners stay in pure contain-mode regardless of fill percentage.',
+      'v2.12 slot-collapsed recovery softened: when the heading + CTA pair eats the safezone width, the fallback is now a centered SQUARE sized by the smaller safezone dim (rather than the full safezone) so the image fits cleanly at natural aspect without cropping or stretching.'
+    ]
+  },
+  {
+    version: 'v0.16.36',
+    date: 'May 2026 — Engine v2.12',
+    items: [
+      'New: Crop & Level for image elements. Sits next to Compress in the image properties panel. Opens a dialogue with a draggable crop rectangle and a rotation slider — the rotation is baked into the cropped image so the element\'s own rotation property stays at 0 (great for quick horizon-leveling). Successive crops start from the saved original so resolution doesn\'t degrade across re-edits. "Restore original" button drops the crop entirely.',
+      'Fix: collapsed chevron now correctly points right (▶). v0.16.34 left a redundant CSS rotate(-90deg) on the collapse icon alongside the new polyline-points swap — they compounded into ▲ up. Removed the CSS rule; polyline swap is canonical.'
+    ]
+  },
+  {
+    version: 'v0.16.35',
+    date: 'May 2026 — Engine v2.12',
+    items: [
+      'Auto-Resize engine v2.12: placeMainImage slot-collapsed recovery. On thin banners (728×90, 320×50) the heading + CTA used to eat the entire slot width and the image fell through to a 30–80px center placement, ignoring the v2.10 size floor and v2.8 cover-fallback. Now: degenerate slot triggers a fallback to the full safezone, so cover + size-floor still work. Image renders large as a hero/backdrop with heading + CTA layered on top.',
+      'Fix: thin red ring no longer leaks into full-preview mode. Belt-and-braces CSS rule under body.preview-active forces box-shadow/outline/border to none/0 with !important on .canvas — covers the active-canvas accent ring that was leaking through despite previewFrameNode\'s inline override. Most visible in RMIT theme where accent is red.'
+    ]
+  },
+  {
+    version: 'v0.16.34',
+    date: 'May 2026 — Engine v2.11',
+    items: [
+      'Fix: collapsed panel chevron now points right (▶) as intended. v0.16.32\'s rotate(90deg) actually rotated clockwise to ◀; switched to rotate(-90deg). Chevron also nudged 4px left for a snugger fit.',
+      'Auto-Resize engine v2.11: source layer order, groups, and masks are now preserved through a resize. Placement rules still run in role-priority order, but target.elements is rebuilt in source array order at the end. groupId siblings stay adjacent; mask-above-image positional pairs survive intact.',
+      'groupIds are remapped per-target (fresh gid for each distinct source group on each target canvas) because groups can\'t span canvases.',
+      'Mask post-pass switched to positional detection (matches findMaskAbove convention), so legacy v0.16.26 masks without a maskTargetId field work too.',
+      'Singleton groups (a groupId left with only one member after drops, e.g. a mask whose image got dropped) are auto-cleared.'
+    ]
+  },
+  {
+    version: 'v0.16.33',
+    date: 'May 2026 — Engine v2.10',
+    items: [
+      'Export dialogue gains a Data version dropdown. Pick a specific row to bake into the export, or "All versions (separate folders)" for one folder per row (ZIP only). The separate "Export All Versions" button is gone — the dropdown subsumes it. PNG export also honours the chosen version now.',
+      'Auto-Resize engine v2.10: main-image size floor for thin-banner canvases. After cover-fallback fires for canvasAspect > 3, the image\'s larger dimension is now ≥ 40% of the canvas\'s larger dimension. Stops marooned ~80px images on 728×90 when the slot between heading and CTA is narrow.',
+      'Browser tab title now reads "<project name> - RMIT Adflow", driven from render() so renames, project loads, new-project creation, and undo/redo all keep it in sync.',
+      'Middle-click guard extended to .handle and .panel-fullscreen-btn — was only blocking <button>/[role="button"]. Middle-clicking transform/rotation/radius/thickness handles no longer triggers them.',
+      'Fix: single-preview mode no longer shows a thin accent-coloured ring around the canvas. The active-canvas accent box-shadow was leaking into the preview render, very visible on solid blue backgrounds in RMIT theme. Inline box-shadow:none now applied when isSinglePreview.'
+    ]
+  },
+  {
+    version: 'v0.16.32',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Panel section collapse chevrons moved to the left of the panel name (Figma/Photoshop convention). Accent-purple colour, slightly thicker stroke, and the collapsed-state rotation flipped to a right-pointing ▶ to match the new left-side placement.',
+      'CSS-only reorder via flex order on .collapse-icon, with .panel-header-collapsible switched to justify-content: flex-start + gap. Any non-chevron, non-label child (e.g. the per-section fullscreen button or the Assets panel\'s action buttons) gets margin-left: auto so it sticks to the far right.'
+    ]
+  },
+  {
+    version: 'v0.16.31',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Fix: double-clicking a masked group now consistently selects the mask SHAPE (not the image underneath). Previously, the dbl-click usually landed on the image\'s wrapper (the mask\'s own children are visibility:hidden so hits often pass through). The outline would correctly show the mask, but the properties panel showed image props. Selection-deselect-reselect was the workaround.',
+      'Fix scoped to the element dbl-click → isolation path: when the target is an image AND there\'s a mask shape directly above it, selection is re-routed to the mask. Non-mask groups are unaffected.'
+    ]
+  },
+  {
+    version: 'v0.16.30',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Export is its own top-level menu section now (separated from File), and the menu item is renamed "Export…" — clicking opens the revamped Export dialogue. The canvas right-click "Export → HTML5 / PNG" submenu still exports the active canvas directly, unchanged.',
+      'Export dialogue revamped: (1) Filename prefix input that overrides the download filename without touching state.projectName, (2) Format selector — HTML5 ZIP / PNG — with PNG exporting the active frame as a static image (one file per selected canvas), (3) "Skip frames marked as skipped" toggle, default on (off includes flagged frames in HTML5 export; PNG always exports the active frame), (4) per-canvas selection list as before with name + size + estimated KB.',
+      'exportCanvasAsZip(c, options) and exportCanvasAsPng(c, options) now accept {filenamePrefix, includeSkippedFrames}. The right-click canvas exporters pass nothing — same behaviour as before. generateExportHTML reads a transient state._exportIncludeSkippedFrames flag set by the callers, so the override is local to each export rather than a persistent setting.'
+    ]
+  },
+  {
+    version: 'v0.16.29',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Mask connector line moved onto the icon column. Was sitting in the far-left gutter, now sits directly under the layer icons at the icon centre. The line is also shorter — clipped to the row padding zones above/below the icon — and 1px thicker (2px wide instead of 1px). Still uses the transparent-fade gradient at the icon-side end so it doesn\'t butt up against the glyph.'
+    ]
+  },
+  {
+    version: 'v0.16.28',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Mask connector line is much less intrusive. Moved out of the icon column entirely (sits in the 2-pixel left gutter), uses a vertical gradient that fades to transparent at the far end of each row, and dropped the end-cap dots. Reads as a soft connector where the mask and its image meet rather than a border across the icons.',
+      'Reorganised the hamburger main menu into clearer sections with submenus where they help. File → Open ▶ (From File / From Cloud), Open Recent ▶, Save ▶ (Save Project / Push to Cloud), Export HTML. New PROJECT section: Project Settings… | Data & Versions… Help collapsed into a submenu (Shortcuts / Documentation). All existing menu-item IDs preserved so every previously-wired click handler continues to work.',
+      'CSS fix: `.dropdown-item.has-sub:hover .sub-dropdown` was using a descendant combinator. Switched to the direct-child combinator `>` so only the immediate sub-dropdown opens on hover. No behaviour change for existing single-level menus; future deeper nesting is safe.'
+    ]
+  },
+  {
+    version: 'v0.16.27',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Open Recent menu now shows both local and cloud saves in two clearly-labelled sections. "Local" is the existing IndexedDB-cached recent project snapshots. "Cloud" lists the user\'s 10 most-recently-updated Supabase projects via the existing pullCloudProject() open path.',
+      'Cloud section only renders when the user is signed in; the local list stands on its own when signed out — no nag.',
+      'Submenu refreshes on hover (mouseenter on menu-file-recent) so signing in mid-session immediately surfaces the Cloud section without needing a save. Still refreshed after each save too.'
+    ]
+  },
+  {
+    version: 'v0.16.26',
+    date: 'May 2026 — Engine v2.9',
+    items: [
+      'Mask + image are auto-grouped. When you set a shape as a mask via the right-click "Use as mask" menu, the shape and the image directly below it now share a groupId automatically, so the pair moves and scales as a unit by default. If either already belongs to a group, that group is reused. Removing the mask does not auto-ungroup — use Ctrl+Shift+G when you want.',
+      'Mask connector line in the Layers panel. A thin accent-purple line + small dot bridges the mask shape\'s layer row and its image\'s layer row, so the relationship reads at a glance. Drawn via CSS pseudo-elements in the left gutter — no extra DOM. Appears whenever the mask is "active" (isMask set, not hidden, image directly below in z-order).',
+      'New keyboard shortcuts: Ctrl+2 locks the current selection; Ctrl+Shift+2 unlocks it. Illustrator-style. Strict (not toggle) so the muscle memory works regardless of mixed-lock state in a multi-select. No-op when nothing\'s selected. Standard pushHistory + toast feedback.'
+    ]
+  },
+  {
     version: 'v0.16.25',
     date: 'May 2026 — Engine v2.9',
     items: [

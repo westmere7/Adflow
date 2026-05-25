@@ -66,7 +66,57 @@
 //          height-driven candidate gives 7 there instead. No effect on
 //          other listed formats — they already hit ≥ this size via the
 //          minDim or width formula.
-const ENGINE_VERSION = 'v2.9';
+//   v2.10 — Main-image size floor for thin-banner canvases. After the
+//           cover-fallback fires for canvasAspect > 3, enforce that the
+//           image's larger dimension is ≥ 40% of the canvas's larger
+//           dimension. Stops the image from coming out marooned at
+//           ~80px on a 728×90 when the slot between heading and CTA is
+//           narrow. canvas overflow:hidden + clampToCanvas exemption
+//           handles the overflow crop cleanly.
+//   v2.11 — Auto-resize preserves source layer order, groups, and
+//           masks. Placement rules still run in role-priority order
+//           (heading before cricos, etc.) but target.elements is
+//           rebuilt in source array order at the end so groupId
+//           siblings stay adjacent and mask-above-image positional
+//           pairs survive. groupIds are remapped per-target (a fresh
+//           gid for each unique source group). Mask post-pass switched
+//           to positional detection (findMaskAbove convention) instead
+//           of the old maskTargetId field — which legacy v0.16.26
+//           masks don't carry. Singleton groups (groupId left with
+//           only 1 member after drops) are auto-cleared.
+//   v2.12 — placeMainImage's "slot collapsed" recovery. When the
+//           heading + CTA pair eats the entire safezone width (very
+//           common on 728×90, 320×50), the slot used to collapse to
+//           ≤0 width and the image fell through to a 30–80px center
+//           placement — defeating both the v2.10 size floor and the
+//           v2.8 cover-fallback. Now: when the computed slot is
+//           degenerate, fall back to the FULL safezone before doing
+//           anything else, so the cover + size-floor logic still has
+//           room to work. Main-image renders at the bottom of the
+//           stack so heading and CTA layer over it cleanly.
+//   v2.13 — Image aspect ratio is now PRESERVED unconditionally for
+//           thin banners (canvasAspect > 3). The v2.10 size floor and
+//           v2.8 thin-banner cover-threshold (0.9) are removed — both
+//           caused the wide-strip-crop look on 728×90 / 320×50 that
+//           the user explicitly didn't want. Normal-aspect canvases
+//           keep the v2.8 cover-fallback at 0.6 fillFrac threshold.
+//           v2.12 slot-collapsed recovery now falls back to a centered
+//           SQUARE sized by the smaller safezone dim (not the full
+//           safezone) so contain-mode places the image at natural
+//           aspect without overflow. Trade-off: image is smaller on
+//           extreme aspects, but its proportions stay correct.
+//   v2.14 — Mask groups never stretch on auto-resize. Two changes:
+//           (1) placeMainImage skips cover-fallback when the source
+//           image has a mask shape above it (findMaskAbove). Cover
+//           would change the image's aspect, which then forces the
+//           mask shape to stretch when the post-pass resizes it.
+//           (2) Mask post-pass uses RELATIVE source geometry instead
+//           of blindly copying the image's bounds — mask.x/y/w/h are
+//           computed from the source mask's normalized position
+//           within the source image, scaled to the target image's
+//           dimensions. Together: mask groups now stay proportional
+//           through any resize.
+const ENGINE_VERSION = 'v2.14';
 
 
 // ----- Role taxonomy data tables ------------------------------------------
@@ -773,9 +823,26 @@ function placeMainImage(srcEl, target, ctx) {
     };
   }
 
-  // No-drop fallback: if the slot search yielded nothing usable, place the
-  // image at a minimum size centered on the canvas. The mask post-pass
-  // will follow it. Better to render small than to vanish entirely.
+  // Slot recovery (v2.13). On thin banners — 728×90, 320×50 etc. — the
+  // heading + CTA often eat the entire safezone width so `slot.w` comes
+  // out ≤ 0. v2.12 fell back to the FULL safezone here, but combined
+  // with the cover-fallback that produced a giant image cropped to a
+  // wide strip — visually it looked like a stretched/filled image,
+  // which the user explicitly does not want. v2.13: fall back to a
+  // centered SQUARE sized by the smaller safezone dimension instead,
+  // so contain-mode below places the image at its natural aspect
+  // without any cropping or stretching. The image ends up small on
+  // extreme aspects, but that's the trade-off for preserving the
+  // image's exact ratio.
+  if (slot.w <= 0 || slot.h <= 0) {
+    const sm = Math.max(20, Math.min(sz.w, sz.h));
+    slot = {
+      x: Math.round(sz.x + (sz.w - sm) / 2),
+      y: Math.round(sz.y + (sz.h - sm) / 2),
+      w: sm,
+      h: sm
+    };
+  }
   if (slot.w <= 0 || slot.h <= 0) {
     const minDim = Math.max(30, Math.min(80, Math.round(Math.min(w, h) * 0.3)));
     return {
@@ -798,24 +865,26 @@ function placeMainImage(srcEl, target, ctx) {
     imgW = Math.round(imgH * srcAspect);
   }
 
-  // Cover fallback when contain leaves the image too small in the slot.
-  // Honour the engine setting — when off, the image stays small (contain).
-  //
-  // Threshold is canvas-aspect-aware (added v2.8): on thin banners
-  // (728×90, 320×50, 970×250, 160×600, etc.) the slot is so squat or so
-  // narrow that contain mode leaves the main image looking marooned at
-  // 60–70% fill — technically above the old 0.6 threshold, so cover never
-  // fired. We lift the trigger to 0.9 for canvases with aspect ratio > 3
-  // (either direction), so cover almost always fires there. The result:
-  // main image crops to fill the slot's smaller dimension, with the
-  // larger dimension overflowing into the canvas margins. clampToCanvas
-  // already exempts main-image from overflow clamping, so the crop is
-  // handled by the canvas's overflow:hidden during preview/export.
+  // Cover fallback. Skipped entirely in two cases:
+  //   (1) Thin banners (canvasAspect > 3 — 728×90, 320×50, 970×250,
+  //       160×600). User explicitly doesn't want the main image to
+  //       crop/overflow there.
+  //   (2) Masked images (the source image has a mask shape above it
+  //       in z-order). v2.14: cover changes the image's aspect ratio
+  //       relative to the source, which forces the mask shape to
+  //       stretch when the post-pass resizes it to match the image
+  //       bounds. Mask groups are designed compositions — keep them
+  //       in contain so neither side stretches.
+  // Normal-aspect canvases with unmasked images use the v2.8 threshold
+  // of 0.6 fillFrac.
   const allowCover = !ctx.engineSettings || ctx.engineSettings.behaviour?.allowCoverFallback !== false;
   const canvasAspect = Math.max(w / h, h / w);
-  const coverThreshold = canvasAspect > 3 ? 0.9 : 0.6;
+  const srcMaskAbove = (typeof findMaskAbove === 'function')
+    ? findMaskAbove(ctx.sourceCanvas, srcEl)
+    : null;
+  const hasMask = !!(srcMaskAbove && srcMaskAbove.isMask);
   const fillFrac = Math.max(imgW, imgH) / Math.max(slot.w, slot.h);
-  if (allowCover && fillFrac < coverThreshold) {
+  if (allowCover && canvasAspect <= 3 && !hasMask && fillFrac < 0.6) {
     if (srcAspect >= slotAspect) {
       imgH = slot.h;
       imgW = Math.round(imgH * srcAspect);
@@ -831,6 +900,14 @@ function placeMainImage(srcEl, target, ctx) {
     imgW = Math.max(imgW, floor);
     imgH = Math.max(imgH, floor);
   }
+
+  // (v2.10's thin-banner "size floor" was removed in v2.13. It used to
+  // inflate the image to ≥ 40% of the canvas's larger dim on thin
+  // banners — but combined with cover-fallback that gave the
+  // wide-strip-crop look the user explicitly didn't want. Without
+  // cover or floor, the image stays at its natural aspect and
+  // contain-fits the slot, accepting a smaller render on extreme
+  // aspect canvases.)
 
   return {
     x: slot.x + Math.round((slot.w - imgW) / 2),
@@ -1100,9 +1177,28 @@ function runRuleBasedAutoResize(settings) {
 
     target.elements = [];
 
-    // Tracks which target clone corresponds to which source element id —
-    // used by the mask post-pass to remap maskTargetId references.
+    // v0.16.34: preserve exact source layer order on the target. We still
+    // run the placement rules in role-priority order (heading before
+    // cricos etc. — the rules read each other's geometry off
+    // ctx.placedElements), but instead of pushing to target.elements
+    // mid-loop, we stash clones in a Map and rebuild target.elements in
+    // source array order at the end. Groups + masks then read cleanly:
+    //   - groupId siblings stay adjacent the same way they were on the
+    //     source, so multi-select still picks up the whole group.
+    //   - findMaskAbove (positional) keeps working on the target — mask
+    //     and image preserve their array-index relationship.
+    const clonesBySrcId = new Map();
     const sourceToTargetId = {};
+
+    // groupId remap: two targets can't share the same group (groups
+    // don't span canvases). Generate a fresh per-target gid for each
+    // distinct source groupId we encounter.
+    const groupRemap = new Map();
+    const remapGroup = (srcGid) => {
+      if (!srcGid) return null;
+      if (!groupRemap.has(srcGid)) groupRemap.set(srcGid, uid());
+      return groupRemap.get(srcGid);
+    };
 
     const ctx = {
       sourceCanvas: src,
@@ -1137,8 +1233,9 @@ function runRuleBasedAutoResize(settings) {
         clone.height = Math.min(srcEl.height || 100, target.height - 8);
         clone.x = Math.max(0, Math.round((target.width  - clone.width)  / 2));
         clone.y = Math.max(0, Math.round((target.height - clone.height) / 2));
+        if (clone.groupId) clone.groupId = remapGroup(clone.groupId);
         wireLinkGroup(srcEl, clone, role, cat);
-        target.elements.push(clone);
+        clonesBySrcId.set(srcEl.id, clone);
         sourceToTargetId[srcEl.id] = clone.id;
         placedTotal++;
         return;
@@ -1166,37 +1263,92 @@ function runRuleBasedAutoResize(settings) {
         clone.width = measureButtonWidth(clone);
       }
 
+      if (clone.groupId) clone.groupId = remapGroup(clone.groupId);
       wireLinkGroup(srcEl, clone, role, cat);
-      target.elements.push(clone);
+      clonesBySrcId.set(srcEl.id, clone);
       ctx.placedElements[role] = clone;
       sourceToTargetId[srcEl.id] = clone.id;
       placedTotal++;
     });
 
+    // Rebuild target.elements in SOURCE order so layer-order, group
+    // adjacency, and mask-above-image positional pairing all carry over.
+    target.elements = srcEls
+      .map(srcEl => clonesBySrcId.get(srcEl.id))
+      .filter(Boolean);
+
     // Cross-role pass — R1 only for now, gated by settings.
     if (relationsOn.r1 !== false) applyRelationR1(ctx);
 
-    // Mask post-pass: align each mask shape to its target image's new
-    // geometry and remap maskTargetId from the source id to the target id.
-    // If the target image didn't transfer (e.g. dropped by a disabled
-    // rule), the mask flag is removed so the shape renders as a normal
-    // shape rather than silently covering empty space.
-    target.elements.forEach(el => {
-      if (!el.isMask || !el.maskTargetId) return;
-      const newTargetId = sourceToTargetId[el.maskTargetId];
-      const targetImg = newTargetId
-        ? target.elements.find(t => t.id === newTargetId)
-        : null;
-      if (!targetImg) {
+    // Mask post-pass (v2.14): preserve the mask shape's RELATIVE
+    // geometry within its image, rather than blindly making the mask
+    // cover the image's bounds.
+    //
+    // Pre-v2.14 we just did `mask.x = image.x; mask.w = image.w;` etc.
+    // — which stretched the mask shape whenever the image's aspect
+    // ratio changed between source and target (e.g. when cover-fallback
+    // gave a square image on a non-square source). The mask is a
+    // designed composition with its own dimensions; stretching it to
+    // an arbitrary aspect breaks that composition.
+    //
+    // Instead: compute the mask's bounds RELATIVE to its source image,
+    // then apply those normalized ratios to the target image. If the
+    // image's aspect doesn't change (which is now true for masked
+    // images — cover-fallback is skipped above when hasMask), this
+    // produces exactly the right result. Even if the image somehow
+    // did change aspect, the mask scales proportionally instead of
+    // stretching.
+    const srcElById = {};
+    srcEls.forEach(e => { srcElById[e.id] = e; });
+    const targetIdToSrcId = {};
+    Object.entries(sourceToTargetId).forEach(([srcId, tgtId]) => { targetIdToSrcId[tgtId] = srcId; });
+
+    target.elements.forEach((el, idx) => {
+      if (!el.isMask) return;
+      const below = idx > 0 ? target.elements[idx - 1] : null;
+      if (!below || below.type !== 'image') {
+        // Mask lost its image partner — break the mask relationship.
         delete el.isMask;
-        delete el.maskTargetId;
+        if (typeof el.maskTargetId !== 'undefined') delete el.maskTargetId;
         return;
       }
-      el.maskTargetId = newTargetId;
-      el.x = targetImg.x;
-      el.y = targetImg.y;
-      el.width = targetImg.width;
-      el.height = targetImg.height;
+      if (typeof el.maskTargetId !== 'undefined') el.maskTargetId = below.id;
+
+      // Look up the source mask + source image to compute relative
+      // positioning.
+      const srcMaskId = targetIdToSrcId[el.id];
+      const srcImgId  = targetIdToSrcId[below.id];
+      const srcMask = srcMaskId && srcElById[srcMaskId];
+      const srcImg  = srcImgId  && srcElById[srcImgId];
+      if (srcMask && srcImg && srcImg.width > 0 && srcImg.height > 0) {
+        const relX = (srcMask.x - srcImg.x) / srcImg.width;
+        const relY = (srcMask.y - srcImg.y) / srcImg.height;
+        const relW = srcMask.width  / srcImg.width;
+        const relH = srcMask.height / srcImg.height;
+        el.x = Math.round(below.x + relX * below.width);
+        el.y = Math.round(below.y + relY * below.height);
+        el.width  = Math.max(1, Math.round(relW * below.width));
+        el.height = Math.max(1, Math.round(relH * below.height));
+      } else {
+        // Fallback — shouldn't normally happen, but if source refs are
+        // missing, cover the image fully (legacy behaviour).
+        el.x = below.x;
+        el.y = below.y;
+        el.width  = below.width;
+        el.height = below.height;
+      }
+    });
+
+    // Drop singleton groups — a group with only one member is no longer
+    // a group; covers the case where a group's other members got
+    // dropped during placement (e.g. role rules disabled), and the
+    // mask-without-image case from above.
+    const groupCounts = {};
+    target.elements.forEach(el => {
+      if (el.groupId) groupCounts[el.groupId] = (groupCounts[el.groupId] || 0) + 1;
+    });
+    target.elements.forEach(el => {
+      if (el.groupId && groupCounts[el.groupId] < 2) delete el.groupId;
     });
 
     // Post-placement collision + canvas-bounds passes.

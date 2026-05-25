@@ -1503,6 +1503,11 @@ function render(skipProps = false) {
   if (projectNameDisp && document.activeElement !== projectNameDisp && projectNameDisp.contentEditable !== 'true') {
     projectNameDisp.innerText = state.projectName || 'RMIT_Ad';
   }
+  // Keep the browser tab title in sync with the project name. Driven from
+  // render() so every project-rename / load / new / undo path picks it up
+  // automatically — no need to thread updates through each call site.
+  const desiredTitle = (state.projectName || 'RMIT_Ad') + ' - RMIT Adflow';
+  if (document.title !== desiredTitle) document.title = desiredTitle;
   const clicktagEl = document.getElementById('clicktag');
   if (clicktagEl && document.activeElement !== clicktagEl) {
     clicktagEl.value = state.clickTag || 'https://www.rmit.edu.au/';
@@ -1747,20 +1752,37 @@ function previewFrameNode(c) {
   canvas.className = 'canvas';
   canvas.style.width = c.width + 'px';
   canvas.style.height = c.height + 'px';
-  canvas.style.background = c.bgColor;
+  // Canvas-bg leaks (v0.16.39): make the canvas div TRANSPARENT in
+  // full preview. The iframe inside already paints c.bgColor on its
+  // html/body in the export, and the canvas div's bg used to leak a
+  // 1–2px hairline around the iframe at non-100% zoom (browser
+  // sub-pixel rounding under the workspace's layout maths). With
+  // canvas transparent, the only thing painting the bg is the iframe
+  // itself — no double layer means no possible mismatch line.
+  canvas.style.background = 'transparent';
   canvas.style.borderTopLeftRadius = '0';
   canvas.style.borderTopRightRadius = '0';
   canvas.style.overflow = 'hidden';
-  // In full preview, show the ad as it would appear in the wild — no editor outline.
   canvas.style.boxShadow = 'none';
+  // Force the canvas onto its own GPU compositing layer + use
+  // clip-path:inset(0) for stricter sub-pixel clipping than plain
+  // overflow:hidden gives. Both belt-and-braces against the leak.
+  canvas.style.transform = 'translateZ(0)';
+  canvas.style.clipPath = 'inset(0)';
 
   const iframe = document.createElement('iframe'); iframe.className = 'preview-iframe';
-  iframe.style.width = '100%';
-  iframe.style.height = '100%';
+  // Explicit pixel dims (not %): some browsers compute % iframe
+  // dimensions differently from the parent's rendered size under
+  // zoom, leaving a sub-pixel gap. Pixel-equal dims to the canvas
+  // div remove that source of mismatch.
+  iframe.style.width = c.width + 'px';
+  iframe.style.height = c.height + 'px';
   iframe.style.border = 'none';
   iframe.style.position = 'absolute';
-  iframe.style.inset = '0';
+  iframe.style.left = '0';
+  iframe.style.top = '0';
   iframe.style.background = c.bgColor;
+  iframe.style.display = 'block';
   iframe.scrolling = 'no';
   iframe.srcdoc = html;
 
@@ -2043,14 +2065,36 @@ function canvasFrameNode(c) {
   canvas.style.height = c.height + 'px';
   canvas.style.background = c.bgColor;
 
+  // In single-preview the canvas should read like the deployed ad — no
+  // editor outline. The active-canvas accent box-shadow at
+  // `.canvas-frame.active .canvas` would otherwise show as a thin
+  // accent-coloured ring around the ad (very visible on solid blue/dark
+  // backgrounds in RMIT theme where accent is red).
+  if (isSinglePreview) {
+    canvas.style.boxShadow = 'none';
+    // Canvas-bg leak defence (v0.16.39): transparent canvas + GPU
+    // composite + clip-path:inset(0) — see previewFrameNode for the
+    // rationale. The iframe paints c.bgColor on its own html/body,
+    // so leaving the canvas div transparent removes the double-layer
+    // that was producing the 1–2px hairline at non-100% zoom.
+    canvas.style.background = 'transparent';
+    canvas.style.transform = 'translateZ(0)';
+    canvas.style.clipPath = 'inset(0)';
+  }
+
   if (isSinglePreview) {
     const iframe = document.createElement('iframe');
     iframe.srcdoc = generateExportHTML(c);
-    iframe.style.width = '100%';
-    iframe.style.height = '100%';
+    // Explicit pixel dims so the iframe can't compute a different
+    // sub-pixel rounded size than the canvas div under zoom.
+    iframe.style.width = c.width + 'px';
+    iframe.style.height = c.height + 'px';
     iframe.style.border = 'none';
     iframe.style.display = 'block';
     iframe.style.background = c.bgColor;
+    iframe.style.position = 'absolute';
+    iframe.style.left = '0';
+    iframe.style.top = '0';
     canvas.appendChild(iframe);
   } else {
     const canvasInner = document.createElement('div');
@@ -2780,8 +2824,21 @@ function elementNode(el, canvasCtx) {
     // Enter Isolation Mode if it's a group
     if (el.groupId && state.isolatedGroupId !== el.groupId) {
       state.isolatedGroupId = el.groupId;
-      state.layerSelection = [el.id];
-      state.selectedElementId = el.id;
+      // Mask + image groups: when the dbl-click hits the IMAGE side of
+      // the pair (which happens whenever the user clicks the visible
+      // masked area — the mask shape's own children are visibility:
+      // hidden, so hits often land on the image wrapper), re-route the
+      // selection to the mask SHAPE. The shape's silhouette IS the
+      // visible content the user is targeting, so selecting the image
+      // and surfacing image props was confusing. The earlier symptom
+      // was: outline shows the mask, properties panel shows the image.
+      let targetEl = el;
+      if (el.type === 'image' && typeof findMaskAbove === 'function') {
+        const maskAbove = findMaskAbove(canvasCtx, el);
+        if (maskAbove && maskAbove.isMask) targetEl = maskAbove;
+      }
+      state.layerSelection = [targetEl.id];
+      state.selectedElementId = targetEl.id;
       render(true);
       return;
     }
@@ -6171,7 +6228,20 @@ function renderLayers() {
     [...elements].reverse().forEach((el) => {
       const div = document.createElement('div');
       const isSel = state.selectedElementId === el.id || state.layerSelection?.includes(el.id);
-      div.className = 'layer' + (isSel ? ' selected' : '');
+      // Mask-link decoration: if this element is a mask sitting directly
+      // above its image (or an image sitting directly below its mask),
+      // mark it so CSS can draw a thin connector line between the two
+      // adjacent layer rows in the panel.
+      let maskLink = '';
+      if (isActiveMask(el) && findImageBeneath(c, el)) {
+        // Mask shape — connector extends DOWN to the image row (which
+        // renders directly below in the reverse-sorted layers list).
+        maskLink = ' mask-link-down';
+      } else if (el.type === 'image' && findMaskAbove(c, el) && isActiveMask(findMaskAbove(c, el))) {
+        // Masked image — connector extends UP to the mask row above.
+        maskLink = ' mask-link-up';
+      }
+      div.className = 'layer' + (isSel ? ' selected' : '') + maskLink;
       div.draggable = true;
       div.dataset.id = el.id;
       const iconHtml = `<svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${layerIcon(el.type)}</svg>`;
@@ -7284,12 +7354,22 @@ function renderProps() {
       </div>`);
 
       if (el.name && !isVector) {
-        const btnStyle = el.isCompressed 
+        const compressBtnStyle = el.isCompressed
           ? 'background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); cursor:not-allowed;'
           : 'background:var(--accent-base); color:var(--text-bright); border:none; cursor:pointer;';
-        f.push(`<div class="prop-row" style="margin-top:4px; margin-bottom:8px;">
-          <button id="btn-webp-compress" class="btn" title="Compress image to WebP format to reduce file size" style="width:100%; padding:6px 12px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; text-align:center; display:block; ${btnStyle}" ${el.isCompressed ? 'disabled' : ''}>
-            ${el.isCompressed ? '✓ Compressed' : 'Compress to WebP'}
+        const isCropped = !!el.cropOriginalAssetId;
+        const cropBtnStyle = isCropped
+          ? 'background:rgba(124,92,255,0.15); color:var(--accent-light); border:1px solid rgba(124,92,255,0.4); cursor:pointer;'
+          : 'background:var(--bg-input); color:var(--text-main); border:1px solid var(--border-light); cursor:pointer;';
+        const cropTitle = isCropped
+          ? 'Re-crop / re-rotate. Reopens the crop dialogue with the original (uncropped) image and the current crop region preselected.'
+          : 'Crop & level — rotate the image and pull the corners to crop. Result is baked into the image (element rotation stays 0).';
+        f.push(`<div class="prop-row" style="margin-top:4px; margin-bottom:8px; display:flex; gap:6px;">
+          <button id="btn-webp-compress" class="btn" title="Compress image to WebP format to reduce file size" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; ${compressBtnStyle}" ${el.isCompressed ? 'disabled' : ''}>
+            ${el.isCompressed ? '✓ Compressed' : 'Compress'}
+          </button>
+          <button id="btn-image-crop" class="btn" title="${cropTitle}" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; ${cropBtnStyle}">
+            ${isCropped ? '✓ Crop & Level' : 'Crop & Level'}
           </button>
         </div>`);
       }
@@ -8169,6 +8249,14 @@ function checkButtonFontSizeWarning(el) {
       openWebpCompressionModal(el);
     };
   }
+  const btnCrop = propsEl.querySelector('#btn-image-crop');
+  if (btnCrop) {
+    btnCrop.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openImageCropModal(el);
+    };
+  }
 
   if (typeof syncColorPickerWithSelection === 'function') {
     syncColorPickerWithSelection(el, null);
@@ -8646,6 +8734,36 @@ window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && (e.key === ']' || e.key === '[')) {
     e.preventDefault();
     shiftLayerOrder(e.key === ']' ? 1 : -1);
+    return;
+  }
+
+  // Ctrl+2 → lock selection, Ctrl+Shift+2 → unlock selection (Illustrator-style).
+  // Operates on every currently-selected layer; no-op when selection is empty.
+  if ((e.ctrlKey || e.metaKey) && e.key === '2') {
+    e.preventDefault();
+    const cnv = getActiveCanvas();
+    if (!cnv) return;
+    const ids = (state.layerSelection && state.layerSelection.length)
+      ? state.layerSelection
+      : (state.selectedElementId ? [state.selectedElementId] : []);
+    if (ids.length === 0) return;
+    const lockTo = !e.shiftKey;   // shift = unlock; plain Ctrl+2 = lock
+    let changed = 0;
+    ids.forEach(id => {
+      const item = cnv.elements.find(x => x.id === id);
+      if (!item) return;
+      if (!!item.locked !== lockTo) { item.locked = lockTo; changed++; }
+    });
+    if (changed > 0) {
+      pushHistory();
+      render();
+      showCanvasNotification(
+        lockTo
+          ? `Locked ${changed} layer${changed === 1 ? '' : 's'}.`
+          : `Unlocked ${changed} layer${changed === 1 ? '' : 's'}.`,
+        { type: 'success' }
+      );
+    }
     return;
   }
 
@@ -9185,63 +9303,124 @@ async function addRecentProject(exportState) {
   }
 }
 
+// Populate the Open Recent submenu with two sections — local recents
+// (IndexedDB snapshots) and cloud projects (most-recent saves on
+// Supabase). The cloud section only appears when the user is signed in
+// and the Supabase client is available. Called after each save and on
+// hover of the "Open Recent" parent menu item so the cloud list stays
+// fresh as the user signs in/out.
 async function updateRecentProjectsMenu() {
   const container = document.getElementById('recent-projects-list');
   if (!container) return;
+  container.innerHTML = '';
+
+  // --- Header helpers (kept inside so they capture `container`) ----
+  const appendSectionHeader = (label) => {
+    const h = document.createElement('div');
+    h.style.cssText = 'padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;';
+    h.textContent = label;
+    container.appendChild(h);
+  };
+  const appendDivider = () => {
+    const d = document.createElement('div');
+    d.className = 'dropdown-divider';
+    container.appendChild(d);
+  };
+  const appendEmpty = (text) => {
+    const empty = document.createElement('div');
+    empty.className = 'dropdown-item';
+    empty.style.cssText = 'color:var(--text-muted); cursor:default; pointer-events:none; padding:6px 16px;';
+    empty.textContent = text;
+    container.appendChild(empty);
+  };
+  const appendItem = (label, sub, onClick) => {
+    const el = document.createElement('div');
+    el.className = 'dropdown-item';
+    el.style.cssText = 'display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:6px 16px; line-height:1.3;';
+    const name = document.createElement('div');
+    name.style.cssText = 'font-weight:500; color:inherit;';
+    name.textContent = label;
+    const date = document.createElement('div');
+    date.style.cssText = 'font-size:9px; color:var(--text-muted); transition:color 0.2s;';
+    date.textContent = sub;
+    el.appendChild(name);
+    el.appendChild(date);
+    el.addEventListener('mouseenter', () => { date.style.color = '#e0e0e0'; });
+    el.addEventListener('mouseleave', () => { date.style.color = 'var(--text-muted)'; });
+    el.addEventListener('click', onClick);
+    container.appendChild(el);
+  };
+
+  // --- Local recents (IndexedDB) -----------------------------------
   try {
     const recents = (await _idbGet('recents')) || [];
-    container.innerHTML = '';
+    appendSectionHeader('Local');
     if (recents.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'dropdown-item';
-      empty.style.color = 'var(--text-muted)';
-      empty.style.cursor = 'default';
-      empty.style.pointerEvents = 'none';
-      empty.style.padding = '6px 16px';
-      empty.textContent = '(No recent projects)';
-      container.appendChild(empty);
-      return;
+      appendEmpty('(No recent local projects)');
+    } else {
+      recents.forEach(item => {
+        appendItem(item.name, item.timestamp, async () => {
+          if (confirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
+            await loadProjectFromState(item.stateSnapshot);
+          }
+        });
+      });
     }
-    recents.forEach(item => {
-      const el = document.createElement('div');
-      el.className = 'dropdown-item';
-      el.style.display = 'flex';
-      el.style.flexDirection = 'column';
-      el.style.alignItems = 'flex-start';
-      el.style.gap = '2px';
-      el.style.padding = '6px 16px';
-      el.style.lineHeight = '1.3';
-      
-      const name = document.createElement('div');
-      name.style.fontWeight = '500';
-      name.style.color = 'inherit';
-      name.textContent = item.name;
-      
-      const date = document.createElement('div');
-      date.style.fontSize = '9px';
-      date.style.color = 'var(--text-muted)';
-      date.style.transition = 'color 0.2s';
-      date.textContent = item.timestamp;
-      
-      el.appendChild(name);
-      el.appendChild(date);
-      
-      el.addEventListener('mouseenter', () => {
-        date.style.color = '#e0e0e0';
-      });
-      el.addEventListener('mouseleave', () => {
-        date.style.color = 'var(--text-muted)';
-      });
-      
-      el.addEventListener('click', async () => {
-        if (confirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
-          await loadProjectFromState(item.stateSnapshot);
-        }
-      });
-      container.appendChild(el);
-    });
   } catch (e) {
-    console.error('Failed to update recents menu:', e);
+    console.error('Failed to load local recents:', e);
+    appendEmpty('(Failed to load local recents)');
+  }
+
+  // --- Cloud projects (Supabase) -----------------------------------
+  // Only rendered when the user is signed in. The `sb` Supabase client,
+  // `authState`, and `pullCloudProject` are globals from auth-ui.js
+  // (which loads before script.js).
+  const authReady = typeof authState !== 'undefined' && authState.enabled && typeof sb !== 'undefined' && sb;
+  const user = authReady ? authState.currentUser() : null;
+  if (authReady && user) {
+    appendDivider();
+    appendSectionHeader('Cloud');
+    try {
+      const { data, error } = await sb
+        .from('projects')
+        .select('id, name, updated_at, storage_path, space_id, folder_id')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(10);
+      if (error) {
+        appendEmpty('(Failed to load cloud projects)');
+      } else if (!data || data.length === 0) {
+        appendEmpty('(No cloud projects yet)');
+      } else {
+        // Format an ISO timestamp into the same short "Mon DD, HH:MM"
+        // shape used by local recents — keeps both sections visually
+        // homogeneous. Prefer the global _formatRelativeTime helper
+        // (from auth-ui.js) when available, else fall back.
+        const fmt = (iso) => {
+          if (!iso) return '';
+          if (typeof _formatRelativeTime === 'function') {
+            try { return _formatRelativeTime(iso); } catch (_) { /* fall through */ }
+          }
+          try {
+            return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          } catch (_) { return ''; }
+        };
+        data.forEach(row => {
+          appendItem(row.name || '(untitled)', fmt(row.updated_at), async () => {
+            if (!confirm(`Open cloud project "${row.name || 'untitled'}"? Any unsaved changes will be lost.`)) return;
+            if (typeof pullCloudProject !== 'function') {
+              showCanvasNotification('Cloud open not available.', { type: 'error' });
+              return;
+            }
+            try { await pullCloudProject(row); }
+            catch (err) { showCanvasNotification(`Open failed: ${err.message || err}`, { type: 'error' }); }
+          });
+        });
+      }
+    } catch (e) {
+      console.error('Failed to load cloud projects:', e);
+      appendEmpty('(Failed to load cloud projects)');
+    }
   }
 }
 
@@ -9486,6 +9665,17 @@ document.getElementById('menu-file-open').addEventListener('click', openProjectF
 document.getElementById('menu-file-save').addEventListener('click', saveProjectToZip);
 document.getElementById('menu-file-new').addEventListener('click', openNewProjectDialog);
 document.getElementById('menu-project-settings').addEventListener('click', openProjectSettingsDialog);
+
+// Refresh the Open Recent submenu when the user hovers it. Keeps the
+// Cloud section in sync with the live auth state — signing in mid-session
+// adds the Cloud section on the next hover without needing a save.
+const _menuFileRecent = document.getElementById('menu-file-recent');
+if (_menuFileRecent) {
+  _menuFileRecent.addEventListener('mouseenter', () => {
+    // Fire-and-forget; the function already guards its own DOM updates.
+    updateRecentProjectsMenu();
+  });
+}
 
 // Project name display and setting modal triggers
 (function() {
@@ -10111,7 +10301,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.25';
+  const currentVersion = 'v0.16.39';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10174,7 +10364,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.25</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.39</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10230,7 +10420,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.25</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.39</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -10571,6 +10761,287 @@ function openWebpCompressionModal(el) {
   };
 }
 
+// Image crop + rotate modal. Lets users level a tilted horizon or crop a
+// region in one go. The output is BAKED into a new image (PNG data URL)
+// and assigned as the element's new asset — the element's own
+// `rotation` property stays at 0, exactly as the user requested. The
+// original (pre-crop) asset is remembered on `el.cropOriginalAssetId`
+// so re-opening the dialogue starts from the original (not the
+// already-cropped version) — successive edits don't keep losing
+// resolution to round-trip rasterisation.
+function openImageCropModal(el) {
+  if (!el || el.type !== 'image') return;
+  // Resolve the source we'll crop from. If a previous crop exists,
+  // use the original — never crop a crop.
+  const baseAssetId = el.cropOriginalAssetId || el.assetId;
+  const baseDataUrl = baseAssetId && state.assets ? state.assets[baseAssetId] : null;
+  if (!baseDataUrl) {
+    showCanvasNotification('Image data not available.', { type: 'error' });
+    return;
+  }
+
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.innerHTML = `
+    <div class="modal" style="width:600px;">
+      <div class="modal-head">
+        <h2 style="margin:0;">Crop &amp; Level</h2>
+        <button class="btn" id="crop-close" title="Close dialog">Close</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+        <div id="crop-stage" style="position:relative; width:100%; height:360px; background:#0d1018; border:1px solid var(--border-light); border-radius:6px; overflow:hidden; user-select:none;">
+          <canvas id="crop-canvas" style="position:absolute; top:0; left:0; pointer-events:none;"></canvas>
+          <div id="crop-rect" style="position:absolute; box-sizing:border-box; border:1.5px solid var(--accent-base); box-shadow:0 0 0 9999px rgba(0,0,0,0.5); cursor:move;">
+            <div data-corner="nw" style="position:absolute; left:-6px; top:-6px; width:11px; height:11px; background:var(--accent-base); border:1.5px solid #fff; border-radius:2px; cursor:nwse-resize;"></div>
+            <div data-corner="ne" style="position:absolute; right:-6px; top:-6px; width:11px; height:11px; background:var(--accent-base); border:1.5px solid #fff; border-radius:2px; cursor:nesw-resize;"></div>
+            <div data-corner="se" style="position:absolute; right:-6px; bottom:-6px; width:11px; height:11px; background:var(--accent-base); border:1.5px solid #fff; border-radius:2px; cursor:nwse-resize;"></div>
+            <div data-corner="sw" style="position:absolute; left:-6px; bottom:-6px; width:11px; height:11px; background:var(--accent-base); border:1.5px solid #fff; border-radius:2px; cursor:nesw-resize;"></div>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase; font-weight:600; min-width:74px; letter-spacing:.04em;">Rotation</label>
+          <input type="range" id="crop-rot-slider" min="-180" max="180" step="0.1" value="0" style="flex:1; accent-color:var(--accent-base); cursor:pointer;" />
+          <input type="number" id="crop-rot-input" min="-180" max="180" step="0.1" value="0" style="width:64px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none; font-family:inherit;" />
+          <button class="btn" id="crop-rot-reset" style="padding:4px 10px; font-size:11px;" title="Reset rotation to 0°">Reset</button>
+        </div>
+        <div style="font-size:10.5px; color:var(--text-muted); line-height:1.5;">
+          Drag the rectangle's corners to crop, or drag the rectangle itself to reposition. Use the rotation slider to level horizons or fix skew — the rotation is baked into the image, the element's own rotation property stays at 0. Re-cropping starts from the original image so resolution doesn't degrade with successive edits.
+        </div>
+      </div>
+      <div class="modal-foot" style="display:flex; justify-content:space-between; gap:8px;">
+        <button class="btn" id="crop-reset-all" style="color:var(--text-muted);" title="Drop the crop and restore the original full image">Restore original</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" id="crop-cancel" title="Discard changes">Cancel</button>
+          <button class="btn primary" id="crop-apply" title="Bake the crop + rotation into a new image">Apply</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(bg);
+
+  const stage     = bg.querySelector('#crop-stage');
+  const canvas    = bg.querySelector('#crop-canvas');
+  const cropRect  = bg.querySelector('#crop-rect');
+  const rotSlider = bg.querySelector('#crop-rot-slider');
+  const rotInput  = bg.querySelector('#crop-rot-input');
+  const rotReset  = bg.querySelector('#crop-rot-reset');
+
+  const img = new Image();
+  let imgW = 0, imgH = 0;       // intrinsic source dims
+  let canvasOffsetX = 0, canvasOffsetY = 0;
+  let renderScale = 1;          // canvas-px per source-px (after rotation fit)
+  let currentRotation = (typeof el.cropRotation === 'number') ? el.cropRotation : 0;
+  let cropPx = { x: 0, y: 0, w: 0, h: 0 };  // in canvas (preview) px
+
+  const renderImage = (preserveCrop = false) => {
+    const stageW = stage.clientWidth, stageH = stage.clientHeight;
+    const θ = currentRotation * Math.PI / 180;
+    const absCos = Math.abs(Math.cos(θ));
+    const absSin = Math.abs(Math.sin(θ));
+    const rotW = imgW * absCos + imgH * absSin;
+    const rotH = imgW * absSin + imgH * absCos;
+    const PAD = 20;
+    const scale = Math.min((stageW - PAD * 2) / rotW, (stageH - PAD * 2) / rotH);
+    renderScale = scale;
+    const cnvW = Math.round(rotW * scale);
+    const cnvH = Math.round(rotH * scale);
+    canvas.width = cnvW;
+    canvas.height = cnvH;
+    canvas.style.width  = cnvW + 'px';
+    canvas.style.height = cnvH + 'px';
+    canvasOffsetX = Math.round((stageW - cnvW) / 2);
+    canvasOffsetY = Math.round((stageH - cnvH) / 2);
+    canvas.style.left = canvasOffsetX + 'px';
+    canvas.style.top  = canvasOffsetY + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, cnvW, cnvH);
+    ctx.save();
+    ctx.translate(cnvW / 2, cnvH / 2);
+    ctx.rotate(θ);
+    ctx.drawImage(img, -imgW * scale / 2, -imgH * scale / 2, imgW * scale, imgH * scale);
+    ctx.restore();
+    if (!preserveCrop) {
+      cropPx = { x: 0, y: 0, w: cnvW, h: cnvH };
+    } else {
+      // Clamp the existing crop into the new canvas size.
+      cropPx.w = Math.max(20, Math.min(cropPx.w, cnvW));
+      cropPx.h = Math.max(20, Math.min(cropPx.h, cnvH));
+      cropPx.x = Math.max(0, Math.min(cropPx.x, cnvW - cropPx.w));
+      cropPx.y = Math.max(0, Math.min(cropPx.y, cnvH - cropPx.h));
+    }
+    positionCropRect();
+  };
+
+  const positionCropRect = () => {
+    cropRect.style.left   = (canvasOffsetX + cropPx.x) + 'px';
+    cropRect.style.top    = (canvasOffsetY + cropPx.y) + 'px';
+    cropRect.style.width  = cropPx.w + 'px';
+    cropRect.style.height = cropPx.h + 'px';
+  };
+
+  img.onload = () => {
+    imgW = img.naturalWidth;
+    imgH = img.naturalHeight;
+    renderImage(false);
+    // If the element had a previous crop, restore it (normalized rect).
+    if (el.cropRect && typeof el.cropRect === 'object') {
+      cropPx = {
+        x: el.cropRect.x * canvas.width,
+        y: el.cropRect.y * canvas.height,
+        w: el.cropRect.w * canvas.width,
+        h: el.cropRect.h * canvas.height
+      };
+      positionCropRect();
+    }
+  };
+  img.src = baseDataUrl;
+
+  // Rotation wire-up
+  rotSlider.value = currentRotation;
+  rotInput.value  = currentRotation;
+  const setRotation = (v) => {
+    currentRotation = Math.max(-180, Math.min(180, parseFloat(v) || 0));
+    rotSlider.value = currentRotation;
+    rotInput.value  = currentRotation;
+    renderImage(true);
+  };
+  rotSlider.addEventListener('input', e => setRotation(e.target.value));
+  rotInput.addEventListener('input',  e => setRotation(e.target.value));
+  rotReset.addEventListener('click', () => setRotation(0));
+
+  // Drag rectangle body
+  cropRect.addEventListener('mousedown', (e) => {
+    if (e.target.dataset.corner) return; // corner handles own their drag
+    e.preventDefault();
+    const sx = e.clientX, sy = e.clientY;
+    const ix = cropPx.x, iy = cropPx.y;
+    const onMove = (ev) => {
+      cropPx.x = Math.max(0, Math.min(canvas.width  - cropPx.w, ix + ev.clientX - sx));
+      cropPx.y = Math.max(0, Math.min(canvas.height - cropPx.h, iy + ev.clientY - sy));
+      positionCropRect();
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+  // Corner handles
+  cropRect.querySelectorAll('[data-corner]').forEach(handle => {
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const corner = handle.dataset.corner;
+      const sx = e.clientX, sy = e.clientY;
+      const init = { ...cropPx };
+      const MIN = 20;
+      const onMove = (ev) => {
+        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        let nx = init.x, ny = init.y, nw = init.w, nh = init.h;
+        if (corner.includes('w')) {
+          nx = Math.max(0, Math.min(init.x + dx, init.x + init.w - MIN));
+          nw = init.w - (nx - init.x);
+        }
+        if (corner.includes('n')) {
+          ny = Math.max(0, Math.min(init.y + dy, init.y + init.h - MIN));
+          nh = init.h - (ny - init.y);
+        }
+        if (corner.includes('e')) {
+          nw = Math.max(MIN, Math.min(init.w + dx, canvas.width - init.x));
+        }
+        if (corner.includes('s')) {
+          nh = Math.max(MIN, Math.min(init.h + dy, canvas.height - init.y));
+        }
+        cropPx = { x: nx, y: ny, w: nw, h: nh };
+        positionCropRect();
+      };
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+  });
+
+  const close = () => bg.remove();
+  bg.querySelector('#crop-close').onclick  = close;
+  bg.querySelector('#crop-cancel').onclick = close;
+
+  // Restore original — drop any prior crop/rotation, revert to the
+  // uncropped asset. Doesn't apply changes; user can still Cancel.
+  bg.querySelector('#crop-reset-all').onclick = () => {
+    if (!confirm('Drop the crop and rotation, restoring the original image?')) return;
+    if (el.cropOriginalAssetId) {
+      el.assetId = el.cropOriginalAssetId;
+      delete el.cropOriginalAssetId;
+    }
+    delete el.cropRotation;
+    delete el.cropRect;
+    el.isCompressed = false;
+    pushHistory();
+    render();
+    renderProps();
+    close();
+  };
+
+  bg.querySelector('#crop-apply').onclick = () => {
+    // Compose the final image at SOURCE resolution. We do the same
+    // translate / rotate / drawImage that the preview canvas did, then
+    // extract the user's crop rectangle scaled back up from preview-px
+    // to source-rotated-px (via 1/renderScale).
+    const θ = currentRotation * Math.PI / 180;
+    const absCos = Math.abs(Math.cos(θ));
+    const absSin = Math.abs(Math.sin(θ));
+    const rotW = Math.round(imgW * absCos + imgH * absSin);
+    const rotH = Math.round(imgW * absSin + imgH * absCos);
+    const comp = document.createElement('canvas');
+    comp.width = rotW; comp.height = rotH;
+    const cctx = comp.getContext('2d');
+    cctx.translate(rotW / 2, rotH / 2);
+    cctx.rotate(θ);
+    cctx.drawImage(img, -imgW / 2, -imgH / 2);
+    const ratio = 1 / renderScale;
+    const sx = cropPx.x * ratio;
+    const sy = cropPx.y * ratio;
+    const sw = cropPx.w * ratio;
+    const sh = cropPx.h * ratio;
+    const out = document.createElement('canvas');
+    out.width  = Math.max(1, Math.round(sw));
+    out.height = Math.max(1, Math.round(sh));
+    out.getContext('2d').drawImage(comp, sx, sy, sw, sh, 0, 0, out.width, out.height);
+    const outDataUrl = out.toDataURL('image/png');
+
+    // Remember the uncropped original on first crop, so subsequent
+    // edits start from it rather than re-cropping a crop.
+    if (!el.cropOriginalAssetId) el.cropOriginalAssetId = el.assetId;
+    el.cropRotation = currentRotation;
+    el.cropRect = {
+      x: cropPx.x / canvas.width,
+      y: cropPx.y / canvas.height,
+      w: cropPx.w / canvas.width,
+      h: cropPx.h / canvas.height
+    };
+    const newId = 'img_crop_' + uid();
+    if (!state.assets) state.assets = {};
+    state.assets[newId] = outDataUrl;
+    el.assetId = newId;
+    el.isCompressed = false; // crop output is PNG; compress flag no longer applies
+
+    // Adjust the element's bounding box height to match the new image
+    // aspect (keep the existing width). Without this, a portrait crop
+    // would appear stretched/squashed against the element's prior aspect.
+    const newAspect = out.width / out.height;
+    if (newAspect && el.width) {
+      el.height = Math.max(1, Math.round(el.width / newAspect));
+    }
+    pushHistory();
+    render();
+    renderProps();
+    close();
+  };
+}
+
 // ============================================================================
 // Initial render
 // ============================================================================
@@ -10675,20 +11146,21 @@ function shiftLayerOrder(direction) {
 }
 
 
-// Middle-mouse guard for buttons. Several of our mousedown-based handlers
-// (the per-canvas frame controls, single-preview toggle, etc.) don't
-// filter `e.button`, so middle-clicking them fires the same action as
-// left-click — surprising for users. Capture-phase so we run before any
-// other mousedown listener on the button.
+// Middle-mouse guard for interactive controls. Several of our
+// mousedown-based handlers (per-canvas frame controls, single-preview
+// toggle, transform/rotate/radius/thickness/endpoint handles, etc.)
+// don't filter `e.button`, so middle-clicking them fires the same
+// action as left-click — surprising for users. Capture-phase so we run
+// before any other mousedown listener on the target.
 //
-// Scoped to `<button>` / `[role="button"]` only — the canvas area and
-// elements need middle-click for the pan-by-drag affordance (see
-// onElementMouseDown + canvasArea mousedown handlers, which both start
-// panning on `e.button === 1`). Earlier this guard was global and broke
-// panning entirely.
+// Scoped: `<button>` / `[role="button"]` / element selection handles
+// (`.handle`) / fullscreen-panel buttons. NOT canvas areas or element
+// wrappers — those legitimately use middle-click for the pan-by-drag
+// affordance (see onElementMouseDown + canvasArea mousedown, both of
+// which start panning on `e.button === 1`).
 document.addEventListener('mousedown', (e) => {
   if (e.button !== 1) return;
-  if (e.target.closest('button, [role="button"]')) {
+  if (e.target.closest('button, [role="button"], .handle, .panel-fullscreen-btn')) {
     e.preventDefault();
     e.stopPropagation();
   }
@@ -10947,7 +11419,8 @@ document.addEventListener('contextmenu', (e) => {
     const id = state.layerSelection[0];
     const el = c.elements.find(x => x.id === id);
     if (!el || !canShapeBeMask(el)) return;
-    if (!findImageBeneath(c, el)) {
+    const imgBeneath = findImageBeneath(c, el);
+    if (!imgBeneath) {
       showCanvasNotification('Mask needs an image layer directly below it.', { type: 'warning' });
       return;
     }
@@ -10963,6 +11436,14 @@ document.addEventListener('contextmenu', (e) => {
     }
     if (el.dynamic) { delete el.dynamic; }
     if (el._assetDmMap) { delete el._assetDmMap; }
+    // Auto-group the mask shape with its image so the pair moves/scales
+    // together. Reuses an existing groupId on either side if present
+    // (so we don't tear apart a pre-existing group). Removing the mask
+    // intentionally does NOT auto-ungroup — the user can ungroup
+    // manually via Ctrl+Shift+G.
+    const groupGid = el.groupId || imgBeneath.groupId || uid();
+    el.groupId = groupGid;
+    imgBeneath.groupId = groupGid;
     pushHistory(); render();
     showCanvasNotification('Layer set as mask.', { type: 'success' });
   });
@@ -11261,15 +11742,28 @@ function initCollapsiblePanels() {
     const keyAttr = header.id || header.innerText.trim().toLowerCase().replace(/\s+/g, '-');
     const storageKey = `panel-collapsed-${keyAttr}`;
     const isCollapsed = localStorage.getItem(storageKey) === 'true';
-    
+
+    // Swap the chevron's polyline points instead of relying on a CSS
+    // `transform: rotate()` on the <svg> root — that doesn't actually
+    // render in this browser/SVG combo (verified empirically). Two
+    // hard-coded point sets:
+    //   • '6 9 12 15 18 9'  → ▼ down (apex at bottom)
+    //   • '9 6 15 12 9 18'  → ▶ right (apex on right)
+    const setChevronPoints = (collapsed) => {
+      const poly = header.querySelector('.collapse-icon polyline');
+      if (poly) poly.setAttribute('points', collapsed ? '9 6 15 12 9 18' : '6 9 12 15 18 9');
+    };
+
     if (isCollapsed) {
       parentSection.classList.add('collapsed');
     }
-    
+    setChevronPoints(isCollapsed);
+
     header.addEventListener('click', (e) => {
       if (e.target.closest('.panel-fullscreen-btn')) return;
       const currentlyCollapsed = parentSection.classList.toggle('collapsed');
       localStorage.setItem(storageKey, currentlyCollapsed ? 'true' : 'false');
+      setChevronPoints(currentlyCollapsed);
     });
 
     // Exclude canvases (which is not collapsible anyway) and Dynamic Data
@@ -11314,17 +11808,20 @@ function initCollapsiblePanels() {
         };
         setIcon();
         
+        // v0.16.32 menu reshuffle: chevron now sits on the LEFT of the
+        // header (via CSS flex `order: -1` on `.collapse-icon`). To let
+        // the CSS reorder fire, the chevron must remain a direct child
+        // of the h3 — DON'T wrap it together with fsBtn anymore. The
+        // fullscreen button is simply appended as another direct child
+        // of the header and the CSS rule
+        //   .panel-header-collapsible > *:not(:first-child):not(.collapse-icon)
+        // pushes it to the far right via margin-left:auto.
         if (collapseIcon.parentNode === header) {
-          const wrapper = document.createElement('span');
-          wrapper.style.display = 'inline-flex';
-          wrapper.style.alignItems = 'center';
-          wrapper.style.gap = '6px';
-          wrapper.style.marginLeft = 'auto';
-          
-          header.insertBefore(wrapper, collapseIcon);
-          wrapper.appendChild(fsBtn);
-          wrapper.appendChild(collapseIcon);
+          header.appendChild(fsBtn);
         } else {
+          // The chevron is inside a nested container (e.g. an existing
+          // actions span). Put fsBtn next to it inside that container
+          // so the existing layout doesn't break.
           collapseIcon.parentNode.insertBefore(fsBtn, collapseIcon);
         }
         
