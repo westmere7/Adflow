@@ -151,7 +151,7 @@ Optional Supabase-backed cloud sync, layered on top of the local-first model. An
 
 ### Architecture
 - **Core Technology** — 100% Vanilla JavaScript, HTML5, and CSS3. Zero framework overhead (No React/Vue/Angular).
-- **Total Application Size** — ~700 KB combined JS footprint across seven focused files. Classic `<script>` tags, no bundler, no build step.
+- **Total Application Size** — ~250 KB combined JS footprint (`script.js` + `auto-resize-engine.js`).
 - **DOM Rendering Strategy** — Direct DOM manipulation with dynamic `<iframe>` sandboxing for live ad previews.
 - **Asset Bundling** — Real-time client-side zipping via [JSZip 3.10](https://stuk.github.io/jszip/).
 - **Color Processing** — Native color integration via [Iro.js 5](https://iro.js.org/).
@@ -161,20 +161,9 @@ Optional Supabase-backed cloud sync, layered on top of the local-first model. An
 ```text
 RMIT-Adflow/
 ├── index.html                 # Application shell, splash screen, top-bar, panels
+├── script.js                  # Main app logic (state, render, modals, persistence, …)
+├── auto-resize-engine.js      # Rule-based resize engine — loaded before script.js
 ├── styles.css                 # UI styles, 5 named themes, responsive rules
-│
-│   # JS files (loaded in this order; classic <script> tags share global scope):
-├── auto-resize-engine.js      # Rule-based 9-role resize engine
-├── docs-content.js            # In-app docs (DOCS_SECTIONS) + changelog (CHANGELOG_DATA)
-├── auth-ui.js                 # Supabase auth + Cloud Projects + Team Spaces
-├── data-merge.js              # Live Data / Versions (CSV → ads)
-├── export-pipeline.js         # HTML5 ZIP + PNG export
-├── color-picker.js            # iro.js wrapper, gradient editor
-├── script.js                  # State, render, elements, link groups, masking,
-│                              #   frames, project save/load, splash boot, menus,
-│                              #   undo/redo, autosave, asset library, etc.
-├── font_assets.js             # Brand font base64 blobs (Museo / Bilo / Akkurat)
-│
 └── data/
     ├── version.txt            # Current app version (single line)
     ├── changelog.txt          # Human-readable changelog
@@ -185,9 +174,6 @@ RMIT-Adflow/
     │   └── favicon.*
     └── assets/                # Pre-loaded brand creative (scanned at startup)
 ```
-
-See `app_breakdown.md` §2 for the full file-routing table — which feature
-lives in which file, and the load-order rules for cross-file references.
 
 ### System Requirements
 - **Browser Compatibility** — Chromium-based browsers (Chrome 90+, Edge 90+) highly recommended for full API support (e.g., native Eyedropper). Firefox 88+ and Safari supported with feature fallbacks.

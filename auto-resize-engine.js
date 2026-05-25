@@ -16,7 +16,7 @@
 // available globally. This file does NOT depend on anything from script.js
 // at top-level evaluation — only function bodies reference script.js
 // globals (state, render, pushHistory, showCanvasNotification, uid,
-// getElementCategory, baseLayerLabel, applyLinkSync,
+// getElementCategory, baseLayerLabel, syncDefaultsForRole, applyLinkSync,
 // cleanupLinkGroups, measureButtonWidth, getActiveCanvas). By the time
 // any function runs, script.js has loaded and those are defined.
 //
