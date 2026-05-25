@@ -658,6 +658,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.41',
+    date: 'May 2026 — Engine v2.14',
+    items: [
+      'Brand Elements > Pixel Shape now registers as `main-image` (with `roleAuto: false` so auto-detect doesn\'t reclassify it). Was previously added as a plain pixel and got auto-tagged as `misc`, meaning auto-resize didn\'t treat it as the hero element on target canvases. customName set to "RMIT Pixel".',
+      'Both brand-pixel entry points (left-panel Brand Elements popup + canvas right-click Brand Elements submenu) now route through addBrandElement(\'pixel\').',
+      'autoAssignRole gets a more specific `type === pixel && name.includes("pixel")` check that returns main-image, positioned BEFORE the generic `name.includes("rmit")` rule. If a user resets the brand-pixel\'s role to auto, it\'ll still be classified as main-image instead of falling through to rmit-logo.'
+    ]
+  },
+  {
     version: 'v0.16.40',
     date: 'May 2026 — Engine v2.14',
     items: [

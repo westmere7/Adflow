@@ -177,6 +177,13 @@ function autoAssignRole(el, canvas) {
   // Name-based first (trust the user's layer name when present).
   if (name === 'rfwn' || name.includes('ready for')) return 'rfwn';
   if (name.includes('cricos') || name.includes('compliance')) return 'cricos';
+  // The RMIT Pixel brand shape — when added from Brand Elements its
+  // customName is "RMIT Pixel". Match this BEFORE the generic
+  // rmit/logo check below, otherwise "RMIT Pixel" → 'rmit-logo'
+  // (the customName contains "rmit") which is wrong for the focal
+  // hero element. Gated on `el.type === 'pixel'` so generic shapes
+  // with the word "pixel" in their name don't get mis-tagged.
+  if (el.type === 'pixel' && name.includes('pixel')) return 'main-image';
   if (name.includes('rmit') || name.includes('logo')) return 'rmit-logo';
   if (name === 'background' || name === 'bg' || name.includes('background image')) return 'background-image';
   if (name === 'heading' || name.includes('headline')) return 'heading';

@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.40 (Current) - May 2026 — Engine v2.14
+v0.16.41 (Current) - May 2026 — Engine v2.14
+- "Pixel Shape" added from the Brand Elements popup (left panel "+ Brand Elements" button) or from the canvas right-click "Brand Elements → Pixel Shape" submenu is now registered with `role: 'main-image'` and `roleAuto: false`. Previously it was added as a plain pixel via `addElement('pixel')` and got auto-classified as 'misc' (or 'background-image' if large), which meant auto-resize didn't treat it as the hero element on target canvases. customName is set to "RMIT Pixel" for clarity in the Layers panel.
+- Both entry points (Brand Elements popup at bottom of left panel + canvas context-menu "Brand Elements") now route through `addBrandElement('pixel')` for consistency.
+- Belt-and-braces: autoAssignRole gets a new `el.type === 'pixel' && name.includes('pixel')` check that returns 'main-image', positioned BEFORE the generic `name.includes('rmit')` rule. If a user ever resets the brand-pixel's role to auto, it'll still be re-detected as main-image (instead of falling through to 'rmit-logo' because the name contains "rmit"). Generic pixels from "Add Element → Pixel" are unaffected — their customName is empty so the new check doesn't fire.
+
+v0.16.40 - May 2026 — Engine v2.14
 - Fix: critical regression from v0.16.39. The comment block I added inside `generateExportHTML`'s embedded CSS contained backticks around `c.bgColor` — but that CSS is itself a JavaScript template literal (wrapped in backticks), so my inner backticks broke out of the template literal and turned the rest of the function into a JS parse error. Result: `export-pipeline.js` failed to load on app boot, `generateExportHTML` was undefined, both single-preview and full-preview canvases threw `ReferenceError` and rendered as a black workspace.
 - Replaced the offending backticks with plain quotes. `node -c` clean. Verified: full preview now renders all canvas frames + iframes correctly. The v0.16.39 fixes (transparent canvas, GPU compositing, clip-path, transparent body in export) are all intact — only the comment is rewritten.
 

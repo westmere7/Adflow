@@ -8439,7 +8439,7 @@ document.getElementById('btn-add-brand')?.addEventListener('click', (e) => {
       { label: 'RMIT Logo (white)', action: () => addBrandElement('logo_white') },
       { label: 'RMIT Logo (Full color)', action: () => addBrandElement('logo_full') },
       { label: 'RMIT Logo (Red Pixel)', action: () => addBrandElement('logo_red') },
-      { label: 'Pixel Shape', action: () => addElement('pixel') }
+      { label: 'Pixel Shape', action: () => addBrandElement('pixel') }
     ];
     
     items.forEach(item => {
@@ -8509,8 +8509,18 @@ function addBrandElement(type) {
     el = makeElement('image');
     el.customName = 'RMIT Logo (Red Pixel)';
     el.assetId = 'data/Elements/RMIT_RedPixel.svg';
+  } else if (type === 'pixel') {
+    // The RMIT Pixel brand shape is a hero/main-image element by
+    // design (it's the focal element on most banners). Mark its role
+    // explicitly with roleAuto:false so the auto-resize engine's
+    // role-detection sweep doesn't re-classify it as e.g. 'misc'
+    // based on aspect/area heuristics.
+    el = makeElement('pixel');
+    el.customName = 'RMIT Pixel';
+    el.role = 'main-image';
+    el.roleAuto = false;
   }
-  
+
   if (el) {
     c.elements.push(el);
     state.selectedElementId = el.id;
@@ -10301,7 +10311,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.40';
+  const currentVersion = 'v0.16.41';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10364,7 +10374,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.40</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.41</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10420,7 +10430,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.40</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.41</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -11608,7 +11618,7 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-brand-logowhite', () => addBrandElement('logo_white'));
   bind('ctx-brand-logofull', () => addBrandElement('logo_full'));
   bind('ctx-brand-logored', () => addBrandElement('logo_red'));
-  bind('ctx-brand-pixel', () => addElement('pixel'));
+  bind('ctx-brand-pixel', () => addBrandElement('pixel'));
   bind('ctx-canvas-preview', () => {
     state.singlePreviewId = (state.singlePreviewId === state.activeCanvasId) ? null : state.activeCanvasId;
     render();
