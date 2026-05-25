@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.14 (Current) - May 2026 — Engine v2.7
+v0.16.15 (Current) - May 2026 — Engine v2.7
+- Fixed a 1–2 second boot pause introduced by the v0.16.9 → v0.16.14 file split. With six new `<script src>` tags loading sequentially, each fetch had to complete before the next started — so the splash bar would visibly stall between phases on first load. Added `<link rel="preload" as="script">` tags at the top of the `<head>` for all seven local JS files. The browser now fetches all of them in parallel from the moment it parses the head, while the `<script>` tags at the end of body still execute in the same strict order they need for cross-file globals. Result: the splash now ramps through phases at roughly the same speed as the pre-refactor monolith.
+- No behaviour change beyond the speed-up. The seven JS files load in the same order and the same globals are exposed at the same call-times as before.
+
+v0.16.14 - May 2026 — Engine v2.7
 - Internal refactor: extracted the custom color picker (iro.js wrapper) into a new file `color-picker.js`. Moved the top-level picker state (iroPicker, currentCpKey, cpIsGradient, cpGradStops, cpActiveStop), gradient helpers (cpStopCss, cpBuildGradient, cpParseGradient, cpSyncGradientUI, cpRebuildStops, cpColorAtPos, cpAddStop, cpRemoveStop), and the public API — initColorPicker, renderPalettes, updateCurrentColor, emitColorUpdate, openColorPicker, closeColorPicker, syncColorPickerWithSelection — about 484 lines.
 - script.js dropped from 11,966 → 11,482 lines.
 - This completes the Option A refactor. Over five minor versions (v0.16.9 → v0.16.14), the script.js monolith has gone from 16,082 lines down to 11,482 lines — a 29% reduction. Pulled out into focused files: auto-resize-engine.js, docs-content.js, auth-ui.js, data-merge.js, export-pipeline.js, color-picker.js (plus the existing font_assets.js). Each file is independently node-checkable, has a header comment documenting its dependencies and load order, and depends on script.js globals only at call-time.

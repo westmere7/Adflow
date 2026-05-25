@@ -658,6 +658,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.15',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Fixed a 1–2 second boot pause introduced by the v0.16.9 → v0.16.14 file split. With six new `<script src>` tags loading sequentially, each fetch had to complete before the next started, so the splash bar would visibly stall between phases on first load. Added `<link rel="preload" as="script">` hints at the top of `<head>` for all seven local JS files — the browser now fetches them in parallel from the moment it parses the head, while the `<script>` tags at the end of body still execute in the strict order needed for cross-file globals. Splash now ramps through phases at roughly the same speed as the pre-refactor monolith.',
+      'No behaviour change beyond the speed-up. Same load order, same call-time globals.'
+    ]
+  },
+  {
     version: 'v0.16.14',
     date: 'May 2026 — Engine v2.7',
     items: [

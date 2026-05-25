@@ -6,6 +6,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RMIT Adflow</title>
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
+
+  <!-- Preload all local JS modules in parallel so the browser fetches them
+       concurrently while the six sequential <script> tags at the end of body
+       still execute in order. Without these, each <script src> blocks the
+       next, adding ~1–2 s to first-paint on a typical connection. -->
+  <link rel="preload" as="script" href="auto-resize-engine.js" />
+  <link rel="preload" as="script" href="docs-content.js" />
+  <link rel="preload" as="script" href="auth-ui.js" />
+  <link rel="preload" as="script" href="data-merge.js" />
+  <link rel="preload" as="script" href="export-pipeline.js" />
+  <link rel="preload" as="script" href="color-picker.js" />
+  <link rel="preload" as="script" href="script.js" />
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -552,7 +565,7 @@
         </div>
         <div class="workspace-footer" id="workspace-footer">
           <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
-          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.16.14</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.16.15</button>
         </div>
       </div>
     </div>
