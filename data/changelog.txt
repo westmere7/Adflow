@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.17 (Current) - May 2026 — Engine v2.7
+v0.16.18 (Current) - May 2026 — Engine v2.7
+- Right-clicking the canvas header (the "W × H" dimensions label floating above each canvas in the workspace) now opens the same context menu as right-clicking the canvas surface with no element selected — Preview, Auto-Resize, Add Element submenu, Change BG color, Export, Clear all, etc. Previously this fell through to the workspace background menu (just Snapping / Rulers / Settings).
+- Fix in the global contextmenu handler in script.js: after `closest('.canvas')` returns null, fall back to `closest('.canvas-header')` and resolve to the sibling `.canvas` via the parent `.canvas-frame`. No effect on element right-clicks or left-panel canvas list right-clicks.
+
+v0.16.17 - May 2026 — Engine v2.7
 - New "Clear all" option: "Other canvases" wipes every canvas EXCEPT the active one. Sits between "Current canvas" and "All canvases" in the right-click context menu submenu, and as a middle red-bordered button in the canvas Properties panel's Clear-all row.
 - The active canvas (its elements, selection, and any link-group memberships on it) stays untouched. Link groups whose only remaining members were on wiped canvases are automatically pruned via cleanupLinkGroups. If there's only one canvas in the project, the action shows a "No other canvases to clear" toast instead of prompting.
 - Properties-panel button labels shortened from "Current canvas" / "All canvases" to "Current" / "Others" / "All" so three buttons fit comfortably in the narrow right panel; tooltips on hover still spell out the full scope.

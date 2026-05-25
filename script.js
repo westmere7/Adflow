@@ -10049,7 +10049,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.17';
+  const currentVersion = 'v0.16.18';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10112,7 +10112,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.17</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.18</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10168,7 +10168,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.17</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.18</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -10619,8 +10619,20 @@ document.addEventListener('contextmenu', (e) => {
 
   const menu = document.getElementById('ctx-menu');
   const elNode = e.target.closest('.el');
-  const canvasNode = e.target.closest('.canvas');
+  let canvasNode = e.target.closest('.canvas');
   const canvasItemNode = e.target.closest('.canvas-item');
+  // Right-clicking the canvas-header (the "300 × 250" dimensions label
+  // floating above each canvas frame) should behave the same as right-
+  // clicking the canvas surface with no element selected. The header is a
+  // sibling of `.canvas`, not an ancestor, so closest('.canvas') misses
+  // it — resolve via the parent .canvas-frame instead.
+  if (!canvasNode && !elNode) {
+    const headerNode = e.target.closest('.canvas-header');
+    if (headerNode) {
+      const frame = headerNode.closest('.canvas-frame');
+      if (frame) canvasNode = frame.querySelector('.canvas');
+    }
+  }
 
   const svgWrap = (svg, text) => `<div style="display:flex; align-items:center; gap:8px;">${svg}${text}</div>`;
   const brandSvg = `<svg viewBox="0 0 578.52 556.76" fill="currentColor" style="width:14px;height:14px;"><path d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg>`;

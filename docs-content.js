@@ -658,6 +658,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.18',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Right-clicking the canvas header (the "W × H" dimensions label floating above each canvas) now opens the same context menu as right-clicking the canvas surface — Preview, Auto-Resize, Add Element, Change BG color, Export, Clear all, etc. Previously this fell through to the workspace background menu.',
+      'Fix in the global contextmenu handler: after closest(\'.canvas\') returns null, fall back to closest(\'.canvas-header\') and resolve to the sibling .canvas via the parent .canvas-frame. No effect on element right-clicks or left-panel canvas list right-clicks.'
+    ]
+  },
+  {
     version: 'v0.16.17',
     date: 'May 2026 — Engine v2.7',
     items: [
