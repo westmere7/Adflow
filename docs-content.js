@@ -658,6 +658,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.16',
+    date: 'May 2026 — Engine v2.7',
+    items: [
+      'Removed the fake "AI" progress overlay from Auto-Resize entirely. The terminal-styled pipeline panel with the spinner, scripted pid + UTC header, and 10 random-weighted status lines is gone — it was pure theatre gating the render for 2–3 seconds while placement had already completed. Results now render instantly when Auto-Resize finishes.',
+      'The `showFakeAutoResizeProgress` function and the `showProgress` setting are removed. The "Show technical progress overlay" checkbox in the Auto-Resize Settings modal is gone, and the "Show canvas selection dialogue" hint text no longer references it.',
+      'Existing projects with `showProgress` keys in their autosave blobs get those keys quietly stripped on load — no migration banner, no data loss elsewhere.'
+    ]
+  },
+  {
     version: 'v0.16.15',
     date: 'May 2026 — Engine v2.7',
     items: [
