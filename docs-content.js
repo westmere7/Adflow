@@ -658,6 +658,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.51',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Mask + image-beneath disappearing on a different machine — real fix this time. v0.16.50\'s URL-hash hypothesis was wrong; the actual cause is that the SVG `<mask>` defs lived as a CHILD of the masked image wrapper, and several browser / DOM-state combinations fail to resolve `url(#fragment)` references to mask defs nested inside the element being masked. The image goes fully clipped (mask=nothing-visible) and the mask body is `visibility:hidden` by design, so both disappear together — exactly the reported symptom.',
+      'Editor (`script.js`): every mask `<mask>` element is now hoisted under a single body-level `<svg id="adflow-mask-defs">` container, created on first use and cleared at the start of each `render()` so stale masks don\'t accumulate. `url(#mask-id)` now resolves to a body-level element which every browser handles consistently.',
+      'Export (`export-pipeline.js`): collected mask defs during element rendering and emitted them inside a single body-level `<svg id="adflow-mask-defs">` right after `<body>`. The exported ad has the same body-level mask structure — no nesting inside the masked img wrapper.'
+    ]
+  },
+  {
     version: 'v0.16.50',
     date: 'May 2026 — Engine v2.16',
     items: [

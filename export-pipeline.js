@@ -350,6 +350,12 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   if (!c) return '';
   const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
+  // Collected SVG `<mask>` defs go into a single body-level container
+  // (v0.16.51) — nesting them inside the masked element causes
+  // url(#fragment) lookup failures in some browsers. See the editor
+  // equivalent in script.js elementNode for the full rationale.
+  const collectedMaskDefs = [];
+
   const renderEl = (el) => {
     if (el.hidden) return '';
     // Mask layer: not rendered visibly — its geometry is baked into the SVG
@@ -501,7 +507,6 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       // Layer-based mask: if there's an active mask shape directly above this
       // image, build an inline SVG mask + apply CSS mask. Static snapshot of
       // the mask's current geometry; mask animations aren't replicated here.
-      let maskSvg = '';
       let maskCss = '';
       const maskAbove = findMaskAbove(c, el);
       if (maskAbove) {
@@ -532,16 +537,17 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         const entryStyle = mAnim.entryConfig ? `style="${originStyle}${mAnim.entryConfig}${mAnim.entryVars}"` : '';
         const effStyle = mAnim.effConfig ? `style="${originStyle}${mAnim.effConfig}${mAnim.effVars}"` : '';
         const animatedMaskShape = `<g class="mask-g-entry" ${entryStyle}><g class="mask-g-eff" ${effStyle}>${maskShape}</g></g>`;
-        maskSvg = `<svg width="0" height="0" style="position:absolute;left:0;top:0;pointer-events:none;"><defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask></defs></svg>`;
+        // Hoist the mask defs to body level instead of nesting inside the
+        // image wrapper. Same fix as the editor (v0.16.51) — nested SVG
+        // mask defs cause `url(#fragment)` lookup failures in some
+        // browser / DOM-state combinations.
+        collectedMaskDefs.push(`<mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask>`);
         // Output both shorthand (`mask`) and longhand (`mask-image`) for
         // each vendor. Firefox occasionally only honours `mask-image`
-        // for SVG fragment refs; Chrome/Safari accept either. Belt-
-        // and-braces costs ~30 bytes per masked image and unblocks the
-        // ad rendering correctly across every browser the export might
-        // be served in.
+        // for SVG fragment refs; Chrome/Safari accept either.
         maskCss = `-webkit-mask:url(#${maskId});mask:url(#${maskId});-webkit-mask-image:url(#${maskId});mask-image:url(#${maskId});`;
       }
-      return `    <div style="${wrapStyle}${maskCss}">${maskSvg}${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
+      return `    <div style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
     }
     return '';
   };
@@ -688,6 +694,9 @@ ${fontFaceRules.join('\n')}
 </style>
 </head>
 <body>
+  ${collectedMaskDefs.length
+    ? `<svg id="adflow-mask-defs" width="0" height="0" aria-hidden="true" style="position:fixed;left:0;top:0;width:0;height:0;pointer-events:none;">${collectedMaskDefs.join('')}</svg>`
+    : ''}
   <div id="ad">
     <div id="layer-bot" style="position:absolute;inset:0;pointer-events:none;z-index:1;">
 ${elsBot}
