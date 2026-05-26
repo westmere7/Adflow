@@ -658,6 +658,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.50',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Mask + image-beneath no longer disappear when a saved project is opened on a different machine. Root cause: the editor\'s CSS mask reference was `url(#mask-id)`, which the browser resolves against `document.baseURI` — on machines where `location.href` carries an extra hash fragment (Supabase OAuth callbacks leaving `#access_token=…`, Netlify deploy-preview links, etc.) the fragment-only URL aimed at a "document identity" that didn\'t match the one holding the inline SVG `<mask>` defs, so the lookup failed and the image went fully mask-clipped to nothing. The mask body is `visibility:hidden` by design (the user sees the image\'s masked silhouette), so when the silhouette goes empty BOTH the image and the mask vanish — exactly the reported symptom. Removing "Use as mask" restored visibility by clearing the broken CSS mask.',
+      'Editor fix (`script.js`): anchor the mask URL to `location.href.split(\'#\')[0]` so the reference is always the current document with no inherited hash. Set both `mask` shorthand and `mask-image` longhand (plus `-webkit-` siblings) for cross-browser coverage.',
+      'Export fix (`export-pipeline.js`): output the longhand `mask-image` / `-webkit-mask-image` alongside the shorthand. The exported ad runs in its own document so it can\'t bake the editor\'s URL, but the longhand-also coverage handles the Firefox-prefers-mask-image case that\'s the most likely browser-side cause in ad-serving environments.'
+    ]
+  },
+  {
     version: 'v0.16.49',
     date: 'May 2026 — Engine v2.16',
     items: [

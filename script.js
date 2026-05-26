@@ -2974,8 +2974,23 @@ function elementNode(el, canvasCtx) {
       svg.style.cssText = 'position:absolute; left:0; top:0; pointer-events:none;';
       svg.innerHTML = `<defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask></defs>`;
       d.appendChild(svg);
-      d.style.setProperty('-webkit-mask', `url(#${maskId})`);
-      d.style.setProperty('mask', `url(#${maskId})`);
+      // Fully-qualified mask URL (v0.16.50): the bare `url(#mask-id)` form
+      // is resolved against the document's base URL — which on some
+      // browsers and states (Supabase OAuth callbacks leaving
+      // `#access_token=…` in location.href, Netlify deploy-preview URLs,
+      // a `<base>` tag, etc.) ends up pointing at a fragment in a
+      // different "document" identity, the mask lookup fails, and the
+      // image goes fully clipped (mask=nothing-visible). Anchoring the
+      // URL to the explicit, hash-stripped document href makes the
+      // reference bullet-proof. Both `mask` shorthand and `mask-image`
+      // longhand are set for cross-browser coverage — Firefox can be
+      // picky about which form it honours for SVG fragment refs.
+      const baseHref = location.href.split('#')[0];
+      const maskRef = `url("${baseHref}#${maskId}")`;
+      d.style.setProperty('-webkit-mask', maskRef);
+      d.style.setProperty('mask', maskRef);
+      d.style.setProperty('-webkit-mask-image', maskRef);
+      d.style.setProperty('mask-image', maskRef);
     }
   }
 
@@ -10389,7 +10404,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.49';
+  const currentVersion = 'v0.16.50';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10452,7 +10467,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.49</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.50</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10508,7 +10523,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.49</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.50</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -11513,7 +11528,7 @@ document.addEventListener('contextmenu', (e) => {
       return;
     }
     el.isMask = true;
-    // Mask layers are allowed in link groups (v0.16.49). Mask geometry on
+    // Mask layers are allowed in link groups (v0.16.50). Mask geometry on
     // auto-resize is handled by the engine's mask post-pass independent
     // of link-group sync, so the prior strip-linkGroupId-on-mask gate
     // was overly defensive. We still drop dynamic data because masks

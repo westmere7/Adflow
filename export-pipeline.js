@@ -533,7 +533,13 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         const effStyle = mAnim.effConfig ? `style="${originStyle}${mAnim.effConfig}${mAnim.effVars}"` : '';
         const animatedMaskShape = `<g class="mask-g-entry" ${entryStyle}><g class="mask-g-eff" ${effStyle}>${maskShape}</g></g>`;
         maskSvg = `<svg width="0" height="0" style="position:absolute;left:0;top:0;pointer-events:none;"><defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask></defs></svg>`;
-        maskCss = `-webkit-mask:url(#${maskId});mask:url(#${maskId});`;
+        // Output both shorthand (`mask`) and longhand (`mask-image`) for
+        // each vendor. Firefox occasionally only honours `mask-image`
+        // for SVG fragment refs; Chrome/Safari accept either. Belt-
+        // and-braces costs ~30 bytes per masked image and unblocks the
+        // ad rendering correctly across every browser the export might
+        // be served in.
+        maskCss = `-webkit-mask:url(#${maskId});mask:url(#${maskId});-webkit-mask-image:url(#${maskId});mask-image:url(#${maskId});`;
       }
       return `    <div style="${wrapStyle}${maskCss}">${maskSvg}${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
     }
