@@ -658,24 +658,6 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
-    version: 'v0.16.51',
-    date: 'May 2026 — Engine v2.16',
-    items: [
-      'Mask + image-beneath disappearing on a different machine — real fix this time. v0.16.50\'s URL-hash hypothesis was wrong; the actual cause is that the SVG `<mask>` defs lived as a CHILD of the masked image wrapper, and several browser / DOM-state combinations fail to resolve `url(#fragment)` references to mask defs nested inside the element being masked. The image goes fully clipped (mask=nothing-visible) and the mask body is `visibility:hidden` by design, so both disappear together — exactly the reported symptom.',
-      'Editor (`script.js`): every mask `<mask>` element is now hoisted under a single body-level `<svg id="adflow-mask-defs">` container, created on first use and cleared at the start of each `render()` so stale masks don\'t accumulate. `url(#mask-id)` now resolves to a body-level element which every browser handles consistently.',
-      'Export (`export-pipeline.js`): collected mask defs during element rendering and emitted them inside a single body-level `<svg id="adflow-mask-defs">` right after `<body>`. The exported ad has the same body-level mask structure — no nesting inside the masked img wrapper.'
-    ]
-  },
-  {
-    version: 'v0.16.50',
-    date: 'May 2026 — Engine v2.16',
-    items: [
-      'Mask + image-beneath no longer disappear when a saved project is opened on a different machine. Root cause: the editor\'s CSS mask reference was `url(#mask-id)`, which the browser resolves against `document.baseURI` — on machines where `location.href` carries an extra hash fragment (Supabase OAuth callbacks leaving `#access_token=…`, Netlify deploy-preview links, etc.) the fragment-only URL aimed at a "document identity" that didn\'t match the one holding the inline SVG `<mask>` defs, so the lookup failed and the image went fully mask-clipped to nothing. The mask body is `visibility:hidden` by design (the user sees the image\'s masked silhouette), so when the silhouette goes empty BOTH the image and the mask vanish — exactly the reported symptom. Removing "Use as mask" restored visibility by clearing the broken CSS mask.',
-      'Editor fix (`script.js`): anchor the mask URL to `location.href.split(\'#\')[0]` so the reference is always the current document with no inherited hash. Set both `mask` shorthand and `mask-image` longhand (plus `-webkit-` siblings) for cross-browser coverage.',
-      'Export fix (`export-pipeline.js`): output the longhand `mask-image` / `-webkit-mask-image` alongside the shorthand. The exported ad runs in its own document so it can\'t bake the editor\'s URL, but the longhand-also coverage handles the Firefox-prefers-mask-image case that\'s the most likely browser-side cause in ad-serving environments.'
-    ]
-  },
-  {
     version: 'v0.16.49',
     date: 'May 2026 — Engine v2.16',
     items: [
