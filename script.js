@@ -1459,12 +1459,6 @@ function render(skipProps = false) {
   if (state.canvases) {
     state.canvases.forEach(sanitizeMasks);
   }
-  // v0.16.50: clear the body-level mask defs container before this
-  // render's elementNode calls repopulate it. Without the wipe, masks
-  // accumulate across renders (since elements get rebuilt fresh each
-  // time but the container persists).
-  const _maskDefs = document.getElementById('adflow-mask-defs');
-  if (_maskDefs) _maskDefs.innerHTML = '';
   // Lazy role auto-assignment — fills el.role on any element missing it.
   // Short-circuits per-element when role is already set, so the cost is
   // a single ID-existence check after the first run.
@@ -2972,51 +2966,16 @@ function elementNode(el, canvasCtx) {
       const entryStyle = `style="${originStyle}${mAnim.entryVars || ''}"`;
       const effStyle = `style="${originStyle}${mAnim.effVars || ''}"`;
       const animatedMaskShape = `<g class="mask-g-entry" ${entryStyle}><g class="mask-g-eff" ${effStyle}>${maskShape}</g></g>`;
-      // v0.16.50: SVG mask defs hoisted to a body-level container, with
-      // a non-zero internal viewport, and both shorthand + longhand CSS
-      // properties set. Pre-fix the SVG `<defs><mask>` lived inside the
-      // masked image wrapper (`d.appendChild(svg)`), the SVG had
-      // `width="0" height="0"`, and only `mask` / `-webkit-mask`
-      // shorthand were applied. Three independently-real issues with
-      // that combo, any one of which can break mask rendering on
-      // browsers other than the one that saved the project:
-      //   1. Nested defs — some Chromium versions fail to resolve
-      //      `url(#fragment)` when the referenced element is a
-      //      descendant of the element being masked. Per spec the
-      //      lookup is document-wide; in practice stacking-context /
-      //      isolation properties on the masked div (it has position,
-      //      transform, opacity all set inline) trip the resolver.
-      //   2. Zero-width SVG — Safari / older WebKit refuse to paint
-      //      mask refs from an SVG that has no viewport.
-      //   3. Firefox + `mask` shorthand — historically the shorthand
-      //      didn't propagate `url(#id)` to the active `mask-image`
-      //      paint source. Setting `mask-image` longhand explicitly
-      //      side-steps the issue.
-      // Fix: one body-level `<svg id="adflow-mask-defs" width="0"
-      // height="0">` container holds every mask `<mask>` element, set
-      // an explicit viewBox so the SVG establishes a paint context
-      // even though its layout box is collapsed, and set BOTH `mask` +
-      // `mask-image` (and `-webkit-` siblings) on the masked div.
-      // Container is cleared at the start of each render() pass so
-      // stale masks from previous renders don't accumulate.
-      let maskDefsSvg = document.getElementById('adflow-mask-defs');
-      if (!maskDefsSvg) {
-        maskDefsSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        maskDefsSvg.id = 'adflow-mask-defs';
-        maskDefsSvg.setAttribute('width', '1');
-        maskDefsSvg.setAttribute('height', '1');
-        maskDefsSvg.setAttribute('viewBox', '0 0 1 1');
-        maskDefsSvg.setAttribute('aria-hidden', 'true');
-        maskDefsSvg.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none;';
-        document.body.appendChild(maskDefsSvg);
-      }
-      maskDefsSvg.insertAdjacentHTML('beforeend',
-        `<mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask>`);
-      const maskUrl = `url(#${maskId})`;
-      d.style.setProperty('-webkit-mask', maskUrl);
-      d.style.setProperty('mask', maskUrl);
-      d.style.setProperty('-webkit-mask-image', maskUrl);
-      d.style.setProperty('mask-image', maskUrl);
+      // Inline SVG defs sit *inside* the image wrapper — same DOM scope as the
+      // image, scoped per-render. width:0/height:0 so it doesn't add a visible box.
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('width', '0');
+      svg.setAttribute('height', '0');
+      svg.style.cssText = 'position:absolute; left:0; top:0; pointer-events:none;';
+      svg.innerHTML = `<defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask></defs>`;
+      d.appendChild(svg);
+      d.style.setProperty('-webkit-mask', `url(#${maskId})`);
+      d.style.setProperty('mask', `url(#${maskId})`);
     }
   }
 
@@ -10430,7 +10389,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.50';
+  const currentVersion = 'v0.16.49';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10493,7 +10452,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.50</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.49</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10549,7 +10508,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.50</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.49</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -11554,7 +11513,7 @@ document.addEventListener('contextmenu', (e) => {
       return;
     }
     el.isMask = true;
-    // Mask layers are allowed in link groups (v0.16.50). Mask geometry on
+    // Mask layers are allowed in link groups (v0.16.49). Mask geometry on
     // auto-resize is handled by the engine's mask post-pass independent
     // of link-group sync, so the prior strip-linkGroupId-on-mask gate
     // was overly defensive. We still drop dynamic data because masks

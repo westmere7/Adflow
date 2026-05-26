@@ -350,13 +350,6 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   if (!c) return '';
   const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
-  // v0.16.50: hoist mask defs to body level (see script.js elementNode
-  // for the full rationale — Chromium nested-defs bug, Safari zero-
-  // size-SVG bug, Firefox mask-shorthand bug, all dodged by parking
-  // every `<mask>` under one body-level `<svg>` and setting both
-  // shorthand + longhand CSS).
-  const collectedMaskDefs = [];
-
   const renderEl = (el) => {
     if (el.hidden) return '';
     // Mask layer: not rendered visibly — its geometry is baked into the SVG
@@ -508,6 +501,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       // Layer-based mask: if there's an active mask shape directly above this
       // image, build an inline SVG mask + apply CSS mask. Static snapshot of
       // the mask's current geometry; mask animations aren't replicated here.
+      let maskSvg = '';
       let maskCss = '';
       const maskAbove = findMaskAbove(c, el);
       if (maskAbove) {
@@ -538,13 +532,10 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         const entryStyle = mAnim.entryConfig ? `style="${originStyle}${mAnim.entryConfig}${mAnim.entryVars}"` : '';
         const effStyle = mAnim.effConfig ? `style="${originStyle}${mAnim.effConfig}${mAnim.effVars}"` : '';
         const animatedMaskShape = `<g class="mask-g-entry" ${entryStyle}><g class="mask-g-eff" ${effStyle}>${maskShape}</g></g>`;
-        collectedMaskDefs.push(`<mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask>`);
-        // Both shorthand and longhand on both vendor prefixes — covers
-        // Firefox (longhand needed), Chrome/Edge (either works), Safari
-        // (-webkit-mask-image preferred on older versions).
-        maskCss = `-webkit-mask:url(#${maskId});mask:url(#${maskId});-webkit-mask-image:url(#${maskId});mask-image:url(#${maskId});`;
+        maskSvg = `<svg width="0" height="0" style="position:absolute;left:0;top:0;pointer-events:none;"><defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask></defs></svg>`;
+        maskCss = `-webkit-mask:url(#${maskId});mask:url(#${maskId});`;
       }
-      return `    <div style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
+      return `    <div style="${wrapStyle}${maskCss}">${maskSvg}${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
     }
     return '';
   };
@@ -691,9 +682,6 @@ ${fontFaceRules.join('\n')}
 </style>
 </head>
 <body>
-  ${collectedMaskDefs.length
-    ? `<svg id="adflow-mask-defs" width="1" height="1" viewBox="0 0 1 1" aria-hidden="true" style="position:fixed;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none;">${collectedMaskDefs.join('')}</svg>`
-    : ''}
   <div id="ad">
     <div id="layer-bot" style="position:absolute;inset:0;pointer-events:none;z-index:1;">
 ${elsBot}

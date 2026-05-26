@@ -658,16 +658,6 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
-    version: 'v0.16.50',
-    date: 'May 2026 — Engine v2.16',
-    items: [
-      'Mask + image-beneath disappearing when a saved project is opened on a different browser / machine — fixed. Three independently-real browser issues all conspired: (1) Chromium occasionally fails `url(#fragment)` resolution when the SVG defs is a descendant of the masked element (which has position/transform/opacity isolation), (2) WebKit refuses to paint mask refs from a zero-size SVG, (3) Firefox doesn\'t propagate `url(#id)` from the `mask` shorthand to the active `mask-image` paint source. Any one of these triggers the symptom on a machine the project wasn\'t originally edited on.',
-      'Editor (`script.js`): every `<mask>` is now parked under a single body-level `<svg id="adflow-mask-defs" width="1" height="1" viewBox="0 0 1 1" style="…width:0;height:0;overflow:hidden…">` container — non-zero SVG attrs establish a paint context (Safari), CSS sizing collapses the layout box, body-level location dodges nested-defs scope (Chromium). Container is cleared at the start of each `render()` so stale masks don\'t accumulate. CSS `mask` shorthand AND `mask-image` longhand (plus `-webkit-` siblings) are both set for Firefox/Chrome/Safari coverage.',
-      'Export (`export-pipeline.js`): mask defs are collected during element rendering and emitted as one body-level `<svg id="adflow-mask-defs">` right after `<body>` in exported HTML, with the same belt-and-braces CSS. Exported HTML5 ads now render masks correctly across every browser the ad might be served in.',
-      'Symptom recap: mask + image both appear invisible (mask body is `visibility:hidden` by design; image is fully clipped because the mask URL didn\'t resolve). Removing "Use as mask" used to be the only workaround. v0.16.50 makes the mask resolve correctly regardless of which browser opens the file.'
-    ]
-  },
-  {
     version: 'v0.16.49',
     date: 'May 2026 — Engine v2.16',
     items: [
