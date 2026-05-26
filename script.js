@@ -2594,6 +2594,170 @@ function svgFillForCssColor(value, idSeed) {
   return { defs, fillAttr: `url(#${id})` };
 }
 
+// ----- Mask clip-path helpers (v0.16.50) -------------------------------------
+// Adflow used to mask an image via inline SVG `<mask>` + CSS `mask: url(#…)`.
+// That works on the browser that saved the project but is browser-flaky for
+// every other reader because CSS fragment-URL resolution against an SVG mask
+// is the most brittle paint operation a browser has (Chromium nested-defs
+// scope, Safari zero-size-SVG paint context, Firefox shorthand-not-
+// propagating-to-mask-image, etc — all reproducible in the wild). The new
+// system clips the image with CSS `clip-path` using INLINE shape functions
+// (`inset()`, `ellipse()`, `polygon()`, `path()`) — no fragment URL, no SVG
+// defs, no per-browser quirks. Same data model (`isMask: true` + shape
+// geometry + image-below pairing), same visual result for the binary
+// hard-edged clips Adflow actually uses.
+function _maskRotPt(x, y, cx, cy, rotDeg) {
+  if (!rotDeg) return [x, y];
+  const rad = rotDeg * Math.PI / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const dx = x - cx, dy = y - cy;
+  return [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos];
+}
+function _fmtMask(v) {
+  // Trim near-zero, otherwise round to 3 decimals — keeps the clip-path
+  // string short while staying sub-pixel precise.
+  if (Math.abs(v) < 0.001) return 0;
+  return Math.round(v * 1000) / 1000;
+}
+// Compute the CSS clip-path string that clips the image element `image` to
+// the mask shape `mask`. Coordinates are in the image's local CSS-pixel
+// box (origin at the image's top-left).
+function buildMaskClipPath(mask, image) {
+  const relX = (mask.x + mask.width / 2) - (image.x + image.width / 2);
+  const relY = (mask.y + mask.height / 2) - (image.y + image.height / 2);
+  const mw = Math.max(1, mask.width);
+  const mh = Math.max(1, mask.height);
+  const tx = relX + image.width / 2 - mw / 2;
+  const ty = relY + image.height / 2 - mh / 2;
+  const rot = mask.rotation || 0;
+  const cx = tx + mw / 2;
+  const cy = ty + mh / 2;
+  const f = _fmtMask;
+
+  if (mask.type === 'rect') {
+    const r = mask.radius || 0;
+    if (rot === 0) {
+      // Native rounded rect — inset() supports the rx/ry round modifier.
+      const right = image.width - tx - mw;
+      const bottom = image.height - ty - mh;
+      return `inset(${f(ty)}px ${f(right)}px ${f(bottom)}px ${f(tx)}px round ${f(r)}px)`;
+    }
+    // Rotated rect → polygon with 4 rotated corners. Rounded corners are
+    // dropped in this fallback (polygon() can't express arcs); a rotated
+    // rect with non-zero radius is an unusual mask anyway.
+    const c = [
+      _maskRotPt(tx, ty, cx, cy, rot),
+      _maskRotPt(tx + mw, ty, cx, cy, rot),
+      _maskRotPt(tx + mw, ty + mh, cx, cy, rot),
+      _maskRotPt(tx, ty + mh, cx, cy, rot)
+    ];
+    return `polygon(${c.map(p => `${f(p[0])}px ${f(p[1])}px`).join(', ')})`;
+  }
+
+  if (mask.type === 'circle') {
+    if (rot === 0 || mw === mh) {
+      // Rotated circle (mw === mh) looks identical to unrotated, so skip
+      // the polygon path for that case.
+      return `ellipse(${f(mw/2)}px ${f(mh/2)}px at ${f(cx)}px ${f(cy)}px)`;
+    }
+    // Rotated non-circular ellipse → 36-point polygon approximation.
+    const N = 36;
+    const pts = [];
+    for (let i = 0; i < N; i++) {
+      const t = (i / N) * 2 * Math.PI;
+      const px = cx + (mw/2) * Math.cos(t);
+      const py = cy + (mh/2) * Math.sin(t);
+      pts.push(_maskRotPt(px, py, cx, cy, rot));
+    }
+    return `polygon(${pts.map(p => `${f(p[0])}px ${f(p[1])}px`).join(', ')})`;
+  }
+
+  if (mask.type === 'pixel') {
+    const sx = mw / 578.52;
+    const sy = mh / 556.76;
+    // SINGLE quotes around the path data so the value is embeddable
+    // inside an HTML `style="…"` attribute without escaping. Double
+    // quotes would close the attribute prematurely on the first `"`
+    // after `path(`, leaving the clip-path silently inactive.
+    return `path('${_buildPixelClipPath(sx, sy, tx, ty, rot, cx, cy)}')`;
+  }
+
+  return 'none';
+}
+// Source pixel path (in 578.52×556.76 viewBox):
+//   M290.78,0 h-74.15 v60.23 h-123.75 v125.78 H0 v184.74 h92.88 v125.78
+//   h123.5 v60.23 h65.55 c152.85,0,287.74-123.5,287.74-277.62
+//   S444.14,0,290.78,0 (implicit Z)
+// The non-rotated case keeps the original command structure and just bakes
+// scale + translate into each coord — shorter output. The rotated case
+// walks the path in absolute coords, rotates each, and emits absolute L/C
+// commands (relative deltas don't survive rotation).
+function _buildPixelClipPath(sx, sy, tx, ty, rot, cx, cy) {
+  const f = _fmtMask;
+  if (!rot) {
+    return [
+      `M${f(290.78 * sx + tx)},${f(0 * sy + ty)}`,
+      `h${f(-74.15 * sx)}`,
+      `v${f(60.23 * sy)}`,
+      `h${f(-123.75 * sx)}`,
+      `v${f(125.78 * sy)}`,
+      `H${f(0 * sx + tx)}`,
+      `v${f(184.74 * sy)}`,
+      `h${f(92.88 * sx)}`,
+      `v${f(125.78 * sy)}`,
+      `h${f(123.5 * sx)}`,
+      `v${f(60.23 * sy)}`,
+      `h${f(65.55 * sx)}`,
+      `c${f(152.85 * sx)},${f(0)},${f(287.74 * sx)},${f(-123.5 * sy)},${f(287.74 * sx)},${f(-277.62 * sy)}`,
+      `S${f(444.14 * sx + tx)},${f(0 * sy + ty)},${f(290.78 * sx + tx)},${f(0 * sy + ty)}`,
+      'Z'
+    ].join(' ');
+  }
+  // Rotation path — walk the source in absolute coords, rotate each
+  // emitted point, and produce absolute L / C commands (relative h/v/c
+  // don't survive rotation since deltas would need a per-segment
+  // rotation matrix).
+  let x = 290.78 * sx + tx, y = 0 * sy + ty;
+  const out = [];
+  const rot1 = (px, py) => _maskRotPt(px, py, cx, cy, rot);
+  const emitL = (nx, ny) => {
+    x = nx; y = ny;
+    const [rx, ry] = rot1(x, y);
+    out.push(`L${f(rx)},${f(ry)}`);
+  };
+  const [m0x, m0y] = rot1(x, y);
+  out.push(`M${f(m0x)},${f(m0y)}`);
+  emitL(x + -74.15 * sx, y);
+  emitL(x, y + 60.23 * sy);
+  emitL(x + -123.75 * sx, y);
+  emitL(x, y + 125.78 * sy);
+  emitL(0 * sx + tx, y);
+  emitL(x, y + 184.74 * sy);
+  emitL(x + 92.88 * sx, y);
+  emitL(x, y + 125.78 * sy);
+  emitL(x + 123.5 * sx, y);
+  emitL(x, y + 60.23 * sy);
+  emitL(x + 65.55 * sx, y);
+  // Relative cubic: c 152.85,0, 287.74,-123.5, 287.74,-277.62
+  const cp1 = rot1(x + 152.85 * sx, y + 0 * sy);
+  const cp2 = rot1(x + 287.74 * sx, y + -123.5 * sy);
+  const endC = rot1(x + 287.74 * sx, y + -277.62 * sy);
+  x += 287.74 * sx; y += -277.62 * sy;
+  out.push(`C${f(cp1[0])},${f(cp1[1])},${f(cp2[0])},${f(cp2[1])},${f(endC[0])},${f(endC[1])}`);
+  // Absolute smooth cubic: S 444.14,0, 290.78,0.
+  // S's first control point is the reflection of the previous cubic's
+  // cp2 about the current point: cp1S = 2*current - prevCp2. Rotation is
+  // linear about (cx, cy) so the identity holds in rotated abs coords:
+  // 2*rot(p) - rot(q) === rot(2p - q). So we can compute cp1S directly
+  // in rotated space.
+  const cp1S = [2 * endC[0] - cp2[0], 2 * endC[1] - cp2[1]];
+  const cp2S = rot1(444.14 * sx + tx, 0 * sy + ty);
+  const endS = rot1(290.78 * sx + tx, 0 * sy + ty);
+  out.push(`C${f(cp1S[0])},${f(cp1S[1])},${f(cp2S[0])},${f(cp2S[1])},${f(endS[0])},${f(endS[1])}`);
+  out.push('Z');
+  return out.join(' ');
+}
+
 function elementNode(el, canvasCtx) {
   const d = document.createElement('div');
   d.className = 'el';
@@ -2927,55 +3091,20 @@ function elementNode(el, canvasCtx) {
     });
   }
 
-  // Image masking: when the IMAGE has an active mask layer directly above it,
-  // build an inline SVG mask + apply CSS mask: url(...). The SVG mask shape
-  // mirrors the mask element's local geometry (so animations on the mask
-  // shape inside the SVG drive the masking in real time).
+  // Image masking (v0.16.50 revamp): clip the image with CSS `clip-path`
+  // using inline shape functions (`inset`, `ellipse`, `polygon`, `path`).
+  // Replaces the old inline-SVG `<mask>` + `mask: url(#…)` approach which
+  // was browser-flaky any time the file was opened on a browser other
+  // than the one that saved it. See `buildMaskClipPath` for the full
+  // rationale. Same data model, same visual result — every shape Adflow
+  // supports (rect, circle, pixel) maps cleanly to a clip-path inline
+  // shape, including non-zero rotation.
   if (el.type === 'image' && canvasCtx) {
     const maskAbove = findMaskAbove(canvasCtx, el);
     if (maskAbove) {
-      const m = maskAbove;
-      // Position the mask shape inside the SVG in the IMAGE's local coords.
-      const relX = (m.x + m.width / 2) - (el.x + el.width / 2);
-      const relY = (m.y + m.height / 2) - (el.y + el.height / 2);
-      const mw = Math.max(1, m.width);
-      const mh = Math.max(1, m.height);
-      let maskShape = '';
-      const rot = m.rotation || 0;
-      const tx = relX + el.width / 2 - mw / 2;
-      const ty = relY + el.height / 2 - mh / 2;
-      const transformAttr = rot ? ` transform="rotate(${rot} ${relX + el.width/2} ${relY + el.height/2})"` : '';
-      if (m.type === 'rect') {
-        const r = m.radius || 0;
-        maskShape = `<rect x="${tx}" y="${ty}" width="${mw}" height="${mh}" rx="${r}" ry="${r}" fill="white"${transformAttr}/>`;
-      } else if (m.type === 'circle') {
-        const rx = mw / 2, ry = mh / 2;
-        maskShape = `<ellipse cx="${tx + rx}" cy="${ty + ry}" rx="${rx}" ry="${ry}" fill="white"${transformAttr}/>`;
-      } else if (m.type === 'pixel') {
-        // Pixel shape uses the same SVG path as the visible render, scaled to mw×mh.
-        // Path viewBox is 578.52×556.76; we wrap with a transform that scales+translates.
-        const sx = mw / 578.52, sy = mh / 556.76;
-        const inner = `<path fill="white" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/>`;
-        maskShape = `<g${transformAttr}><g transform="translate(${tx} ${ty}) scale(${sx} ${sy})">${inner}</g></g>`;
-      }
-      const maskId = `mask-${el.id}`;
-      const mAnim = getElementAnimationCSS(m, false);
-      const originStyle = `transform-box:fill-box;transform-origin:center;`;
-      // In the editor workspace, don't apply the entry/effect animations to the mask shape by default so selecting/moving doesn't play animation preview.
-      // But we still apply custom variables (like --zoom-from, --pan-x etc.) so the hover preview has them ready if triggered.
-      const entryStyle = `style="${originStyle}${mAnim.entryVars || ''}"`;
-      const effStyle = `style="${originStyle}${mAnim.effVars || ''}"`;
-      const animatedMaskShape = `<g class="mask-g-entry" ${entryStyle}><g class="mask-g-eff" ${effStyle}>${maskShape}</g></g>`;
-      // Inline SVG defs sit *inside* the image wrapper — same DOM scope as the
-      // image, scoped per-render. width:0/height:0 so it doesn't add a visible box.
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('width', '0');
-      svg.setAttribute('height', '0');
-      svg.style.cssText = 'position:absolute; left:0; top:0; pointer-events:none;';
-      svg.innerHTML = `<defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask></defs>`;
-      d.appendChild(svg);
-      d.style.setProperty('-webkit-mask', `url(#${maskId})`);
-      d.style.setProperty('mask', `url(#${maskId})`);
+      const cp = buildMaskClipPath(maskAbove, el);
+      d.style.setProperty('clip-path', cp);
+      d.style.setProperty('-webkit-clip-path', cp);
     }
   }
 
@@ -10389,7 +10518,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.49';
+  const currentVersion = 'v0.16.50';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10452,7 +10581,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.49</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.50</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10508,7 +10637,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.49</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.50</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -11513,7 +11642,7 @@ document.addEventListener('contextmenu', (e) => {
       return;
     }
     el.isMask = true;
-    // Mask layers are allowed in link groups (v0.16.49). Mask geometry on
+    // Mask layers are allowed in link groups (v0.16.50). Mask geometry on
     // auto-resize is handled by the engine's mask post-pass independent
     // of link-group sync, so the prior strip-linkGroupId-on-mask gate
     // was overly defensive. We still drop dynamic data because masks

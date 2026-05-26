@@ -658,6 +658,18 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.50',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Mask system revamp: replaced SVG `<mask>` + CSS `mask: url(#…)` with CSS `clip-path` using inline shape functions. The old approach relied on the browser resolving a CSS `url(#fragment)` reference against an inline SVG mask — the most brittle paint path available, with reproducible per-browser failures (Chromium nested-defs scope, Safari zero-size-SVG paint context, Firefox shorthand-not-propagating-to-mask-image). Every "mask + image invisible on another browser" report was traced to that one fragment-URL path.',
+      'New approach: `clip-path` with inline shapes — no SVG defs, no fragment URL, no per-browser quirks. Adflow\'s three mask types map cleanly: `rect` (rounded) → `inset() round`; `circle`/`ellipse` → `ellipse()`; `pixel` (brand shape) → `path()` with the source path transformed into the image\'s local coord space. Rotation handled via 4-corner polygon for rect, 36-point polygon for non-circular ellipse, and absolute-coord L/C commands for the rotated pixel path.',
+      'Same data model end-to-end. Saved `.flow` files don\'t need migration — they just render correctly now on every browser, not only the one that saved them. The masked image\'s entry/effect/exit animations all still work; only the per-mask-shape hover-preview animation drops (clip-path can\'t animate inline-shape children the way SVG `<mask>` could).',
+      'Code shrink: `elementNode`\'s mask block goes from ~50 lines (build SVG + maskShape XML + CSS mask URL) to 8 lines (compute clip-path + apply CSS). `export-pipeline.js` mirrors the shrink. Shared helpers `buildMaskClipPath()`, `_buildPixelClipPath()`, `_maskRotPt()` live in script.js.',
+      'Browser support for `clip-path: path()`: Chrome 88+, Firefox 63+, Safari 13.1+ (all shipped 4+ years ago). On the very oldest pre-13 Safari the image just renders un-clipped instead of invisible.',
+      'Mid-fix bug caught: the pixel `path()` clip uses SINGLE quotes (`path(\'M…\')`), not double quotes. The export HTML embeds clip-path inside an HTML `style="…"` attribute; a double-quoted path closed the attribute prematurely and left the clip silently inactive (image rendered un-clipped in preview / export). Editor was unaffected because it uses `style.setProperty` (JS-side, no attribute boundary). Switched to single quotes.'
+    ]
+  },
+  {
     version: 'v0.16.49',
     date: 'May 2026 — Engine v2.16',
     items: [

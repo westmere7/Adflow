@@ -498,44 +498,18 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         const filename = src.split('/').pop();
         src = `assets/${filename}`;
       }
-      // Layer-based mask: if there's an active mask shape directly above this
-      // image, build an inline SVG mask + apply CSS mask. Static snapshot of
-      // the mask's current geometry; mask animations aren't replicated here.
-      let maskSvg = '';
+      // Layer-based mask (v0.16.50 revamp): clip the image with CSS
+      // `clip-path` using inline shape functions. See script.js
+      // `buildMaskClipPath` for the rationale (same algorithm, same
+      // function — declared in script.js which loads after this file
+      // but renderEl only runs at export time, long after page load).
       let maskCss = '';
       const maskAbove = findMaskAbove(c, el);
-      if (maskAbove) {
-        const m = maskAbove;
-        const relX = (m.x + m.width / 2) - (el.x + el.width / 2);
-        const relY = (m.y + m.height / 2) - (el.y + el.height / 2);
-        const mw = Math.max(1, m.width);
-        const mh = Math.max(1, m.height);
-        const tx = relX + el.width / 2 - mw / 2;
-        const ty = relY + el.height / 2 - mh / 2;
-        const rot = m.rotation || 0;
-        const transformAttr = rot ? ` transform="rotate(${rot} ${relX + el.width/2} ${relY + el.height/2})"` : '';
-        let maskShape = '';
-        if (m.type === 'rect') {
-          const r = m.radius || 0;
-          maskShape = `<rect x="${tx}" y="${ty}" width="${mw}" height="${mh}" rx="${r}" ry="${r}" fill="white"${transformAttr}/>`;
-        } else if (m.type === 'circle') {
-          const rx = mw / 2, ry = mh / 2;
-          maskShape = `<ellipse cx="${tx + rx}" cy="${ty + ry}" rx="${rx}" ry="${ry}" fill="white"${transformAttr}/>`;
-        } else if (m.type === 'pixel') {
-          const sx = mw / 578.52, sy = mh / 556.76;
-          const inner = `<path fill="white" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/>`;
-          maskShape = `<g${transformAttr}><g transform="translate(${tx} ${ty}) scale(${sx} ${sy})">${inner}</g></g>`;
-        }
-        const maskId = `mask-${el.id}`;
-        const mAnim = getElementAnimationCSS(m, isImageExport);
-        const originStyle = `transform-box:fill-box;transform-origin:center;`;
-        const entryStyle = mAnim.entryConfig ? `style="${originStyle}${mAnim.entryConfig}${mAnim.entryVars}"` : '';
-        const effStyle = mAnim.effConfig ? `style="${originStyle}${mAnim.effConfig}${mAnim.effVars}"` : '';
-        const animatedMaskShape = `<g class="mask-g-entry" ${entryStyle}><g class="mask-g-eff" ${effStyle}>${maskShape}</g></g>`;
-        maskSvg = `<svg width="0" height="0" style="position:absolute;left:0;top:0;pointer-events:none;"><defs><mask id="${maskId}" maskUnits="userSpaceOnUse">${animatedMaskShape}</mask></defs></svg>`;
-        maskCss = `-webkit-mask:url(#${maskId});mask:url(#${maskId});`;
+      if (maskAbove && typeof buildMaskClipPath === 'function') {
+        const cp = buildMaskClipPath(maskAbove, el);
+        maskCss = `clip-path:${cp};-webkit-clip-path:${cp};`;
       }
-      return `    <div style="${wrapStyle}${maskCss}">${maskSvg}${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
+      return `    <div style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
     }
     return '';
   };
