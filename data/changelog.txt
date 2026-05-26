@@ -1,6 +1,15 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.49 (Current) - May 2026 — Engine v2.16
+v0.16.50 (Current) - May 2026 — Engine v2.16
+- Mask + image-beneath disappearing when a saved project is opened on a different browser / machine — fixed by re-architecting the SVG mask defs to dodge three independently-real browser issues, any one of which could cause the symptom on a machine the project wasn't originally edited on:
+    1. **Nested-defs scope (Chromium)**: pre-fix the `<svg><defs><mask>` block was a descendant of the masked image div. Per spec, `url(#fragment)` looks up by id document-wide, but some Chromium versions fail the resolution when the masked element has stacking-context / isolation properties (position+transform+opacity, all set inline on Adflow image wrappers).
+    2. **Zero-size SVG (Safari / older WebKit)**: the container SVG was `width="0" height="0"` with no viewBox. Some WebKit versions refuse to paint mask references from an SVG that establishes no paint context, even with `maskUnits="userSpaceOnUse"` (which is supposed to make the SVG viewport irrelevant).
+    3. **`mask` shorthand vs `mask-image` longhand (Firefox)**: Firefox has historically not propagated `url(#id)` from the `mask` shorthand to the active `mask-image` paint source. Setting only `mask` shorthand left Firefox with no resolved mask image.
+- Combined fix: every `<mask>` is now parked under a single body-level `<svg id="adflow-mask-defs" width="1" height="1" viewBox="0 0 1 1" style="…width:0;height:0;overflow:hidden…">` container. Non-zero attributes establish a paint context for WebKit; the CSS sizing collapses it to 0 pixels in the document. The container is cleared at the start of each `render()` so stale masks don't accumulate. CSS `mask` shorthand AND `mask-image` longhand (plus their `-webkit-` siblings) are both set on the masked div for Firefox/Chrome/Safari coverage.
+- Same change applied in `export-pipeline.js`: mask defs are collected during element rendering and emitted as one body-level `<svg id="adflow-mask-defs">` right after `<body>` in the exported HTML, with the same belt-and-braces CSS declarations. Exported HTML5 ads now render masks correctly across every browser the ad might be served in, not just the one that exported it.
+- Symptom: mask + image both appear invisible (mask body is `visibility:hidden` by design; image is fully clipped because the mask URL didn't resolve). Removing "Use as mask" restored visibility because the broken CSS mask was cleared. v0.16.50 makes the mask resolve correctly regardless of which browser opens the file.
+
+v0.16.49 - May 2026 — Engine v2.16
 - Mask shapes can now join link groups. Pre-fix the Link panel showed a "Mask layer — link groups disabled" notice whenever the selection included any element with `isMask: true`, blocking mask shapes from cross-canvas linking. The constraint was overly defensive: mask geometry on auto-resize is handled by the engine's mask post-pass (which positions mask relative to its image via `below.width / srcImg.width`), and that pass is independent from any link-group sync. Removed the gate at script.js:4982 so mask shapes go through the normal same-category link-group UI; you can now sync mask fill / stroke / radius across canvases like any other shape.
 
 v0.16.48 - May 2026 — Engine v2.16
