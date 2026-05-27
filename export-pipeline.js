@@ -349,6 +349,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   const c = targetCanvas || getActiveCanvas();
   if (!c) return '';
   const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  let dynamicKeyframes = '';
 
   const renderEl = (el) => {
     if (el.hidden) return '';
@@ -508,6 +509,13 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       if (maskAbove && typeof buildMaskClipPath === 'function') {
         const cp = buildMaskClipPath(maskAbove, el);
         maskCss = `clip-path:${cp};-webkit-clip-path:${cp};`;
+        if (typeof generateMaskClipPathKeyframes === 'function' && !isImageExport) {
+          const maskAnim = generateMaskClipPathKeyframes(maskAbove, el);
+          if (maskAnim) {
+            dynamicKeyframes += '\n' + maskAnim.keyframes;
+            maskCss += `animation:${maskAnim.animationCss};`;
+          }
+        }
       }
       return `    <div style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
     }
@@ -591,6 +599,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
 <meta name="ad.size" content="width=${c.width},height=${c.height}">
 <style>
 ${fontFaceRules.join('\n')}
+${dynamicKeyframes}
 
   @keyframes anim-fade-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes anim-zoom-in { from { opacity: 0; transform: scale(var(--zoom-from, 1.1)); } to { opacity: 1; transform: scale(1); } }

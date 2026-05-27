@@ -2719,6 +2719,45 @@ function buildMaskClipPath(mask, image) {
 
   return 'none';
 }
+
+function generateMaskClipPathKeyframes(mask, image, presetOverride) {
+  const animType = presetOverride || mask.animType || 'none';
+  if (animType === 'none') return null;
+
+  const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
+  if (!isSlideLike) return null;
+
+  const fromMask = JSON.parse(JSON.stringify(mask));
+  
+  if (animType === 'slide-up') fromMask.y += 20;
+  else if (animType === 'slide-down') fromMask.y -= 20;
+  else if (animType === 'slide-left') fromMask.x += 20;
+  else if (animType === 'slide-right') fromMask.x -= 20;
+  else if (animType === 'pop-in' || animType === 'zoom-in') {
+    const scale = animType === 'pop-in' ? 0.8 : (mask.zoomFrom !== undefined ? mask.zoomFrom / 100 : 1.1);
+    const cx = mask.x + mask.width / 2;
+    const cy = mask.y + mask.height / 2;
+    fromMask.width = Math.max(1, fromMask.width * scale);
+    fromMask.height = Math.max(1, fromMask.height * scale);
+    fromMask.x = cx - fromMask.width / 2;
+    fromMask.y = cy - fromMask.height / 2;
+    if (fromMask.radius) fromMask.radius *= scale;
+  }
+
+  const cpFrom = buildMaskClipPath(fromMask, image);
+  const cpTo = buildMaskClipPath(mask, image);
+
+  const animName = `mask-anim-${mask.id}-${animType}`;
+  const dur = mask.animDuration || 1;
+  const del = mask.animDelay || 0;
+  const timing = (animType === 'pop-in' || animType === 'zoom-in') ? 'ease-out' : 'ease-out';
+
+  return {
+    name: animName,
+    keyframes: `@keyframes ${animName} { from { clip-path: ${cpFrom}; -webkit-clip-path: ${cpFrom}; } to { clip-path: ${cpTo}; -webkit-clip-path: ${cpTo}; } }`,
+    animationCss: `${animName} ${dur}s ${timing} ${del}s both`
+  };
+}
 // Source pixel path (in 578.52×556.76 viewBox):
 //   M290.78,0 h-74.15 v60.23 h-123.75 v125.78 H0 v184.74 h92.88 v125.78
 //   h123.5 v60.23 h65.55 c152.85,0,287.74-123.5,287.74-277.62
@@ -8202,13 +8241,19 @@ function checkButtonFontSizeWarning(el) {
                 const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
                 if (imgEl) {
                   const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
-                  const entryG = imgDom ? imgDom.querySelector('mask g.mask-g-entry') : null;
-                  if (entryG) {
-                    if (previewVal === 'zoom-in') {
-                      const zf = nodeEl.zoomFrom !== undefined ? nodeEl.zoomFrom / 100 : 1.1;
-                      entryG.style.setProperty('--zoom-from', zf);
+                  if (imgDom && typeof generateMaskClipPathKeyframes === 'function') {
+                    const maskAnim = generateMaskClipPathKeyframes(nodeEl, imgEl, previewVal);
+                    if (maskAnim) {
+                      let styleTag = document.getElementById('dynamic-mask-styles');
+                      if (!styleTag) {
+                        styleTag = document.createElement('style');
+                        styleTag.id = 'dynamic-mask-styles';
+                        document.head.appendChild(styleTag);
+                      }
+                      // For preview, we overwrite or append. Let's just set textContent to avoid duplicate accumulation over time.
+                      styleTag.textContent = maskAnim.keyframes;
+                      imgDom.style.animation = maskAnim.animationCss;
                     }
-                    entryG.style.animation = `anim-${previewVal}${suffix} ${nodeEl.animDuration || 1}s ease-out 0s both`;
                   }
                 }
               }
@@ -8241,11 +8286,9 @@ function checkButtonFontSizeWarning(el) {
               const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
               if (imgEl) {
                 const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
-                const entryG = imgDom ? imgDom.querySelector('mask g.mask-g-entry') : null;
-                if (entryG) {
-                  entryG.style.animation = '';
-                  entryG.style.removeProperty('--zoom-from');
-                }
+                if (imgDom) imgDom.style.animation = '';
+                const styleTag = document.getElementById('dynamic-mask-styles');
+                if (styleTag) styleTag.textContent = '';
               }
             }
           }
