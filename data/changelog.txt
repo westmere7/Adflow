@@ -1,6 +1,12 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.61 (Current) - May 2026 — Engine v2.16
+v0.16.62 (Current) - May 2026 — Engine v2.16
+- Relocated all transition settings from the top-bar controls to a dedicated visual sub-section in the sidebar Animation panel (positioned below Continuous FX).
+- Added the "Zoom" frame transition supporting custom starting scale (Zoom From %), opacity fade toggle, and multi-step elastic spring bounce physics.
+- Added the "Split" frame transition supporting diagonal reveals along customizable angles and fade toggling.
+- Refined the loop preview triggers for all three animation panels (Entrance Transitions, Continuous FX, and Frame Transitions) to disable container-wide hover triggers, launching previews only when hovering over presets or interacting with settings/inputs, and updating settings instantly.
+
+v0.16.61 - May 2026 — Engine v2.16
 - Fixed canvas selection inside mask groups: enables selecting the underlying image directly on the canvas (even when clipped or larger than the mask) via group isolation mode.
 - Implemented backdrop click hit-testing for isolated groups to capture clicks on clipped image bounds that pass through due to CSS clip-path pointer event suppression.
 

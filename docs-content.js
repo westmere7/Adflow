@@ -650,6 +650,16 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.62',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Relocated all transition settings from the top-bar controls to a dedicated visual sub-section in the sidebar Animation panel (positioned below Continuous FX).',
+      'Added the "Zoom" frame transition supporting custom starting scale (Zoom From %), opacity fade toggle, and multi-step elastic spring bounce physics.',
+      'Added the "Split" frame transition supporting diagonal reveals along customizable angles and fade toggling.',
+      'Refined the loop preview triggers for all three animation panels (Entrance Transitions, Continuous FX, and Frame Transitions) to disable container-wide hover triggers, launching previews only when hovering over presets or interacting with settings/inputs, and updating settings instantly.'
+    ]
+  },
+  {
     version: 'v0.16.61',
     date: 'May 2026 — Engine v2.16',
     items: [

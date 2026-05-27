@@ -145,6 +145,113 @@ function getSlideKeyframes(el) {
   }
 }
 
+function getFrameTransitionKeyframes(f) {
+  const t = f.transition || 'none';
+  if (t === 'none') return '';
+
+  const animName = `anim-frame-trans-${f.id}`;
+  const fade = f.transitionFade !== false;
+  const bounce = !!f.transitionBounce;
+  const dir = f.transitionDirection || (t.startsWith('slide-') ? t.replace('slide-', '') : (t.startsWith('swipe-') ? t.replace('swipe-', '') : 'left'));
+  
+  let keyframes = '';
+
+  if (t === 'fade') {
+    keyframes = `@keyframes ${animName} { from { opacity: 0; } to { opacity: 1; } }`;
+  } else if (t.startsWith('slide') || t === 'slide') {
+    if (bounce) {
+      keyframes = `@keyframes ${animName} {\n`;
+      const d = 4.0; // damping
+      const freq = 2.0; // frequency
+      for (let pct = 0; pct <= 100; pct += 5) {
+        const time = pct / 100;
+        const x = Math.exp(-d * time) * Math.cos(2 * Math.PI * freq * time);
+        const currentDist = (100 * x).toFixed(2);
+        
+        let transformStr = '';
+        if (dir === 'up') transformStr = `transform: translateY(${currentDist}%);`;
+        else if (dir === 'down') transformStr = `transform: translateY(${-currentDist}%);`;
+        else if (dir === 'left') transformStr = `transform: translateX(${currentDist}%);`;
+        else if (dir === 'right') transformStr = `transform: translateX(${-currentDist}%);`;
+        
+        let opacityStr = '';
+        if (fade) {
+          if (pct === 0) opacityStr = 'opacity: 0; ';
+          else if (pct >= 30) opacityStr = 'opacity: 1; ';
+          else {
+            const opt = (time / 0.3).toFixed(2);
+            opacityStr = `opacity: ${opt}; `;
+          }
+        }
+        keyframes += `      ${pct}% { ${transformStr} ${opacityStr}}\n`;
+      }
+      keyframes += '    }';
+    } else {
+      let transformFrom = '';
+      if (dir === 'up') transformFrom = 'translateY(100%)';
+      else if (dir === 'down') transformFrom = 'translateY(-100%)';
+      else if (dir === 'left') transformFrom = 'translateX(100%)';
+      else if (dir === 'right') transformFrom = 'translateX(-100%)';
+      
+      keyframes = `@keyframes ${animName} {
+        from { transform: ${transformFrom}; ${fade ? 'opacity: 0;' : ''} }
+        to { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
+      }`;
+    }
+  } else if (t.startsWith('swipe') || t === 'swipe') {
+    let clipFrom = '';
+    if (dir === 'up') clipFrom = 'inset(100% 0 0 0)';
+    else if (dir === 'down') clipFrom = 'inset(0 0 100% 0)';
+    else if (dir === 'left') clipFrom = 'inset(0 0 0 100%)';
+    else if (dir === 'right') clipFrom = 'inset(0 100% 0 0)';
+    
+    keyframes = `@keyframes ${animName} {
+      from { clip-path: ${clipFrom}; ${fade ? 'opacity: 0;' : ''} }
+      to { clip-path: inset(0 0 0 0); ${fade ? 'opacity: 1;' : ''} }
+    }`;
+  } else if (t === 'zoom') {
+    const zfVal = f.transitionZoomFrom !== undefined ? f.transitionZoomFrom : 80;
+    const zf = zfVal / 100;
+    if (bounce) {
+      keyframes = `@keyframes ${animName} {\n`;
+      const d = 4.0; // damping
+      const freq = 2.0; // frequency
+      for (let pct = 0; pct <= 100; pct += 5) {
+        const time = pct / 100;
+        const x = Math.exp(-d * time) * Math.cos(2 * Math.PI * freq * time);
+        const scale = (1.0 + (zf - 1.0) * x).toFixed(3);
+        
+        let opacityStr = '';
+        if (fade) {
+          if (pct === 0) opacityStr = 'opacity: 0; ';
+          else if (pct >= 30) opacityStr = 'opacity: 1; ';
+          else {
+            const opt = (time / 0.3).toFixed(2);
+            opacityStr = `opacity: ${opt}; `;
+          }
+        }
+        keyframes += `      ${pct}% { transform: scale(${scale}); ${opacityStr}}\n`;
+      }
+      keyframes += '    }';
+    } else {
+      keyframes = `@keyframes ${animName} {
+        from { transform: scale(${zf}); ${fade ? 'opacity: 0;' : ''} }
+        to { transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
+      }`;
+    }
+  } else if (t === 'split') {
+    const angle = f.transitionAngle !== undefined ? f.transitionAngle : 0;
+    const fromPoly = getSplitClipPath(angle);
+    keyframes = `@keyframes ${animName} {
+      from { clip-path: ${fromPoly}; ${fade ? 'opacity: 0;' : ''} }
+      to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fade ? 'opacity: 1;' : ''} }
+    }`;
+  }
+
+  return keyframes;
+}
+
+
 // ============================================================================
 // Export — Google-Ads-friendly HTML5 (active canvas)
 // ============================================================================
@@ -740,6 +847,15 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro.woff2') format('woff2'); font-weight: 500; }`);
   }
 
+  activeFrames.forEach((f, i) => {
+    if (i > 0) {
+      const kf = getFrameTransitionKeyframes(f);
+      if (kf) {
+        dynamicKeyframes += '\n' + kf;
+      }
+    }
+  });
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -849,12 +965,10 @@ ${elsTop}
       
       var t = frames[currentFrame].transition;
       var td = (frames[currentFrame].transitionDuration || 0.5) + 's';
-      var fadeRaw = frames[currentFrame].transitionFade;
-      var fade = (fadeRaw === undefined) ? (t && t.indexOf('slide-') === 0) : !!fadeRaw;
       var anim = '';
-      if (t === 'fade') anim = 'anim-fade-in';
-      else if (t && t.indexOf('slide-') === 0) anim = 'anim-frame-' + t + (fade ? '' : '-nofade');
-      else if (t && t.indexOf('swipe-') === 0) anim = 'anim-' + t + (fade ? '-fade' : '');
+      if (t && t !== 'none') {
+        anim = 'anim-frame-trans-' + frames[currentFrame].id;
+      }
       
       nextFrameEl.style.animation = anim ? (anim + ' ' + td + ' ease both') : '';
       

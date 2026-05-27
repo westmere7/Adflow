@@ -1935,61 +1935,6 @@ function renderFrameControls() {
       durInput.style.opacity = '1';
     }
   }
-
-  const transSelect = document.getElementById('frame-transition');
-  const transLabel = document.getElementById('frame-transition-label');
-  const transDur = document.getElementById('frame-transition-duration');
-  const transDurLabel = document.getElementById('frame-transition-duration-label');
-  const fadeRow = document.getElementById('frame-transition-fade-row');
-  const fadeChk = document.getElementById('frame-transition-fade');
-  const fadeLabel = document.getElementById('frame-transition-fade-label');
-  if (transSelect && transLabel && currentFrame) {
-    if (state.frames.length > 0 && state.frames[0].id === currentFrame.id) {
-      transSelect.style.display = 'none';
-      transLabel.style.display = 'none';
-      if (transDur) transDur.style.display = 'none';
-      if (transDurLabel) transDurLabel.style.display = 'none';
-      if (fadeRow) fadeRow.style.display = 'none';
-    } else {
-      transSelect.style.display = 'inline-block';
-      transLabel.style.display = 'inline-block';
-      transSelect.value = currentFrame.transition || 'fade';
-      if (transDur) {
-        transDur.style.display = 'inline-block';
-        if (document.activeElement !== transDur) transDur.value = currentFrame.transitionDuration || 0.5;
-        transDur.style.visibility = (transSelect.value === 'none') ? 'hidden' : 'visible';
-        transDur.disabled = false;
-        transDur.style.opacity = '1';
-        transSelect.disabled = false;
-        transSelect.style.opacity = '1';
-        if (transDurLabel) {
-          transDurLabel.style.display = 'inline-block';
-          transDurLabel.style.visibility = transDur.style.visibility;
-        }
-      }
-      // Add Fade checkbox: hide when no transition; gray out when transition is
-      // 'fade' (the fade flag is meaningless — fade is the transition).
-      if (fadeRow) {
-        const t = transSelect.value;
-        const hide = (t === 'none');
-        fadeRow.style.display = hide ? 'none' : 'flex';
-        if (!hide) {
-          const grayed = (t === 'fade');
-          const fadeRaw = currentFrame.transitionFade;
-          // Resolved value matches export: slide defaults to faded, swipe defaults
-          // to pure. Fade transition is always shown as checked.
-          const resolved = (t === 'fade') ? true
-                         : (fadeRaw === undefined) ? (t.indexOf('slide-') === 0)
-                         : !!fadeRaw;
-          fadeChk.checked = resolved;
-          fadeChk.disabled = grayed;
-          fadeRow.style.opacity = grayed ? '0.45' : '1';
-          fadeRow.style.pointerEvents = grayed ? 'none' : 'auto';
-          if (fadeLabel) fadeLabel.style.cursor = grayed ? 'default' : 'pointer';
-        }
-      }
-    }
-  }
 }
 
 function renderRulers() {
@@ -7141,6 +7086,474 @@ function insertAtGroupEnd(arr, el) {
 // ============================================================================
 // Properties panel
 // ============================================================================
+let activeFramePreviewType = null;
+let framePreviewTimeoutId = null;
+
+function startFrameTransitionPreview(type) {
+  if (framePreviewTimeoutId) {
+    clearTimeout(framePreviewTimeoutId);
+    framePreviewTimeoutId = null;
+  }
+  activeFramePreviewType = type;
+  if (type === 'none') {
+    stopFrameTransitionPreview();
+    return;
+  }
+
+  const c = getActiveCanvas();
+  if (!c) return;
+
+  const activeIdx = state.frames.findIndex(f => f.id === state.activeFrameId);
+  if (activeIdx <= 0) return;
+  const prevFrameId = state.frames[activeIdx - 1].id;
+  const nextFrameId = state.activeFrameId;
+
+  const canvasDom = document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas`);
+  if (!canvasDom) return;
+
+  const runCycle = () => {
+    if (activeFramePreviewType !== type) return;
+
+    const currentFrame = state.frames.find(f => f.id === state.activeFrameId);
+    if (!currentFrame) return;
+
+    const duration = currentFrame.transitionDuration !== undefined ? currentFrame.transitionDuration : 0.5;
+    const fade = currentFrame.transitionFade !== false;
+    const bounce = !!currentFrame.transitionBounce;
+    const zoomFrom = currentFrame.transitionZoomFrom !== undefined ? currentFrame.transitionZoomFrom : 80;
+    const angle = currentFrame.transitionAngle !== undefined ? currentFrame.transitionAngle : 0;
+    const dir = currentFrame.transitionDirection || (type.startsWith('slide-') ? type.replace('slide-', '') : (type.startsWith('swipe-') ? type.replace('swipe-', '') : 'left'));
+
+    let overlay = canvasDom.querySelector('.frame-transition-preview-overlay');
+    if (overlay) overlay.remove();
+
+    overlay = document.createElement('div');
+    overlay.className = 'frame-transition-preview-overlay';
+    overlay.style.position = 'absolute';
+    overlay.style.inset = '0';
+    overlay.style.zIndex = '1000';
+    overlay.style.pointerEvents = 'none';
+    overlay.style.overflow = 'hidden';
+
+    const prevContainer = document.createElement('div');
+    prevContainer.style.position = 'absolute';
+    prevContainer.style.inset = '0';
+    prevContainer.style.background = getCanvasBg(c, prevFrameId);
+    prevContainer.style.zIndex = '1';
+
+    const prevBot = document.createElement('div'); prevBot.style.position = 'absolute'; prevBot.style.inset = '0'; prevBot.style.zIndex = '1';
+    const prevMid = document.createElement('div'); prevMid.style.position = 'absolute'; prevMid.style.inset = '0'; prevMid.style.zIndex = '2';
+    const prevTop = document.createElement('div'); prevTop.style.position = 'absolute'; prevTop.style.inset = '0'; prevTop.style.zIndex = '3';
+    prevContainer.appendChild(prevBot);
+    prevContainer.appendChild(prevMid);
+    prevContainer.appendChild(prevTop);
+
+    c.elements.forEach(el => {
+      if (el.persistent === 'bottom') prevBot.appendChild(elementNode(el, c));
+      else if (el.persistent === 'top') prevTop.appendChild(elementNode(el, c));
+      else if (el.frameId === prevFrameId) prevMid.appendChild(elementNode(el, c));
+    });
+    overlay.appendChild(prevContainer);
+
+    const nextContainer = document.createElement('div');
+    nextContainer.style.position = 'absolute';
+    nextContainer.style.inset = '0';
+    nextContainer.style.background = getCanvasBg(c, nextFrameId);
+    nextContainer.style.zIndex = '2';
+
+    const nextBot = document.createElement('div'); nextBot.style.position = 'absolute'; nextBot.style.inset = '0'; nextBot.style.zIndex = '1';
+    const nextMid = document.createElement('div'); nextMid.style.position = 'absolute'; nextMid.style.inset = '0'; nextMid.style.zIndex = '2';
+    const nextTop = document.createElement('div'); nextTop.style.position = 'absolute'; nextTop.style.inset = '0'; nextTop.style.zIndex = '3';
+    nextContainer.appendChild(nextBot);
+    nextContainer.appendChild(nextMid);
+    nextContainer.appendChild(nextTop);
+
+    c.elements.forEach(el => {
+      if (el.persistent === 'bottom') nextBot.appendChild(elementNode(el, c));
+      else if (el.persistent === 'top') nextTop.appendChild(elementNode(el, c));
+      else if (el.frameId === nextFrameId) nextMid.appendChild(elementNode(el, c));
+    });
+    overlay.appendChild(nextContainer);
+
+    canvasDom.appendChild(overlay);
+    nextContainer.style.display = 'none';
+
+    framePreviewTimeoutId = setTimeout(() => {
+      if (activeFramePreviewType !== type) return;
+      nextContainer.style.display = 'block';
+
+      const animName = `preview-frame-trans-${Date.now()}`;
+      let keyframes = '';
+
+      if (type === 'fade') {
+        keyframes = `@keyframes ${animName} { from { opacity: 0; } to { opacity: 1; } }`;
+      } else if (type === 'slide') {
+        if (bounce) {
+          keyframes = `@keyframes ${animName} {\n`;
+          const d = 4.0;
+          const freq = 2.0;
+          for (let pct = 0; pct <= 100; pct += 5) {
+            const t = pct / 100;
+            const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * freq * t);
+            const currentDist = (100 * x).toFixed(2);
+            let transformStr = '';
+            if (dir === 'up') transformStr = `transform: translateY(${currentDist}%);`;
+            else if (dir === 'down') transformStr = `transform: translateY(${-currentDist}%);`;
+            else if (dir === 'left') transformStr = `transform: translateX(${currentDist}%);`;
+            else if (dir === 'right') transformStr = `transform: translateX(${-currentDist}%);`;
+            
+            let opacityStr = '';
+            if (fade) {
+              if (pct === 0) opacityStr = 'opacity: 0; ';
+              else if (pct >= 30) opacityStr = 'opacity: 1; ';
+              else {
+                const opt = (t / 0.3).toFixed(2);
+                opacityStr = `opacity: ${opt}; `;
+              }
+            }
+            keyframes += `      ${pct}% { ${transformStr} ${opacityStr}}\n`;
+          }
+          keyframes += '    }';
+        } else {
+          let transformFrom = '';
+          if (dir === 'up') transformFrom = 'translateY(100%)';
+          else if (dir === 'down') transformFrom = 'translateY(-100%)';
+          else if (dir === 'left') transformFrom = 'translateX(100%)';
+          else if (dir === 'right') transformFrom = 'translateX(-100%)';
+          keyframes = `@keyframes ${animName} {
+            from { transform: ${transformFrom}; ${fade ? 'opacity: 0;' : ''} }
+            to { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
+          }`;
+        }
+      } else if (type === 'swipe') {
+        let clipFrom = '';
+        if (dir === 'up') clipFrom = 'inset(100% 0 0 0)';
+        else if (dir === 'down') clipFrom = 'inset(0 0 100% 0)';
+        else if (dir === 'left') clipFrom = 'inset(0 0 0 100%)';
+        else if (dir === 'right') clipFrom = 'inset(0 100% 0 0)';
+        
+        keyframes = `@keyframes ${animName} {
+          from { clip-path: ${clipFrom}; ${fade ? 'opacity: 0;' : ''} }
+          to { clip-path: inset(0 0 0 0); ${fade ? 'opacity: 1;' : ''} }
+        }`;
+      } else if (type === 'zoom') {
+        const zf = zoomFrom / 100;
+        if (bounce) {
+          keyframes = `@keyframes ${animName} {\n`;
+          const d = 4.0;
+          const freq = 2.0;
+          for (let pct = 0; pct <= 100; pct += 5) {
+            const t = pct / 100;
+            const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * freq * t);
+            const scale = (1.0 + (zf - 1.0) * x).toFixed(3);
+            
+            let opacityStr = '';
+            if (fade) {
+              if (pct === 0) opacityStr = 'opacity: 0; ';
+              else if (pct >= 30) opacityStr = 'opacity: 1; ';
+              else {
+                const opt = (t / 0.3).toFixed(2);
+                opacityStr = `opacity: ${opt}; `;
+              }
+            }
+            keyframes += `      ${pct}% { transform: scale(${scale}); ${opacityStr}}\n`;
+          }
+          keyframes += '    }';
+        } else {
+          keyframes = `@keyframes ${animName} {
+            from { transform: scale(${zf}); ${fade ? 'opacity: 0;' : ''} }
+            to { transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
+          }`;
+        }
+      } else if (type === 'split') {
+        const fromPoly = getSplitClipPath(angle);
+        keyframes = `@keyframes ${animName} {
+          from { clip-path: ${fromPoly}; ${fade ? 'opacity: 0;' : ''} }
+          to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fade ? 'opacity: 1;' : ''} }
+        }`;
+      }
+
+      let styleEl = document.getElementById('frame-transition-preview-styles');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'frame-transition-preview-styles';
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent = keyframes;
+
+      nextContainer.style.animation = `${animName} ${duration}s ease both`;
+
+      framePreviewTimeoutId = setTimeout(() => {
+        if (activeFramePreviewType === type) {
+          runCycle();
+        }
+      }, (duration + 1.5) * 1000);
+
+    }, 500);
+  };
+
+  runCycle();
+}
+
+function updateRunningFrameTransitionPreview() {
+  if (activeFramePreviewType) {
+    startFrameTransitionPreview(activeFramePreviewType);
+  }
+}
+
+function stopFrameTransitionPreview() {
+  activeFramePreviewType = null;
+  if (framePreviewTimeoutId) {
+    clearTimeout(framePreviewTimeoutId);
+    framePreviewTimeoutId = null;
+  }
+  const c = getActiveCanvas();
+  if (c) {
+    const canvasDom = document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas`);
+    if (canvasDom) {
+      const overlay = canvasDom.querySelector('.frame-transition-preview-overlay');
+      if (overlay) overlay.remove();
+    }
+  }
+  const styleEl = document.getElementById('frame-transition-preview-styles');
+  if (styleEl) styleEl.remove();
+}
+
+function getFrameTransitionHtml(currentFrame) {
+  let tType = currentFrame.transition || 'none';
+  let activePreset = 'none';
+  if (tType === 'fade') activePreset = 'fade';
+  else if (tType.startsWith('slide')) activePreset = 'slide';
+  else if (tType.startsWith('swipe')) activePreset = 'swipe';
+  else if (tType === 'zoom') activePreset = 'zoom';
+  else if (tType === 'split') activePreset = 'split';
+
+  const presets = [
+    { val: 'none', label: 'None' },
+    { val: 'fade', label: 'Fade' },
+    { val: 'slide', label: 'Slide' },
+    { val: 'swipe', label: 'Swipe' },
+    { val: 'zoom', label: 'Zoom' },
+    { val: 'split', label: 'Split' }
+  ];
+
+  const presetButtons = presets.map(o => {
+    const isActive = o.val === activePreset;
+    return `<button class="align-btn frame-trans-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Transition: ${o.label}">${o.label}</button>`;
+  }).join('');
+
+  const durVal = currentFrame.transitionDuration !== undefined ? currentFrame.transitionDuration : 0.5;
+  const durHtml = `<div class="prop-row" style="margin:0;"><label>Duration (s)</label><input type="number" step="0.1" id="frame-trans-duration" value="${durVal}" min="0.1" /></div>`;
+
+  const showFade = ['slide', 'swipe', 'zoom', 'split'].includes(activePreset);
+  let fadeToggleHtml = '';
+  if (showFade) {
+    const resolvedFade = (currentFrame.transitionFade !== false);
+    fadeToggleHtml = `
+      <div class="checkbox-row" style="height:24px; align-items:center; margin-top:14px;">
+        <input type="checkbox" id="frame-trans-fade" ${resolvedFade ? 'checked' : ''} />
+        <label for="frame-trans-fade" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
+      </div>
+    `;
+  }
+
+  const standardProps = `
+    <div class="prop-row" style="margin-bottom:8px;">
+      <div class="prop-grid-2">
+        ${durHtml}
+        ${fadeToggleHtml}
+      </div>
+    </div>
+  `;
+
+  let conditionalControls = '';
+  if (activePreset === 'slide' || activePreset === 'swipe') {
+    const currentDir = currentFrame.transitionDirection || (currentFrame.transition.startsWith('slide-') ? currentFrame.transition.replace('slide-', '') : (currentFrame.transition.startsWith('swipe-') ? currentFrame.transition.replace('swipe-', '') : 'left'));
+    let bounceHtml = '';
+    if (activePreset === 'slide') {
+      const hasBounce = !!currentFrame.transitionBounce;
+      bounceHtml = `
+        <div class="checkbox-row" style="height:24px; align-items:center; margin-top:14px;">
+          <input type="checkbox" id="frame-trans-bounce" ${hasBounce ? 'checked' : ''} />
+          <label for="frame-trans-bounce" style="cursor:pointer; font-size:11px; white-space:nowrap;">Bounce</label>
+        </div>
+      `;
+    }
+    conditionalControls = `
+      <div class="prop-row" style="margin-bottom:8px;">
+        <div class="prop-grid-2">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label>Direction</label>
+            <select id="frame-trans-direction" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;">
+              <option value="left" ${currentDir === 'left' ? 'selected' : ''}>Left</option>
+              <option value="right" ${currentDir === 'right' ? 'selected' : ''}>Right</option>
+              <option value="up" ${currentDir === 'up' ? 'selected' : ''}>Up</option>
+              <option value="down" ${currentDir === 'down' ? 'selected' : ''}>Down</option>
+            </select>
+          </div>
+          ${bounceHtml}
+        </div>
+      </div>
+    `;
+  } else if (activePreset === 'zoom') {
+    const zfVal = currentFrame.transitionZoomFrom !== undefined ? currentFrame.transitionZoomFrom : 80;
+    const hasBounce = !!currentFrame.transitionBounce;
+    conditionalControls = `
+      <div class="prop-row" style="margin-bottom:8px;">
+        <div class="prop-grid-2">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label>Zoom From (%)</label>
+            <input type="number" min="0" max="500" id="frame-trans-zoom-from" value="${zfVal}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" />
+          </div>
+          <div class="checkbox-row" style="height:24px; align-items:center; margin-top:14px;">
+            <input type="checkbox" id="frame-trans-bounce" ${hasBounce ? 'checked' : ''} />
+            <label for="frame-trans-bounce" style="cursor:pointer; font-size:11px; white-space:nowrap;">Bounce</label>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (activePreset === 'split') {
+    const angleVal = currentFrame.transitionAngle !== undefined ? currentFrame.transitionAngle : 0;
+    conditionalControls = `
+      <div class="prop-row" style="margin-bottom:8px;">
+        <div class="prop-grid-2">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label>Angle (°)</label>
+            <input type="number" id="frame-trans-angle" value="${angleVal}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" />
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div id="frame-transition-preview-area">
+      <div class="prop-row" style="margin-bottom:8px;"><label>TRANSITION</label></div>
+      <div class="anim-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:12px;">
+        ${presetButtons}
+      </div>
+      ${activePreset !== 'none' ? standardProps + conditionalControls : ''}
+    </div>
+  `;
+}
+
+function wireFrameTransitionEvents() {
+  const currentFrame = state.frames.find(f => f.id === state.activeFrameId);
+  if (!currentFrame) return;
+
+  propsEl.querySelectorAll('.frame-trans-btn').forEach(btn => {
+    const val = btn.dataset.val;
+    btn.addEventListener('click', () => {
+      currentFrame.transition = val;
+      if (val === 'slide' || val === 'swipe') {
+        if (!currentFrame.transitionDirection) currentFrame.transitionDirection = 'left';
+      }
+      if (val === 'zoom') {
+        if (currentFrame.transitionZoomFrom === undefined) currentFrame.transitionZoomFrom = 80;
+      }
+      if (val === 'split') {
+        if (currentFrame.transitionAngle === undefined) currentFrame.transitionAngle = 0;
+      }
+      pushHistory();
+      renderProps();
+      render(true);
+      
+      startFrameTransitionPreview(val);
+    });
+
+    btn.addEventListener('mouseenter', (e) => {
+      e.stopPropagation();
+      startFrameTransitionPreview(val);
+    });
+  });
+
+  const durInp = propsEl.querySelector('#frame-trans-duration');
+  if (durInp) {
+    durInp.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    durInp.addEventListener('input', (e) => {
+      currentFrame.transitionDuration = parseFloat(e.target.value) || 0.5;
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    durInp.addEventListener('change', () => {
+      pushHistory();
+    });
+  }
+
+  const fadeChk = propsEl.querySelector('#frame-trans-fade');
+  if (fadeChk) {
+    fadeChk.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    fadeChk.addEventListener('change', (e) => {
+      currentFrame.transitionFade = e.target.checked;
+      pushHistory();
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+  }
+
+  const dirSelect = propsEl.querySelector('#frame-trans-direction');
+  if (dirSelect) {
+    dirSelect.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    dirSelect.addEventListener('change', (e) => {
+      currentFrame.transitionDirection = e.target.value;
+      pushHistory();
+      renderProps();
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+  }
+
+  const bounceChk = propsEl.querySelector('#frame-trans-bounce');
+  if (bounceChk) {
+    bounceChk.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    bounceChk.addEventListener('change', (e) => {
+      currentFrame.transitionBounce = e.target.checked;
+      pushHistory();
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+  }
+
+  const zfInp = propsEl.querySelector('#frame-trans-zoom-from');
+  if (zfInp) {
+    zfInp.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    zfInp.addEventListener('input', (e) => {
+      currentFrame.transitionZoomFrom = parseInt(e.target.value, 10) || 80;
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    zfInp.addEventListener('change', () => {
+      pushHistory();
+    });
+  }
+
+  const angleInp = propsEl.querySelector('#frame-trans-angle');
+  if (angleInp) {
+    angleInp.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    angleInp.addEventListener('input', (e) => {
+      currentFrame.transitionAngle = parseInt(e.target.value, 10) || 0;
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    angleInp.addEventListener('change', () => {
+      pushHistory();
+    });
+  }
+
+  const area = propsEl.querySelector('#frame-transition-preview-area');
+  if (area) {
+    area.addEventListener('mouseleave', () => {
+      stopFrameTransitionPreview();
+    });
+  }
+}
+
 function renderProps() {
   const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   let el = getSelectedElement();
@@ -7257,6 +7670,25 @@ function renderProps() {
 
   if (!el) {
     if (!c) { propsEl.innerHTML = '<div class="panel-section"><h3>Properties</h3><div class="prop-empty">No canvas.</div></div>'; return; }
+    
+    const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+    let frameTransitionSectionHtml = '';
+    if (state.frames.length > 1 && activeIdx > 0) {
+      frameTransitionSectionHtml = `
+        <div class="panel-section" id="panel-section-animation">
+          <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none;">
+            <span>Animation</span>
+            <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </h3>
+          <div class="panel-section-content">
+            ${getFrameTransitionHtml(state.frames[activeIdx])}
+          </div>
+        </div>
+      `;
+    }
+
     // show canvas properties when no element is selected
     propsEl.innerHTML = `
       ${dynamicHtml}
@@ -7372,7 +7804,8 @@ function renderProps() {
         </div>
 
         <div class="prop-empty" style="padding: 16px 0 0;">Tip: double-click text to edit it inline. Use <span class="kbd">←↑↓→</span> to nudge, <span class="kbd">⌫</span> to delete.</div>
-      </div></div>`;
+      </div></div>
+      ${frameTransitionSectionHtml}`;
     const wInp = document.getElementById('c-w');
     const hInp = document.getElementById('c-h');
 
@@ -7531,6 +7964,10 @@ function renderProps() {
 
     if (typeof syncColorPickerWithSelection === 'function') {
       syncColorPickerWithSelection(null, c);
+    }
+    const canvasActiveIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+    if (state.frames.length > 1 && canvasActiveIdx > 0) {
+      wireFrameTransitionEvents();
     }
     initCollapsiblePanels();
     return;
@@ -8266,6 +8703,13 @@ function renderProps() {
     }
 
     f.push(`</div>`); // Close effects-preview-area
+
+    const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+    if (state.frames.length > 1 && activeIdx > 0) {
+      f.push(`<div style="height:1px; background:var(--border-color, #272c3a); margin:16px 0;"></div>`);
+      f.push(getFrameTransitionHtml(state.frames[activeIdx]));
+    }
+
     f.push(`</div></div>`);
   }
 
@@ -8437,7 +8881,7 @@ function checkButtonFontSizeWarning(el) {
   };
 
   propsEl.querySelectorAll('input, select, textarea').forEach((inp) => {
-    if (inp.classList.contains('dm-control')) return; // dynamic-data controls wired separately
+    if (inp.classList.contains('dm-control') || (inp.id && inp.id.startsWith('frame-trans'))) return; // dynamic-data and frame transitions controls wired separately
     inp.addEventListener('input', () => {
       let val = inp.type === 'number' ? (inp.value === '' ? undefined : Number(inp.value)) : (inp.type === 'checkbox' ? inp.checked : inp.value);
       if (inp.type === 'number' && inp.value !== '' && val !== undefined) {
@@ -8846,10 +9290,6 @@ function checkButtonFontSizeWarning(el) {
 
   const transitionArea = propsEl.querySelector('#in-transition-preview-area');
   if (transitionArea) {
-    transitionArea.addEventListener('mouseenter', () => {
-      const activeVal = el.animType || 'none';
-      startPreviewLoop(activeVal);
-    });
     transitionArea.addEventListener('mouseleave', () => {
       activePreviewVal = null;
       if (state.previewTimeoutId) {
@@ -8857,6 +9297,18 @@ function checkButtonFontSizeWarning(el) {
         state.previewTimeoutId = null;
       }
       resetPreviewNodes();
+    });
+
+    transitionArea.querySelectorAll('input, select').forEach(input => {
+      input.addEventListener('mouseenter', () => {
+        startPreviewLoop(el.animType || 'none');
+      });
+      input.addEventListener('input', () => {
+        startPreviewLoop(el.animType || 'none');
+      });
+      input.addEventListener('change', () => {
+        startPreviewLoop(el.animType || 'none');
+      });
     });
   }
 
@@ -9030,13 +9482,21 @@ function checkButtonFontSizeWarning(el) {
 
   const effectsArea = propsEl.querySelector('#effects-preview-area');
   if (effectsArea) {
-    effectsArea.addEventListener('mouseenter', () => {
-      const activeVal = el.effectType || 'none';
-      applyEffectPreview(activeVal);
-    });
     effectsArea.addEventListener('mouseleave', () => {
       activeEffectVal = null;
       resetEffectPreviewNodes();
+    });
+
+    effectsArea.querySelectorAll('input, select').forEach(input => {
+      input.addEventListener('mouseenter', () => {
+        applyEffectPreview(el.effectType || 'none');
+      });
+      input.addEventListener('input', () => {
+        applyEffectPreview(el.effectType || 'none');
+      });
+      input.addEventListener('change', () => {
+        applyEffectPreview(el.effectType || 'none');
+      });
     });
   }
 
@@ -9144,6 +9604,10 @@ function checkButtonFontSizeWarning(el) {
 
   if (typeof syncColorPickerWithSelection === 'function') {
     syncColorPickerWithSelection(el, null);
+  }
+  const canvasActiveIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+  if (state.frames.length > 1 && canvasActiveIdx > 0) {
+    wireFrameTransitionEvents();
   }
   initCollapsiblePanels();
 }
@@ -10549,33 +11013,6 @@ document.getElementById('frame-duration').addEventListener('input', (e) => {
 });
 document.getElementById('frame-duration').addEventListener('change', () => pushHistory());
 
-document.getElementById('frame-transition').addEventListener('change', (e) => {
-  const f = state.frames.find(x => x.id === state.activeFrameId);
-  if (f) {
-    f.transition = e.target.value;
-    pushHistory();
-    render();
-  }
-});
-
-document.getElementById('frame-transition-duration').addEventListener('input', (e) => {
-  const f = state.frames.find(x => x.id === state.activeFrameId);
-  if (f) {
-    f.transitionDuration = parseFloat(e.target.value) || 0.5;
-    render();
-  }
-});
-document.getElementById('frame-transition-duration').addEventListener('change', () => pushHistory());
-
-document.getElementById('frame-transition-fade').addEventListener('change', (e) => {
-  const f = state.frames.find(x => x.id === state.activeFrameId);
-  if (f) {
-    f.transitionFade = e.target.checked;
-    pushHistory();
-    render();
-  }
-});
-
 document.getElementById('menu-file-open').addEventListener('click', openProjectFromZip);
 document.getElementById('menu-file-save-browser').addEventListener('click', async () => {
   if (_autosaveTimer) {
@@ -11224,7 +11661,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.61';
+  const currentVersion = 'v0.16.62';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
