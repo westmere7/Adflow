@@ -2217,6 +2217,30 @@ function canvasFrameNode(c) {
     canvas.addEventListener('mousedown', (e) => {
       if (isSpaceDown || e.button === 1) return;
       if (e.target === canvas || e.target === canvasInner) {
+        if (state.isolatedGroupId) {
+          const groupElements = c.elements.filter(el => el.groupId === state.isolatedGroupId);
+          const rect = canvasInner.getBoundingClientRect();
+          const z = state.zoom || 1;
+          const clickX = (e.clientX - rect.left) / z;
+          const clickY = (e.clientY - rect.top) / z;
+
+          const hitElement = [...groupElements].reverse().find(el => {
+            if (el.hidden) return false;
+            const cx = el.x + el.width / 2;
+            const cy = el.y + el.height / 2;
+            const dx = clickX - cx;
+            const dy = clickY - cy;
+            const rad = -(el.rotation || 0) * Math.PI / 180;
+            const rx = dx * Math.cos(rad) - dy * Math.sin(rad) + cx;
+            const ry = dx * Math.sin(rad) + dy * Math.cos(rad) + cy;
+            return rx >= el.x && rx <= el.x + el.width && ry >= el.y && ry <= el.y + el.height;
+          });
+
+          if (hitElement) {
+            onElementMouseDown(e, hitElement, c);
+            return;
+          }
+        }
         state.activeCanvasId = c.id;
         if (!e.shiftKey) {
           state.selectedElementId = null;
@@ -10560,7 +10584,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.60';
+  const currentVersion = 'v0.16.61';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10623,7 +10647,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.60</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.61</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10679,7 +10703,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.60</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.61</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

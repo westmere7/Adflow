@@ -650,6 +650,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.61',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Fixed canvas selection inside mask groups: enables selecting the underlying image directly on the canvas (even when clipped or larger than the mask) via group isolation mode.',
+      'Implemented backdrop click hit-testing for isolated groups to capture clicks on clipped image bounds that pass through due to CSS clip-path pointer event suppression.'
+    ]
+  },
+  {
     version: 'v0.16.60',
     date: 'May 2026 — Engine v2.16',
     items: [
@@ -658,7 +666,8 @@ const CHANGELOG_DATA = [
       'Integrated Web Worker-driven sub-zip compression to ensure the main UI thread remains completely responsive during bulk version generation.',
       'Added a beautiful overlay progress modal displaying real-time version progress, percentage completed, and cumulative MB written, along with an "Abort" option.',
       'Added a unified memory buffer fallback for Firefox and Safari to ensure seamless version exports even on unsupported browsers.',
-      'Respects selected canvases and filename prefix options from the Export dialog during bulk exports.'
+      'Respects selected canvases and filename prefix options from the Export dialog during bulk exports.',
+      'Fixed "Crop & Level" and "Compress" image tools to load the active version\'s image, saving outputs back to the data sheet cell if dynamic.'
     ]
   },
   {

@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.60 (Current) - May 2026 — Engine v2.16
+v0.16.61 (Current) - May 2026 — Engine v2.16
+- Fixed canvas selection inside mask groups: enables selecting the underlying image directly on the canvas (even when clipped or larger than the mask) via group isolation mode.
+- Implemented backdrop click hit-testing for isolated groups to capture clicks on clipped image bounds that pass through due to CSS clip-path pointer event suppression.
+
+v0.16.60 - May 2026 — Engine v2.16
 - Implemented high-performance version export using a background Web Worker and direct-to-disk streaming.
 - Developed a lightweight, zero-dependency client-side ZIP stream writer that pipes chunks directly to disk via the File System Access API.
 - Integrated Web Worker-driven sub-zip compression to ensure the main UI thread remains completely responsive during bulk version generation.
