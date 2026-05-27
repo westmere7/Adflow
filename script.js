@@ -7583,10 +7583,10 @@ function renderProps() {
           ? 'Re-crop / re-rotate. Reopens the crop dialogue with the original (uncropped) image and the current crop region preselected.'
           : 'Crop & level — rotate the image and pull the corners to crop. Result is baked into the image (element rotation stays 0).';
         f.push(`<div class="prop-row" style="margin-top:4px; margin-bottom:8px; display:flex; gap:6px;">
-          <button id="btn-webp-compress" class="btn" title="Compress image to WebP format to reduce file size" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; ${compressBtnStyle}" ${el.isCompressed ? 'disabled' : ''}>
+          <button id="btn-webp-compress" class="btn" title="Compress image to WebP format to reduce file size" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; ${compressBtnStyle}" ${el.isCompressed || imgDisabled ? 'disabled' : ''}>
             ${el.isCompressed ? '✓ Compressed' : 'Compress'}
           </button>
-          <button id="btn-image-crop" class="btn" title="${cropTitle}" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; ${cropBtnStyle}">
+          <button id="btn-image-crop" class="btn" title="${cropTitle}" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; ${cropBtnStyle}" ${imgDisabled ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}>
             ${isCropped ? '✓ Crop & Level' : 'Crop & Level'}
           </button>
         </div>`);
@@ -8472,6 +8472,11 @@ function checkButtonFontSizeWarning(el) {
     btnCrop.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
+      const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
+      if (_imgDyn && state.dataMerge && state.dataMerge.locked) {
+        alert('Data lock is on — unlock to crop this version’s image.');
+        return;
+      }
       openImageCropModal(el);
     };
   }
@@ -10922,7 +10927,9 @@ function compressImageToWebP(dataUrl, quality = 0.8) {
 }
 
 function openWebpCompressionModal(el) {
-  const originalDataUrl = (el.assetId && state.assets && state.assets[el.assetId]) || el.assetId;
+  const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+  const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+  const originalDataUrl = (activeAssetId && state.assets && state.assets[activeAssetId]) || activeAssetId;
   if (!originalDataUrl) return;
 
   const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -11013,13 +11020,23 @@ function openWebpCompressionModal(el) {
   bg.querySelector('#webp-close').onclick = closeFn;
   bg.querySelector('#webp-btn-cancel').onclick = closeFn;
   bg.querySelector('#webp-btn-apply').onclick = () => {
-    let id = el.assetId;
-    if (!id || !id.startsWith('img_')) {
-      id = 'img_' + uid();
-      el.assetId = id;
-    }
+    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+    const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+    
+    const newId = 'img_' + uid();
     if (!state.assets) state.assets = {};
-    state.assets[id] = currentCompressedDataUrl;
+    state.assets[newId] = currentCompressedDataUrl;
+    
+    if (!state.assetNames) state.assetNames = {};
+    const origName = state.assetNames && state.assetNames[activeAssetId] ? state.assetNames[activeAssetId] : (el.name || 'image');
+    state.assetNames[newId] = origName.replace(/\.[a-z0-9]+$/i, '') + '.webp';
+    
+    const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
+    if (_imgDyn) {
+      if (!state.dataMerge.locked) dmWriteCell(el, 'image', newId);
+    } else {
+      el.assetId = newId;
+    }
     el.isCompressed = true;
     el.webpQuality = parseInt(slider.value, 10);
     pushHistory();
@@ -11041,7 +11058,13 @@ function openImageCropModal(el) {
   if (!el || el.type !== 'image') return;
   // Resolve the source we'll crop from. If a previous crop exists,
   // use the original — never crop a crop.
-  const baseAssetId = el.cropOriginalAssetId || el.assetId;
+  const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+  const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+  
+  let baseAssetId = activeAssetId;
+  if (activeAssetId && activeAssetId.startsWith('img_crop_') && el.cropOriginalAssetId) {
+    baseAssetId = el.cropOriginalAssetId;
+  }
   const baseDataUrl = baseAssetId && state.assets ? state.assets[baseAssetId] : null;
   if (!baseDataUrl) {
     showCanvasNotification('Image data not available.', { type: 'error' });
@@ -11241,7 +11264,13 @@ function openImageCropModal(el) {
   bg.querySelector('#crop-reset-all').onclick = () => {
     if (!confirm('Drop the crop and rotation, restoring the original image?')) return;
     if (el.cropOriginalAssetId) {
-      el.assetId = el.cropOriginalAssetId;
+      const orig = el.cropOriginalAssetId;
+      const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
+      if (_imgDyn) {
+        if (!state.dataMerge.locked) dmWriteCell(el, 'image', orig);
+      } else {
+        el.assetId = orig;
+      }
       delete el.cropOriginalAssetId;
     }
     delete el.cropRotation;
@@ -11282,7 +11311,10 @@ function openImageCropModal(el) {
 
     // Remember the uncropped original on first crop, so subsequent
     // edits start from it rather than re-cropping a crop.
-    if (!el.cropOriginalAssetId) el.cropOriginalAssetId = el.assetId;
+    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+    const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+    
+    if (!el.cropOriginalAssetId) el.cropOriginalAssetId = activeAssetId;
     el.cropRotation = currentRotation;
     el.cropRect = {
       x: cropPx.x / canvas.width,
@@ -11293,7 +11325,13 @@ function openImageCropModal(el) {
     const newId = 'img_crop_' + uid();
     if (!state.assets) state.assets = {};
     state.assets[newId] = outDataUrl;
-    el.assetId = newId;
+    
+    const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
+    if (_imgDyn) {
+      if (!state.dataMerge.locked) dmWriteCell(el, 'image', newId);
+    } else {
+      el.assetId = newId;
+    }
     el.isCompressed = false; // crop output is PNG; compress flag no longer applies
 
     // Adjust the element's bounding box height to match the new image

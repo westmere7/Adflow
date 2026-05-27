@@ -7,6 +7,7 @@ v0.16.60 (Current) - May 2026 — Engine v2.16
 - Added a beautiful, responsive overlay progress modal displaying real-time version progress, percentage completed, and cumulative MB written, along with a "Cancel" option.
 - Added a unified memory buffer fallback for Firefox and Safari to ensure seamless version exports even on unsupported browsers.
 - Respects selected canvases and filename prefix options from the Export dialog during bulk exports.
+- Fixed "Crop & Level" and "Compress" image tools to load the active version's image, saving outputs back to the data sheet cell if dynamic.
 
 v0.16.59 - May 2026 — Engine v2.16
 - Separated manual saving into three distinct options:
