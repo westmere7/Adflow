@@ -227,7 +227,7 @@ function dmImportCSV(text) {
   if (!matrix.length) { alert('No rows found in the file.'); return false; }
   const headers = matrix[0].map(h => h.trim()).filter(h => h !== '');
   if (!headers.length) { alert('No column headers found in the first row.'); return false; }
-  const rows = matrix.slice(1).map(r => { const o = {}; headers.forEach((h, idx) => o[h] = r[idx] != null ? r[idx] : ''); return o; });
+  const rows = matrix.slice(1).map(r => { const o = { _selected: true }; headers.forEach((h, idx) => o[h] = r[idx] != null ? r[idx] : ''); return o; });
   const dm = state.dataMerge;
   dm.columns = headers;
   dm.rows = rows;
@@ -433,7 +433,7 @@ function dmSortByColumn(column, direction) {
 }
 function dmAddRow() {
   const dm = state.dataMerge;
-  const o = {}; dm.columns.forEach(c => o[c] = '');
+  const o = { _selected: true }; dm.columns.forEach(c => o[c] = '');
   dm.rows.push(o);
   dm.enabled = true;
 }
@@ -465,8 +465,8 @@ function openDataPanel() {
   // Widen the modal so the sheet has real room.
   const modal = bg.querySelector('.modal');
   if (modal) {
-    modal.style.width = '1180px';
-    modal.style.maxWidth = '95vw';
+    modal.style.width = '1450px';
+    modal.style.maxWidth = '96vw';
   }
 
   const head = bg.querySelector('.modal-head');
@@ -563,11 +563,20 @@ function dmRenderPanel(bg) {
       </div>
     </th>`).join('');
 
+  const allChecked = dm.rows.length > 0 && dm.rows.every(r => r._selected !== false);
+  const selectedCount = dm.rows.filter(r => r._selected !== false).length;
+  const totalCount = dm.rows.length;
+  const btnLabel = selectedCount === totalCount
+    ? `Export All Versions (${totalCount})`
+    : `Export Selected Versions (${selectedCount})`;
+  const btnDisabled = selectedCount === 0 ? 'disabled' : '';
+
   const rowsHtml = dm.rows.map((r, i) => {
     const active = dm.activeVersion === i;
     return `<tr data-row="${i}" class="dm-row" style="${active ? 'background:rgba(124,92,255,.10);' : ''}">
       <td class="dm-row-handle" data-row="${i}" draggable="true" title="Drag to reorder" style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; cursor:grab; text-align:center; color:var(--text-muted); width:22px; user-select:none; font-size:11px;">⋮⋮</td>
       <td style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; width:28px; text-align:center;"><button class="dm-viewrow" data-row="${i}" title="Preview this version on the canvas" style="background:none; border:none; color:${active ? 'var(--accent-light)' : 'var(--text-muted)'}; cursor:pointer; font-size:14px; padding:0;">${active ? '●' : '○'}</button></td>
+      <td style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; width:28px; text-align:center;"><input type="checkbox" class="dm-row-select" data-row="${i}" ${r._selected !== false ? 'checked' : ''} style="margin:0; cursor:pointer;" title="Include this version in export"/></td>
       <td style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; width:32px; text-align:center; color:var(--text-muted); font-size:10px; font-variant-numeric:tabular-nums;">${i + 1}</td>` +
       dm.columns.map(c => `<td class="${c === dm.keyColumn ? 'dm-key-col' : ''}" style="padding:0; border-bottom:1px solid #15171f; border-right:1px solid #15171f; min-width:140px;"><input class="dm-cell" data-row="${i}" data-col="${dmEsc(c)}" value="${dmEsc(r[c] || '')}" style="width:100%; background:transparent; border:none; color:var(--text-main); padding:6px 8px; font-size:11px; outline:none; font-family:inherit;"/></td>`).join('') +
       `<td style="padding:3px 4px; border-bottom:1px solid #15171f; width:28px; text-align:center;"><button class="dm-delrow" data-row="${i}" title="Delete row" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:13px; padding:0;">×</button></td>
@@ -581,6 +590,7 @@ function dmRenderPanel(bg) {
              <tr>
                <th style="width:22px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel);"></th>
                <th style="width:28px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel);"></th>
+               <th style="width:28px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel); text-align:center;"><input type="checkbox" id="dm-select-all" ${allChecked ? 'checked' : ''} style="margin:0; cursor:pointer;" title="Select/deselect all versions"/></th>
                <th style="width:32px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel); color:var(--text-muted); font-size:10px; font-weight:600;">#</th>
                ${colHeaderHtml}
                <th style="width:28px; padding:6px 4px; border-bottom:1px solid var(--border-light); background:var(--bg-panel);"></th>
@@ -610,7 +620,7 @@ function dmRenderPanel(bg) {
           Enable merge
         </label>
 
-        <button class="btn primary" id="dm-export-versions" ${dm.rows.length ? '' : 'disabled'} style="padding:8px;">Export All Versions (${dm.rows.length})</button>
+        <button class="btn primary" id="dm-export-versions" ${btnDisabled} style="padding:8px;">${btnLabel}</button>
 
         <div>
           <h3 style="font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin:0 0 8px; font-weight:600;">Column → Slot Mapping</h3>
@@ -653,6 +663,26 @@ function dmWirePanel(bg) {
   if (q('#dm-addrow')) q('#dm-addrow').onclick = () => { dmAddRow(); pushHistory(); reRender(); };
   if (q('#dm-export-versions')) q('#dm-export-versions').onclick = () => dmExportAllVersions();
   if (q('#dm-enabled')) q('#dm-enabled').onchange = (e) => { state.dataMerge.enabled = e.target.checked; pushHistory(); reRender(); };
+
+  if (q('#dm-select-all')) {
+    q('#dm-select-all').onchange = (e) => {
+      const checked = e.target.checked;
+      state.dataMerge.rows.forEach(r => r._selected = checked);
+      pushHistory();
+      reRender();
+    };
+  }
+
+  all('.dm-row-select').forEach(cb => {
+    cb.onchange = () => {
+      const idx = Number(cb.dataset.row);
+      if (state.dataMerge.rows[idx]) {
+        state.dataMerge.rows[idx]._selected = cb.checked;
+        pushHistory();
+        reRender();
+      }
+    };
+  });
 
   all('.dm-map').forEach(sel => sel.onchange = () => {
     const k = sel.dataset.mapkey;
