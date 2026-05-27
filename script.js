@@ -6606,10 +6606,10 @@ function renderLayers() {
           <button class="icon-btn role-btn ${isAssigned ? 'role-assigned' : ''}" data-act="role" title="${roleTooltip}">
             ${roleIconSvg}
           </button>
-          <button class="icon-btn ${el.locked ? 'active' : ''}" data-act="lock" title="Toggle lock">
+          <button class="icon-btn ${el.locked ? 'active' : ''}" data-act="lock" title="Toggle lock (Hold Shift to apply to all canvases)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </button>
-          <button class="icon-btn ${!el.hidden ? 'active' : ''} ${el.isMask ? 'mask-eye' : ''}" data-act="hide" title="${el.isMask ? (el.hidden ? 'Mask inactive — click to enable' : 'Mask active — click to disable') : 'Toggle visibility'}">
+          <button class="icon-btn ${!el.hidden ? 'active' : ''} ${el.isMask ? 'mask-eye' : ''}" data-act="hide" title="${el.isMask ? (el.hidden ? 'Mask inactive — click to enable (Hold Shift to apply to all canvases)' : 'Mask active — click to disable (Hold Shift to apply to all canvases)') : 'Toggle visibility (Hold Shift to apply to all canvases)'}">
             ${eyeIconHtml}
           </button>
         </div>
@@ -6794,20 +6794,52 @@ function renderLayers() {
         }
         if (act === 'lock') {
           const toToggle = (state.layerSelection?.includes(el.id)) ? state.layerSelection : [el.id];
-          toToggle.forEach(id => {
-            const item = c.elements.find(x => x.id === id);
-            if (item) item.locked = !item.locked;
-          });
+          const newLocked = !el.locked;
+          if (e.shiftKey) {
+            const targetNames = toToggle.map(id => {
+              const item = c.elements.find(x => x.id === id);
+              return item ? baseLayerLabel(item) : null;
+            }).filter(Boolean);
+            state.canvases.forEach(canvas => {
+              canvas.elements.forEach(item => {
+                if (targetNames.includes(baseLayerLabel(item))) {
+                  item.locked = newLocked;
+                }
+              });
+            });
+          } else {
+            toToggle.forEach(id => {
+              const item = c.elements.find(x => x.id === id);
+              if (item) item.locked = newLocked;
+            });
+            showCanvasNotification('Hold Shift to toggle for all canvases', { type: 'info', duration: 3000 });
+          }
           pushHistory();
           render();
           return;
         }
         if (act === 'hide') {
           const toToggle = (state.layerSelection?.includes(el.id)) ? state.layerSelection : [el.id];
-          toToggle.forEach(id => {
-            const item = c.elements.find(x => x.id === id);
-            if (item) item.hidden = !item.hidden;
-          });
+          const newHidden = !el.hidden;
+          if (e.shiftKey) {
+            const targetNames = toToggle.map(id => {
+              const item = c.elements.find(x => x.id === id);
+              return item ? baseLayerLabel(item) : null;
+            }).filter(Boolean);
+            state.canvases.forEach(canvas => {
+              canvas.elements.forEach(item => {
+                if (targetNames.includes(baseLayerLabel(item))) {
+                  item.hidden = newHidden;
+                }
+              });
+            });
+          } else {
+            toToggle.forEach(id => {
+              const item = c.elements.find(x => x.id === id);
+              if (item) item.hidden = newHidden;
+            });
+            showCanvasNotification('Hold Shift to toggle for all canvases', { type: 'info', duration: 3000 });
+          }
           pushHistory();
           render();
           return;
