@@ -1744,21 +1744,14 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
   };
 
   try {
-    const selectedIndices = dm.rows
-      .map((row, idx) => ({ row, idx }))
-      .filter(item => item.row._selected !== false);
-    const totalVersions = selectedIndices.length;
-    if (totalVersions === 0) { alert('No versions selected for export.'); return; }
-    
+    const totalVersions = dm.rows.length;
     const usedFolders = {};
     let totalBytesWritten = 0;
     
-    for (let k = 0; k < totalVersions; k++) {
+    for (let i = 0; i < totalVersions; i++) {
       if (isCancelled) break;
-      const i = selectedIndices[k].idx;
-      const rowData = selectedIndices[k].row;
       
-      const folderBase = String(rowData[keyCol] || ('version_' + (i + 1))).replace(/[^a-zA-Z0-9_-]/g, '_') || ('version_' + (i + 1));
+      const folderBase = String(dm.rows[i][keyCol] || ('version_' + (i + 1))).replace(/[^a-zA-Z0-9_-]/g, '_') || ('version_' + (i + 1));
       let folderName = folderBase;
       usedFolders[folderName] = (usedFolders[folderName] || 0) + 1;
       if (usedFolders[folderName] > 1) {
@@ -1766,8 +1759,8 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
       }
       
       progressUI.update(
-        (k / totalVersions) * 100,
-        `Zipping Version ${k + 1} of ${totalVersions} ("${folderName}")…`,
+        (i / totalVersions) * 100,
+        `Zipping Version ${i + 1} of ${totalVersions} ("${folderName}")…`,
         `${(totalBytesWritten / (1024 * 1024)).toFixed(2)} MB written`
       );
       
@@ -1822,7 +1815,7 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
         URL.revokeObjectURL(a.href);
       }
       
-      showCanvasNotification('Selected versions exported successfully');
+      showCanvasNotification('All versions exported successfully');
     }
   } catch (err) {
     console.error('Streaming version export failure:', err);
