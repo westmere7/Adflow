@@ -2362,6 +2362,42 @@ body.theme-navy {
 
     }
 
+    .selection-edge {
+      position: absolute;
+      pointer-events: auto;
+      cursor: move;
+      background: transparent;
+    }
+
+    .selection-edge.top {
+      top: calc(-4px / var(--z, 1));
+      left: 0;
+      width: 100%;
+      height: calc(8px / var(--z, 1));
+    }
+
+    .selection-edge.bottom {
+      bottom: calc(-4px / var(--z, 1));
+      left: 0;
+      width: 100%;
+      height: calc(8px / var(--z, 1));
+    }
+
+    .selection-edge.left {
+      top: 0;
+      left: calc(-4px / var(--z, 1));
+      width: calc(8px / var(--z, 1));
+      height: 100%;
+    }
+
+    .selection-edge.right {
+      top: 0;
+      right: calc(-4px / var(--z, 1));
+      width: calc(8px / var(--z, 1));
+      height: 100%;
+    }
+
+
 
 
     .handle {

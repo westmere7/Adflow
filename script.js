@@ -3359,6 +3359,40 @@ function multiSelectionOverlay(elements, isGroup = false) {
     }
   });
 
+  ['top', 'right', 'bottom', 'left'].forEach(edge => {
+    const eDiv = document.createElement('div');
+    eDiv.className = 'selection-edge ' + edge;
+    eDiv.style.position = 'absolute';
+    eDiv.style.pointerEvents = 'all';
+    eDiv.style.cursor = 'move';
+    eDiv.style.backgroundColor = 'rgba(0,0,0,0)';
+    if (edge === 'top') {
+      eDiv.style.top = 'calc(-4px / var(--z, 1))';
+      eDiv.style.left = '0';
+      eDiv.style.width = '100%';
+      eDiv.style.height = 'calc(8px / var(--z, 1))';
+    } else if (edge === 'bottom') {
+      eDiv.style.bottom = 'calc(-4px / var(--z, 1))';
+      eDiv.style.left = '0';
+      eDiv.style.width = '100%';
+      eDiv.style.height = 'calc(8px / var(--z, 1))';
+    } else if (edge === 'left') {
+      eDiv.style.top = '0';
+      eDiv.style.left = 'calc(-4px / var(--z, 1))';
+      eDiv.style.width = 'calc(8px / var(--z, 1))';
+      eDiv.style.height = '100%';
+    } else if (edge === 'right') {
+      eDiv.style.top = '0';
+      eDiv.style.right = 'calc(-4px / var(--z, 1))';
+      eDiv.style.width = 'calc(8px / var(--z, 1))';
+      eDiv.style.height = '100%';
+    }
+    eDiv.addEventListener('mousedown', (e) => {
+      onElementMouseDown(e, elements[0], getActiveCanvas());
+    });
+    w.appendChild(eDiv);
+  });
+
   ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach(corner => {
     const h = document.createElement('div');
     h.className = 'handle ' + corner;
@@ -3447,6 +3481,40 @@ function selectionOverlay(el) {
     if (lineBadge) w.appendChild(lineBadge);
     return w;
   }
+
+  ['top', 'right', 'bottom', 'left'].forEach(edge => {
+    const eDiv = document.createElement('div');
+    eDiv.className = 'selection-edge ' + edge;
+    eDiv.style.position = 'absolute';
+    eDiv.style.pointerEvents = 'all';
+    eDiv.style.cursor = 'move';
+    eDiv.style.backgroundColor = 'rgba(0,0,0,0)';
+    if (edge === 'top') {
+      eDiv.style.top = 'calc(-4px / var(--z, 1))';
+      eDiv.style.left = '0';
+      eDiv.style.width = '100%';
+      eDiv.style.height = 'calc(8px / var(--z, 1))';
+    } else if (edge === 'bottom') {
+      eDiv.style.bottom = 'calc(-4px / var(--z, 1))';
+      eDiv.style.left = '0';
+      eDiv.style.width = '100%';
+      eDiv.style.height = 'calc(8px / var(--z, 1))';
+    } else if (edge === 'left') {
+      eDiv.style.top = '0';
+      eDiv.style.left = 'calc(-4px / var(--z, 1))';
+      eDiv.style.width = 'calc(8px / var(--z, 1))';
+      eDiv.style.height = '100%';
+    } else if (edge === 'right') {
+      eDiv.style.top = '0';
+      eDiv.style.right = 'calc(-4px / var(--z, 1))';
+      eDiv.style.width = 'calc(8px / var(--z, 1))';
+      eDiv.style.height = '100%';
+    }
+    eDiv.addEventListener('mousedown', (e) => {
+      onElementMouseDown(e, el, getActiveCanvas());
+    });
+    w.appendChild(eDiv);
+  });
 
   const baseAngles = { n: 0, ne: 45, e: 90, se: 135, s: 180, sw: 225, w: 270, nw: 315 };
   const cursors = ['ns-resize', 'nesw-resize', 'ew-resize', 'nwse-resize'];
