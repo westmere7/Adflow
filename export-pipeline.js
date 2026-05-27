@@ -1253,11 +1253,11 @@ function openExportModal() {
       ${hasVersions ? `
       <div>
         <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Data version</label>
-        <select id="exp-version" style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; outline:none; font-family:inherit;" title="Pick which data row to bake into the export, or All versions for one folder per row (ZIP only).">
+        <select id="exp-version" style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; outline:none; font-family:inherit;" title="Pick which data row to bake into the export, or All selected versions for one folder per row (ZIP only).">
           ${dm.rows.map((row, i) => `<option value="${i}" ${i === activeVersionIdx ? 'selected' : ''}>${(versionLabel(i) || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</option>`).join('')}
-          <option value="all">All versions (separate folders)</option>
+          <option value="all">All selected versions (separate folders)</option>
         </select>
-        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">"All versions" forces HTML5 ZIP — one folder per data row.</div>
+        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">"All selected versions" forces HTML5 ZIP — one folder per selected data row.</div>
       </div>
       ` : ''}
     </div>
@@ -1744,14 +1744,19 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
   };
 
   try {
-    const totalVersions = dm.rows.length;
+    const selectedIndices = dm.rows
+      .map((r, idx) => ({ row: r, idx }))
+      .filter(item => item.row._selected !== false);
+    const totalVersions = selectedIndices.length;
     const usedFolders = {};
     let totalBytesWritten = 0;
     
-    for (let i = 0; i < totalVersions; i++) {
+    for (let k = 0; k < totalVersions; k++) {
       if (isCancelled) break;
+      const i = selectedIndices[k].idx;
+      const row = selectedIndices[k].row;
       
-      const folderBase = String(dm.rows[i][keyCol] || ('version_' + (i + 1))).replace(/[^a-zA-Z0-9_-]/g, '_') || ('version_' + (i + 1));
+      const folderBase = String(row[keyCol] || ('version_' + (i + 1))).replace(/[^a-zA-Z0-9_-]/g, '_') || ('version_' + (i + 1));
       let folderName = folderBase;
       usedFolders[folderName] = (usedFolders[folderName] || 0) + 1;
       if (usedFolders[folderName] > 1) {
@@ -1759,8 +1764,8 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
       }
       
       progressUI.update(
-        (i / totalVersions) * 100,
-        `Zipping Version ${i + 1} of ${totalVersions} ("${folderName}")…`,
+        (k / totalVersions) * 100,
+        `Zipping Version ${k + 1} of ${totalVersions} ("${folderName}")…`,
         `${(totalBytesWritten / (1024 * 1024)).toFixed(2)} MB written`
       );
       
