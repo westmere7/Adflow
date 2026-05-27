@@ -26,6 +26,124 @@
 // elementNode, multiSelectionOverlay, openModal, showCanvasNotification, etc.)
 // are call-time only — fire only when the user triggers an export.
 // ============================================================================
+// Helper to calculate the collapsed starting polygon coordinates for a split reveal
+// along a line passing through the center of the element at a given angle.
+function getSplitClipPath(angleDeg) {
+  const theta = (angleDeg || 0) * Math.PI / 180;
+  const cos = Math.cos(theta);
+  const sin = Math.sin(theta);
+  
+  const corners = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 0, y: 100 }
+  ];
+  
+  const projected = corners.map(pt => {
+    const dx = pt.x - 50;
+    const dy = pt.y - 50;
+    const d = dx * cos + dy * sin;
+    const px = 50 + d * cos;
+    const py = 50 + d * sin;
+    return `${px.toFixed(2)}% ${py.toFixed(2)}%`;
+  });
+  
+  return `polygon(${projected.join(', ')})`;
+}
+
+// Helper to calculate the keyframes for a zoom transition (with optional elastic bounce)
+function getZoomKeyframes(el) {
+  const zf = el.zoomFrom !== undefined ? el.zoomFrom / 100 : 0.8;
+  const fadeFrom = el.animFade !== false ? 'opacity: 0;' : '';
+  const fadeTo = el.animFade !== false ? 'opacity: 1;' : '';
+  const animName = `anim-zoom-${el.id}`;
+  
+  if (el.animBounce) {
+    let keyframes = `@keyframes ${animName} {\n`;
+    const d = 4.0; // damping
+    const f = 2.0; // frequency
+    
+    for (let pct = 0; pct <= 100; pct += 5) {
+      const t = pct / 100;
+      const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * f * t);
+      const scale = (1.0 + (zf - 1.0) * x).toFixed(3);
+      
+      let opacityStr = '';
+      if (el.animFade !== false) {
+        if (pct === 0) opacityStr = 'opacity: 0; ';
+        else if (pct >= 30) opacityStr = 'opacity: 1; ';
+        else {
+          const opt = (t / 0.3).toFixed(2);
+          opacityStr = `opacity: ${opt}; `;
+        }
+      }
+      
+      keyframes += `      ${pct}% { transform: scale(${scale}); ${opacityStr}}\n`;
+    }
+    keyframes += '    }';
+    return keyframes;
+  } else {
+    return `@keyframes ${animName} {
+      from { transform: scale(${zf}); ${fadeFrom} }
+      to { transform: scale(1); ${fadeTo} }
+    }`;
+  }
+}
+
+// Helper to calculate the keyframes for a slide transition (with optional elastic bounce, custom distance, and rotation offset)
+function getSlideKeyframes(el) {
+  const dir = el.animDirection || 'up';
+  const dist = el.animDistance !== undefined ? el.animDistance : 100;
+  const rOffset = el.animRotateOffset !== undefined ? el.animRotateOffset : 0;
+  const fade = el.animFade !== false;
+  const bounce = !!el.animBounce;
+  const animName = `anim-slide-${el.id}`;
+
+  if (bounce) {
+    let keyframes = `@keyframes ${animName} {\n`;
+    const d = 4.0; // damping
+    const f = 2.0; // frequency
+    
+    for (let pct = 0; pct <= 100; pct += 5) {
+      const t = pct / 100;
+      const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * f * t);
+      const currentDist = (dist * x).toFixed(2);
+      const currentRot = (rOffset * x).toFixed(2);
+      
+      let transformStr = '';
+      if (dir === 'up') transformStr = `transform: translateY(${currentDist}px) rotate(${currentRot}deg);`;
+      else if (dir === 'down') transformStr = `transform: translateY(${-currentDist}px) rotate(${currentRot}deg);`;
+      else if (dir === 'left') transformStr = `transform: translateX(${currentDist}px) rotate(${currentRot}deg);`;
+      else if (dir === 'right') transformStr = `transform: translateX(${-currentDist}px) rotate(${currentRot}deg);`;
+      
+      let opacityStr = '';
+      if (fade) {
+        if (pct === 0) opacityStr = 'opacity: 0; ';
+        else if (pct >= 30) opacityStr = 'opacity: 1; ';
+        else {
+          const opt = (t / 0.3).toFixed(2);
+          opacityStr = `opacity: ${opt}; `;
+        }
+      }
+      
+      keyframes += `      ${pct}% { ${transformStr} ${opacityStr}}\n`;
+    }
+    keyframes += '    }';
+    return keyframes;
+  } else {
+    let transformFrom = '';
+    if (dir === 'up') transformFrom = `translateY(${dist}px) rotate(${rOffset}deg)`;
+    else if (dir === 'down') transformFrom = `translateY(${-dist}px) rotate(${rOffset}deg)`;
+    else if (dir === 'left') transformFrom = `translateX(${dist}px) rotate(${rOffset}deg)`;
+    else if (dir === 'right') transformFrom = `translateX(${-dist}px) rotate(${rOffset}deg)`;
+
+    return `@keyframes ${animName} {
+      from { transform: ${transformFrom}; ${fade ? 'opacity: 0;' : ''} }
+      to { transform: translate(0) rotate(0); ${fade ? 'opacity: 1;' : ''} }
+    }`;
+  }
+}
 
 // ============================================================================
 // Export — Google-Ads-friendly HTML5 (active canvas)
@@ -365,6 +483,37 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     const wrapStyle = `position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;transform:rotate(${el.rotation || 0}deg);opacity:${wrapOpacity};`;
 
     const animType = el.animType || 'none';
+    if (animType === 'split' && !isImageExport) {
+      const fromPoly = getSplitClipPath(el.animAngle || 0);
+      const fadeFrom = el.animFade !== false ? 'opacity: 0;' : '';
+      const fadeTo = el.animFade !== false ? 'opacity: 1;' : '';
+      dynamicKeyframes += `
+  @keyframes anim-split-${el.id} {
+    from { clip-path: ${fromPoly}; ${fadeFrom} }
+    to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fadeTo} }
+  }`;
+    }
+    const isZoomLike = animType === 'zoom' || animType === 'zoom-in' || animType === 'pop-in';
+    if (isZoomLike && !isImageExport) {
+      const tempEl = { ...el };
+      if (animType === 'pop-in') {
+        tempEl.zoomFrom = 80;
+        tempEl.animFade = true;
+      } else if (animType === 'zoom-in') {
+        tempEl.zoomFrom = 110;
+        tempEl.animFade = true;
+      }
+      dynamicKeyframes += '\n' + getZoomKeyframes(tempEl);
+    }
+    const isSlideLike = animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right';
+    if (isSlideLike && !isImageExport) {
+      const tempEl = { ...el };
+      if (animType === 'slide-up') { tempEl.animDirection = 'up'; tempEl.animDistance = 20; }
+      else if (animType === 'slide-down') { tempEl.animDirection = 'down'; tempEl.animDistance = 20; }
+      else if (animType === 'slide-left') { tempEl.animDirection = 'left'; tempEl.animDistance = 20; }
+      else if (animType === 'slide-right') { tempEl.animDirection = 'right'; tempEl.animDistance = 20; }
+      dynamicKeyframes += '\n' + getSlideKeyframes(tempEl);
+    }
     const { entryConfig, entryVars, effConfig, effVars } = getElementAnimationCSS(el, isImageExport);
     const openDivs = `<div style="width:100%;height:100%;${entryConfig}${entryVars}"><div style="width:100%;height:100%;${effConfig}${effVars}">`;
     const closeDivs = `</div></div>`;
@@ -636,7 +785,7 @@ ${dynamicKeyframes}
   @keyframes eff-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
   @keyframes eff-float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
   @keyframes eff-flash { 0%, 50%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
-  @keyframes eff-wiggle { 0% { transform: rotate(0deg); } 25% { transform: rotate(-5deg); } 50% { transform: rotate(0deg); } 75% { transform: rotate(5deg); } 100% { transform: rotate(0deg); } }
+  @keyframes eff-wiggle { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
   @keyframes eff-spin { 100% { transform: rotate(var(--spin-target, 360deg)); } }
   @keyframes eff-heartbeat { 0% { transform: scale(1); } 14% { transform: scale(1.3); } 28% { transform: scale(1); } 42% { transform: scale(1.3); } 70% { transform: scale(1); } }
   @keyframes eff-pan { 0% { translate: 0 0; } 100% { translate: var(--pan-x, 0px) var(--pan-y, 0px); } }

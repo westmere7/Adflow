@@ -217,6 +217,8 @@ const state = {
   assetNames: {},        // assetId -> original filename (for data-merge image lookup)
   assetLibrary: [],      // saved reusable elements/groups (Assets panel)
   assetFolders: [],      // folders organizing the Assets panel (1 level deep)
+  favoriteAnimations: JSON.parse(localStorage.getItem('favoriteAnimations') || '[]'),
+  filterFavorites: false,
   // Data-merge / versioning: bind named element "slots" to spreadsheet columns so a
   // single template produces one finished ad set per row (e.g. one per RMIT course).
   dataMerge: {
@@ -631,9 +633,9 @@ function areStylesAndNamesEqual(el1, el2) {
   return baseLayerLabel(el1) === baseLayerLabel(el2);
 }
 
-function autoLinkElements() {
+function autoLinkElements(forceSelectedOnly = false) {
   const chkSelectedOnly = document.getElementById('lnk-opt-selected-only');
-  const selectedOnly = chkSelectedOnly ? chkSelectedOnly.checked : false;
+  const selectedOnly = forceSelectedOnly || (chkSelectedOnly ? chkSelectedOnly.checked : false);
 
   let allowedTargets = null;
   if (selectedOnly) {
@@ -927,7 +929,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     else delete targetEl.opacity;
   }
   if (sync.inAnim) {
-    const inAnimProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animateBg', 'bgOffset'];
+    const inAnimProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset'];
     inAnimProps.forEach(p => {
       if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
       else delete targetEl[p];
@@ -1085,7 +1087,7 @@ function removeGroupEntirely(gid) {
   render();
 }
 
-function autoAddAndLink(srcEl) {
+function autoAddAndLink(srcEl, skipNotify = false) {
   if (!srcEl) return;
   const name = baseLayerLabel(srcEl);
   const cat = getElementCategory(srcEl);
@@ -1183,7 +1185,7 @@ function autoAddAndLink(srcEl) {
   });
 
   // Now push changes to propagate the source properties to all members of the group
-  pushGroupChangesForId(gid);
+  pushGroupChangesForId(gid, skipNotify);
 }
 
 function pushGroupChanges() {
@@ -1224,7 +1226,7 @@ function deleteGroupAndElements(gid) {
 }
 
 
-function pushGroupChangesForId(gid) {
+function pushGroupChangesForId(gid, skipNotify = false) {
   const group = state.linkGroups[gid];
   if (!group) return;
   let elementsInGroup = [];
@@ -1244,9 +1246,11 @@ function pushGroupChangesForId(gid) {
       }
     });
   });
-  pushHistory();
-  render();
-  showCanvasNotification(`Changes pushed to group "${group.name}"`);
+  if (!skipNotify) {
+    pushHistory();
+    render();
+    showCanvasNotification(`Changes pushed to group "${group.name}"`);
+  }
 }
 
 function toggleGroupVisibility(gid) {
@@ -1500,6 +1504,54 @@ function render(skipProps = false) {
   const isolationOutline = document.getElementById('workspace-isolation-outline');
   if (isolationOutline) {
     isolationOutline.style.display = state.isolatedGroupId ? 'block' : 'none';
+  }
+
+  // Inject split and zoom animation keyframes for active canvas elements
+  const activeCanvas = getActiveCanvas();
+  if (activeCanvas) {
+    let dynamicStyles = '';
+    activeCanvas.elements.forEach(el => {
+      const animType = el.animType || 'none';
+      if (animType === 'split') {
+        const fromPoly = getSplitClipPath(el.animAngle || 0);
+        const fadeFrom = el.animFade !== false ? 'opacity: 0;' : '';
+        const fadeTo = el.animFade !== false ? 'opacity: 1;' : '';
+        dynamicStyles += `
+@keyframes anim-split-${el.id} {
+  from { clip-path: ${fromPoly}; ${fadeFrom} }
+  to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fadeTo} }
+}`;
+      } else if (animType === 'zoom' || animType === 'zoom-in' || animType === 'pop-in') {
+        const tempEl = { ...el };
+        if (animType === 'pop-in') {
+          tempEl.zoomFrom = 80;
+          tempEl.animFade = true;
+        } else if (animType === 'zoom-in') {
+          tempEl.zoomFrom = 110;
+          tempEl.animFade = true;
+        }
+        dynamicStyles += '\n' + getZoomKeyframes(tempEl);
+      } else if (animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right') {
+        const tempEl = { ...el };
+        if (animType === 'slide-up') { tempEl.animDirection = 'up'; tempEl.animDistance = 20; }
+        else if (animType === 'slide-down') { tempEl.animDirection = 'down'; tempEl.animDistance = 20; }
+        else if (animType === 'slide-left') { tempEl.animDirection = 'left'; tempEl.animDistance = 20; }
+        else if (animType === 'slide-right') { tempEl.animDirection = 'right'; tempEl.animDistance = 20; }
+        dynamicStyles += '\n' + getSlideKeyframes(tempEl);
+      }
+    });
+    
+    let styleTag = document.getElementById('dynamic-anim-styles');
+    if (dynamicStyles) {
+      if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'dynamic-anim-styles';
+        document.head.appendChild(styleTag);
+      }
+      styleTag.textContent = dynamicStyles;
+    } else if (styleTag) {
+      styleTag.remove();
+    }
   }
   // workspace sizing
   const z = state.zoom || 0.6;
@@ -2528,16 +2580,22 @@ function getElementAnimationCSS(el, isImageExport) {
   let entryAnims = [];
   let entryVars = '';
   if (animType !== 'none' && !isImageExport) {
-    const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(animType);
-    const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
-    const fadeOn = el.animFade !== false;
-    const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
-    if (el.type !== 'text' || (animType !== 'typing' && animType !== 'fade-typing')) {
-      entryAnims.push(`anim-${animType}${suffix} ${el.animDuration || 1}s ${animType === 'typing' ? 'steps(30, end)' : 'ease-out'} ${el.animDelay || 0}s both`);
-    }
-    if (animType === 'zoom-in') {
-      const zf = el.zoomFrom !== undefined ? el.zoomFrom / 100 : 1.1;
-      entryVars += `--zoom-from:${zf};`;
+    if (animType === 'split') {
+      entryAnims.push(`anim-split-${el.id} ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both`);
+    } else if (animType === 'zoom' || animType === 'pop-in' || animType === 'zoom-in') {
+      const timing = el.animBounce ? 'linear' : 'ease-out';
+      entryAnims.push(`anim-zoom-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both`);
+    } else if (animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right') {
+      const timing = el.animBounce ? 'linear' : 'ease-out';
+      entryAnims.push(`anim-slide-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both`);
+    } else {
+      const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(animType);
+      const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
+      const fadeOn = el.animFade !== false;
+      const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
+      if (el.type !== 'text' || (animType !== 'typing' && animType !== 'fade-typing')) {
+        entryAnims.push(`anim-${animType}${suffix} ${el.animDuration || 1}s ${animType === 'typing' ? 'steps(30, end)' : 'ease-out'} ${el.animDelay || 0}s both`);
+      }
     }
   }
 
@@ -2733,39 +2791,113 @@ function generateMaskClipPathKeyframes(mask, image, presetOverride) {
   const animType = presetOverride || mask.animType || 'none';
   if (animType === 'none') return null;
 
-  const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
+  const isSlideLike = ['slide', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in', 'zoom'].includes(animType);
   if (!isSlideLike) return null;
 
   const fromMask = JSON.parse(JSON.stringify(mask));
   
-  if (animType === 'slide-up') fromMask.y += 20;
-  else if (animType === 'slide-down') fromMask.y -= 20;
-  else if (animType === 'slide-left') fromMask.x += 20;
-  else if (animType === 'slide-right') fromMask.x -= 20;
-  else if (animType === 'pop-in' || animType === 'zoom-in') {
-    const scale = animType === 'pop-in' ? 0.8 : (mask.zoomFrom !== undefined ? mask.zoomFrom / 100 : 1.1);
-    const cx = mask.x + mask.width / 2;
-    const cy = mask.y + mask.height / 2;
-    fromMask.width = Math.max(1, fromMask.width * scale);
-    fromMask.height = Math.max(1, fromMask.height * scale);
-    fromMask.x = cx - fromMask.width / 2;
-    fromMask.y = cy - fromMask.height / 2;
-    if (fromMask.radius) fromMask.radius *= scale;
+  let zf = 0.8;
+  if (animType === 'pop-in') {
+    zf = 0.8;
+  } else if (animType === 'zoom-in') {
+    zf = 1.1;
+  } else if (animType === 'zoom') {
+    zf = mask.zoomFrom !== undefined ? mask.zoomFrom / 100 : 0.8;
   }
 
-  const cpFrom = buildMaskClipPath(fromMask, image);
-  const cpTo = buildMaskClipPath(mask, image);
+  const isSlide = animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right';
+  if (isSlide) {
+    const dir = mask.animDirection || 'up';
+    const dist = mask.animDistance !== undefined ? mask.animDistance : (animType.startsWith('slide-') ? 20 : 100);
+    const rOffset = mask.animRotateOffset !== undefined ? mask.animRotateOffset : 0;
+    if (dir === 'up') fromMask.y += dist;
+    else if (dir === 'down') fromMask.y -= dist;
+    else if (dir === 'left') fromMask.x += dist;
+    else if (dir === 'right') fromMask.x -= dist;
+    fromMask.rotation = (fromMask.rotation || 0) + rOffset;
+  } else if (animType === 'zoom' || animType === 'pop-in' || animType === 'zoom-in') {
+    const cx = mask.x + mask.width / 2;
+    const cy = mask.y + mask.height / 2;
+    fromMask.width = Math.max(1, fromMask.width * zf);
+    fromMask.height = Math.max(1, fromMask.height * zf);
+    fromMask.x = cx - fromMask.width / 2;
+    fromMask.y = cy - fromMask.height / 2;
+    if (fromMask.radius) fromMask.radius *= zf;
+  }
 
   const animName = `mask-anim-${mask.id}-${animType}`;
   const dur = mask.animDuration || 1;
   const del = mask.animDelay || 0;
-  const timing = (animType === 'pop-in' || animType === 'zoom-in') ? 'ease-out' : 'ease-out';
+  const timing = mask.animBounce ? 'linear' : 'ease-out';
 
-  return {
-    name: animName,
-    keyframes: `@keyframes ${animName} { from { clip-path: ${cpFrom}; -webkit-clip-path: ${cpFrom}; } to { clip-path: ${cpTo}; -webkit-clip-path: ${cpTo}; } }`,
-    animationCss: `${animName} ${dur}s ${timing} ${del}s both`
-  };
+  if (isSlide && mask.animBounce) {
+    const dir = mask.animDirection || 'up';
+    const dist = mask.animDistance !== undefined ? mask.animDistance : (animType.startsWith('slide-') ? 20 : 100);
+    const rOffset = mask.animRotateOffset !== undefined ? mask.animRotateOffset : 0;
+    const d = 4.0; // damping
+    const f = 2.0; // frequency
+    let keyframeSteps = [];
+    
+    for (let pct = 0; pct <= 100; pct += 5) {
+      const t = pct / 100;
+      const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * f * t);
+      const currentDist = dist * x;
+      const currentRot = rOffset * x;
+      
+      const stepMask = JSON.parse(JSON.stringify(mask));
+      if (dir === 'up') stepMask.y += currentDist;
+      else if (dir === 'down') stepMask.y -= currentDist;
+      else if (dir === 'left') stepMask.x += currentDist;
+      else if (dir === 'right') stepMask.x -= currentDist;
+      stepMask.rotation = (stepMask.rotation || 0) + currentRot;
+      
+      const cp = buildMaskClipPath(stepMask, image);
+      keyframeSteps.push(`      ${pct}% { clip-path: ${cp}; -webkit-clip-path: ${cp}; }`);
+    }
+
+    return {
+      name: animName,
+      keyframes: `@keyframes ${animName} {\n${keyframeSteps.join('\n')}\n    }`,
+      animationCss: `${animName} ${dur}s ${timing} ${del}s both`
+    };
+  }
+
+  if ((animType === 'zoom' || animType === 'pop-in' || animType === 'zoom-in') && mask.animBounce) {
+    const d = 4.0; // damping
+    const f = 2.0; // frequency
+    let keyframeSteps = [];
+    
+    for (let pct = 0; pct <= 100; pct += 5) {
+      const t = pct / 100;
+      const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * f * t);
+      const s = (1.0 + (zf - 1.0) * x);
+      
+      const stepMask = JSON.parse(JSON.stringify(mask));
+      const cx = mask.x + mask.width / 2;
+      const cy = mask.y + mask.height / 2;
+      stepMask.width = Math.max(1, stepMask.width * s);
+      stepMask.height = Math.max(1, stepMask.height * s);
+      stepMask.x = cx - stepMask.width / 2;
+      stepMask.y = cy - stepMask.height / 2;
+      if (stepMask.radius) stepMask.radius *= s;
+      const cp = buildMaskClipPath(stepMask, image);
+      keyframeSteps.push(`      ${pct}% { clip-path: ${cp}; -webkit-clip-path: ${cp}; }`);
+    }
+
+    return {
+      name: animName,
+      keyframes: `@keyframes ${animName} {\n${keyframeSteps.join('\n')}\n    }`,
+      animationCss: `${animName} ${dur}s ${timing} ${del}s both`
+    };
+  } else {
+    const cpFrom = buildMaskClipPath(fromMask, image);
+    const cpTo = buildMaskClipPath(mask, image);
+    return {
+      name: animName,
+      keyframes: `@keyframes ${animName} { from { clip-path: ${cpFrom}; -webkit-clip-path: ${cpFrom}; } to { clip-path: ${cpTo}; -webkit-clip-path: ${cpTo}; } }`,
+      animationCss: `${animName} ${dur}s ${timing} ${del}s both`
+    };
+  }
 }
 // Source pixel path (in 578.52×556.76 viewBox):
 //   M290.78,0 h-74.15 v60.23 h-123.75 v125.78 H0 v184.74 h92.88 v125.78
@@ -7841,40 +7973,66 @@ function renderProps() {
       </div>
     </div>`);
   } else {
+    const starIcon = state.filterFavorites ? `
+      <svg class="fav-filter-icon" width="12" height="12" viewBox="0 0 24 24" fill="var(--accent-base)" stroke="var(--accent-base)" stroke-width="2">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      </svg>
+    ` : `
+      <svg class="fav-filter-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      </svg>
+    `;
+
     f.push(`<div class="panel-section" id="panel-section-animation">
       <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none;">
         <span>Animation</span>
+        <button class="fav-filter-btn" style="background:none; border:none; padding:4px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; outline:none; margin-left:auto;" title="${state.filterFavorites ? 'Show All Transitions' : 'Filter Favorites'}">
+          ${starIcon}
+        </button>
         <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
       </h3>
       <div class="panel-section-content">`);
 
+    f.push(`<div id="in-transition-preview-area">`);
     f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>IN TRANSITIONS</label></div>`);
 
     const animOptions = [
       { val: 'none', label: 'None' },
       { val: 'fade-in', label: 'Fade In' },
-      { val: 'slide-up', label: 'Slide Up' },
-      { val: 'slide-down', label: 'Slide Down' },
-      { val: 'slide-left', label: 'Slide Left' },
-      { val: 'slide-right', label: 'Slide Right' },
+      { val: 'slide', label: 'Slide' },
       { val: 'swipe', label: 'Swipe' },
-      { val: 'pop-in', label: 'Pop In' },
-      { val: 'zoom-in', label: 'Zoom Out' }
+      { val: 'zoom', label: 'Zoom' },
+      { val: 'split', label: 'Split' }
     ];
     if (el.type === 'text') {
       animOptions.push({ val: 'typing', label: 'Typing' });
       animOptions.push({ val: 'fade-typing', label: 'Fade Typing' });
     }
 
+    let filteredOptions = animOptions;
+    let favMessageHtml = '';
+    if (state.filterFavorites) {
+      filteredOptions = animOptions.filter(o => o.val === 'none' || state.favoriteAnimations?.includes('in-' + o.val));
+      if (filteredOptions.length <= 1) {
+        favMessageHtml = `<div style="grid-column: span 3; font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
+          No favorite animations for this element type yet. Right-click presets to add to favorites.
+        </div>`;
+      }
+    }
+
     const isSwipeActive = (el.animType || 'none').startsWith('swipe-');
+    const isSlideActive = el.animType === 'slide' || el.animType === 'slide-up' || el.animType === 'slide-down' || el.animType === 'slide-left' || el.animType === 'slide-right';
 
     f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
-      ${animOptions.map(o => {
-        const isActive = o.val === 'swipe' ? isSwipeActive : o.val === (el.animType || 'none');
-        return `<button class="align-btn anim-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Transition: ${o.label}">${o.label}</button>`;
+      ${filteredOptions.map(o => {
+        const isActive = o.val === 'swipe' ? isSwipeActive : (o.val === 'zoom' ? (el.animType === 'zoom' || el.animType === 'zoom-in' || el.animType === 'pop-in') : (o.val === 'slide' ? isSlideActive : o.val === (el.animType || 'none')));
+        const isFav = state.favoriteAnimations?.includes('in-' + o.val);
+        const favStyle = isFav ? 'outline: 1px solid var(--accent-base); outline-offset: -1px;' : '';
+        return `<button class="align-btn anim-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px; ${favStyle}" title="Transition: ${o.label}">${o.label}</button>`;
       }).join('')}
+      ${favMessageHtml}
     </div>`);
 
     // Seconds inputs use step=0.1 so wheel-scroll and arrow keys nudge by 0.1.
@@ -7884,45 +8042,115 @@ function renderProps() {
       ${secNum('animDelay', 'Delay (s)')}
     </div></div>`);
 
-    const isSwipe = (el.animType || 'none').startsWith('swipe-');
-    const currentDirection = isSwipe ? el.animType.replace('swipe-', '') : 'right';
+    const isZoomLike = el.animType === 'zoom' || el.animType === 'zoom-in' || el.animType === 'pop-in';
+    const isSlideLike = el.animType === 'slide' || el.animType === 'slide-up' || el.animType === 'slide-down' || el.animType === 'slide-left' || el.animType === 'slide-right';
+    const isSwipeLike = (el.animType || 'none').startsWith('swipe-');
+    const isSplit = el.animType === 'split';
 
-    const directionSelector = isSwipe ? `
-      <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
-        <label>Direction</label>
-        <select id="prop-swipe-direction" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Swipe direction">
-          <option value="up" ${currentDirection === 'up' ? 'selected' : ''}>Up</option>
-          <option value="down" ${currentDirection === 'down' ? 'selected' : ''}>Down</option>
-          <option value="left" ${currentDirection === 'left' ? 'selected' : ''}>Left</option>
-          <option value="right" ${currentDirection === 'right' ? 'selected' : ''}>Right</option>
-        </select>
-      </div>
-    ` : '';
-
-    const hasFadeToggle = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'swipe-up', 'swipe-down', 'swipe-left', 'swipe-right', 'pop-in', 'zoom-in'].includes(el.animType);
-    const fadeCheckbox = hasFadeToggle ? `
-      <div style="flex:1; display:flex; align-items:center; height:100%; padding-top:14px;">
-        <div class="checkbox-row" style="margin:0;">
-          <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during movement transition" ${el.animFade !== false ? 'checked' : ''}/>
-          <label for="prop-anim-fade" title="Fade in element during movement transition" style="cursor:pointer; font-size:11px;">Fade</label>
+    if (isZoomLike) {
+      f.push(`
+        <div class="prop-row" style="margin-bottom:8px;">
+          <div style="display:flex; align-items:flex-end; gap:12px; width:100%;">
+            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
+              <div class="checkbox-row" style="margin:0;">
+                <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
+                <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
+              <div class="checkbox-row" style="margin:0;">
+                <input type="checkbox" data-k="animBounce" id="prop-anim-bounce" title="Elastic bounce at the end of zoom transition" ${el.animBounce ? 'checked' : ''}/>
+                <label for="prop-anim-bounce" title="Elastic bounce at the end of zoom transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Bounce</label>
+              </div>
+            </div>
+            <div style="width:80px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
+              <label style="white-space:nowrap; text-align:right;">Zoom From (%)</label>
+              <input type="number" min="0" max="500" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : (el.animType === 'pop-in' ? 80 : (el.animType === 'zoom-in' ? 110 : 80))}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation zoom starting scale percentage" />
+            </div>
+          </div>
         </div>
-      </div>
-    ` : '';
-
-    const zoomFromControl = el.animType === 'zoom-in' ? `
-      <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
-        <label>Zoom From (%)</label>
-        <input type="number" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : 110}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation zoom starting scale percentage" />
-      </div>
-    ` : '';
-
-    if (fadeCheckbox || directionSelector || zoomFromControl) {
-      f.push(`<div class="prop-row" style="margin-bottom:8px;">
-        <div class="prop-grid-2">
-          ${fadeCheckbox || '<div></div>'}
-          ${directionSelector || zoomFromControl || '<div></div>'}
+      `);
+    } else if (isSlideLike) {
+      const currentDirection = el.animDirection || (el.animType.startsWith('slide-') ? el.animType.replace('slide-', '') : 'up');
+      f.push(`
+        <div class="prop-row" style="margin-bottom:8px;">
+          <div style="display:flex; align-items:flex-end; gap:8px; width:100%;">
+            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
+              <div class="checkbox-row" style="margin:0;">
+                <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
+                <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
+              <div class="checkbox-row" style="margin:0;">
+                <input type="checkbox" data-k="animBounce" id="prop-anim-bounce" title="Elastic bounce at the end of slide transition" ${el.animBounce ? 'checked' : ''}/>
+                <label for="prop-anim-bounce" title="Elastic bounce at the end of slide transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Bounce</label>
+              </div>
+            </div>
+            <div style="width:85px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
+              <label style="white-space:nowrap; text-align:right;">Direction</label>
+              <select id="prop-anim-direction" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation direction">
+                <option value="up" ${currentDirection === 'up' ? 'selected' : ''}>Up</option>
+                <option value="down" ${currentDirection === 'down' ? 'selected' : ''}>Down</option>
+                <option value="left" ${currentDirection === 'left' ? 'selected' : ''}>Left</option>
+                <option value="right" ${currentDirection === 'right' ? 'selected' : ''}>Right</option>
+              </select>
+            </div>
+          </div>
         </div>
-      </div>`);
+        <div class="prop-row" style="margin-bottom:8px;">
+          <div class="prop-grid-2">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <label>Distance (px)</label>
+              <input type="number" min="1" max="500" data-k="animDistance" value="${el.animDistance !== undefined ? el.animDistance : (el.animType.startsWith('slide-') ? 20 : 100)}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation slide distance in pixels" />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <label>Rotation Offset (°)</label>
+              <input type="number" data-k="animRotateOffset" value="${el.animRotateOffset !== undefined ? el.animRotateOffset : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Entrance animation rotation offset in degrees" />
+            </div>
+          </div>
+        </div>
+      `);
+    } else if (isSwipeLike) {
+      const currentDirection = el.animType.replace('swipe-', '');
+      f.push(`
+        <div class="prop-row" style="margin-bottom:8px;">
+          <div style="display:flex; align-items:flex-end; gap:12px; width:100%;">
+            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
+              <div class="checkbox-row" style="margin:0;">
+                <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
+                <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
+              </div>
+            </div>
+            <div style="width:80px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
+              <label style="white-space:nowrap; text-align:right;">Direction</label>
+              <select id="prop-anim-direction" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation direction">
+                <option value="up" ${currentDirection === 'up' ? 'selected' : ''}>Up</option>
+                <option value="down" ${currentDirection === 'down' ? 'selected' : ''}>Down</option>
+                <option value="left" ${currentDirection === 'left' ? 'selected' : ''}>Left</option>
+                <option value="right" ${currentDirection === 'right' ? 'selected' : ''}>Right</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      `);
+    } else if (isSplit) {
+      f.push(`
+        <div class="prop-row" style="margin-bottom:8px;">
+          <div style="display:flex; align-items:flex-end; gap:12px; width:100%;">
+            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
+              <div class="checkbox-row" style="margin:0;">
+                <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
+                <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
+              </div>
+            </div>
+            <div style="width:80px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
+              <label style="white-space:nowrap; text-align:right;">Angle (°)</label>
+              <input type="number" data-k="animAngle" value="${el.animAngle !== undefined ? el.animAngle : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none; text-align:right;" title="Split reveal angle in degrees" />
+            </div>
+          </div>
+        </div>
+      `);
     }
 
     if (el.type === 'text' && el.hasBg && (el.animType === 'typing' || el.animType === 'fade-typing')) {
@@ -7950,7 +8178,9 @@ function renderProps() {
       f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">${animTextBgRow}</div></div>`);
     }
 
+    f.push(`</div>`); // Close in-transition-preview-area
     f.push(`<div style="height:1px; background:var(--border-color, #272c3a); margin:16px 0;"></div>`);
+    f.push(`<div id="effects-preview-area">`);
     f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>CONTINUOUS EFFECT</label></div>`);
     const effectOptions = [
       { val: 'none', label: 'None' },
@@ -7963,8 +8193,26 @@ function renderProps() {
       { val: 'pan', label: 'Pan' },
       { val: 'zoom', label: 'Zoom' }
     ];
+
+    let filteredEffects = effectOptions;
+    let effFavMessageHtml = '';
+    if (state.filterFavorites) {
+      filteredEffects = effectOptions.filter(o => o.val === 'none' || state.favoriteAnimations?.includes('eff-' + o.val));
+      if (filteredEffects.length <= 1) {
+        effFavMessageHtml = `<div style="grid-column: span 3; font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
+          No favorite continuous effects yet. Right-click presets to add to favorites.
+        </div>`;
+      }
+    }
+
     f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:16px;">
-      ${effectOptions.map(o => `<button class="align-btn eff-btn ${o.val === (el.effectType || 'none') ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Effect: ${o.label}">${o.label}</button>`).join('')}
+      ${filteredEffects.map(o => {
+        const isActive = o.val === (el.effectType || 'none');
+        const isFav = state.favoriteAnimations?.includes('eff-' + o.val);
+        const favStyle = isFav ? 'outline: 1px solid var(--accent-base); outline-offset: -1px;' : '';
+        return `<button class="align-btn eff-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px; ${favStyle}" title="Effect: ${o.label}">${o.label}</button>`;
+      }).join('')}
+      ${effFavMessageHtml}
     </div>`);
 
     if (el.effectType && el.effectType !== 'none') {
@@ -8017,6 +8265,7 @@ function renderProps() {
       }
     }
 
+    f.push(`</div>`); // Close effects-preview-area
     f.push(`</div></div>`);
   }
 
@@ -8326,32 +8575,72 @@ function checkButtonFontSizeWarning(el) {
     });
   });
 
-  propsEl.querySelectorAll('.anim-btn').forEach(btn => {
-    const val = btn.dataset.val;
-    btn.addEventListener('click', () => {
-      let targetVal = val;
-      if (targetVal === 'swipe') {
-        targetVal = 'swipe-right';
-      }
-      updateProp('animType', targetVal);
-      pushHistory();
-      renderProps();
-    });
-    btn.addEventListener('mouseenter', () => {
-      let previewVal = val;
-      if (previewVal === 'swipe') {
-        const currentSwipeDir = (el.animType || 'none').startsWith('swipe-') ? el.animType.replace('swipe-', '') : 'right';
-        previewVal = `swipe-${currentSwipeDir}`;
-      }
+  let activePreviewVal = null;
+  const startPreviewLoop = (val) => {
+    if (state.previewTimeoutId) {
+      clearTimeout(state.previewTimeoutId);
+      state.previewTimeoutId = null;
+    }
+    activePreviewVal = val;
+    if (val === 'none') {
+      resetPreviewNodes();
+      return;
+    }
+
+    const runLoop = () => {
+      if (activePreviewVal !== val) return;
+      
       const domNodes = state.layerSelection.length > 1
         ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
         : [document.querySelector(`.el[data-id="${el.id}"]`)];
+      
       domNodes.forEach(node => {
-        if (node && previewVal !== 'none') {
+        if (!node) return;
+        node.style.animation = '';
+        const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+        const activeC = getActiveCanvas();
+        const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+        if (isMaskedImg) {
+          const innerImg = node.querySelector('img');
+          if (innerImg) innerImg.style.animation = '';
+        }
+        if (nodeEl.isMask && activeC) {
+          const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+          if (imgEl) {
+            const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
+            if (imgDom) imgDom.style.animation = '';
+          }
+        }
+        const target = node.querySelector('.editable') || node.querySelector('span');
+        if (target && target.dataset.origHtml !== undefined) {
+          target.innerHTML = target.dataset.origHtml;
+          if (target.dataset.origStyle !== undefined) {
+            target.setAttribute('style', target.dataset.origStyle);
+          }
+          ['origHtml', 'origStyle', 'bgInited', 'bgColor', 'bgPadL', 'bgPadV', 'bgCov', 'bgDelay', 'bgDuration', 'bgAnim'].forEach(k => delete target.dataset[k]);
+        }
+      });
+
+      domNodes.forEach(node => { if (node) void node.offsetHeight; });
+
+      let maxDur = 1;
+      domNodes.forEach(node => {
+        if (node) {
           const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+          let previewVal = val;
+          if (previewVal === 'swipe') {
+            const currentSwipeDir = (nodeEl.animType || 'none').startsWith('swipe-') ? nodeEl.animType.replace('swipe-', '') : 'right';
+            previewVal = `swipe-${currentSwipeDir}`;
+          }
+          if (previewVal === 'none') return;
+
+          const dur = Number(nodeEl.animDuration || 1);
+          const del = Number(nodeEl.animDelay || 0);
+          maxDur = Math.max(maxDur, dur + del);
+
           if (nodeEl.type === 'text' && (previewVal === 'typing' || previewVal === 'fade-typing')) {
             const target = node.querySelector('.editable') || node.querySelector('span');
-            if (target && !target.dataset.origHtml) {
+            if (target) {
               target.dataset.origHtml = target.innerHTML;
               target.dataset.origStyle = target.getAttribute('style') || '';
               const chars = [...(nodeEl.text || '')];
@@ -8393,15 +8682,77 @@ function checkButtonFontSizeWarning(el) {
             const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
             const targetNode = isMaskedImg ? node.querySelector('img') : node;
 
-            if (previewVal === 'zoom-in') {
-              const zf = nodeEl.zoomFrom !== undefined ? nodeEl.zoomFrom / 100 : 1.1;
-              targetNode.style.setProperty('--zoom-from', zf);
+            if (previewVal === 'split') {
+              const angle = nodeEl.animAngle !== undefined ? nodeEl.animAngle : 0;
+              const fromPoly = getSplitClipPath(angle);
+              const fadeFrom = nodeEl.animFade !== false ? 'opacity: 0;' : '';
+              const fadeTo = nodeEl.animFade !== false ? 'opacity: 1;' : '';
+              let styleTag = document.getElementById('dynamic-anim-styles');
+              if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'dynamic-anim-styles';
+                document.head.appendChild(styleTag);
+              }
+              const keyframesRule = `
+@keyframes anim-split-${nodeEl.id} {
+  from { clip-path: ${fromPoly}; ${fadeFrom} }
+  to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fadeTo} }
+}`;
+              const regex = new RegExp(`@keyframes\\s+anim-split-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\}`, 'g');
+              styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
+              targetNode.style.animation = `anim-split-${nodeEl.id} ${nodeEl.animDuration || 1}s ease-out 0s both`;
+            } else if (previewVal === 'zoom' || previewVal === 'zoom-in' || previewVal === 'pop-in') {
+              const tempEl = { ...nodeEl };
+              if (previewVal === 'pop-in') {
+                tempEl.zoomFrom = 80;
+                tempEl.animFade = true;
+              } else if (previewVal === 'zoom-in') {
+                tempEl.zoomFrom = 110;
+                tempEl.animFade = true;
+              } else {
+                if (tempEl.zoomFrom === undefined) {
+                  tempEl.zoomFrom = 80;
+                }
+              }
+              let styleTag = document.getElementById('dynamic-anim-styles');
+              if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'dynamic-anim-styles';
+                document.head.appendChild(styleTag);
+              }
+              const keyframesRule = getZoomKeyframes(tempEl);
+              const regex = new RegExp(`@keyframes\\s+anim-zoom-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+              styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
+              const timing = tempEl.animBounce ? 'linear' : 'ease-out';
+              targetNode.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
+            } else if (previewVal === 'slide' || previewVal === 'slide-up' || previewVal === 'slide-down' || previewVal === 'slide-left' || previewVal === 'slide-right') {
+              const tempEl = { ...nodeEl };
+              if (previewVal === 'slide-up') { tempEl.animDirection = 'up'; tempEl.animDistance = 20; }
+              else if (previewVal === 'slide-down') { tempEl.animDirection = 'down'; tempEl.animDistance = 20; }
+              else if (previewVal === 'slide-left') { tempEl.animDirection = 'left'; tempEl.animDistance = 20; }
+              else if (previewVal === 'slide-right') { tempEl.animDirection = 'right'; tempEl.animDistance = 20; }
+              else {
+                if (tempEl.animDirection === undefined) tempEl.animDirection = 'up';
+                if (tempEl.animDistance === undefined) tempEl.animDistance = 100;
+              }
+              let styleTag = document.getElementById('dynamic-anim-styles');
+              if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'dynamic-anim-styles';
+                document.head.appendChild(styleTag);
+              }
+              const keyframesRule = getSlideKeyframes(tempEl);
+              const regex = new RegExp(`@keyframes\\s+anim-slide-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+              styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
+              const timing = tempEl.animBounce ? 'linear' : 'ease-out';
+              targetNode.style.animation = `anim-slide-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
+            } else {
+              const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(previewVal);
+              const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right'].includes(previewVal);
+              const fadeOn = nodeEl.animFade !== false;
+              const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
+              targetNode.style.animation = `anim-${previewVal}${suffix} ${nodeEl.animDuration || 1}s ease-out 0s both`;
             }
-            const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(previewVal);
-            const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(previewVal);
-            const fadeOn = nodeEl.animFade !== false;
-            const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
-            targetNode.style.animation = `anim-${previewVal}${suffix} ${nodeEl.animDuration || 1}s ease-out 0s both`;
 
             if (nodeEl.isMask) {
               if (activeC) {
@@ -8417,7 +8768,6 @@ function checkButtonFontSizeWarning(el) {
                         styleTag.id = 'dynamic-mask-styles';
                         document.head.appendChild(styleTag);
                       }
-                      // For preview, we overwrite or append. Let's just set textContent to avoid duplicate accumulation over time.
                       styleTag.textContent = maskAnim.keyframes;
                       imgDom.style.animation = maskAnim.animationCss;
                     }
@@ -8428,59 +8778,224 @@ function checkButtonFontSizeWarning(el) {
           }
         }
       });
-    });
-    btn.addEventListener('mouseleave', () => {
-      const domNodes = state.layerSelection.length > 1
-        ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
-        : [document.querySelector(`.el[data-id="${el.id}"]`)];
-      domNodes.forEach(node => {
-        if (node) {
-          node.style.animation = '';
-          const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
-          const activeC = getActiveCanvas();
-          const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
 
-          if (isMaskedImg) {
-            const innerImg = node.querySelector('img');
-            if (innerImg) {
-              innerImg.style.animation = '';
-              innerImg.style.removeProperty('--zoom-from');
-            }
-          }
+      state.previewTimeoutId = setTimeout(runLoop, maxDur * 1000 + 400);
+    };
 
-          if (nodeEl.isMask) {
-            if (activeC) {
-              const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
-              if (imgEl) {
-                const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
-                if (imgDom) imgDom.style.animation = '';
-                const styleTag = document.getElementById('dynamic-mask-styles');
-                if (styleTag) styleTag.textContent = '';
-              }
-            }
-          }
-          const target = node.querySelector('.editable') || node.querySelector('span');
-          if (target && target.dataset.origHtml !== undefined) {
-            target.innerHTML = target.dataset.origHtml;
-            if (target.dataset.origStyle !== undefined) {
-              target.setAttribute('style', target.dataset.origStyle);
-            }
-            ['origHtml', 'origStyle', 'bgInited', 'bgColor', 'bgPadL', 'bgPadV', 'bgCov', 'bgDelay', 'bgDuration', 'bgAnim'].forEach(k => delete target.dataset[k]);
+    runLoop();
+  };
+
+  const resetPreviewNodes = () => {
+    const domNodes = state.layerSelection.length > 1
+      ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
+      : [document.querySelector(`.el[data-id="${el.id}"]`)];
+    domNodes.forEach(node => {
+      if (node) {
+        node.style.animation = '';
+        const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+        const activeC = getActiveCanvas();
+        const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+
+        if (isMaskedImg) {
+          const innerImg = node.querySelector('img');
+          if (innerImg) {
+            innerImg.style.animation = '';
+            innerImg.style.removeProperty('--zoom-from');
           }
         }
-      });
+
+        if (nodeEl.isMask) {
+          if (activeC) {
+            const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+            if (imgEl) {
+              const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
+              if (imgDom) imgDom.style.animation = '';
+              const styleTag = document.getElementById('dynamic-mask-styles');
+              if (styleTag) styleTag.textContent = '';
+            }
+          }
+        }
+        const target = node.querySelector('.editable') || node.querySelector('span');
+        if (target && target.dataset.origHtml !== undefined) {
+          target.innerHTML = target.dataset.origHtml;
+          if (target.dataset.origStyle !== undefined) {
+            target.setAttribute('style', target.dataset.origStyle);
+          }
+          ['origHtml', 'origStyle', 'bgInited', 'bgColor', 'bgPadL', 'bgPadV', 'bgCov', 'bgDelay', 'bgDuration', 'bgAnim'].forEach(k => delete target.dataset[k]);
+        }
+      }
+    });
+  };
+
+  propsEl.querySelectorAll('.anim-btn').forEach(btn => {
+    const val = btn.dataset.val;
+    btn.addEventListener('click', () => {
+      let targetVal = val;
+      if (targetVal === 'swipe') {
+        targetVal = 'swipe-right';
+      }
+      updateProp('animType', targetVal);
+      pushHistory();
+      renderProps();
+    });
+    btn.addEventListener('mouseenter', (e) => {
+      e.stopPropagation();
+      startPreviewLoop(val);
     });
   });
 
-  const swipeDirectionSelect = propsEl.querySelector('#prop-swipe-direction');
-  if (swipeDirectionSelect) {
-    swipeDirectionSelect.addEventListener('change', () => {
-      const dir = swipeDirectionSelect.value;
-      updateProp('animType', `swipe-${dir}`);
+  const transitionArea = propsEl.querySelector('#in-transition-preview-area');
+  if (transitionArea) {
+    transitionArea.addEventListener('mouseenter', () => {
+      const activeVal = el.animType || 'none';
+      startPreviewLoop(activeVal);
+    });
+    transitionArea.addEventListener('mouseleave', () => {
+      activePreviewVal = null;
+      if (state.previewTimeoutId) {
+        clearTimeout(state.previewTimeoutId);
+        state.previewTimeoutId = null;
+      }
+      resetPreviewNodes();
+    });
+  }
+
+  const animDirectionSelect = propsEl.querySelector('#prop-anim-direction');
+  if (animDirectionSelect) {
+    animDirectionSelect.addEventListener('change', () => {
+      const dir = animDirectionSelect.value;
+      if ((el.animType || '').startsWith('swipe-')) {
+        updateProp('animType', `swipe-${dir}`);
+      } else {
+        updateProp('animDirection', dir);
+      }
       pushHistory();
       renderProps();
     });
   }
+
+  const favFilterBtn = propsEl.querySelector('.fav-filter-btn');
+  if (favFilterBtn) {
+    favFilterBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.filterFavorites = !state.filterFavorites;
+      renderProps();
+    });
+  }
+
+  let activeEffectVal = null;
+  const applyEffectPreview = (val) => {
+    activeEffectVal = val;
+    if (val === 'none') {
+      resetEffectPreviewNodes();
+      return;
+    }
+    
+    const domNodes = state.layerSelection.length > 1
+      ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
+      : [document.querySelector(`.el[data-id="${el.id}"]`)];
+    
+    domNodes.forEach(node => {
+      if (node && val !== 'none') {
+        const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+        const activeC = getActiveCanvas();
+        const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+        const targetNode = isMaskedImg ? node.querySelector('img') : node;
+
+        const applyEffAnim = (tNode) => {
+          const effDur = nodeEl.effDuration !== undefined ? nodeEl.effDuration : 2;
+          if (val === 'pan') {
+            const dist = nodeEl.panDist !== undefined ? nodeEl.panDist : 50;
+            let px = 0, py = 0;
+            if (nodeEl.panDir === 'L') px = -dist;
+            else if (nodeEl.panDir === 'U') py = -dist;
+            else if (nodeEl.panDir === 'D') py = dist;
+            else px = dist;
+            tNode.style.setProperty('--pan-x', px + 'px');
+            tNode.style.setProperty('--pan-y', py + 'px');
+            const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
+            const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
+            tNode.style.animation = `eff-pan ${effDur}s ${ease} 0s ${fill}`;
+          } else if (val === 'zoom') {
+            const zt = nodeEl.zoomTarget !== undefined ? nodeEl.zoomTarget / 100 : 1.5;
+            tNode.style.setProperty('--zoom-target', zt);
+            const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
+            const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
+            tNode.style.animation = `eff-zoom ${effDur}s ${ease} 0s ${fill}`;
+          } else if (val === 'spin') {
+            const spinT = nodeEl.spinTarget !== undefined ? nodeEl.spinTarget : 360;
+            tNode.style.setProperty('--spin-target', spinT + 'deg');
+            const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
+            const repeat = nodeEl.spinRepeat !== undefined ? nodeEl.spinRepeat : 1;
+            const fill = Math.max(1, repeat);
+            tNode.style.animation = `eff-spin ${effDur}s ${ease} 0s ${fill} both`;
+          } else {
+            const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
+            const speed = Math.max(1, Number(speedStr));
+            const duration = 2 / (speed / 100);
+            tNode.style.animation = `eff-${val} ${duration}s ease-in-out 0s infinite`;
+          }
+        };
+
+        applyEffAnim(targetNode);
+
+        if (nodeEl.isMask) {
+          if (activeC) {
+            const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+            if (imgEl) {
+              const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
+              const effG = imgDom ? imgDom.querySelector('mask g.mask-g-eff') : null;
+              if (effG) {
+                applyEffAnim(effG);
+              }
+            }
+          }
+        }
+      }
+    });
+  };
+
+  const resetEffectPreviewNodes = () => {
+    const domNodes = state.layerSelection.length > 1
+      ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
+      : [document.querySelector(`.el[data-id="${el.id}"]`)];
+    domNodes.forEach(node => {
+      if (node) {
+        node.style.animation = '';
+        const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+        const activeC = getActiveCanvas();
+        const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+
+        if (isMaskedImg) {
+          const innerImg = node.querySelector('img');
+          if (innerImg) {
+            innerImg.style.animation = '';
+            innerImg.style.removeProperty('--pan-x');
+            innerImg.style.removeProperty('--pan-y');
+            innerImg.style.removeProperty('--zoom-target');
+            innerImg.style.removeProperty('--spin-target');
+          }
+        }
+
+        if (nodeEl.isMask) {
+          if (activeC) {
+            const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+            if (imgEl) {
+              const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
+              const effG = imgDom ? imgDom.querySelector('mask g.mask-g-eff') : null;
+              if (effG) {
+                effG.style.animation = '';
+                effG.style.removeProperty('--pan-x');
+                effG.style.removeProperty('--pan-y');
+                effG.style.removeProperty('--zoom-target');
+                effG.style.removeProperty('--spin-target');
+              }
+            }
+          }
+        }
+      }
+    });
+  };
 
   propsEl.querySelectorAll('.eff-btn').forEach(btn => {
     const val = btn.dataset.val;
@@ -8507,111 +9022,23 @@ function checkButtonFontSizeWarning(el) {
       pushHistory();
       renderProps();
     });
-    btn.addEventListener('mouseenter', () => {
-      const domNodes = state.layerSelection.length > 1
-        ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
-        : [document.querySelector(`.el[data-id="${el.id}"]`)];
-      domNodes.forEach(node => {
-        if (node && val !== 'none') {
-          const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
-          const activeC = getActiveCanvas();
-          const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
-          const targetNode = isMaskedImg ? node.querySelector('img') : node;
-
-          const applyEffAnim = (tNode) => {
-            const effDur = nodeEl.effDuration !== undefined ? nodeEl.effDuration : 2;
-            if (val === 'pan') {
-              const dist = nodeEl.panDist !== undefined ? nodeEl.panDist : 50;
-              let px = 0, py = 0;
-              if (nodeEl.panDir === 'L') px = -dist;
-              else if (nodeEl.panDir === 'U') py = -dist;
-              else if (nodeEl.panDir === 'D') py = dist;
-              else px = dist;
-              tNode.style.setProperty('--pan-x', px + 'px');
-              tNode.style.setProperty('--pan-y', py + 'px');
-              const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
-              const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
-              tNode.style.animation = `eff-pan ${effDur}s ${ease} 0s ${fill}`;
-            } else if (val === 'zoom') {
-              const zt = nodeEl.zoomTarget !== undefined ? nodeEl.zoomTarget / 100 : 1.5;
-              tNode.style.setProperty('--zoom-target', zt);
-              const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
-              const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
-              tNode.style.animation = `eff-zoom ${effDur}s ${ease} 0s ${fill}`;
-            } else if (val === 'spin') {
-              const spinT = nodeEl.spinTarget !== undefined ? nodeEl.spinTarget : 360;
-              tNode.style.setProperty('--spin-target', spinT + 'deg');
-              const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
-              const repeat = nodeEl.spinRepeat !== undefined ? nodeEl.spinRepeat : 1;
-              const fill = Math.max(1, repeat);
-              tNode.style.animation = `eff-spin ${effDur}s ${ease} 0s ${fill} both`;
-            } else {
-              const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
-              const speed = Math.max(1, Number(speedStr));
-              const duration = 2 / (speed / 100);
-              tNode.style.animation = `eff-${val} ${duration}s ease-in-out 0s infinite`;
-            }
-          };
-
-          applyEffAnim(targetNode);
-
-          if (nodeEl.isMask) {
-            if (activeC) {
-              const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
-              if (imgEl) {
-                const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
-                const effG = imgDom ? imgDom.querySelector('mask g.mask-g-eff') : null;
-                if (effG) {
-                  applyEffAnim(effG);
-                }
-              }
-            }
-          }
-        }
-      });
-    });
-    btn.addEventListener('mouseleave', () => {
-      const domNodes = state.layerSelection.length > 1
-        ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
-        : [document.querySelector(`.el[data-id="${el.id}"]`)];
-      domNodes.forEach(node => {
-        if (node) {
-          node.style.animation = '';
-          const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
-          const activeC = getActiveCanvas();
-          const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
-
-          if (isMaskedImg) {
-            const innerImg = node.querySelector('img');
-            if (innerImg) {
-              innerImg.style.animation = '';
-              innerImg.style.removeProperty('--pan-x');
-              innerImg.style.removeProperty('--pan-y');
-              innerImg.style.removeProperty('--zoom-target');
-              innerImg.style.removeProperty('--spin-target');
-            }
-          }
-
-          if (nodeEl.isMask) {
-            if (activeC) {
-              const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
-              if (imgEl) {
-                const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
-                const effG = imgDom ? imgDom.querySelector('mask g.mask-g-eff') : null;
-                if (effG) {
-                  effG.style.animation = '';
-                  effG.style.removeProperty('--pan-x');
-                  effG.style.removeProperty('--pan-y');
-                  effG.style.removeProperty('--zoom-target');
-                  effG.style.removeProperty('--spin-target');
-                }
-              }
-            }
-          }
-        }
-      });
+    btn.addEventListener('mouseenter', (e) => {
+      e.stopPropagation();
+      applyEffectPreview(val);
     });
   });
+
+  const effectsArea = propsEl.querySelector('#effects-preview-area');
+  if (effectsArea) {
+    effectsArea.addEventListener('mouseenter', () => {
+      const activeVal = el.effectType || 'none';
+      applyEffectPreview(activeVal);
+    });
+    effectsArea.addEventListener('mouseleave', () => {
+      activeEffectVal = null;
+      resetEffectPreviewNodes();
+    });
+  }
 
   propsEl.querySelectorAll('.align-btn[data-align]').forEach(btn => {
     if (btn.classList.contains('action-el-align')) {
@@ -9984,6 +10411,9 @@ async function loadProjectFromBlob(file) {
   const savedZoom = loadedState.zoom;
 
   Object.assign(state, loadedState);
+  if (state.favoriteAnimations) {
+    localStorage.setItem('favoriteAnimations', JSON.stringify(state.favoriteAnimations));
+  }
   state.zoom = 1.0;
   state.assets = newAssets || {};
   if (!state.projectId) state.projectId = uid('proj_');
@@ -11710,6 +12140,44 @@ document.addEventListener('contextmenu', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
   e.preventDefault();
 
+  const animBtn = e.target.closest('.anim-btn');
+  const effBtn = e.target.closest('.eff-btn');
+  if (animBtn || effBtn) {
+    const isEff = !!effBtn;
+    const btn = animBtn || effBtn;
+    const rawVal = btn.dataset.val;
+    if (rawVal === 'none') return; // Cannot favorite 'None' preset
+    
+    const val = isEff ? `eff-${rawVal}` : `in-${rawVal}`;
+    const isFav = state.favoriteAnimations?.includes(val);
+    const menu = document.getElementById('ctx-menu');
+    menu.innerHTML = `<div class="ctx-item" id="ctx-toggle-fav">${isFav ? '★ Remove from Favorites' : '☆ Add to Favorites'}</div>`;
+    menu.style.display = 'flex';
+    const mw = menu.offsetWidth;
+    const mh = menu.offsetHeight;
+    let left = e.clientX, top = e.clientY;
+    if (left + mw > window.innerWidth) left -= mw;
+    if (top + mh > window.innerHeight) top -= mh;
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+    
+    const toggleBtn = document.getElementById('ctx-toggle-fav');
+    if (toggleBtn) {
+      toggleBtn.onclick = () => {
+        if (!state.favoriteAnimations) state.favoriteAnimations = [];
+        if (isFav) {
+          state.favoriteAnimations = state.favoriteAnimations.filter(x => x !== val);
+        } else {
+          state.favoriteAnimations.push(val);
+        }
+        localStorage.setItem('favoriteAnimations', JSON.stringify(state.favoriteAnimations));
+        menu.style.display = 'none';
+        renderProps();
+      };
+    }
+    return;
+  }
+
   const menu = document.getElementById('ctx-menu');
   const elNode = e.target.closest('.el');
   let canvasNode = e.target.closest('.canvas');
@@ -11841,6 +12309,7 @@ document.addEventListener('contextmenu', (e) => {
       }
 
       html += `
+          <div class="ctx-item" id="ctx-link-autolink" style="white-space:nowrap;">Auto-Link</div>
           <div class="ctx-item" id="ctx-link-new" style="white-space:nowrap;">Create New Group...</div>
           <div class="ctx-item" id="ctx-link-autoadd" style="white-space:nowrap;">Distribute & Link</div>`;
 
@@ -12070,6 +12539,9 @@ document.addEventListener('contextmenu', (e) => {
     }
   });
 
+  bind('ctx-link-autolink', () => {
+    autoLinkElements(true);
+  });
   bind('ctx-link-new', () => {
     const name = prompt("Enter new link group name:");
     if (name && name.trim()) {
@@ -12077,9 +12549,16 @@ document.addEventListener('contextmenu', (e) => {
     }
   });
   bind('ctx-link-autoadd', () => {
-    const activeEl = getSelectedElement() || (state.layerSelection?.length > 0 ? getActiveCanvas()?.elements.find(x => x.id === state.layerSelection[0]) : null);
-    if (activeEl) {
-      autoAddAndLink(activeEl);
+    const c = getActiveCanvas();
+    if (!c || !state.layerSelection?.length) return;
+    const selectedEls = state.layerSelection.map(id => c.elements.find(x => x.id === id)).filter(Boolean);
+    if (selectedEls.length > 0) {
+      selectedEls.forEach(el => {
+        autoAddAndLink(el, true);
+      });
+      pushHistory();
+      render();
+      showCanvasNotification("Distributed & linked selected elements");
     }
   });
   bind('ctx-link-remove', () => {
@@ -12296,7 +12775,7 @@ function initCollapsiblePanels() {
     setChevronPoints(isCollapsed);
 
     header.addEventListener('click', (e) => {
-      if (e.target.closest('.panel-fullscreen-btn')) return;
+      if (e.target.closest('.panel-fullscreen-btn') || e.target.closest('.fav-filter-btn')) return;
       const currentlyCollapsed = parentSection.classList.toggle('collapsed');
       localStorage.setItem(storageKey, currentlyCollapsed ? 'true' : 'false');
       setChevronPoints(currentlyCollapsed);
@@ -12343,6 +12822,10 @@ function initCollapsiblePanels() {
           }
         };
         setIcon();
+        
+        if (header.querySelector('.fav-filter-btn')) {
+          fsBtn.style.marginLeft = '4px';
+        }
         
         // v0.16.32 menu reshuffle: chevron now sits on the LEFT of the
         // header (via CSS flex `order: -1` on `.collapse-icon`). To let
