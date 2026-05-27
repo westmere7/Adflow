@@ -1,6 +1,14 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.59 (Current) - May 2026 — Engine v2.16
+v0.16.60 (Current) - May 2026 — Engine v2.16
+- Implemented high-performance version export using a background Web Worker and direct-to-disk streaming.
+- Developed a lightweight, zero-dependency client-side ZIP stream writer that pipes chunks directly to disk via the File System Access API.
+- Integrated Web Worker-driven sub-zip compression to ensure the main UI thread remains completely responsive during bulk version generation.
+- Added a beautiful, responsive overlay progress modal displaying real-time version progress, percentage completed, and cumulative MB written, along with a "Cancel" option.
+- Added a unified memory buffer fallback for Firefox and Safari to ensure seamless version exports even on unsupported browsers.
+- Respects selected canvases and filename prefix options from the Export dialog during bulk exports.
+
+v0.16.59 - May 2026 — Engine v2.16
 - Separated manual saving into three distinct options:
   1. Ctrl+S to save silently to the Supabase Cloud.
   2. Ctrl+Shift+S to save silently to the browser's IndexedDB local storage.

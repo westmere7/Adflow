@@ -650,6 +650,18 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.60',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Implemented high-performance version export using a background Web Worker and direct-to-disk streaming.',
+      'Developed a lightweight, zero-dependency client-side ZIP stream writer that pipes chunks directly to disk via the File System Access API.',
+      'Integrated Web Worker-driven sub-zip compression to ensure the main UI thread remains completely responsive during bulk version generation.',
+      'Added a beautiful overlay progress modal displaying real-time version progress, percentage completed, and cumulative MB written, along with an "Abort" option.',
+      'Added a unified memory buffer fallback for Firefox and Safari to ensure seamless version exports even on unsupported browsers.',
+      'Respects selected canvases and filename prefix options from the Export dialog during bulk exports.'
+    ]
+  },
+  {
     version: 'v0.16.59',
     date: 'May 2026 — Engine v2.16',
     items: [

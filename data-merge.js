@@ -367,40 +367,11 @@ function dmActiveRowForOutput() {
   return (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
 }
 
-async function dmExportAllVersions() {
-  if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
-  const dm = state.dataMerge;
-  if (!dm.rows.length) { alert('No versions to export. Import a data sheet first.'); return; }
-  const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
-  const master = new JSZip();
-  const safeProj = (state.projectName || 'Ad').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const used = {};
-  for (let i = 0; i < dm.rows.length; i++) {
-    await dmRunExport(i, async () => {
-      let folder = String(dm.rows[i][keyCol] || ('version_' + (i + 1))).replace(/[^a-zA-Z0-9_-]/g, '_') || ('version_' + (i + 1));
-      used[folder] = (used[folder] || 0) + 1;
-      if (used[folder] > 1) folder += '_' + used[folder];
-      const verFolder = master.folder(folder);
-      for (const c of state.canvases) {
-        const adZip = new JSZip();
-        await addCanvasAssetsToZip(c, adZip);
-        const html = generateExportHTML(c, adZip);
-        adZip.file('index.html', html);
-        const adBlob = await adZip.generateAsync({ type: 'blob' });
-        verFolder.file(`${safeProj}_${c.width}x${c.height}.zip`, adBlob);
-      }
-    });
+async function dmExportAllVersions(selectedCanvases, filenamePrefix) {
+  if (typeof dmExportAllVersionsStreaming === 'function') {
+    return await dmExportAllVersionsStreaming(selectedCanvases, filenamePrefix);
   }
-  const content = await master.generateAsync({ type: 'blob' });
-  const suggested = `${safeProj}_all_versions.zip`;
-  if (window.showSaveFilePicker) {
-    try {
-      const handle = await window.showSaveFilePicker({ types: [{ description: 'Exported Ads ZIP', accept: { 'application/zip': ['.zip'] } }], suggestedName: suggested });
-      const w = await handle.createWritable(); await w.write(content); await w.close();
-    } catch (e) { if (e.name !== 'AbortError') console.error('Version export failed:', e); }
-  } else {
-    const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = suggested; a.click(); URL.revokeObjectURL(a.href);
-  }
+  alert('Export pipeline is not loaded.');
 }
 
 // ---- Column / row mutations ----

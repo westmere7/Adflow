@@ -946,7 +946,7 @@ function openExportModal() {
     // selector and filename input are ignored in this mode (matches the
     // old standalone-button behaviour).
     if (hasVersions && versionChoice === 'all') {
-      await dmExportAllVersions();
+      await dmExportAllVersions(selectedCanvases, filenamePrefix);
       return;
     }
 
@@ -1019,3 +1019,442 @@ function openExportModal() {
 
 document.getElementById('menu-file-export').addEventListener('click', openExportModal);
 document.getElementById('btn-export-top').addEventListener('click', openExportModal);
+
+// ============================================================================
+// Web Workers & Streaming Zip Exporter (Bulk Versions)
+// ============================================================================
+
+// CRC-32 Lookup Table & Fast Lookup Function
+const CRC_TABLE = new Int32Array(256);
+for (let i = 0; i < 256; i++) {
+  let c = i;
+  for (let j = 0; j < 8; j++) {
+    c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+  }
+  CRC_TABLE[i] = c;
+}
+
+function computeCrc32(buf) {
+  let crc = 0 ^ -1;
+  for (let i = 0; i < buf.length; i++) {
+    crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ buf[i]) & 0xFF];
+  }
+  return (crc ^ -1) >>> 0;
+}
+
+/**
+ * Lightweight, zero-dependency client-side ZIP stream writer.
+ * Packs files sequentially using the STORE (no compression) method.
+ * Fits perfectly for wrapping sub-ZIPs which are already compressed.
+ */
+class ZipStreamWriter {
+  constructor(underlyingWriter) {
+    this.writer = underlyingWriter;
+    this.offset = 0;
+    this.files = [];
+  }
+
+  async addFile(path, dataUint8) {
+    const crc = computeCrc32(dataUint8);
+    const size = dataUint8.length;
+    const pathBytes = new TextEncoder().encode(path);
+    const headerOffset = this.offset;
+    
+    // Convert current time to MS-DOS date/time
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    const dosTime = (hours << 11) | (minutes << 5) | (seconds >> 1);
+    const dosDate = ((year - 1980) << 9) | (month << 5) | day;
+
+    // Create Local File Header (30 bytes + filename size)
+    const header = new ArrayBuffer(30 + pathBytes.length);
+    const view = new DataView(header);
+
+    view.setUint32(0, 0x04034b50, true);         // local file header signature
+    view.setUint16(4, 20, true);                 // version needed to extract (2.0)
+    view.setUint16(6, 0x0800, true);             // general purpose flags (UTF-8 filename encoding)
+    view.setUint16(8, 0, true);                  // compression method (0 = STORE)
+    view.setUint16(10, dosTime, true);           // last mod file time
+    view.setUint16(12, dosDate, true);           // last mod file date
+    view.setUint32(14, crc, true);               // crc-32
+    view.setUint32(18, size, true);              // compressed size
+    view.setUint32(22, size, true);              // uncompressed size
+    view.setUint16(26, pathBytes.length, true);  // file name length
+    view.setUint16(28, 0, true);                 // extra field length
+
+    const u8Header = new Uint8Array(header);
+    u8Header.set(pathBytes, 30);
+
+    await this.writer.write(u8Header);
+    this.offset += u8Header.length;
+
+    await this.writer.write(dataUint8);
+    this.offset += size;
+
+    this.files.push({
+      pathBytes,
+      crc,
+      size,
+      headerOffset,
+      dosTime,
+      dosDate
+    });
+  }
+
+  async close() {
+    const centralDirectoryStart = this.offset;
+    let centralDirectorySize = 0;
+
+    // Write Central Directory Headers
+    for (const file of this.files) {
+      const cdHeader = new ArrayBuffer(46 + file.pathBytes.length);
+      const view = new DataView(cdHeader);
+
+      view.setUint32(0, 0x02014b50, true);                 // central file header signature
+      view.setUint16(4, 20, true);                         // version made by (2.0)
+      view.setUint16(6, 20, true);                         // version needed to extract (2.0)
+      view.setUint16(8, 0x0800, true);                     // general purpose flags (UTF-8)
+      view.setUint16(10, 0, true);                         // compression method
+      view.setUint16(12, file.dosTime, true);              // last mod file time
+      view.setUint16(14, file.dosDate, true);              // last mod file date
+      view.setUint32(16, file.crc, true);                  // crc-32
+      view.setUint32(20, file.size, true);                 // compressed size
+      view.setUint32(24, file.size, true);                 // uncompressed size
+      view.setUint16(28, file.pathBytes.length, true);      // file name length
+      view.setUint16(30, 0, true);                         // extra field length
+      view.setUint16(32, 0, true);                         // file comment length
+      view.setUint16(34, 0, true);                         // disk number start
+      view.setUint16(36, 0, true);                         // internal file attributes
+      view.setUint32(38, 0, true);                         // external file attributes
+      view.setUint32(42, file.headerOffset, true);         // relative offset of local header
+
+      const u8CdHeader = new Uint8Array(cdHeader);
+      u8CdHeader.set(file.pathBytes, 46);
+
+      await this.writer.write(u8CdHeader);
+      this.offset += u8CdHeader.length;
+      centralDirectorySize += u8CdHeader.length;
+    }
+
+    // Write End of Central Directory (EOCD)
+    const eocd = new ArrayBuffer(22);
+    const view = new DataView(eocd);
+
+    view.setUint32(0, 0x06054b50, true);                 // EOCD signature
+    view.setUint16(4, 0, true);                         // number of this disk
+    view.setUint16(6, 0, true);                         // number of the disk with the start of the central directory
+    view.setUint16(8, this.files.length, true);         // total number of entries in the central directory on this disk
+    view.setUint16(10, this.files.length, true);        // total number of entries in the central directory
+    view.setUint32(12, centralDirectorySize, true);     // size of the central directory
+    view.setUint32(16, centralDirectoryStart, true);    // offset of start of central directory, relative to start of archive
+    view.setUint16(20, 0, true);                         // ZIP file comment length
+
+    const u8Eocd = new Uint8Array(eocd);
+    await this.writer.write(u8Eocd);
+    await this.writer.close();
+  }
+}
+
+// Background Worker Code String
+const EXPORT_WORKER_CODE = `
+  importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+
+  self.onmessage = async (e) => {
+    const { type, versionIndex, canvasId, files } = e.data;
+    if (type === 'zip_canvas') {
+      try {
+        const zip = new JSZip();
+        for (const file of files) {
+          if (file.isBase64) {
+            zip.file(file.name, file.content, { base64: true });
+          } else {
+            zip.file(file.name, file.content);
+          }
+        }
+        const zipData = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE' });
+        self.postMessage({
+          type: 'zip_canvas_done',
+          versionIndex,
+          canvasId,
+          data: zipData
+        }, [zipData]);
+      } catch (err) {
+        self.postMessage({
+          type: 'error',
+          versionIndex,
+          canvasId,
+          error: err.message
+        });
+      }
+    }
+  };
+`;
+
+/**
+ * Wraps worker postMessage into a Promise.
+ */
+function zipVersionInWorker(worker, versionIndex, canvasId, files) {
+  return new Promise((resolve, reject) => {
+    const handleMessage = (e) => {
+      if (e.data.versionIndex === versionIndex && e.data.canvasId === canvasId) {
+        worker.removeEventListener('message', handleMessage);
+        if (e.data.type === 'zip_canvas_done') {
+          resolve(e.data.data);
+        } else if (e.data.type === 'error') {
+          reject(new Error(e.data.error));
+        }
+      }
+    };
+    worker.addEventListener('message', handleMessage);
+    worker.postMessage({
+      type: 'zip_canvas',
+      versionIndex,
+      canvasId,
+      files
+    });
+  });
+}
+
+/**
+ * Creates and renders the Premium Progress UI Modal.
+ */
+function showExportProgressModal(onCancel) {
+  const overlay = document.createElement('div');
+  overlay.id = 'export-progress-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 1000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(11, 12, 15, 0.82);
+    backdrop-filter: blur(8px);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  `;
+  
+  overlay.innerHTML = `
+    <div style="
+      background: #15171f;
+      border: 1px solid #2a2f3e;
+      border-radius: 12px;
+      padding: 24px;
+      width: 420px;
+      max-width: 90vw;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    ">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:14px; font-weight:600; color:#fff; font-family:'Outfit', sans-serif;">Exporting version sets…</span>
+        <span id="export-progress-percent" style="font-size:13px; font-weight:700; color:var(--accent-light, #7c5cff);">0%</span>
+      </div>
+      
+      <div style="width:100%; height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden; position:relative;">
+        <div id="export-progress-fill" style="width:0%; height:100%; background:linear-gradient(90deg, #7c5cff, #a78bfa); border-radius:3px; transition: width 0.15s ease;"></div>
+      </div>
+      
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <span id="export-progress-status" style="font-size:11.5px; color:#c7ccdb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Preparing export pipeline…</span>
+        <span id="export-progress-bytes" style="font-size:10.5px; color:var(--text-muted, #8b8f9c); font-family:monospace;">0 bytes written</span>
+      </div>
+      
+      <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+        <button id="export-progress-cancel" class="btn" style="padding: 6px 14px; font-size:11.5px; font-weight:500;">Cancel</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  overlay.querySelector('#export-progress-cancel').onclick = () => {
+    if (confirm('Cancel the current export session? Partials written will be discarded.')) {
+      onCancel();
+      document.body.removeChild(overlay);
+    }
+  };
+  
+  return {
+    update: (percent, statusText, bytesText) => {
+      overlay.querySelector('#export-progress-percent').textContent = `${Math.round(percent)}%`;
+      overlay.querySelector('#export-progress-fill').style.width = `${percent}%`;
+      overlay.querySelector('#export-progress-status').textContent = statusText;
+      overlay.querySelector('#export-progress-bytes').textContent = bytesText;
+    },
+    close: () => {
+      if (document.body.contains(overlay)) {
+        document.body.removeChild(overlay);
+      }
+    }
+  };
+}
+
+/**
+ * Unified high-performance Streaming and Web Worker-driven export system.
+ * Streams ZIP data directly to disk via showSaveFilePicker, or accumulates
+ * in-memory on Safari/Firefox.
+ */
+async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, filenamePrefix = null) {
+  const dm = state.dataMerge;
+  if (!dm || !dm.rows.length) { alert('No versions to export. Import a data sheet first.'); return; }
+  
+  const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
+  const safeProj = (filenamePrefix || state.projectName || 'Ad').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const outerName = `${safeProj}_all_versions.zip`;
+
+  // 1. Get Writable Stream or fall back to Memory Accumulator
+  let underlyingWriter = null;
+  let fileHandle = null;
+  const isStreamingSupported = !!window.showSaveFilePicker;
+  
+  if (isStreamingSupported) {
+    try {
+      fileHandle = await window.showSaveFilePicker({
+        types: [{ description: 'Exported Ads ZIP', accept: { 'application/zip': ['.zip'] } }],
+        suggestedName: outerName
+      });
+      const stream = await fileHandle.createWritable();
+      underlyingWriter = stream.getWriter();
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      console.error('File system write access denied, falling back to memory collection.', e);
+    }
+  }
+  
+  if (!underlyingWriter) {
+    // Memory Fallback for Safari/Firefox
+    underlyingWriter = {
+      chunks: [],
+      async write(data) {
+        this.chunks.push(data);
+      },
+      async close() {}
+    };
+  }
+
+  // 2. Initialize Stream Packager
+  const zipWriter = new ZipStreamWriter(underlyingWriter);
+
+  // 3. Setup Worker Thread
+  let isCancelled = false;
+  const workerCodeBlob = new Blob([EXPORT_WORKER_CODE], { type: 'application/javascript' });
+  const worker = new Worker(URL.createObjectURL(workerCodeBlob));
+  
+  const progressUI = showExportProgressModal(() => {
+    isCancelled = true;
+    worker.terminate();
+    try {
+      if (fileHandle && underlyingWriter && underlyingWriter.close) {
+        underlyingWriter.close();
+      }
+    } catch (err) {}
+    showCanvasNotification('Export cancelled');
+  });
+
+  // 4. Overwrite window.fetch with cloned caching for the duration of bulk generation
+  const originalFetch = window.fetch;
+  const fetchCache = {};
+  window.fetch = async (url, options) => {
+    if (fetchCache[url]) {
+      return fetchCache[url].clone();
+    }
+    const resp = await originalFetch(url, options);
+    if (resp.ok) {
+      fetchCache[url] = resp.clone();
+    }
+    return resp;
+  };
+
+  try {
+    const totalVersions = dm.rows.length;
+    const usedFolders = {};
+    let totalBytesWritten = 0;
+    
+    for (let i = 0; i < totalVersions; i++) {
+      if (isCancelled) break;
+      
+      const folderBase = String(dm.rows[i][keyCol] || ('version_' + (i + 1))).replace(/[^a-zA-Z0-9_-]/g, '_') || ('version_' + (i + 1));
+      let folderName = folderBase;
+      usedFolders[folderName] = (usedFolders[folderName] || 0) + 1;
+      if (usedFolders[folderName] > 1) {
+        folderName += '_' + usedFolders[folderName];
+      }
+      
+      progressUI.update(
+        (i / totalVersions) * 100,
+        `Zipping Version ${i + 1} of ${totalVersions} ("${folderName}")…`,
+        `${(totalBytesWritten / (1024 * 1024)).toFixed(2)} MB written`
+      );
+      
+      // Run the transient canvas baking and packaging
+      await dmRunExport(i, async () => {
+        for (const c of selectedCanvases) {
+          if (isCancelled) break;
+          
+          const filesToPackage = [];
+          const mockZip = {
+            file: (name, content, options) => {
+              filesToPackage.push({
+                name,
+                content,
+                isBase64: !!(options && options.base64)
+              });
+            }
+          };
+          
+          // Gather HTML & assets locally via mockZip callbacks
+          await addCanvasAssetsToZip(c, mockZip);
+          const html = generateExportHTML(c, mockZip);
+          mockZip.file('index.html', html);
+          
+          // Offload compression to background Web Worker thread
+          const subZipBuffer = await zipVersionInWorker(worker, i, c.id, filesToPackage);
+          
+          // Stream package the sub-zip directly to outer ZIP
+          const subZipPath = `${folderName}/${safeProj}_${c.width}x${c.height}.zip`;
+          await zipWriter.addFile(subZipPath, new Uint8Array(subZipBuffer));
+          totalBytesWritten = zipWriter.offset;
+        }
+      });
+      
+      // Yield thread slice to allow UI and overlay refresh
+      await new Promise(r => setTimeout(r, 0));
+    }
+    
+    if (!isCancelled) {
+      progressUI.update(98, 'Writing central directory records to disk…', `${(totalBytesWritten / (1024 * 1024)).toFixed(2)} MB written`);
+      await zipWriter.close();
+      
+      progressUI.update(100, 'Export complete!', `${(totalBytesWritten / (1024 * 1024)).toFixed(2)} MB written`);
+      
+      // Trigger download for browser memory fallback (Safari/Firefox)
+      if (!isStreamingSupported || !fileHandle) {
+        const finalBlob = new Blob(underlyingWriter.chunks, { type: 'application/zip' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(finalBlob);
+        a.download = outerName;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+      
+      showCanvasNotification('All versions exported successfully');
+    }
+  } catch (err) {
+    console.error('Streaming version export failure:', err);
+    alert('Version export failed: ' + err.message);
+  } finally {
+    // Restore clean window environment
+    window.fetch = originalFetch;
+    worker.terminate();
+    URL.revokeObjectURL(workerCodeBlob);
+    
+    // Leave modal showing success state briefly, then auto-close
+    setTimeout(() => progressUI.close(), 1000);
+  }
+}
