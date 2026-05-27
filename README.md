@@ -12,7 +12,7 @@ Designed to replace bloated legacy tools like Google Web Designer, this applicat
 
 ---
 
-## 🚀 Core Concept: Multi-Canvas Workflow & Link Groups
+## Core Concept: Multi-Canvas Workflow & Link Groups
 
 The standout feature of RMIT Adflow is its **Multi-Canvas Orchestration**. Instead of creating and managing separate files for each banner size (e.g. 300×250, 728×90, 160×600), you lay out all sizes side-by-side on an infinite panning workspace.
 
@@ -25,54 +25,27 @@ To avoid duplicate, manual updates across different canvases, you use **Link Gro
 
 ---
 
-## ✨ Headline Feature: Auto-Resize (Rule-Based Engine v2.7)
+## Headline Feature: Auto-Resize
 
-Design **one** banner, generate the **whole size set** in a single click. The Auto-Resize button (anchored at the bottom of the left panel column, also available at the top of the canvas right-click menu) rebuilds every other canvas to fit its own proportions using a deterministic rule-based placement engine — not a generative model, not an LLM, not a black box.
+Design **one** banner canvas, then generate the **whole size set** with a single click. Adflow uses an intelligent layout engine that scans the active canvas, detects elements by their role (such as Heading, Subheading, RMIT Logo, CTA Button, Background, compliance CRICOS, and Tagline), and automatically clones them to other canvases. The engine recalculates positions and text wrapping dynamically based on whether the target canvas is square, tall, or wide.
 
-### Role taxonomy
-Every element on the source canvas is classified into one of **10 roles**: `background-image`, `rmit-logo`, `cta-button`, `heading`, `subheading`, `cricos`, `main-image`, `rfwn`, `extra-info`, or `misc` (unassigned fallback).
+### How to use Auto-Resize:
+1. **Design your source layout**: Focus on building a single canvas (we recommend starting with **300×250** because its proportions adapt naturally to other sizes).
+2. **Run Auto-Resize**: 
+   - Click the **Auto-resize** button anchored at the bottom of the left panel column (or right-click the canvas and select **Auto-Resize**).
+   - In the canvas selector dialog, choose which canvases you wish to update and click **Create Resize**.
+3. **Verify and Override Roles (Optional)**: Scan the Layers panel on the left. You will see a grey role-tag icon next to each layer name indicating what role the engine auto-detected. If the engine misclassified a layer, simply click the role-tag icon and manually lock it to the correct role (manually overridden roles turn **purple**).
+4. **Link Groups Synchronization**: Auto-Resize automatically registers matched elements into **Link Groups**. Future text edits, style changes, or animation updates to an element will propagate to all sibling sizes in real time (when Live-link is active).
 
-- **5-step detection heuristic** — layer name → text content (CRICOS/RTO, "Ready for…next") → font ranking → image aspect (≥2.0 + small area → logo) → type fallback.
-- **Idempotent refresh** — the detector re-runs every render on auto-assigned roles, so detector improvements take effect on existing projects without manual reset.
-- **Manual override** — every layer has a role-tag icon in the Layers panel: grey when auto-detected, accent purple when manually locked. Click to open the picker.
-
-### Parametric placement rules
-Each rule is a pure function returning geometry as a parametric formula of `canvas.w`, `canvas.h`, `sqrt(area)`, and `aspect` — generalises to canvas sizes the engine has never seen. Highlights:
-
-- **`heading`** — top-left of safezone, full safezone width on stack mode (`h ≥ 300`), narrower column on wide banners. Font scales with canvas; wrap budget 2–4 lines depending on format.
-- **`cta-button`** — bot-centre of safezone on tall canvases, mid-right at `canvas.w × 0.84` on wide banners.
-- **`rmit-logo`** — always top-right of safezone; height shrinks 25% on tall formats to share the top row comfortably with RFWN.
-- **`rfwn`** — top-left for `aspect ≤ 2.0`, bot-right otherwise. Text always justifies toward the closest canvas edge.
-- **`main-image`** — slot-search strategy. Computes the largest empty rectangle remaining after text + CTA + logo place. Contain by source aspect, falling back to cover (with optional canvas-edge clipping) when contain leaves the image too small.
-- **`cricos`** — bot-left of canvas (not safezone). Font auto-scales with `min(canvas.w, canvas.h)`, floor of 4 pt.
-
-### Cross-role relations & post-placement passes
-After per-role placement, four passes refine the result:
-
-1. **R1** — Logo ↔ RFWN edge alignment (snap to share top edge or right edge depending on canvas aspect).
-2. **Mask post-pass** — remap mask shapes' `maskTargetId` to the cloned image and align mask geometry, so masked images survive the resize intact.
-3. **No-touch collision resolution** — the five no-touch roles (logo / CTA / heading / subheading / RFWN) never overlap each other; lower-priority shrinks to clear with a 4-px gap.
-4. **Canvas-bounds clamp** — every role except main-image and background-image is forced fully inside the canvas.
-
-### Engine settings & live linking
-A dedicated settings modal (gear icon next to the Auto-resize button) exposes:
-
-- **Cross-role relations** — toggle R1 on/off.
-- **Behaviour** — show canvas-selection dialogue (off → instant resize), include unassigned by default, allow cover fallback, show technical progress overlay.
-- **Live linking** — master toggle + 5 property toggles (text content, font, colour, opacity, animations). When on, every target element joins the source's link group with real-time propagation. Position, size, and font size are always independent per canvas — that's the entire point of the resize.
-
-### Engine versioning
-The engine carries its own version (`ENGINE_VERSION` constant) independent of the Adflow app version — bumps on substantive rule changes so output is reproducible for a given engine generation. The version is surfaced as a glowing pulsing pill in the Settings modal header and in the technical progress overlay.
-
-### Workflow polish
-- **One Undo step** — the whole resize collapses into a single history entry. `Ctrl+Z` restores every canvas at once.
-- **Source canvas inviolate** — never mutated, only its roles are re-detected.
-- **No-drop policy** — every element with a known role lands somewhere on every target; never silently lost.
-- **Instant mode** — turn off the canvas-selection dialogue + progress overlay, and clicking Auto-resize rebuilds every target with no intermediate UI at all. Useful for iterative tuning loops.
+### Engine settings:
+Click the **gear icon** next to the Auto-resize button at the bottom of the left panel to open the settings:
+- **Instant Mode**: Turn off the selection dialog or progress overlay for immediate, one-click layout generation.
+- **Image Cropping**: Toggle cover/contain fallback behaviors for portrait/landscape image slots.
+- **Live Linking Toggles**: Enable or disable real-time synchronization for specific properties (Text content, Fonts, Colors/Fills, Opacity, and Animations).
 
 ---
 
-## 🗂️ Headline Feature: Data & Versions (Dynamic Creative)
+## Headline Feature: Data & Versions (Dynamic Creative)
 
 Design **one** template, then data-merge a spreadsheet into it to produce a finished ad set **per row** — ideal for running the same banner set across dozens of RMIT courses. Open it from **File → Data & Versions** or the **Data** button in the top bar.
 
@@ -88,12 +61,14 @@ Frames need no special handling — a frame-1 and frame-2 headline are simply tw
 
 ---
 
-## ☁️ Headline Feature: Cloud Projects & Team Spaces
+## Headline Feature: Cloud Projects & Team Spaces
 
 Optional Supabase-backed cloud sync, layered on top of the local-first model. Anonymous local use is fully supported and unchanged — the cloud only activates when you sign in.
 
 - **Email + password auth** — sign in / sign up from the splash screen on first load, or from the top-bar chip later. Remember-me checkbox (default on) persists sessions across tabs; uncheck to scope the session to the current tab only. "Use locally without signing in" escape hatch keeps the splash from being a hard gate.
-- **Cloud Projects** — push the current project to the cloud with one click; open any of your saved projects back; delete from the cloud. Same `.flow` ZIP format as local saves, so nothing needs re-importing. Same-name push triggers a Replace / Rename toast so you don't accidentally overwrite a teammate's work.
+- **Cloud Projects** — push the current project to the cloud with one click; open any of your saved projects back; delete from the cloud. Same `.flow` ZIP format as local saves, so nothing needs re-importing.
+  - **Same-Name Conflict Prevention**: When saving a project to the cloud for the first time, if a project with the same name already exists in the cloud, Adflow prompts the user to **Replace** the existing project or **Rename** the push to prevent accidental overwrites.
+  - **Save Toast**: Saving a new project for the first time successfully displays a confirmation toast: `"<project name>" project saved to cloud`.
 - **Team Spaces** — shared pools for collaborating across a creative team. The chip dropdown lists all spaces you belong to plus "Personal". Each space has owners + members, per-space members panel, invitation flow (Adflow generates a one-time join URL and copies it to your clipboard — paste into Slack or email), and Duplicate / Rename / Delete / Leave actions per role.
 - **Folders inside spaces** — organise space projects into a tree. Per-row dropdown to move projects between folders.
 
@@ -255,6 +230,158 @@ Access the application immediately via the live deployment:
 | `Double-click Group` | Isolate and select inside group |
 | `Right-click Canvas` | Open canvas context menu (Preview / Auto-Resize / Clear all / etc.) |
 | `Right-click Workspace` | Open workspace settings (Snapping, Rulers, Safezones) |
+
+---
+
+## Technical Stack (IT & Engineering Overview)
+
+This section provides a deep technical breakdown of Adflow's architecture, data schemas, security models, and subsystem mechanics for engineering and IT teams.
+
+### 1. Architectural Paradigm
+Adflow is built as a **zero-dependency, compilation-free Single Page Application (SPA)** using pure HTML5, Vanilla JavaScript, and CSS3. There are no build pipelines (Webpack, Vite, etc.) or package managers involved in running the application.
+
+All application logic is divided into modular JavaScript files that are loaded sequentially via classic `<script>` tags in `index.html`. Because these scripts share the global lexical scope, declarations and states are globally visible at execution time. The load order is strictly defined as:
+1. [auto-resize-engine.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auto-resize-engine.js) — Rule-based layout calculation engine.
+2. [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/docs-content.js) — Internal Help modal content and Changelog history.
+3. [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auth-ui.js) — Supabase integration controller (Auth, Cloud Saves, Team Spaces).
+4. [data-merge.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data-merge.js) — CSV data-merge and version preview/interpolation.
+5. [export-pipeline.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/export-pipeline.js) — HTML5 ZIP builder and static PNG rasterizer.
+6. [color-picker.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/color-picker.js) — Gradient editor wrapper for iro.js.
+7. [script.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/script.js) — Core application bootstrap, DOM renderer, event loops, undo/redo history, and workspace canvas orchestration.
+
+### 2. Sandbox Preview Engine
+Adflow uses dynamic `<iframe>` sandboxing to isolate and render active HTML5 ads. This prevents the parent editor's styles and scripts from bleeding into the ad runtime, and vice-versa. 
+* **Editor Previews**: The active frame state and layout coordinates are parsed to build an inline HTML document, which is injected into the preview frame's `srcdoc`.
+* **Performance Optimizations**: Canvas rendering uses CSS properties `transform: translateZ(0)` to force GPU compositing and `clip-path: inset(0)` to prevent sub-pixel hairline rendering leaks during view-panning and zoom actions.
+
+### 3. Global State Schema
+The application's active state is managed inside a single, mutable global object named `state` (declared in [script.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/script.js)). Below is the core TypeScript representation of the state structure:
+
+```typescript
+interface State {
+  projectId?: string;             // Unique identifier (promoted to UUID on first cloud push)
+  projectName: string;            // Name of the active project
+  adSizeLimit: number;            // Validation weight cap in KB (default: 150)
+  spaceId?: string | null;        // Active Supabase team workspace ID (null = Personal space)
+  currentVersion?: string;        // Active row key from dynamic data merge, if any
+  canvases: Canvas[];             // Array of banner canvas configurations
+  activeCanvasId: string;         // Focused canvas ID
+  activeFrameId: number;          // Active timeline frame index (0-indexed)
+  selectedElementId: string | null;
+  layerSelection: string[];       // Array of multi-selected layer element IDs
+  frames: Frame[];                // Sequencing timeline frames
+  linkGroups: Record<string, LinkGroup>; // Linked elements cross-canvas groups
+  assets: Record<string, string>; // Local asset mapping (assetId -> base64 data URL)
+  dataMerge?: DataMergeConfig;    // Dynamic spreadsheet merge data
+  theme?: 'default' | 'rmit' | 'ocean' | 'light' | 'navy'; // Theme name
+  showRulers?: boolean;
+  showSafezones?: boolean;
+  snapEnabled?: boolean;
+  zoom?: number;
+  viewScrollLeft?: number;
+  viewScrollTop?: number;
+}
+
+interface Canvas {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  elements: Element[];            // Canvas element layers (ordered from bottom to top)
+  bgColor?: string;               // Optional fallback canvas color override
+}
+
+interface Element {
+  id: string;
+  type: 'text' | 'image' | 'button' | 'rect' | 'circle' | 'line' | 'pixel';
+  customName?: string;            // Layer display label
+  x: number; y: number; width: number; height: number;
+  rotation?: number;
+  persistent: 'top' | 'bottom' | false; // z-layer placement sections
+  frameId?: number;               // Visibility index on timeline if persistent === false
+  linkGroupId?: string;           // Associated LinkGroup ID for cross-canvas synchronization
+  role?: string;                  // Heuristic classification role for auto-resize
+  roleAuto?: boolean;             // Boolean toggle indicating if role is auto-detected
+  isMask?: boolean;               // Indicates if element is a clip-path mask
+  maskTargetId?: string;          // Target image ID that this mask clips
+  
+  // Font, Background, Animation, and Type properties
+  text?: string; fontFamily?: string; fontSize?: number;
+  color?: string; fill?: string; stroke?: string;
+  inTransition?: string; inDuration?: number;
+  continuousEffect?: string; effectDuration?: number;
+  dmText?: boolean; dmColor?: boolean; dmBg?: boolean; dmImage?: boolean; // Dynamic data opt-ins
+}
+```
+
+### 4. Auto-Resize Layout Engine
+The Auto-Resize system is a deterministic, rule-based layout engine (not an LLM or neural network). It takes a source canvas and automatically maps all layers onto target canvases using a 9+1 Role taxonomy:
+
+1. **Role Classification Heuristic (`autoAssignRole`)**:
+   Runs automatically when elements are added or modified. The matching pipeline follows these rules:
+   * **Explicit Name**: Checks `layer.name` for substrings (e.g., `'logo'` matches `rmit-logo`, `'background'` matches `background-image`).
+   * **Text Content regex**: Matches common text values (e.g., `/cricos|rto/i` matches `cricos`, `ready for next` matches `rfwn`).
+   * **Text Hierarchy**: Identifies the largest font sizes in the project to classify `heading` and `subheading`.
+   * **Image Aspect & Area**: If an image slot has an aspect ratio $\ge 2.0$ and covers $<18\%$ of canvas area, it's classified as `rmit-logo`. If it covers $\ge 70\%$ or is placed in the bottom persistent layer, it maps to `background-image`.
+2. **Placement Rules**:
+   Each role maps to a pure placer function: `placer(srcEl, targetCanvas, context) -> geometry`. Coordinates are generated dynamically using viewport aspect thresholds (Wide, Tall, Square formats). Heading wrapping and scaling thresholds are determined programmatically based on the bounding safezones:
+   $$\text{Safezone Inset} = \max\left(4, \text{round}\left(\min(\text{width}, \text{height}) \times \text{factor}\right)\right)$$
+3. **Execution Pipeline Order**:
+   * **Element Placement**: Clear target canvas, run placer functions for each element based on role priority, and apply size/position geometry.
+   * **R1 Layout Alignment**: Apply edge alignment rules between `rmit-logo` and `rfwn` elements.
+   * **Mask Position Mapping**: Remap `maskTargetId` references to newly cloned target elements.
+   * **No-Touch Collision Resolver (`resolveNoTouchCollisions`)**: Walks elements sequentially. If a collision is detected, the lower priority element is shrunk along its dominant center offset axis by the overlap dimension $+ 4\text{px}$ spacing buffer. The higher-priority element remains locked.
+   * **Canvas Clipping**: Enforces boundaries via `clampToCanvas` (exempting background images).
+
+### 5. Link Sync & Real-Time Synchronization
+Link Groups bind matching elements across canvases. Updates propagate through the `applyLinkSync` routine based on active properties:
+* **Sync Matrix**: Text content, typography styling (font, weight, text alignment), font sizes (optionally separate), colors, fills, borders, radius, source image paths, animations, and transitions.
+* **Live-Link Propagation**: When a group's `liveLink` property is active, any modification inside an input handle or viewport drag triggers a DOM update loop. The editor sweeps all canvases, identifies elements sharing the `linkGroupId`, and overwrites their linked property values with the source element's current attributes in real time.
+
+### 6. Image Masking Engine
+Adflow uses a robust **CSS clip-path** implementation for layer-based masking:
+* **Core Logic**: A shape layer directly above an image element in z-order acts as a vector mask when `isMask` is set to `true`.
+* **Sanitization**: On every render sweep, `sanitizeMasks` validates the layer stack. If the mask's target image is deleted, or if the mask shape is moved away from its immediate image-neighbour, the mask is automatically stripped of its masking attributes.
+* **SVG Clip Paths**: To support complex custom brand shapes (e.g., the RMIT Pixel), Adflow dynamically generates an inline `<svg>` definition block:
+  ```html
+  <clipPath id="svgrad_[uid]">
+    <path d="M..."></path>
+  </clipPath>
+  ```
+  Rotations are baked directly into the SVG polygon coordinates or path definition string so that masks remain exact-aspect preserved during viewport transformation and auto-resizing.
+
+### 7. Persistence & History Architecture
+Adflow is designed with a **local-first philosophy**, layering optional cloud sync over robust browser storage.
+* **IndexedDB Autosave**: Autosaves are triggered after element adjustments via a debounced queue. The entire global `state` object, along with the undo/redo stack, is serialized and saved in the `adflow-autosave` IndexedDB instance under the key `'project'`.
+* **Undo/Redo Stack**: Supports up to 50 historical states. To save memory, history actions save serialized diff slices (`canvases`, `linkGroups`, `dataMerge`) and prevent re-entrant update cycles using an execution guard flag `_restoringHistory`.
+* **Portable `.flow` Format**: When saving locally or pushing to the cloud, the project is compiled into a single `.flow` binary package (zipped via JSZip 3.10) containing:
+  * `/project.json` — Raw JSON string of the state object.
+  * `/meta.json` — File metadata (dimensions, app version, timestamp).
+  * `/images/` — Nested folder containing raw binary image assets extracted from base64 data URLs.
+
+### 8. Cloud Integration & Database Security (Supabase)
+Cloud synchronization is powered by **Supabase** (PostgreSQL database, Auth, and Storage bucket). RLS (Row-Level Security) is strictly enforced at the database level.
+* **Table Schema**:
+  * `projects` table:
+    ```sql
+    projects (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id uuid REFERENCES auth.users,
+      name text NOT NULL,
+      ad_size_limit_kb integer DEFAULT 150,
+      size_bytes bigint,
+      storage_path text,
+      updated_at timestamp with time zone,
+      created_at timestamp with time zone
+    )
+    ```
+  * `space_members` table: Links user IDs to shared team spaces with owner/member permission roles.
+  * `space_invites` table: Manages single-use invitation tokens.
+* **Storage Structure**: Portable `.flow` projects are stored inside a private bucket under the directory hierarchy: `/projects/{user_id}/{projectId}.flow`.
+* **Row-Level Security (RLS) Workaround**:
+  To prevent infinite recursion on self-referential SELECT policies querying the `space_members` table, the database bypasses recursion using helper functions marked as `SECURITY DEFINER` (which run with the database owner's privileges):
+  * `user_is_space_member(p_space_id uuid)`: Verifies if the currently authenticated user's email exists in the membership table for the given space.
+  * `current_user_email()`: Safely extracts the user's email address from JWT claims (`auth.jwt() ->> 'email'`).
 
 ---
 

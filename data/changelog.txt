@@ -1,6 +1,22 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.50 (Current) - May 2026 — Engine v2.16
+v0.16.55 (Current) - May 2026 — Engine v2.16
+- Expanded all in-app Help category introduction pages with much more detailed descriptions, and refactored the "Technical Detail" footers into user-friendly "General Tips" sections.
+
+v0.16.54 - May 2026 — Engine v2.16
+- Added structured "Introduction" sub-pages for all in-app Help documentation sections, describing what each section does, what Adflow offers, how it excels, and their specific technical underpinnings (styled in a faint, smaller font).
+
+v0.16.53 - May 2026 — Engine v2.16
+- Increased the Adflow brand logo size (max-width scaled from 140px to 280px) on the "Welcome to Adflow" home tab of the in-app Help documentation modal.
+
+v0.16.52 - May 2026 — Engine v2.16
+- Added the Technical Stack guide to the end of the in-app Help documentation modal, split into dedicated tabs: Architecture & Sandbox, Global State Schema, Auto-Resize Engine, Masking & Link Sync, and Persistence & Cloud Security.
+
+v0.16.51 - May 2026 — Engine v2.16
+- Cleaned up documentation titles by removing emojis and icons from headers in the README and the Help system menu.
+- Added a detailed "Technical Stack" guide section in the README, detailing local storage structure, global state typing definitions, dynamic data merge architectures, and Supabase RLS recursion helper functions.
+
+v0.16.50 - May 2026 — Engine v2.16
 - Mask system revamp: replaced SVG `<mask>` + CSS `mask: url(#…)` with CSS `clip-path` using inline shape functions. The previous system relied on the browser resolving a CSS `url(#fragment)` reference against an inline SVG `<mask>` element — the most brittle paint operation available, with reproducible per-browser failures (Chromium nested-defs scope, Safari zero-size-SVG paint context, Firefox shorthand-not-propagating-to-mask-image, etc). Every report of "mask + image invisible on another browser/machine" was traced to that one fragment-URL resolution path.
 - New approach: `clip-path` with inline shapes — no SVG defs, no fragment URL, no per-browser quirks. Maps Adflow's three mask types directly:
     • `rect` (optionally rounded) → `clip-path: inset(top right bottom left round radius)`. Rotated rect falls back to `polygon()` with 4 rotated corners (drops rounded corners, which polygons can't express — rotated rounded rects are an unusual mask anyway).

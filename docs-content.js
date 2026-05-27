@@ -24,11 +24,16 @@ const DOCS_SECTIONS = [
     subs: [
       { id: 'welcome', title: 'Welcome to Adflow', body: `
         <div style="text-align: center; margin-bottom: 24px;">
-          <img src="data/Elements/Adflow_logo.svg" alt="Adflow Logo" data-adflow-logo style="max-width: 140px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));">
+          <img src="data/Elements/Adflow_logo.svg" alt="Adflow Logo" data-adflow-logo style="max-width: 280px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));">
         </div>
-        <p>Adflow is a browser-based design tool for animated HTML5 display ads. Lay out every banner size side-by-side in one project, sync them with <a href="#" data-doc-sec="multi-canvas" data-doc-sub="auto-link" style="color:var(--accent-light); font-weight: 500;">Link Groups</a>, mail-merge a spreadsheet to generate dozens of versions, and export Google-Ads-compliant ZIPs in a click.</p>
-        <p style="color:var(--text-muted);">Two ideas to start with — read the next two pages even if you skip the rest:</p>
-        <ul><li><b>Multi-canvas + Link Groups</b> — every size in one workspace, edits sync automatically.</li><li><b>Auto-Resize from Selected</b> — design one banner, generate every size, all link-grouped.</li></ul>
+        <p>Adflow is a professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. Lay out your entire banner size set side-by-side on an infinite workspace, coordinate them with Link Groups, merge spreadsheet version rows to generate dozens of creative variants, and export Google-Ads-compliant ZIP packages in a single click.</p>
+        <p>Adflow cuts out the heavy installation requirements and complex build pipelines of legacy applications, allowing creative teams to collaborate in real-time within shared team spaces, manage cloud projects, and audit ad package weights before publication.</p>
+        <p style="color:var(--text-muted); font-weight: 500;">Two core concepts to get started with:</p>
+        <ul>
+          <li><b>Multi-Canvas & Link Groups</b>: Lay out all dimensions side-by-side in one workspace. Editing a text string or changing a border style on one canvas propagates the update to all other formats automatically when Live-Link is active.</li>
+          <li><b>Auto-Resize Placement</b>: Design one canvas format, then automatically generate and scale the layout across tall, wide, and square canvas dimensions using a rule-based placement engine.</li>
+        </ul>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> We recommend designing your source layout in a 300×250 canvas because its proportions adapt naturally to other ratios. Run Auto-Resize to generate the other dimensions, and check the grey and purple role tags in the Layers panel to adjust layout behavior.</div>
       `},
       { id: 'multi-canvas-concept', title: 'The multi-canvas idea', body: `
         <p>Instead of opening one file per banner size, Adflow shows every canvas (300×250, 728×90, 160×600, …) side-by-side on an infinite workspace. You pan with <span class="kbd">Space</span>+drag, zoom with the scroll wheel.</p>
@@ -37,7 +42,7 @@ const DOCS_SECTIONS = [
       `},
       { id: 'auto-resize-glance', title: 'Auto-Resize at a glance', body: `
         <p>Design <b>one</b> canvas exactly how you want it. Click <b>Auto-resize</b> at the bottom of the left panel (or right-click any canvas and pick <b>Auto-Resize</b> at the top of the menu). A rule-based engine reads each element's role (heading, button, logo, background, CRICOS, RFWN, image…), wipes the other canvases, and rebuilds them with format-aware placements — auto-linking everything so future edits stay in sync.</p>
-        <p style="color:var(--text-muted);">Full breakdown under <a href="#" data-doc-sec="auto-resize" data-doc-sub="auto-resize-overview" style="color:var(--accent-light); font-weight: 500;">Auto-Resize ✨</a>.</p>
+        <p style="color:var(--text-muted);">Full breakdown under <a href="#" data-doc-sec="auto-resize" data-doc-sub="auto-resize-how-it-works" style="color:var(--accent-light); font-weight: 500;">Auto-Resize</a>.</p>
       `},
       { id: 'first-project', title: 'Your first project', body: `
         <ol>
@@ -53,6 +58,12 @@ const DOCS_SECTIONS = [
   {
     id: 'workspace', title: 'Workspace',
     subs: [
+      { id: 'workspace-intro', title: 'Introduction', body: `
+        <p>Adflow's Workspace is an infinite, multi-canvas panning board designed to host and organize your entire display ad set side-by-side. Instead of treating each ad size as a separate project file, this workspace maps all canvases onto a single layout viewport, letting you pan with <span class="kbd">Space</span>+drag and scroll with the wheel to zoom.</p>
+        <p>The workspace comes equipped with precision alignment guides, coordinate rules, and real-time bounding safezone overlays. These layout aids guarantee that creative components adhere strictly to legal requirements and visual guidelines across both landscape and portrait dimensions.</p>
+        <p><b>Adflow's Advantage:</b> In legacy visual editors, adjusting different banner aspect ratios requires opening multiple application tabs, leading to mismatched copy and inconsistent layouts. Adflow places every target canvas side-by-side, allowing creative teams to verify layout alignments, compare formats, and coordinate updates instantly across the entire campaign.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use custom horizontal and vertical guides by dragging directly from the viewport rulers onto a focused canvas. Toggle the Safezone overlay to ensure critical call-to-actions and legal CRICOS text stay clear of format edges, preventing cut-offs on display networks.</div>
+      `},
       { id: 'canvases-navigation', title: 'Canvases & navigation', body: `
         <ul>
           <li><b>Add a canvas:</b> the <b>+</b> button in the left Canvases panel — pick a standard IAB size or enter custom dimensions.</li>
@@ -92,6 +103,12 @@ const DOCS_SECTIONS = [
   {
     id: 'designing', title: 'Designing Elements',
     subs: [
+      { id: 'designing-intro', title: 'Introduction', body: `
+        <p>Designing elements in Adflow enables you to construct layout layers using a combination of text blocks, call-to-action buttons, vector shapes, pre-approved brand graphics, and compressed raster image layers. Each element's style, fill, stroke, rotation, and opacity can be adjusted inside the right-hand Properties panel.</p>
+        <p>Adflow includes a pre-loaded library of approved brand elements, such as logo marks and compliance components, which can be placed instantly onto any focused canvas. Additionally, the workspace includes custom utilities like a non-destructive Crop & Level tool and layer-based image masking to support custom framing workflows.</p>
+        <p><b>Adflow's Advantage:</b> Standard layout editors require tedious manual asset management and yield bloated output packages. Adflow bundles assets natively, optimizes text measurements automatically, and includes an active WebP image compressor to convert and downsize files directly in the browser to fit network weight limits.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Save customized layers or group templates directly into the Assets panel to reuse them across other projects. When cropping uploaded graphics, use the Crop & Level slider: the rotation is baked directly into the output crop image, which leaves the layer's primary transform handles clean and aligned.</div>
+      `},
       { id: 'text-typography', title: 'Text & typography', body: `
         <p>Add a text layer from the left panel (or right-click the canvas). Double-click to edit inline.</p>
         <ul>
@@ -132,6 +149,12 @@ const DOCS_SECTIONS = [
   {
     id: 'animation', title: 'Animation',
     subs: [
+      { id: 'animation-intro', title: 'Introduction', body: `
+        <p>Adflow's Animation suite sequences multi-frame narratives and applies entering transitions or continuous looping motion to layout layers. You can define sequential frames with distinct durations, adjust frame entrance styles, and apply staggered timelines to establish visual pacing.</p>
+        <p>Animations are split between per-element entrance transitions (which play once when a frame enters) and continuous looping effects (which play continuously while the frame remains active). This dual-layer motion model lets you create rich, dynamic banner advertisements with zero manual timeline keyframing.</p>
+        <p><b>Adflow's Advantage:</b> Legacy animation tools force designers to construct complex keyframe timelines for every single canvas element. Adflow abstracts this complexity: you can apply transitions like swipes, slides, or zooms, and configure looping effects like floating, pulsing, or typing using simple dropdown presets.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Stagger layer delays (e.g., 0.2s, 0.4s, 0.6s) for element entrance transitions to build sequential visual narratives instead of animating all layers simultaneously. Toggle the 'Skip Frame' check to test specific portions of your timeline sequence in isolation.</div>
+      `},
       { id: 'frames-timeline', title: 'Frames & timeline', body: `
         <p>Add frames to the timeline at the top of the workspace. Each frame has its own duration (seconds). Toggle global <b>Loop</b> to repeat the whole timeline.</p>
         <p><b>Skip frame:</b> mark a frame as skipped to hide it in preview/export (max 1 skipped frame).</p>
@@ -150,6 +173,12 @@ const DOCS_SECTIONS = [
   {
     id: 'multi-canvas', title: 'Link Groups',
     subs: [
+      { id: 'link-groups-intro', title: 'Introduction', body: `
+        <p>Link Groups associate matching elements across canvases, synchronising their contents and design properties in real time. Rather than repeating edits, modifying a linked layer's properties immediately propagates the change to all group members across the campaign.</p>
+        <p>Adflow provides granular synchronization checkboxes for each group. You can choose to lock text content, colors, borders, and animations together while keeping layout transforms (like coordinates and bounding widths) independent to suit each format's proportions.</p>
+        <p><b>Adflow's Advantage:</b> When copy edits or style changes occur during creative reviews, designers usually have to update each banner size individually. Adflow's Live-Link mode syncs all sibling elements instantly in the background, cutting manual layout repetition down to zero.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Name your canvas layers consistently (e.g. 'Heading', 'CTA Button') so the Auto-Link scanner can automatically find and group identical elements. If you need to make custom layout tweaks to a single canvas, temporarily disable Live-Link for that group.</div>
+      `},
       { id: 'auto-link', title: 'Auto-Link', body: `
         <p><b>Auto-Link</b> in the sidebar scans all canvases and groups matching elements by layer name + type. Use <b>Selected only</b> to target just the active layer.</p>
         <p>Best paired with consistent layer names (rename via the Layers panel).</p>
@@ -169,275 +198,49 @@ const DOCS_SECTIONS = [
     ]
   },
   {
-    id: 'auto-resize', title: 'Auto-Resize ✨',
+    id: 'auto-resize', title: 'Auto-Resize',
     subs: [
-      { id: 'auto-resize-overview', title: 'Overview & philosophy', body: `
-        <p>Adflow's Auto-Resize is a <b>deterministic rule-based placement engine</b> — not a generative model, not an LLM, not a black box. Given a source canvas you've designed, it propagates every element to every other canvas at format-appropriate positions, sizes, and font sizes, using parametric formulas tuned against a hand-built reference set of six canvas geometries.</p>
-
-        <p>Engine version is tracked independently of the Adflow app version. Bumping the engine on substantive rule or behaviour changes means a project's resize output is reproducible for that specific engine generation. The version pill in the Settings modal (and the technical progress overlay) surfaces the running engine — currently <b>v2.7</b>.</p>
-
-        <p><b>Design principles:</b></p>
-        <ul>
-          <li><b>Per-target independence.</b> Each target canvas is computed from the source independently — no shared state between targets, parallelisable in principle.</li>
-          <li><b>Single undo step.</b> The whole resize collapses into one history entry. <span class="kbd">Ctrl+Z</span> restores every canvas at once.</li>
-          <li><b>Source canvas inviolate.</b> The source is never mutated; only its roles are re-detected.</li>
-          <li><b>No-drop policy.</b> Every element with a known role lands somewhere on every target — never silently lost. Only role <code>misc</code> elements can be dropped, and only when "Include unassigned" is off.</li>
-          <li><b>Parametric, not table-driven.</b> Rule formulas reference <code>canvas.w</code>, <code>canvas.h</code>, <code>sqrt(area)</code>, <code>aspect</code>, <code>min/max</code> — they generalise to canvas sizes the engine has never seen.</li>
-        </ul>
-
-        <p><b>Two entry points:</b></p>
-        <ul>
-          <li>The <b>Auto-resize</b> button anchored at the bottom of the left panel column. Respects the canvas-selection-dialogue setting — can be made one-click instant.</li>
-          <li>The canvas right-click menu → <b>Auto-Resize</b> (top of the menu, directly under Preview). Always opens the canvas-selection dialogue.</li>
-        </ul>
+      { id: 'auto-resize-intro', title: 'Introduction', body: `
+        <p>Adflow's Auto-Resize engine generates a complete campaign size set from a single layout in a single click. The engine reads layer positions and dimensions, detects element roles, and automatically maps coordinates onto all target canvases in your workspace.</p>
+        <p>Auto-Resize is rule-based and aspect-aware, meaning it calculates element coordinates based on whether target canvases are wide banners, tall skyscraper formats, or square formats. The engine also automatically groups cloned elements into Link Groups so that future edits sync automatically.</p>
+        <p><b>Adflow's Advantage:</b> Traditional visual design tools only support simple canvas scaling, which stretches assets, distorts typography, and breaks alignments. Adflow's engine handles font sizes, image wrapping, and boundary constraints intelligently, automatically resolving overlaps and locking relative placements.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Always design your source layout in a 300×250 canvas because its mid-range proportions translate cleanly to other dimensions. Scan your Layers panel after running the sizer: click any grey auto-detected role tags to manually lock them to the correct role (which turns them purple).</div>
       `},
-
-      { id: 'roles-taxonomy', title: 'The 9-role taxonomy', body: `
-        <p>Every element on the source canvas is classified into one of 10 roles. Nine carry placement rules; <code>misc</code> is the unassigned fallback.</p>
-
-        <table style="width:100%; border-collapse:collapse; font-size:12px; margin:8px 0 14px 0;">
-          <thead>
-            <tr style="border-bottom:1px solid var(--border-light); text-align:left; color:var(--text-muted);">
-              <th style="padding:6px 8px;">Role</th>
-              <th style="padding:6px 8px;">Priority</th>
-              <th style="padding:6px 8px;">Strategy</th>
-              <th style="padding:6px 8px;">Required</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>background-image</code></td><td style="padding:5px 8px;">1</td><td style="padding:5px 8px;">source-mirror</td><td style="padding:5px 8px;">no</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>rmit-logo</code></td><td style="padding:5px 8px;">3</td><td style="padding:5px 8px;">anchor (top-right)</td><td style="padding:5px 8px;">yes</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>cta-button</code></td><td style="padding:5px 8px;">4</td><td style="padding:5px 8px;">anchor (tall / wide)</td><td style="padding:5px 8px;">no</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>heading</code></td><td style="padding:5px 8px;">5</td><td style="padding:5px 8px;">anchor (top-left)</td><td style="padding:5px 8px;">yes</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>subheading</code></td><td style="padding:5px 8px;">6</td><td style="padding:5px 8px;">anchor → heading</td><td style="padding:5px 8px;">yes</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>cricos</code></td><td style="padding:5px 8px;">7</td><td style="padding:5px 8px;">anchor (canvas bot-left)</td><td style="padding:5px 8px;">yes</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>main-image</code></td><td style="padding:5px 8px;">7</td><td style="padding:5px 8px;">slot-search</td><td style="padding:5px 8px;">no</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>rfwn</code></td><td style="padding:5px 8px;">8</td><td style="padding:5px 8px;">anchor + R1 snap to logo</td><td style="padding:5px 8px;">no</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>extra-info</code></td><td style="padding:5px 8px;">9</td><td style="padding:5px 8px;">slot-search</td><td style="padding:5px 8px;">no</td></tr>
-            <tr><td style="padding:5px 8px;"><code>misc</code></td><td style="padding:5px 8px;">99</td><td style="padding:5px 8px;">centred or dropped</td><td style="padding:5px 8px;">—</td></tr>
-          </tbody>
-        </table>
-
-        <p><b>Priority drives placement order.</b> The engine sorts source elements by their role's priority before placing, so later rules (e.g. main-image at priority 7) can read the geometry of already-placed earlier rules (heading at 5, cta at 4) via <code>ctx.placedElements[role]</code>. This enables slot-search rules to compute "the largest empty rectangle remaining" deterministically.</p>
-
-        <p><b>Required roles</b> never drop. If a placement rule returns null (slot crushed beyond viability), a fallback geometry is supplied so the element always lands somewhere on every target.</p>
+      { id: 'auto-resize-how-it-works', title: 'How it works', body: `
+        <p>Adflow's Auto-Resize lets you design <b>one</b> canvas, and instantly generate every other size in the set with a single click. Instead of copying layouts manually, Adflow automatically detects the role of each element and positions it intelligently depending on whether the target format is wide, tall, or square.</p>
+        <p>Future edits stay in sync because Auto-Resize automatically links matching elements across canvases using Link Groups.</p>
       `},
-
-      { id: 'role-detection', title: 'Role detection & manual override', body: `
-        <p>The detector — <code>autoAssignRole(el, canvas)</code> — runs a layered heuristic ladder. The first match wins:</p>
-
+      { id: 'auto-resize-steps', title: 'Using Auto-Resize', body: `
         <ol>
-          <li><b>Layer name match</b> (highest trust): <code>name === 'rfwn'</code>, <code>name.includes('logo')</code>, <code>name === 'background'</code>, <code>name.includes('headline')</code>, etc. If you've named your layers, the detector trusts you.</li>
-          <li><b>Text content match</b> for text elements: <code>'cricos'</code> or <code>/\\brto\\b/</code> → cricos. <code>'ready for' + 'next'</code> → rfwn.</li>
-          <li><b>Ranking-based match</b> for text elements: largest <code>fontSize</code> on the canvas → heading. Second largest → subheading. <code>persistent === 'top'</code> with no other match → cricos.</li>
-          <li><b>Type + aspect match</b> for images: <code>aspect ≥ 2.0</code> AND <code>area &lt; 0.18</code> → rmit-logo (the RMIT lockup has a 2.85:1 ratio and is typically &lt;10% of canvas area). <code>area ≥ 0.7</code> OR <code>persistent === 'bottom'</code> → background-image.</li>
-          <li><b>Type fallback</b>: buttons → cta-button, images → main-image, shapes → misc, loose text → extra-info.</li>
+          <li><b>Design a source canvas:</b> Lay out one canvas exactly how you want it. It is recommended to use <b>300×250</b> as the source since its geometry generalizes well to other aspect ratios.</li>
+          <li><b>Trigger the resize:</b>
+            <ul>
+              <li>Click the <b>Auto-resize</b> button anchored at the bottom-left of the left panel (or right-click the canvas and select <b>Auto-Resize</b>).</li>
+              <li>In the dialog that appears, select the target canvases you want to regenerate and click <b>Create Resize</b>.</li>
+            </ul>
+          </li>
+          <li><b>Adjust roles (if needed):</b> Each element has an auto-detected role (e.g. logo, CTA button, heading). Check the Layers panel — you'll see a grey role-tag icon next to each layer. If the engine classified something incorrectly, click the icon to manually lock it to the correct role. Locked roles show a purple icon.</li>
         </ol>
-
-        <p><b>Detection is idempotent and refreshing.</b> Every <code>render()</code> call re-runs the detector on auto-assigned roles (where <code>el.roleAuto === true</code>), so improvements to the detector's heuristics take effect on existing projects automatically without manual reset. Roles you've manually set are locked (<code>el.roleAuto === false</code>) and never re-detected.</p>
-
-        <p><b>Manual override.</b> A third icon column in the Layers panel — between the layer name and the lock/visibility eyes — shows each element's role status. Click to open a popup listing all 10 roles plus a "Reset to auto-detect" entry. Manually-assigned roles render the icon in <span style="color:var(--accent-base); font-weight:600;">accent purple</span>; auto-detected ones render in muted grey. Hover the icon for a tooltip naming the current role.</p>
       `},
-
-      { id: 'placement-rules', title: 'Placement rules — anchors & formulas', body: `
-        <p>Each rule is a pure function — <code>placer(srcEl, target, ctx) → {x, y, width, height, fontSize?, maxFontSize?, textAlign?}</code> or <code>null</code>. Returning these fields produces the final geometry; the executor clones the source element and applies these properties to the clone.</p>
-
-        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">background-image · priority 1</h4>
-        <p><b>Source-mirror strategy.</b> Normalises the source rect against the source canvas (<code>x/srcW</code>, <code>y/srcH</code>, <code>w/srcW</code>, <code>h/srcH</code>), then re-applies the same ratios on the target. Fast-path detects 100% canvas fills (<code>(0, 0, 1, 1)</code>) and emits exact canvas dimensions — covers the most common case where the background is just a coloured rect filling the canvas.</p>
-
-        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">rmit-logo · priority 3 · required</h4>
-        <p>Always top-right of safezone. No mode switching since v2.5.</p>
+      { id: 'auto-resize-settings', title: 'Engine Settings & Live Linking', body: `
+        <p>Click the <b>gear icon</b> next to the Auto-resize button at the bottom of the left panel to configure behavior:</p>
         <ul>
-          <li><b>Height:</b> <code>clamp(15, h × 0.2 + 8, 30)</code> on banners (<code>h ≤ 100</code>); <code>clamp(15, sqrt(w × h) × 0.075, 40)</code> otherwise.</li>
-          <li><b>Width:</b> derived from the source asset's intrinsic aspect ratio (~2.85 for the RMIT lockup). Width = <code>height × srcAspect</code>.</li>
-          <li><b>Tall format shrink:</b> on canvases where <code>h &gt; w</code>, height is multiplied by 0.75 so the logo shares the top row comfortably with RFWN top-left.</li>
+          <li><b>Bypassing dialogs:</b> Disable the selection dialogue or progress overlay for instant, one-click resizing.</li>
+          <li><b>Main image fallback:</b> Choose whether to crop or contain images in portrait/landscape slots.</li>
+          <li><b>Live linking toggles:</b> Control exactly which properties (Text, Fonts, Colors, Opacity, Animations) synchronize automatically in Link Groups after resizing.</li>
         </ul>
-
-        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">cta-button · priority 4</h4>
-        <p>Two modes by canvas aspect.</p>
-        <ul>
-          <li><b>Tall mode</b> (<code>aspect ≤ 2.0</code>): bot-center of safezone. Height <code>clamp(14, sqrt(area) × 0.11, 53)</code>, width <code>clamp(70, height × 3.7, min(200, safezone.w))</code>. Vertical offset from safezone bottom: <code>clamp(15, h × 0.04, 30)</code>.</li>
-          <li><b>Wide mode</b> (<code>aspect &gt; 2.0</code>): mid-right, button-right edge at <code>canvas.w × 0.84</code>, vertically centred in the canvas. Width <code>clamp(70, height × 4.2, 200)</code>.</li>
-        </ul>
-
-        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">heading · priority 5 · required</h4>
-        <p>Top-left of safezone (or vertically centred on wide banners). Width adapts by canvas mode:</p>
-        <ul>
-          <li><b>Stack</b> (<code>h ≥ 300</code>): full <code>safezone.w</code>.</li>
-          <li><b>Wide banner</b> (<code>h ≤ 100</code>, <code>aspect &gt; 2</code>): <code>clamp(80, w × 0.42, 400)</code>; heading box is vertically centred in canvas so the side-by-side heading + subhead pair sits at canvas mid-y.</li>
-          <li><b>Square-ish</b>: <code>clamp(120, safezone.w × 0.55, 270)</code>.</li>
-        </ul>
-        <ul>
-          <li><b>Font size:</b> <code>clamp(9, h × 0.22, 22)</code> on banners (<code>h ≤ 100</code>); <code>clamp(16, sqrt(area) × 0.07, 35)</code> on mid canvases; <code>clamp(22, sqrt(area) × 0.08, 46)</code> on stack mode.</li>
-          <li><b>maxFontSize is locked</b> to the computed font, so the source's autoSize cap (often 68 pt) can't blow past the per-canvas decision.</li>
-          <li><b>Wrap budget</b> (heading.height): 2 lines on banners, 3 lines on stack mode, 4 lines on narrow skyscrapers (<code>w &lt; 200</code>). Sized to track expected text rather than reserve generous trailing padding.</li>
-        </ul>
-
-        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">subheading · priority 6 · required</h4>
-        <p>Anchored to <code>heading.bottom-left</code> with a 4-px gap below the heading box. Width inherits from heading.</p>
-        <ul>
-          <li><b>Font:</b> <code>clamp(8, h × 0.18, 11)</code> for tiny banners (<code>h ≤ 60</code>); <code>clamp(14, h × 0.18, 18)</code> for <code>h ≤ 100</code>; <code>clamp(14, sqrt(area) × 0.06, 28)</code> otherwise.</li>
-          <li><b>Side-by-side mode:</b> on tight horizontal banners (<code>h ≤ 100</code>), subhead sits to the <b>right</b> of heading instead of below — vertically centred on heading's middle.</li>
-          <li><b>No-drop fallback:</b> if no heading was placed (rare), subhead parks at safezone top-left.</li>
-        </ul>
-
-        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">cricos · priority 7 · required</h4>
-        <p>Bot-left of <b>canvas</b> (not safezone — legal compliance text traditionally hugs the canvas edge).</p>
-        <ul>
-          <li><b>Font (dual-source):</b> <code>max(minDim × 0.023, w × 0.008)</code> capped at 7 and floored at 4. Width-based contribution kicks in on banners where minDim is too small to give cricos a legible font.</li>
-          <li><b>Width:</b> hugs content scaled from source.</li>
-        </ul>
-
-        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">main-image · priority 7</h4>
-        <p>Slot-search strategy. Computes the largest empty rectangle remaining after heading + subheading + CTA + logo have placed:</p>
-        <ul>
-          <li><b>Stack mode</b> (<code>h ≥ w</code>): slot from <code>(safezone.x, subheading.bottom + gapY)</code> to <code>(safezone.right, cta.top - gapY)</code>.</li>
-          <li><b>Side-by-side</b> (<code>h &lt; w</code>): slot from <code>(heading.right + gapX, safezone.y)</code> to <code>(cta.left - gapX, safezone.bottom)</code>.</li>
-        </ul>
-        <ul>
-          <li><b>Fitting strategy:</b> contain by source aspect first.</li>
-          <li><b>Cover fallback:</b> when contain would leave the image filling less than 60% of the slot's larger dimension, switch to cover mode (fill the slot, allow canvas-edge clipping). Toggleable in settings.</li>
-          <li><b>No-drop:</b> 24-px floor on width and height — image never shrinks below visibility.</li>
-        </ul>
-
-        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">rfwn · priority 8</h4>
-        <p>Two modes.</p>
-        <ul>
-          <li><b>Top-left</b> (<code>aspect ≤ 2.0</code>): tucked into safezone top-left, <code>textAlign: 'left'</code>.</li>
-          <li><b>Bot-right</b> (<code>aspect &gt; 2.0</code>): tucked into safezone bot-right, <code>textAlign: 'right'</code>.</li>
-        </ul>
-        <ul>
-          <li><b>Text always justifies toward the closest canvas edge — never centred.</b></li>
-          <li><b>Font:</b> <code>clamp(5, sqrt(area) × 0.032, 17)</code>; scaled by 0.8 on tall formats so it doesn't crowd the logo.</li>
-          <li><b>Width:</b> <code>clamp(35, fontSize × 6.8, 100)</code> — sized to fit "what's next" (the longer of the two natural wrap lines) on a single row.</li>
-        </ul>
-
-        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">extra-info · priority 9</h4>
-        <p>Slot-search for residual gaps below or beside the text block. May overlap with main-image and background-image; must not collide with heading / subheading / CTA / logo / RFWN / CRICOS. Falls back to a minimum bot-left placement when no slot fits — no-drop policy.</p>
-
-        <h4 style="color:var(--accent-light); margin:16px 0 4px 0;">misc — unassigned fallback</h4>
-        <p>Anything the detector couldn't classify. Behaviour gated by the "Include unassigned" setting:</p>
-        <ul>
-          <li><b>Off (default):</b> dropped on target canvases.</li>
-          <li><b>On:</b> copied to the centre of each target canvas at source dimensions (clamped to fit).</li>
-        </ul>
-        <p><b>Exception:</b> mask shapes (<code>el.isMask === true</code>) are always carried over regardless, because the mask post-pass needs them to overlay the target image.</p>
-      `},
-
-      { id: 'relations-passes', title: 'Cross-role relations & post-placement passes', body: `
-        <p>After per-role placement completes for a target canvas, four post-passes run in sequence:</p>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">1. R1 — logo ↔ RFWN edge alignment</h4>
-        <p>The brand lockup and the tagline read as a pair. R1 snaps RFWN to share the relevant safezone edge with the logo:</p>
-        <ul>
-          <li><code>aspect ≤ 2.0</code> → both top-anchored → <code>rfwn.y = logo.y</code> (share top edge).</li>
-          <li><code>aspect &gt; 2.0</code> → both right-anchored → <code>rfwn.x = logo.x + logo.width - rfwn.width</code> (share right edge).</li>
-        </ul>
-        <p>Toggleable in settings. Disabling it lets RFWN and logo sit at their independently-computed positions.</p>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">2. Mask post-pass</h4>
-        <p>For every cloned shape with <code>isMask: true</code>: looks up its source image's clone via a <code>sourceToTargetId</code> map populated during placement, remaps <code>maskTargetId</code> to the new image id, and aligns the shape's x/y/w/h to the target image's geometry so the mask follows the photo to its new placement. If the target image didn't transfer (e.g. main-image rule disabled, or source image deleted), the mask flag is removed so the shape renders as a normal shape rather than a silent cover.</p>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">3. No-touch collision resolution</h4>
-        <p>Five "no-touch" roles must never overlap each other: <code>rmit-logo</code>, <code>cta-button</code>, <code>heading</code>, <code>subheading</code>, <code>rfwn</code>. The pass walks pairs in priority order; when two overlap, the lower-priority element shrinks along whichever axis the centres are most offset, with a 4-px clearance gap. The higher-priority element never moves.</p>
-        <p>Single-pass (not iterative) — covers the cases the reference set surfaces. Future canvases that need cascading resolution would extend this to a fixed-point loop.</p>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">4. Canvas-bounds clamp</h4>
-        <p>Every role except <code>main-image</code> and <code>background-image</code> is forced fully inside the canvas. Off-canvas portions get clipped by adjusting x / y / width / height. Cover-mode images deliberately bleed past canvas edges, so they're exempt.</p>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Order matters</h4>
-        <p>R1 runs before the collision pass so the snap can't be undone by a clearance shrink. The mask pass runs after R1 but before collision so masks align with their images first, then collisions only run against the five no-touch roles (masks not included). Canvas-clamp runs last so any earlier pass that pushed an element off-canvas gets corrected at the end.</p>
-      `},
-
-      { id: 'settings-engine', title: 'Settings, live linking & engine versioning', body: `
-        <p>Settings live in <code>state.autoResizeSettings</code> and persist with the project. Open via the gear icon next to the Auto-resize button in the left panel.</p>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Cross-role relations</h4>
-        <ul>
-          <li><b>R1: Logo ↔ RFWN edge alignment</b> (default on) — described in the previous section.</li>
-        </ul>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Behaviour</h4>
-        <ul>
-          <li><b>Show canvas selection dialogue</b> (default on). On: clicking the Auto-resize button opens the run modal where you pick target canvases. Off: clicks run the engine directly on every other canvas — combined with "Show technical progress overlay" off, the resize is fully instant with no intermediate UI at all.</li>
-          <li><b>Include unassigned elements by default</b> (default off). Used by the bypass path; pre-fills the run modal's checkbox otherwise.</li>
-          <li><b>Allow cover fallback for main image</b> (default on). When contain would leave the image filling less than 60% of its slot, switch to cover. Off: always contain even if visually small.</li>
-          <li><b>Show technical progress overlay</b> (default on). Displays a randomly-timed 2–3 s pipeline-style loading panel during the resize. Pure cosmetics — the placement work has already completed when the overlay appears. Disable for instant results.</li>
-        </ul>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Live linking</h4>
-        <p>When enabled, every target element joins the source's link group with <code>group.liveLink = true</code> — edits on the source propagate to every target in real time. Five property toggles drive which properties actually sync:</p>
-        <ul>
-          <li><b>Text content</b> (text changes propagate).</li>
-          <li><b>Font family + weight</b> (typeface and weight sync; size does not).</li>
-          <li><b>Colour / fill</b> (text colour, button fill + stroke, shape fill + stroke, line colour, text background).</li>
-          <li><b>Opacity.</b></li>
-          <li><b>Animations + effects</b> (in-transitions + continuous effects).</li>
-        </ul>
-        <p><b>Position, size, and font size are always independent per canvas</b> — that's the entire point of the resize. Not user-toggleable.</p>
-        <p>When the master toggle is off, no link group is wired during auto-resize and target elements land as fully independent copies.</p>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Engine versioning</h4>
-        <p>The constant <code>ENGINE_VERSION</code> in <code>auto-resize-engine.js</code> tracks rule and behaviour generations:</p>
-        <ul>
-          <li><b>v2.0</b> — initial 9-role rule engine + R1 cross-role relation.</li>
-          <li><b>v2.1</b> — mask post-pass, contain→cover fallback, link-group wiring.</li>
-          <li><b>v2.2</b> — collision resolution + canvas-clamp passes, no-drop policy.</li>
-          <li><b>v2.3</b> — logo always top-right, RFWN skyscraper top-left, canvas-sized subhead font, role-refresh sweep, instant-resize bypass.</li>
-          <li><b>v2.4</b> — full-width stack-mode heading, expanded wrap budget on tall canvases, banner subhead bump, CRICOS dual-source font.</li>
-          <li><b>v2.5</b> — tall-format logo + RFWN shrink, subhead overlap, tighter RFWN width.</li>
-          <li><b>v2.6</b> — heading wrap-budget tightening, subhead font multiplier bump, simplified subhead position.</li>
-          <li><b>v2.7</b> — wide-banner heading vertically centred, RFWN width restored to fit "what's next", live linking control surface.</li>
-        </ul>
-        <p>Surfaced as a glowing pulsing pill in the Settings modal header (2.6 s breathing animation, purple shadow opacity 0 ↔ 0.45). Independent of the Adflow app version so engine output is reproducible for a given engine generation.</p>
-      `},
-
-      { id: 'workflow-tips', title: 'Workflow & tips', body: `
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Run from</h4>
-        <ul>
-          <li><b>The Auto-resize button</b> at the bottom of the left panel column. Respects the canvas-selection-dialogue setting — can be made one-click instant.</li>
-          <li><b>The canvas right-click menu</b> → "Auto-Resize" (top of the menu, directly under Preview). Always opens the canvas-selection dialogue regardless of settings.</li>
-        </ul>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Best practices</h4>
-        <ul>
-          <li><b>Verify roles before resizing.</b> Open the Layers panel, scan the role icons. Anything with a grey icon was auto-detected; click to open the picker and override if wrong. Anything with a <span style="color:var(--accent-base); font-weight:600;">purple sparkle</span> icon is manually locked and the detector won't touch it.</li>
-          <li><b>Name your layers when in doubt.</b> The detector trusts layer names first. <code>logo</code>, <code>heading</code>, <code>subheading</code>, <code>cricos</code>, <code>rfwn</code>, <code>background</code>, <code>extra info</code> are all explicit triggers.</li>
-          <li><b>Use 300×250 as your canonical source.</b> It's square-ish, so all rule modes have something to fall back on. Designing first on a wide banner can mean some rules have nothing to anchor to when the target is portrait.</li>
-          <li><b>For iterative tuning, turn off both the canvas dialogue and the progress overlay.</b> Auto-resize then becomes a one-click instant rebuild — useful when you're nudging the source and want to see every target update in real time.</li>
-          <li><b>Mask shapes need a target image.</b> If a shape was a mask on the source but the underlying image was deleted, the post-pass strips the mask flag automatically — no silent failure modes.</li>
-          <li><b>Live linking is on by default.</b> Edits on the source canvas propagate to every linked target. To break the link for a specific layer, set its link group to off via the Link Groups panel.</li>
-        </ul>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Reference canvas set</h4>
-        <p>The engine was tuned against six hand-built canvases. Each rule's formulas were verified to land within ±10 px of the reference data:</p>
-        <table style="width:100%; border-collapse:collapse; font-size:11.5px; margin:8px 0;">
-          <thead>
-            <tr style="border-bottom:1px solid var(--border-light); text-align:left; color:var(--text-muted);">
-              <th style="padding:5px 8px;">Canvas</th>
-              <th style="padding:5px 8px;">Aspect</th>
-              <th style="padding:5px 8px;">Class</th>
-              <th style="padding:5px 8px;">Mode notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>300×250</code></td><td style="padding:5px 8px;">1.20</td><td style="padding:5px 8px;">rectangle</td><td style="padding:5px 8px;">Square-ish, side-by-side image</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>300×600</code></td><td style="padding:5px 8px;">0.50</td><td style="padding:5px 8px;">portrait</td><td style="padding:5px 8px;">Stack mode, image below text</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>160×600</code></td><td style="padding:5px 8px;">0.27</td><td style="padding:5px 8px;">skyscraper</td><td style="padding:5px 8px;">Narrow stack, image full-width</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>728×90</code></td><td style="padding:5px 8px;">8.09</td><td style="padding:5px 8px;">leaderboard</td><td style="padding:5px 8px;">Side-by-side, vertically centred</td></tr>
-            <tr style="border-bottom:1px solid rgba(255,255,255,0.04);"><td style="padding:5px 8px;"><code>970×250</code></td><td style="padding:5px 8px;">3.88</td><td style="padding:5px 8px;">billboard</td><td style="padding:5px 8px;">Side-by-side, larger fonts</td></tr>
-            <tr><td style="padding:5px 8px;"><code>320×50</code></td><td style="padding:5px 8px;">6.40</td><td style="padding:5px 8px;">mobile</td><td style="padding:5px 8px;">Tight banner, max 22 pt heading</td></tr>
-          </tbody>
-        </table>
-
-        <h4 style="color:var(--accent-light); margin:14px 0 4px 0;">Internal architecture</h4>
-        <p>The engine lives in its own file — <code>auto-resize-engine.js</code> — loaded before <code>script.js</code>. ~1300 lines covering role taxonomy, detector, rule functions, post-passes, settings, the progress overlay, and the two UI modals. Pure functions throughout where geometry is concerned, so unit-testing each rule in isolation is trivial. The executor calls <code>render()</code> exactly once at the end (deferred behind the progress overlay if enabled), so the visible canvas update is atomic.</p>
-      `},
+      `}
     ]
   },
   {
-    id: 'data-versions', title: 'Data & Versions ✨',
+    id: 'data-versions', title: 'Data & Versions',
     subs: [
+      { id: 'data-versions-intro', title: 'Introduction', body: `
+        <p>Adflow's Data & Versions panel supports Dynamic Creative Optimization (DCO). Rather than manually copy-pasting different layout configurations for multiple course names, campuses, or call-to-actions, you bind specific fields to a spreadsheet column, allowing you to feed multiple data variants into a single template design.</p>
+        <p>You can import external CSV sheets or construct version rows inside the editor. Each row in your dataset represents a distinct version, which you can live-preview across all canvas formats simultaneously using the top-bar dropdown. Changes made on the canvas can write back directly to the active version row when the data lock is disabled.</p>
+        <p><b>Adflow's Advantage:</b> In legacy systems, data-merging is complex and requires specialized rendering engines. Adflow binds variables to slots that automatically span link-grouped canvas sizes. Toggling a field dynamic on one linked layer propagates the dynamic slot mapping to sibling canvases automatically, saving hours of configuration.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Toggle the 'Data Lock' to ON when reviewing version previews to prevent accidental text changes from overwriting your spreadsheet rows. Always choose a '★ Key Column' to name final version output folders automatically.</div>
+      `},
       { id: 'dynamic-slots', title: 'Marking dynamic slots', body: `
         <p>Select an element, open the <b>Dynamic Data</b> section of the Properties panel, and tick fields to make dynamic:</p>
         <ul>
@@ -470,6 +273,12 @@ const DOCS_SECTIONS = [
   {
     id: 'cloud-spaces', title: 'Cloud & Spaces',
     subs: [
+      { id: 'cloud-spaces-intro', title: 'Introduction', body: `
+        <p>Cloud & Spaces layers collaborative cloud capabilities on top of Adflow's local-first storage. It supports authenticated cloud backups, secure project pulls, and team workspaces (Spaces) where multiple designers can manage and organize files.</p>
+        <p>Inside team spaces, users can create folder directories, move project files between folders, duplicate cloud records, and generate secure one-time invite tokens. Invite links let teammates join shared spaces instantly and edit files in a shared folder structure.</p>
+        <p><b>Adflow's Advantage:</b> While cloud tools usually enforce continuous internet connection, Adflow functions offline, using cloud sync as an on-demand collaboration channel. If a filename collision occurs, Adflow prompts the user to Replace or Rename the push, preventing accidental overwrites.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Check the 'Remember me' option during sign-in to persist your authenticated session token across browser tabs. Share invite links via copy-paste to Slack or email to quickly add new team members.</div>
+      `},
       { id: 'sign-in', title: 'Signing in', body: `
         <p>The splash screen now doubles as a sign-in gate. New users tap <b>Sign up</b>, enter email + password (≥6 chars), check inbox if email confirmation is on, then sign in.</p>
         <ul>
@@ -499,6 +308,12 @@ const DOCS_SECTIONS = [
   {
     id: 'projects', title: 'Saving & Projects',
     subs: [
+      { id: 'projects-intro', title: 'Introduction', body: `
+        <p>Saving & Projects regulates local autosaves, portable project archives, and startup state restorations. Adflow uses a local-first architecture, saving every action locally in the background to ensure no creative updates are lost due to browser crashes or network dropouts.</p>
+        <p>Projects are saved using the custom <code>.flow</code> format. The file is a compressed ZIP archive containing all project layout structures and binary assets. It can be stored locally or pushed to team cloud folders, and travels as a single self-contained package.</p>
+        <p><b>Adflow's Advantage:</b> Legacy design software often requires manual saving and generates fragmented local project folders. Adflow manages autosaves in the background (persisting canvas scroll, zoom level, and history stack) and provides a history limit of up to 50 states.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> to download a local backup file of your project. This <code>.flow</code> archive can be emailed, stored in shared drives, or imported back into Adflow.</div>
+      `},
       { id: 'autosave', title: 'Auto-save', body: `
         <p>Every change is debounced and persisted to your browser's IndexedDB. Restored on reload — including zoom and scroll position. Top bar shows a live status indicator (saved / saving / unsaved / error).</p>
         <p><b>History limit:</b> set in <b>File → Settings</b> — 1 to 50 states, default 10.</p>
@@ -522,6 +337,12 @@ const DOCS_SECTIONS = [
   {
     id: 'export', title: 'Export & Validation',
     subs: [
+      { id: 'export-intro', title: 'Introduction', body: `
+        <p>Export & Validation audits ad specifications and packs layouts into final HTML5 display ads. It verifies layout compliance rules and bundles code for publishing on ad delivery networks like Google Ads.</p>
+        <p>The panel runs validation checks in real time, alerting designers about missing ClickTag exit links, external assets, or total ad weights. The exporter generates self-contained ZIP packages containing final index files and media assets, as well as static PNG fallbacks.</p>
+        <p><b>Adflow's Advantage:</b> Traditional editors produce bloated code that fails ad network filters. Adflow packages code cleanly, automatically fetching and embedding vector brand graphics, inlining brand stylesheets, and auditing file weight limits prior to downloading.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Always review the validation panel on the left before exporting. If any canvas exceeds the 150 KB limit, run WebP image compression or remove unneeded frames from your sequence.</div>
+      `},
       { id: 'clicktag', title: 'ClickTag', body: `
         <p>The exit URL used when someone clicks the banner. Set globally per project, or override per canvas. Can also be bound to a CSV column in Data & Versions for per-row click destinations.</p>
       `},
@@ -540,6 +361,12 @@ const DOCS_SECTIONS = [
   {
     id: 'reference', title: 'Reference',
     subs: [
+      { id: 'reference-intro', title: 'Introduction', body: `
+        <p>Reference provides designer cheat sheets, shortcut hotkeys, and app update changelogs to speed up production workflows. The keyboard reference covers canvas navigation, layer manipulation, and aspect ratio controls.</p>
+        <p>Familiarity with keyboard shortcuts significantly increases visual production speed, letting designers align elements, duplicate objects, nudge layers, and isolate linked components in a single click.</p>
+        <p><b>Adflow's Advantage:</b> Placing key command references directly in the workspace modal keeps designers focused. The changelog interface also details new features and engine optimizations, keeping the creative team up to date.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use canvas nudging keys (Arrow keys for 1px nudges, Shift+Arrows for 10px nudges) to position components. Hold Shift while dragging a shape corner to preserve its aspect ratio.</div>
+      `},
       { id: 'keyboard-shortcuts', title: 'Keyboard shortcuts', body: `
         <table style="border-collapse:collapse; font-size:12px; width:100%;">
           <thead><tr><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Shortcut</th><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Action</th></tr></thead>
@@ -571,6 +398,69 @@ const DOCS_SECTIONS = [
       { id: 'changelog-link', title: 'Changelog', body: `
         <p>Click the version label in the top bar (e.g. <b>v0.11.0</b>) to open the full changelog modal.</p>
       `},
+    ]
+  },
+  {
+    id: 'technical-stack', title: 'Technical Stack',
+    subs: [
+      { id: 'technical-stack-intro', title: 'Introduction', body: `
+        <p>Technical Stack details the code architecture, data structure, and layout mechanics for engineering and IT administrators. It covers the vanilla script loading sequence, global state schemas, CSS clip-path masking, and Supabase integration.</p>
+        <p>The guide outlines how Adflow operates as a zero-dependency, compilation-free application, mapping coordinate states, handling RLS database policies, and bypassing policy loops with PostgreSQL security helper functions.</p>
+        <p><b>Adflow's Advantage:</b> Clean, vanilla coding standards and structured documentation ensure easy deployment and code readability, facilitating internal IT audits and development integration.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Review the individual specification tabs in this section to understand how data flows through the application. Developers can serve the project folder using a simple Python or Node HTTP server to test code edits locally.</div>
+      `},
+      { id: 'tech-architecture', title: 'Architecture & Sandbox', body: `
+        <p>Adflow is engineered as a zero-dependency, compilation-free Single Page Application (SPA). It uses Vanilla JS, HTML5, and CSS3. There are no bundlers (Webpack, Vite) or compilers.</p>
+        <p><b>Script Loading Sequence:</b> Scripts are loaded via sequential HTML tags. Since they share the global lexical scope, states and functions are globally accessible at execution time. The order of execution is:</p>
+        <ol>
+          <li><b>auto-resize-engine.js</b>: Placement mathematics and collision resolver.</li>
+          <li><b>docs-content.js</b>: Internal documentation and changelog history structures.</li>
+          <li><b>auth-ui.js</b>: Supabase backend integration controller.</li>
+          <li><b>data-merge.js</b>: CSV merges and version preview state interpolation.</li>
+          <li><b>export-pipeline.js</b>: ZIP bundle generator (JSZip) and PNG rasterization canvas helper.</li>
+          <li><b>color-picker.js</b>: Color palette and gradient stops controller.</li>
+          <li><b>script.js</b>: Main state, DOM render loop, workspace events, undo/redo stack, and layer configurations.</li>
+        </ol>
+        <p><b>Sandbox Preview Engine:</b> Isolation is achieved using dynamic <code>&lt;iframe&gt;</code> sandboxing with <code>srcdoc</code> injection, which prevents style or script leaks. The editor renders canvases at high performance using CSS <code>transform: translateZ(0)</code> (forces GPU layers) and <code>clip-path: inset(0)</code> to prevent subpixel hairline leaks during viewport pans and zooms.</p>
+      `},
+      { id: 'tech-state-schema', title: 'Global State Schema', body: `
+        <p>A single mutable object named <code>state</code> governs the application's runtime. A TypeScript-style summary of the schema includes:</p>
+        <ul>
+          <li><b>projectId</b>: String uuid promoted on first cloud save.</li>
+          <li><b>projectName</b>: File display name (defaults to "RMIT_ad").</li>
+          <li><b>canvases</b>: Array of canvas elements holding dimensions, fallback backgrounds, and child layer configurations.</li>
+          <li><b>activeCanvasId / activeFrameId</b>: Active focal viewport indicators.</li>
+          <li><b>linkGroups</b>: Mapping object storing cross-canvas synchronization groups.</li>
+          <li><b>dataMerge</b>: Configuration metadata and table row arrays for spreadsheets.</li>
+          <li><b>assets</b>: Asset ID mappings to raw base64 data URLs.</li>
+          <li><b>frames</b>: Sequential sequence array with duration, skip behaviors, and transition entries.</li>
+        </ul>
+        <p>Each <b>Element</b> layer contains geometric bounding properties (x, y, w, h, rotation), layer placement sections (persistent top, bottom, or frame-specific), auto-detected or manually locked classification roles for the resize engine, and masking/animation configurations.</p>
+      `},
+      { id: 'tech-resize-engine', title: 'Auto-Resize Engine', body: `
+        <p>The Auto-Resize engine is a deterministic, rule-based layout generator. It classifies elements into a 9+1 taxonomy using a 5-step heuristic pipeline:</p>
+        <ol>
+          <li><b>Layer Name Substring</b>: Matches keys like <i>logo</i> or <i>background</i>.</li>
+          <li><b>Regex Text Scan</b>: Identifies CRICOS and RFWN ("Ready for Next") content.</li>
+          <li><b>Font Sizes Ranking</b>: Classifies headings and subheadings by finding the largest text styles.</li>
+          <li><b>Aspect & Area Analysis</b>: Matches logos and background fills by checking area occupancy.</li>
+          <li><b>Element Type Fallbacks</b>: Binds buttons to CTA button roles and loose images to main-image slots.</li>
+        </ol>
+        <p><b>Placement Pipeline:</b> Resizing clears target canvases, calculates placements through role placer functions, applies R1 edge alignments (linking RFWN and logo bounds), remaps mask target references, resolves overlaps using a priority-sorted collision resolver (shrinking lower-priority layers by the overlap + 4px spacing), and clips bounds to the canvas perimeter.</p>
+      `},
+      { id: 'tech-masking-sync', title: 'Masking & Link Sync', body: `
+        <p><b>Vector Masking:</b> Adflow uses CSS <code>clip-path</code> (revamped from brittle SVG mask nodes to resolve cross-browser rendering bugs). A shape layer directly above an image is marked with <code>isMask: true</code> and tied to the image's <code>maskTargetId</code>. Rotations and dimensions are calculated relative to the target image and baked directly into the SVG polygon or path definition strings during rendering/export.</p>
+        <p><b>Link Groups Synchronisation:</b> Changes are propagated through the <code>applyLinkSync</code> method, covering text content, font family, sizes, colors, fills, borders, radius, and continuous timeline animations. When <code>liveLink</code> is enabled, property modifications in the editor trigger a loop that overwrites sibling attributes across all canvases in real time.</p>
+      `},
+      { id: 'tech-persistence-security', title: 'Persistence & Cloud Security', body: `
+        <p><b>Local Storage & History:</b> Persistence uses a debounced autosave queue targeting the <code>adflow-autosave</code> IndexedDB database, storing state snapshots and the 50-state history stack. Portable project saves use the <code>.flow</code> file format (a zipped bundle using JSZip 3.10 containing raw state JSON, metadata files, and base64-decoded binary assets).</p>
+        <p><b>Supabase Cloud & RLS Security:</b> Cloud saves write project files to a private bucket hierarchy (<code>/projects/{user_id}/{projectId}.flow</code>) and upload metadata rows to a PostgreSQL <code>projects</code> table. Row-level security (RLS) is strictly enforced.</p>
+        <p><b>SELECT Policy Recursion Workaround:</b> To query team memberships in the <code>space_members</code> table without triggering infinite database recursion, the schema utilizes PostgreSQL helper functions configured with <code>SECURITY DEFINER</code> (executing with the database owner's privileges):</p>
+        <ul>
+          <li><code>user_is_space_member(p_space_id)</code>: Validates if the active JWT session email belongs to the targeted space.</li>
+          <li><code>current_user_email()</code>: Safely decodes email claims from Supabase auth JWTs.</li>
+        </ul>
+      `}
     ]
   }
 ];
@@ -657,6 +547,42 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.16.55',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Expanded all in-app Help category introduction pages with much more detailed descriptions, and refactored the "Technical Detail" footers into user-friendly "General Tips" sections.'
+    ]
+  },
+  {
+    version: 'v0.16.54',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Added structured "Introduction" sub-pages for all in-app documentation sections, detailing what each section does, what Adflow offers, how it excels, and their specific low-level technical underpinnings (styled in a faint, smaller font).'
+    ]
+  },
+  {
+    version: 'v0.16.53',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Increased the Adflow brand logo size (max-width scaled from 140px to 280px) on the "Welcome to Adflow" home tab of the in-app Help documentation modal.'
+    ]
+  },
+  {
+    version: 'v0.16.52',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Added the Technical Stack guide to the end of the in-app Help documentation modal, split into dedicated tabs: Architecture & Sandbox, Global State Schema, Auto-Resize Engine, Masking & Link Sync, and Persistence & Cloud Security.'
+    ]
+  },
+  {
+    version: 'v0.16.51',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Removed emojis/icons from the documentation headings in the README and the in-app Help menu for cleaner section headers.',
+      'Added a detailed "Technical Stack" documentation section targeted at IT and engineering teams, covering local persistence, global state schema, auto-resize heuristic detection, link synchronisation architecture, image masking mechanics, and Supabase RLS/table structures.'
+    ]
+  },
   {
     version: 'v0.16.50',
     date: 'May 2026 — Engine v2.16',
