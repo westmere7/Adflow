@@ -1,6 +1,13 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.55 (Current) - May 2026 — Engine v2.16
+v0.16.57 (Current) - May 2026 — Engine v2.16
+- Added a comprehensive Frequently Asked Questions (FAQ) section to the main project README.md, outlining Quick Workflows, Data Merges, Progress Saving, and other typical usage troubleshooting steps.
+- Introduced a detailed "Powerful Features" list under the Getting Started category in both the repository README.md and the in-app Help menu, summarizing the core value propositions and system capabilities.
+
+v0.16.56 - May 2026 — Engine v2.16
+- Added a dedicated "FAQ" section to the in-app Help documentation modal, featuring detailed guides on Quick Workflows, Data Merges, Progress Saving/Autosaves, Animation troubleshooting, Unlinking elements, Ad Weight optimization, and Offline Usage.
+
+v0.16.55 - May 2026 — Engine v2.16
 - Expanded all in-app Help category introduction pages with much more detailed descriptions, and refactored the "Technical Detail" footers into user-friendly "General Tips" sections.
 
 v0.16.54 - May 2026 — Engine v2.16

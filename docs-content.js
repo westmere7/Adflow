@@ -35,6 +35,21 @@ const DOCS_SECTIONS = [
         </ul>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> We recommend designing your source layout in a 300×250 canvas because its proportions adapt naturally to other ratios. Run Auto-Resize to generate the other dimensions, and check the grey and purple role tags in the Layers panel to adjust layout behavior.</div>
       `},
+      { id: 'features-list', title: 'Powerful Features', body: `
+        <p>Adflow comes packed with a comprehensive, professional feature set designed to optimize and accelerate banner production workflows:</p>
+        <ul style="line-height: 1.6; padding-left: 20px; margin-top: 12px; margin-bottom: 12px;">
+          <li style="margin-bottom: 8px;"><b>Multi-Canvas Workspace</b>: Layout and edit all standard and custom size formats side-by-side on an infinite panning workspace. No more jumping between file tabs.</li>
+          <li style="margin-bottom: 8px;"><b>Deterministic Auto-Resize</b>: Build one format, and automatically generate your entire size set. The engine uses a 9-role heuristics taxonomy to reposition and wrap copy automatically.</li>
+          <li style="margin-bottom: 8px;"><b>Live-Link Groups</b>: Bidirectionally sync copy, styles, typography, and background treatments across canvases in real-time, or choose specific properties to sync/unlink.</li>
+          <li style="margin-bottom: 8px;"><b>Spreadsheet Data Merge</b>: Build version sheets inline or upload CSV files. Map column headers directly to dynamic slot-bound canvas layers to auto-generate version variations.</li>
+          <li style="margin-bottom: 8px;"><b>Frame-Based Animations</b>: Sequence multi-frame banners and apply entering transitions or continuous looping presets without manual timeline keyframing complexity.</li>
+          <li style="margin-bottom: 8px;"><b>Built-in WebP Compressor</b>: Compress and convert JPEG/PNG assets to WebP directly inside the canvas panel to meet strict ad network weight targets (150 KB standard).</li>
+          <li style="margin-bottom: 8px;"><b>Layer-Based Vector Masking</b>: Use any vector shape layer (rectangles, circles, custom brand SVG pixels) to non-destructively mask images below using clean CSS clip-path logic.</li>
+          <li style="margin-bottom: 8px;"><b>Supabase Team Spaces</b>: Collaborate with teammates, organize work in folders, and manage project backups with full Row-Level Security and invitation URLs.</li>
+          <li style="margin-bottom: 8px;"><b>Pre-Flight Audit & Export</b>: Package ready-to-run Google Ads-compliant ZIP bundles. Adflow validates clicktags and asset constraints automatically.</li>
+        </ul>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Combine <i>Data Merge</i> with <i>Link Groups</i> to update a specific copy element across all formats and all dynamic rows simultaneously.</div>
+      `},
       { id: 'multi-canvas-concept', title: 'The multi-canvas idea', body: `
         <p>Instead of opening one file per banner size, Adflow shows every canvas (300×250, 728×90, 160×600, …) side-by-side on an infinite workspace. You pan with <span class="kbd">Space</span>+drag, zoom with the scroll wheel.</p>
         <p>The win: when you edit a headline on the 728×90, you don't repeat the edit on the other 5 sizes. <b>Link Groups</b> bind siblings across canvases — a change on one propagates to all of them (immediately if Live-link is on, on demand otherwise).</p>
@@ -78,7 +93,7 @@ const DOCS_SECTIONS = [
         <ul>
           <li><b>Reorder:</b> drag layers, or <span class="kbd">Ctrl</span>+<span class="kbd">[</span> / <span class="kbd">Ctrl</span>+<span class="kbd">]</span>.</li>
           <li><b>Group:</b> select layers, <span class="kbd">Ctrl</span>+<span class="kbd">G</span>. Double-click a group to <b>isolate</b> and edit inside.</li>
-          <li><b>Layer sections</b> in the panel: <i>Main Layers</i> (default — visible only on the active frame, driven by the timeline), <i>Always Bottom</i> (background, painted under every frame), <i>Always Top</i> (overlay painted above every frame — typical for logos and compliance text). Drag a layer between sections to change its persistence.</li>
+          <li><b>Layer sections</b> in the panel: <i>Main Layers</i> (default — visible only on the active frame, driven by the active frame selection), <i>Always Bottom</i> (background, painted under every frame), <i>Always Top</i> (overlay painted above every frame — typical for logos and compliance text). Drag a layer between sections to change its persistence.</li>
         </ul>
       `},
       { id: 'assets-panel', title: 'Assets panel', body: `
@@ -150,13 +165,13 @@ const DOCS_SECTIONS = [
     id: 'animation', title: 'Animation',
     subs: [
       { id: 'animation-intro', title: 'Introduction', body: `
-        <p>Adflow's Animation suite sequences multi-frame narratives and applies entering transitions or continuous looping motion to layout layers. You can define sequential frames with distinct durations, adjust frame entrance styles, and apply staggered timelines to establish visual pacing.</p>
-        <p>Animations are split between per-element entrance transitions (which play once when a frame enters) and continuous looping effects (which play continuously while the frame remains active). This dual-layer motion model lets you create rich, dynamic banner advertisements with zero manual timeline keyframing.</p>
+        <p>Adflow's Animation suite sequences multi-frame narratives and applies entering transitions or continuous looping motion to layout layers. You can define sequential frames with distinct durations, adjust frame entrance styles, and apply staggered delays to establish visual pacing.</p>
+        <p>Animations are split between per-element entrance transitions (which play once when a frame enters) and continuous looping effects (which play continuously while the frame remains active). This dual-layer motion model lets you create rich, dynamic banner advertisements with zero keyframing complexity.</p>
         <p><b>Adflow's Advantage:</b> Legacy animation tools force designers to construct complex keyframe timelines for every single canvas element. Adflow abstracts this complexity: you can apply transitions like swipes, slides, or zooms, and configure looping effects like floating, pulsing, or typing using simple dropdown presets.</p>
-        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Stagger layer delays (e.g., 0.2s, 0.4s, 0.6s) for element entrance transitions to build sequential visual narratives instead of animating all layers simultaneously. Toggle the 'Skip Frame' check to test specific portions of your timeline sequence in isolation.</div>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Stagger layer delays (e.g., 0.2s, 0.4s, 0.6s) for element entrance transitions to build sequential visual narratives instead of animating all layers simultaneously. Toggle the 'Skip Frame' check to test specific portions of your frame sequence in isolation.</div>
       `},
-      { id: 'frames-timeline', title: 'Frames & timeline', body: `
-        <p>Add frames to the timeline at the top of the workspace. Each frame has its own duration (seconds). Toggle global <b>Loop</b> to repeat the whole timeline.</p>
+      { id: 'frames-timeline', title: 'Frames & sequencing', body: `
+        <p>Add frames using the frame controls. Each frame has its own duration (seconds). Toggle global <b>Loop</b> to repeat the sequence loop.</p>
         <p><b>Skip frame:</b> mark a frame as skipped to hide it in preview/export (max 1 skipped frame).</p>
       `},
       { id: 'frame-transitions', title: 'Frame transitions', body: `
@@ -401,6 +416,91 @@ const DOCS_SECTIONS = [
     ]
   },
   {
+    id: 'faq', title: 'FAQ',
+    subs: [
+      { id: 'faq-intro', title: 'Introduction', body: `
+        <p>Welcome to the FAQ section. Here you can find answers to the most common questions regarding project design, dynamic data merges, local-first saving, asset validation, and creative troubleshooting.</p>
+        <p><b>Adflow's Advantage:</b> Having quick answers directly inside the workspace Help modal keeps you moving. If you encounter common design hurdles, these guides will help you resolve them immediately.</p>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Browse the sidebar items in this section to find answers categorized by workflow stage.</div>
+      `},
+      { id: 'faq-quick-workflow', title: 'Quick workflow', body: `
+        <p><b>Question:</b> How do I build a full campaign banner set quickly from scratch?</p>
+        <p><b>Answer:</b> Follow these streamlined steps:</p>
+        <ol>
+          <li><b>Create Project</b>: Click <b>File → New Project...</b>, enter your project name, default ClickTag, and select targeted formats (e.g. 300×250, 728×90, 160×600).</li>
+          <li><b>Core Design</b>: Click to focus the <b>300×250</b> canvas. Add background elements, copy, headlines, logos, and CTA buttons. Arrange layout coordinates exactly how you want them.</li>
+          <li><b>Generate Set</b>: Click the canvas background, hit <b>Auto-resize</b> in the left panel, select your target formats, and click <b>Create Resize</b>. Adflow handles placements and sets up Link Groups automatically.</li>
+          <li><b>Refine & Sync</b>: Double-click text layers to edit copy across sizes in real time (via Live-Link).</li>
+          <li><b>Batch Export</b>: Hit the <b>Export</b> button in the top bar to package ZIP archives for all canvases.</li>
+        </ol>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Name your canvas layers consistently (e.g., 'Headline 1', 'CTA button') before auto-resizing. The sizer matches identical layer names to set up Link Groups automatically.</div>
+      `},
+      { id: 'faq-data-merge', title: 'Add data merge', body: `
+        <p><b>Question:</b> How do I bind columns and merge spreadsheet data to generate version rows?</p>
+        <p><b>Answer:</b> Follow this workflow:</p>
+        <ol>
+          <li><b>Mark Dynamic Slots</b>: Select the element you want to make variable (e.g., a text box). Open the <b>Dynamic Data</b> section of the Properties panel and check the boxes next to the fields you want to merge (e.g., Text Content, Color).</li>
+          <li><b>Load Spreadsheet</b>: Open the spreadsheet panel by clicking the <b>Data</b> button in the top bar.</li>
+          <li><b>Import/Build Table</b>: Click <b>Import CSV</b> to load a spreadsheet, or click <b>+ Add Column</b> to build columns manually.</li>
+          <li><b>Map Columns to Slots</b>: Bind column headers to your dynamic element slots using the dropdown controls.</li>
+          <li><b>Preview Versions</b>: Pick a row from the top-bar <b>Version dropdown</b> to preview data values on your canvases in real time.</li>
+          <li><b>Export All</b>: Select <b>All versions (separate folders)</b> in the Export menu dropdown to package finished ads for every row.</li>
+        </ol>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Toggling a dynamic field on one linked layer automatically configures the slot mapping across all sizes in that Link Group, meaning you only need to bind the column once.</div>
+      `},
+      { id: 'faq-progress-saving', title: 'Progress saving', body: `
+        <p><b>Question:</b> How does autosave work and how do I prevent losing my progress?</p>
+        <p><b>Answer:</b> Adflow runs on a local-first architecture to ensure total data safety:</p>
+        <ul>
+          <li><b>IndexedDB Autosave</b>: Every modification (dragging, resizing, typing, recolouring) triggers a debounced save directly to your browser's IndexedDB database.</li>
+          <li><b>Auto-Restoration</b>: Reopening the page or reloading the tab reads from IndexedDB, restoring your canvases, scroll positions, zoom level, and 50-state undo stack.</li>
+          <li><b>Cloud Saves</b>: If signed in, pressing <span class="kbd">Ctrl</span>+<span class="kbd">S</span> pushes project packages to Supabase cloud workspaces for server-side backup.</li>
+        </ul>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Download a local backup using <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> before clearing browser caches or switching machines.</div>
+      `},
+      { id: 'faq-animations', title: 'Animations troubleshooting', body: `
+        <p><b>Question:</b> Why aren't my entrance transitions playing?</p>
+        <p><b>Answer:</b> Check your layer placements:</p>
+        <ul>
+          <li><b>Persistent Layers</b>: Elements placed in the **Always Top** or **Always Bottom** sections of the Layers panel remain visible across all frames and do not trigger entrance animations on frame swaps.</li>
+          <li><b>Moving Elements</b>: Drag your layers into the **Main Layers (Frame N)** section of the Layers panel, matching them to the specific frame index where the transition should play.</li>
+        </ul>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Adjust the animation duration and delay sliders in the right panel to create staggered visual entries (e.g., header enters at 0s, button enters at 0.3s).</div>
+      `},
+      { id: 'faq-unlinking', title: 'Unlinking elements', body: `
+        <p><b>Question:</b> How do I unlink an element to make layout overrides on one size?</p>
+        <p><b>Answer:</b> If you need to make custom overrides on one canvas size without propagating changes to others, detach it from the group:</p>
+        <ol>
+          <li>Right-click the element on the canvas viewport.</li>
+          <li>Select <b>Link Group → Unlink from group</b>.</li>
+          <li>The element is now independent, while the remaining sizes keep their linked status.</li>
+        </ol>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> If you want to keep the copy linked but separate styling, open the Link Groups panel and uncheck specific properties (like Font Size or Fill Color) for the group.</div>
+      `},
+      { id: 'faq-weight', title: 'Ad weight limits', body: `
+        <p><b>Question:</b> What should I do if my ad canvas exceeds the 150 KB weight limit?</p>
+        <p><b>Answer:</b> Uncompressed image assets are the main cause of weight flags. Use the WebP compressor:</p>
+        <ol>
+          <li>Select the heavy image on your canvas.</li>
+          <li>In the right-hand panel, find the WebP Compressor tool next to the file name.</li>
+          <li>Adjust the quality slider (e.g., 70% or 80%) to see a live preview of the estimated KB weight.</li>
+          <li>Click Compress to overwrite the original image with a lightweight WebP version.</li>
+        </ol>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Avoid uploading large, complex SVGs as elements. Embed simple vector shapes or compress assets beforehand to ensure network compliance.</div>
+      `},
+      { id: 'faq-offline', title: 'Offline usage', body: `
+        <p><b>Question:</b> Can I use Adflow completely offline without signing in?</p>
+        <p><b>Answer:</b> Yes, Adflow is local-first:</p>
+        <ul>
+          <li><b>Local Bypass</b>: Click <b>Use locally without signing in</b> at the bottom of the splash gate.</li>
+          <li><b>No Feature Loss</b>: All layout design, link syncing, spreadsheet merges, and ZIP exports operate fully in the browser offline.</li>
+          <li><b>Sync Later</b>: You can sign in from the top bar at any time to upload local projects to the cloud.</li>
+        </ul>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Press <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> frequently to save local backup files onto your hard drive when working offline.</div>
+      `}
+    ]
+  },
+  {
     id: 'technical-stack', title: 'Technical Stack',
     subs: [
       { id: 'technical-stack-intro', title: 'Introduction', body: `
@@ -450,7 +550,7 @@ const DOCS_SECTIONS = [
       `},
       { id: 'tech-masking-sync', title: 'Masking & Link Sync', body: `
         <p><b>Vector Masking:</b> Adflow uses CSS <code>clip-path</code> (revamped from brittle SVG mask nodes to resolve cross-browser rendering bugs). A shape layer directly above an image is marked with <code>isMask: true</code> and tied to the image's <code>maskTargetId</code>. Rotations and dimensions are calculated relative to the target image and baked directly into the SVG polygon or path definition strings during rendering/export.</p>
-        <p><b>Link Groups Synchronisation:</b> Changes are propagated through the <code>applyLinkSync</code> method, covering text content, font family, sizes, colors, fills, borders, radius, and continuous timeline animations. When <code>liveLink</code> is enabled, property modifications in the editor trigger a loop that overwrites sibling attributes across all canvases in real time.</p>
+        <p><b>Link Groups Synchronisation:</b> Changes are propagated through the <code>applyLinkSync</code> method, covering text content, font family, sizes, colors, fills, borders, radius, and continuous animations. When <code>liveLink</code> is enabled, property modifications in the editor trigger a loop that overwrites sibling attributes across all canvases in real time.</p>
       `},
       { id: 'tech-persistence-security', title: 'Persistence & Cloud Security', body: `
         <p><b>Local Storage & History:</b> Persistence uses a debounced autosave queue targeting the <code>adflow-autosave</code> IndexedDB database, storing state snapshots and the 50-state history stack. Portable project saves use the <code>.flow</code> file format (a zipped bundle using JSZip 3.10 containing raw state JSON, metadata files, and base64-decoded binary assets).</p>
@@ -547,6 +647,21 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.16.57',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Added a comprehensive Frequently Asked Questions (FAQ) section to the main project README.md, outlining Quick Workflows, Data Merges, Progress Saving, and other typical usage troubleshooting steps.',
+      'Introduced a detailed "Powerful Features" list under the Getting Started category in both the repository README.md and the in-app Help menu, summarizing the core value propositions and system capabilities.'
+    ]
+  },
+  {
+    version: 'v0.16.56',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Added a dedicated "FAQ" section to the in-app Help documentation modal, featuring detailed guides on Quick Workflows, Data Merges, Progress Saving/Autosaves, Animation troubleshooting, Unlinking elements, Ad Weight optimization, and Offline Usage.'
+    ]
+  },
   {
     version: 'v0.16.55',
     date: 'May 2026 — Engine v2.16',

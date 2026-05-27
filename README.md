@@ -95,10 +95,10 @@ Optional Supabase-backed cloud sync, layered on top of the local-first model. An
 - **Role-Tag Icon Column** — every layer row carries a role indicator next to the lock + visibility eyes. Grey when the role was auto-detected, accent purple when manually locked. Click to open the picker covering all 10 auto-resize roles + reset-to-auto.
 - **Layer-Based Image Masking** — right-click a shape layer (rectangle, circle, pixel) and pick "Use as mask" to clip the image directly beneath it. Mask carries its own independent animation, survives auto-resize via the mask post-pass, and exports identically to the editor preview.
 
-### Animation & Timeline
+### Animation & Frame Sequencing
 - **Frame-Based Sequencing** — define sequences with per-frame durations (seconds).
 - **Frame Transitions** — per-frame entering transitions: Fade, Slide (Up/Down/Left/Right), Swipe (a directional reveal), Zoom-in / Zoom-out. Optional "Add Fade" toggle and adjustable duration per frame.
-- **Frame Skip** — toggle frame.skip to remove a frame from the export pipeline (still editable in the timeline). Mutually exclusive — only one frame skipped at a time.
+- **Frame Skip** — toggle frame.skip to remove a frame from the export pipeline (still editable in the sequence). Mutually exclusive — only one frame skipped at a time.
 - **Element Entrance Animations** — Fade In, Slide Up/Down/Left/Right, Swipe, Pop In, Zoom Out, Typing, Fade Typing.
 - **Continuous Effects** — Pulse, Float, Flash, Wiggle, Spin, Heartbeat, Pan, Zoom. Loop infinitely or perform once.
 
@@ -174,7 +174,22 @@ lives in which file, and the load-order rules for cross-file references.
 
 No build tools, `npm install`, or server configuration required.
 
+### Powerful Features
+
+Adflow comes packed with a comprehensive, professional feature set designed to optimize and accelerate banner production workflows:
+
+- **Multi-Canvas Workspace**: Layout and edit all standard and custom size formats side-by-side on an infinite panning workspace. No more jumping between file tabs.
+- **Deterministic Auto-Resize**: Build one format, and automatically generate your entire size set. The engine uses a 9-role heuristics taxonomy to reposition and wrap copy automatically.
+- **Live-Link Groups**: Bidirectionally sync copy, styles, typography, and background treatments across canvases in real-time, or choose specific properties to sync/unlink.
+- **Spreadsheet Data Merge**: Build version sheets inline or upload CSV files. Map column headers directly to dynamic slot-bound canvas layers to auto-generate version variations.
+- **Frame-Based Animations**: Sequence multi-frame banners and apply entering transitions or continuous looping presets without manual timeline keyframing complexity.
+- **Built-in WebP Compressor**: Compress and convert JPEG/PNG assets to WebP directly inside the canvas panel to meet strict ad network weight targets (150 KB standard).
+- **Layer-Based Vector Masking**: Use any vector shape layer (rectangles, circles, custom brand SVG pixels) to non-destructively mask images below using clean CSS clip-path logic.
+- **Supabase Team Spaces**: Collaborate with teammates, organize work in folders, and manage project backups with full Row-Level Security and single-use invitation tokens.
+- **Pre-Flight Audit & Export**: Package ready-to-run Google Ads-compliant ZIP bundles. Adflow validates clicktags and asset constraints automatically.
+
 ### Hosted Environment
+
 Access the application immediately via the live deployment:
 **[rmit-adflow.netlify.app](https://rmit-adflow.netlify.app/)**
 
@@ -230,6 +245,55 @@ Access the application immediately via the live deployment:
 | `Double-click Group` | Isolate and select inside group |
 | `Right-click Canvas` | Open canvas context menu (Preview / Auto-Resize / Clear all / etc.) |
 | `Right-click Workspace` | Open workspace settings (Snapping, Rulers, Safezones) |
+
+---
+
+## Frequently Asked Questions (FAQ)
+
+### 1. How do I build a full campaign banner set quickly from scratch?
+1. **Create Project**: Click **File → New Project...**, enter your project name, default ClickTag, and select targeted formats (e.g. 300×250, 728×90, 160×600).
+2. **Core Design**: Click to focus the **300×250** canvas. Add background elements, copy, headlines, logos, and CTA buttons. Arrange layout coordinates exactly how you want them.
+3. **Generate Set**: Click the canvas background, hit **Auto-resize** in the left panel, select your target formats, and click **Create Resize**. Adflow handles placements and sets up Link Groups automatically.
+4. **Refine & Sync**: Double-click text layers to edit copy across sizes in real time (via Live-Link).
+5. **Batch Export**: Hit the **Export** button in the top bar to package ZIP archives for all canvases.
+
+### 2. How do I bind columns and merge spreadsheet data to generate version rows?
+1. **Mark Dynamic Slots**: Select the element you want to make variable (e.g., a text box). Open the **Dynamic Data** section of the Properties panel and check the boxes next to the fields you want to merge (e.g., Text Content, Color).
+2. **Load Spreadsheet**: Open the spreadsheet panel by clicking the **Data** button in the top bar.
+3. **Import/Build Table**: Click **Import CSV** to load a spreadsheet, or click **+ Add Column** to build columns manually.
+4. **Map Columns to Slots**: Bind column headers to your dynamic element slots using the dropdown controls.
+5. **Preview Versions**: Pick a row from the top-bar **Version dropdown** to preview data values on your canvases in real time.
+6. **Export All**: Select **All versions (separate folders)** in the Export menu dropdown to package finished ads for every row.
+
+### 3. How does autosave work and how do I prevent losing my progress?
+- **IndexedDB Autosave**: Every modification (dragging, resizing, typing, recolouring) triggers a debounced save directly to your browser's IndexedDB database.
+- **Auto-Restoration**: Reopening the page or reloading the tab reads from IndexedDB, restoring your canvases, scroll positions, zoom level, and 50-state undo stack.
+- **Cloud Saves**: If signed in, pressing `Ctrl + S` pushes project packages to Supabase cloud workspaces for server-side backup.
+- **Local Backups**: Download a local backup using `Ctrl + Shift + S` frequently to save local backup files onto your hard drive when working offline or before clearing browser caches.
+
+### 4. Why aren't my entrance transitions playing?
+- **Persistent Layers**: Elements placed in the **Always Top** or **Always Bottom** sections of the Layers panel remain visible across all frames and do not trigger entrance animations on frame swaps.
+- **Moving Elements**: Drag your layers into the **Main Layers (Frame N)** section of the Layers panel, matching them to the specific frame index where the transition should play.
+
+### 5. How do I unlink an element to make layout overrides on one size?
+If you need to make custom overrides on one canvas size without propagating changes to others, detach it from the group:
+1. Right-click the element on the canvas viewport.
+2. Select **Link Group → Unlink from group**.
+3. The element is now independent, while the remaining sizes keep their linked status.
+*Note: If you want to keep the copy linked but separate styling, open the Link Groups panel and uncheck specific properties (like Font Size or Fill Color) for the group.*
+
+### 6. What should I do if my ad canvas exceeds the 150 KB weight limit?
+Uncompressed image assets are the main cause of weight flags. Use the built-in WebP compressor:
+1. Select the heavy image on your canvas.
+2. In the right-hand panel, find the WebP Compressor tool next to the file name.
+3. Adjust the quality slider (e.g., 70% or 80%) to see a live preview of the estimated KB weight.
+4. Click **Compress** to overwrite the original image with a lightweight WebP version.
+
+### 7. Can I use Adflow completely offline without signing in?
+Yes! Adflow is local-first:
+- **Local Bypass**: Click **Use locally without signing in** at the bottom of the splash gate.
+- **No Feature Loss**: All layout design, link syncing, spreadsheet merges, and ZIP exports operate fully in the browser offline.
+- **Sync Later**: You can sign in from the top bar at any time to upload local projects to the cloud.
 
 ---
 
