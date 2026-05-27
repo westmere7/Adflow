@@ -72,7 +72,7 @@ Optional Supabase-backed cloud sync, layered on top of the local-first model. An
 - **Team Spaces** — shared pools for collaborating across a creative team. The chip dropdown lists all spaces you belong to plus "Personal". Each space has owners + members, per-space members panel, invitation flow (Adflow generates a one-time join URL and copies it to your clipboard — paste into Slack or email), and Duplicate / Rename / Delete / Leave actions per role.
 - **Folders inside spaces** — organise space projects into a tree. Per-row dropdown to move projects between folders.
 
-`Ctrl+S` pushes the current project to the cloud (falling back to local save when offline or signed out); `Ctrl+Shift+S` always saves a local `.flow` ZIP.
+`Ctrl+S` saves the project to Supabase Cloud; `Ctrl+Shift+S` force-saves the project silently to browser database storage (IndexedDB). Use **File → Save → Save to File (.flow)** from the file menu to download a local `.flow` package to your computer.
 
 ---
 
@@ -218,8 +218,8 @@ Access the application immediately via the live deployment:
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl + S` / `Cmd + S` | Push current project to the cloud (falls back to local `.flow` save when offline / signed out) |
-| `Ctrl + Shift + S` / `Cmd + Shift + S` | Always save a local `.flow` ZIP |
+| `Ctrl + S` / `Cmd + S` | Save current project to Supabase Cloud (requires being signed in) |
+| `Ctrl + Shift + S` / `Cmd + Shift + S` | Force-save project silently to the browser's IndexedDB database |
 | `Ctrl + C` / `Cmd + C` | Copy selected elements |
 | `Ctrl + X` / `Cmd + X` | Cut selected elements |
 | `Ctrl + V` / `Cmd + V` | Paste copied elements |
@@ -269,7 +269,8 @@ Access the application immediately via the live deployment:
 - **IndexedDB Autosave**: Every modification (dragging, resizing, typing, recolouring) triggers a debounced save directly to your browser's IndexedDB database.
 - **Auto-Restoration**: Reopening the page or reloading the tab reads from IndexedDB, restoring your canvases, scroll positions, zoom level, and 50-state undo stack.
 - **Cloud Saves**: If signed in, pressing `Ctrl + S` pushes project packages to Supabase cloud workspaces for server-side backup.
-- **Local Backups**: Download a local backup using `Ctrl + Shift + S` frequently to save local backup files onto your hard drive when working offline or before clearing browser caches.
+- **Force Browser Save**: Press `Ctrl + Shift + S` to force-save the project silently to the browser's IndexedDB database.
+- **Local File Backups**: Use **File → Save → Save to File (.flow)** from the file menu to download a local `.flow` backup file onto your hard drive before clearing browser caches or switching machines.
 
 ### 4. Why aren't my entrance transitions playing?
 - **Persistent Layers**: Elements placed in the **Always Top** or **Always Bottom** sections of the Layers panel remain visible across all frames and do not trigger entrance animations on frame swaps.
@@ -293,6 +294,8 @@ Uncompressed image assets are the main cause of weight flags. Use the built-in W
 Yes! Adflow is local-first:
 - **Local Bypass**: Click **Use locally without signing in** at the bottom of the splash gate.
 - **No Feature Loss**: All layout design, link syncing, spreadsheet merges, and ZIP exports operate fully in the browser offline.
+- **Force Browser Save**: Press `Ctrl + Shift + S` to force-save the project silently to IndexedDB local storage while working offline.
+- **File backups**: Use **File → Save → Save to File (.flow)** from the file menu to download local backup files.
 - **Sync Later**: You can sign in from the top bar at any time to upload local projects to the cloud.
 
 ---
@@ -344,6 +347,8 @@ interface State {
   zoom?: number;
   viewScrollLeft?: number;
   viewScrollTop?: number;
+  autosaveInterval?: number;       // Auto-save interval in seconds (5-60)
+  savedHistoryLimit?: number;      // History depth limit (5-100)
 }
 
 interface Canvas {

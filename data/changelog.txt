@@ -1,6 +1,16 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.57 (Current) - May 2026 — Engine v2.16
+v0.16.59 (Current) - May 2026 — Engine v2.16
+- Separated manual saving into three distinct options:
+  1. Ctrl+S to save silently to the Supabase Cloud.
+  2. Ctrl+Shift+S to save silently to the browser's IndexedDB local storage.
+  3. Menu option "Save to File (.flow)" (with no keyboard shortcut) to trigger a `.flow` file download.
+
+v0.16.58 - May 2026 — Engine v2.16
+- Updated the default IndexedDB auto-save interval from 1s to 10s.
+- Added a new custom auto-save interval selector under the "History & Saving" section in Settings, letting users configure debounced auto-saves from 5s to 60s (1m).
+
+v0.16.57 - May 2026 — Engine v2.16
 - Added a comprehensive Frequently Asked Questions (FAQ) section to the main project README.md, outlining Quick Workflows, Data Merges, Progress Saving, and other typical usage troubleshooting steps.
 - Introduced a detailed "Powerful Features" list under the Getting Started category in both the repository README.md and the in-app Help menu, summarizing the core value propositions and system capabilities.
 

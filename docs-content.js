@@ -327,15 +327,15 @@ const DOCS_SECTIONS = [
         <p>Saving & Projects regulates local autosaves, portable project archives, and startup state restorations. Adflow uses a local-first architecture, saving every action locally in the background to ensure no creative updates are lost due to browser crashes or network dropouts.</p>
         <p>Projects are saved using the custom <code>.flow</code> format. The file is a compressed ZIP archive containing all project layout structures and binary assets. It can be stored locally or pushed to team cloud folders, and travels as a single self-contained package.</p>
         <p><b>Adflow's Advantage:</b> Legacy design software often requires manual saving and generates fragmented local project folders. Adflow manages autosaves in the background (persisting canvas scroll, zoom level, and history stack) and provides a history limit of up to 50 states.</p>
-        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> to download a local backup file of your project. This <code>.flow</code> archive can be emailed, stored in shared drives, or imported back into Adflow.</div>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save to File (.flow)</b> from the file menu to download a local backup file of your project. This <code>.flow</code> archive can be emailed, stored in shared drives, or imported back into Adflow. Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> force-saves the project silently to browser database storage.</div>
       `},
       { id: 'autosave', title: 'Auto-save', body: `
         <p>Every change is debounced and persisted to your browser's IndexedDB. Restored on reload — including zoom and scroll position. Top bar shows a live status indicator (saved / saving / unsaved / error).</p>
         <p><b>History limit:</b> set in <b>File → Settings</b> — 1 to 50 states, default 10.</p>
       `},
       { id: 'flow-files', title: '.flow files', body: `
-        <p><b>File → Save Project</b> (<span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span>) writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. <b>Open Project</b> reads <code>.flow</code> (and legacy <code>.cook</code>/<code>.zip</code>) back in.</p>
-        <p><b>Ctrl</b>+<b>S</b> pushes to the cloud when you're signed in (see <i>Cloud &amp; Spaces</i>). If you're signed out or Supabase isn't configured, it falls back to the local <code>.flow</code> save dialog.</p>
+        <p><b>File → Save → Save to File (.flow)</b> from the menu writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> force-saves the project silently to the browser's IndexedDB database.</p>
+        <p><b>Ctrl</b>+<b>S</b> pushes the project to Supabase Cloud when you're signed in (see <i>Cloud &amp; Spaces</i>). If you are signed out, Adflow displays a warning toast reminding you to sign in.</p>
         <p><b>Open Recent</b> in the File menu shows your last manually-saved projects.</p>
       `},
       { id: 'new-project-wizard', title: 'New Project wizard', body: `
@@ -387,8 +387,8 @@ const DOCS_SECTIONS = [
           <thead><tr><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Shortcut</th><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Action</th></tr></thead>
           <tbody>
           ${[
-            ['Ctrl + S','Push to cloud (falls back to local save when signed out)'],
-            ['Ctrl + Shift + S','Save project locally (.flow)'],
+            ['Ctrl + S','Save to cloud (requires sign in)'],
+            ['Ctrl + Shift + S','Save project silently to browser database (IndexedDB)'],
             ['Ctrl + C / X / V','Copy / Cut / Paste'],
             ['Ctrl + D','Duplicate selected'],
             ['Ctrl + Z / Y','Undo / Redo'],
@@ -455,8 +455,9 @@ const DOCS_SECTIONS = [
           <li><b>IndexedDB Autosave</b>: Every modification (dragging, resizing, typing, recolouring) triggers a debounced save directly to your browser's IndexedDB database.</li>
           <li><b>Auto-Restoration</b>: Reopening the page or reloading the tab reads from IndexedDB, restoring your canvases, scroll positions, zoom level, and 50-state undo stack.</li>
           <li><b>Cloud Saves</b>: If signed in, pressing <span class="kbd">Ctrl</span>+<span class="kbd">S</span> pushes project packages to Supabase cloud workspaces for server-side backup.</li>
+          <li><b>Force Browser Save</b>: Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> immediately saves the active project state to the browser's IndexedDB.</li>
         </ul>
-        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Download a local backup using <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> before clearing browser caches or switching machines.</div>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save to File (.flow)</b> from the file menu to download a local backup file to your computer before clearing browser caches or switching machines.</div>
       `},
       { id: 'faq-animations', title: 'Animations troubleshooting', body: `
         <p><b>Question:</b> Why aren't my entrance transitions playing?</p>
@@ -494,9 +495,10 @@ const DOCS_SECTIONS = [
         <ul>
           <li><b>Local Bypass</b>: Click <b>Use locally without signing in</b> at the bottom of the splash gate.</li>
           <li><b>No Feature Loss</b>: All layout design, link syncing, spreadsheet merges, and ZIP exports operate fully in the browser offline.</li>
+          <li><b>Force Browser Save</b>: Press <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> to force-save the project silently to IndexedDB local storage while working offline.</li>
           <li><b>Sync Later</b>: You can sign in from the top bar at any time to upload local projects to the cloud.</li>
         </ul>
-        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Press <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> frequently to save local backup files onto your hard drive when working offline.</div>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save to File (.flow)</b> from the file menu to download local backup files onto your hard drive when working offline.</div>
       `}
     ]
   },
@@ -647,6 +649,22 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.16.59',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Separated manual saving into three distinct options: (1) Ctrl+S to save silently to the Supabase Cloud, (2) Ctrl+Shift+S to save silently to browser database (IndexedDB), and (3) a menu-only option "Save to File (.flow)" to download project packages.',
+      'Aligned the Keyboard Shortcuts documentation and FAQs to reflect the new manual save commands.'
+    ]
+  },
+  {
+    version: 'v0.16.58',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Updated the default IndexedDB auto-save interval from 1s to 10s.',
+      'Added a custom auto-save interval selector under the "History & Saving" section in Settings, letting users configure debounced auto-saves from 5s to 60s (1m).'
+    ]
+  },
   {
     version: 'v0.16.57',
     date: 'May 2026 — Engine v2.16',

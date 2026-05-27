@@ -211,6 +211,7 @@ const state = {
   adSizeLimit: 150,      // max exported ad weight in KB (IAB display-ad standard)
   defaultBg: '#0f172a',  // default background for newly created canvases
   savedHistoryLimit: 50,    // undo-stack depth — bumped from 10 in v0.16.8
+  autosaveInterval: 10,     // local IndexedDB auto-save interval in seconds (5-60)
   clipboard: null,
   linkGroups: {},
   assetNames: {},        // assetId -> original filename (for data-merge image lookup)
@@ -547,7 +548,8 @@ function scheduleAutosave() {
   if (_autosaveSuspended) return;
   if (_saveStatus !== 'saving') setSaveStatus('unsaved');
   if (_autosaveTimer) clearTimeout(_autosaveTimer);
-  _autosaveTimer = setTimeout(writeAutosave, 1000);
+  const intervalSecs = state.autosaveInterval !== undefined ? state.autosaveInterval : 10;
+  _autosaveTimer = setTimeout(writeAutosave, intervalSecs * 1000);
 }
 
 async function restoreAutosave() {
@@ -561,6 +563,9 @@ async function restoreAutosave() {
       // User-customised values above 10 are preserved.
       if (state.savedHistoryLimit === undefined || state.savedHistoryLimit <= 10) {
         state.savedHistoryLimit = 50;
+      }
+      if (state.autosaveInterval === undefined) {
+        state.autosaveInterval = 10;
       }
       if (rec.history && Array.isArray(rec.history) && rec.history.length > 0) {
         history.length = 0;
@@ -8916,11 +8921,17 @@ window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault();
     if (e.shiftKey) {
-      // Ctrl/Cmd + Shift + S → save the local .flow file (browser save dialog).
-      saveProjectToZip();
+      // Ctrl/Cmd + Shift + S → Save silently to browser database (IndexedDB).
+      (async () => {
+        if (_autosaveTimer) {
+          clearTimeout(_autosaveTimer);
+          _autosaveTimer = null;
+        }
+        await writeAutosave();
+        showCanvasNotification('Project saved to browser', { type: 'success' });
+      })();
     } else {
-      // Ctrl/Cmd + S → push to the cloud. Falls back to the local file save
-      // if Supabase isn't configured or the user is signed out.
+      // Ctrl/Cmd + S → Push to Cloud (no fallback to file download).
       if (typeof authState !== 'undefined' && authState.enabled && authState.currentUser()) {
         (async () => {
           try {
@@ -8936,7 +8947,7 @@ window.addEventListener('keydown', (e) => {
           catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
         })();
       } else {
-        saveProjectToZip();
+        showCanvasNotification('Cloud save failed: Please sign in to save projects to the cloud.', { type: 'warning' });
       }
     }
     return;
@@ -9897,7 +9908,15 @@ document.getElementById('frame-transition-fade').addEventListener('change', (e) 
 });
 
 document.getElementById('menu-file-open').addEventListener('click', openProjectFromZip);
-document.getElementById('menu-file-save').addEventListener('click', saveProjectToZip);
+document.getElementById('menu-file-save-browser').addEventListener('click', async () => {
+  if (_autosaveTimer) {
+    clearTimeout(_autosaveTimer);
+    _autosaveTimer = null;
+  }
+  await writeAutosave();
+  showCanvasNotification('Project saved to browser', { type: 'success' });
+});
+document.getElementById('menu-file-save-file').addEventListener('click', saveProjectToZip);
 document.getElementById('menu-file-new').addEventListener('click', openNewProjectDialog);
 document.getElementById('menu-project-settings').addEventListener('click', openProjectSettingsDialog);
 
@@ -10536,7 +10555,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.57';
+  const currentVersion = 'v0.16.59';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -10599,7 +10618,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:11px; color:var(--text-muted);">v0.16.57</span>
+            <span style="font-size:11px; color:var(--text-muted);">v0.16.59</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
           <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
@@ -10655,7 +10674,7 @@ function openSettings() {
           <div class="modal-head">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.57</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.59</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -10680,10 +10699,15 @@ function openSettings() {
             </section>
             <section>
               <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">History & Saving</h3>
-              <div style="display:flex; flex-direction:column; gap:8px; padding:4px 10px;">
+              <div style="display:flex; flex-direction:column; gap:10px; padding:4px 10px;">
                 <label style="display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-main); cursor:pointer;">
                   <span>Save History Limit:</span>
                   <input type="number" id="set-history-limit" value="${state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50}" min="5" max="100" style="width:55px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 6px; font-family:inherit; font-size:12px;" />
+                </label>
+                <label style="display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-main); cursor:pointer;">
+                  <span>Local Auto-Save Interval:</span>
+                  <input type="number" id="set-autosave-interval" value="${state.autosaveInterval !== undefined ? state.autosaveInterval : 10}" min="5" max="60" style="width:55px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 6px; font-family:inherit; font-size:12px;" />
+                  <span>seconds</span>
                 </label>
                 <div style="font-size:10px; color:#f59e0b; line-height:1.4; display:flex; align-items:flex-start; gap:6px; margin-top:2px;">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0; margin-top:1px;">
@@ -10733,6 +10757,15 @@ function openSettings() {
     if (val > 100) val = 100;
     e.target.value = val;
     state.savedHistoryLimit = val;
+    scheduleAutosave();
+  });
+
+  bg.querySelector('#set-autosave-interval').addEventListener('change', (e) => {
+    let val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 5) val = 5;
+    if (val > 60) val = 60;
+    e.target.value = val;
+    state.autosaveInterval = val;
     scheduleAutosave();
   });
 
@@ -11952,7 +11985,7 @@ document.addEventListener('keydown', (e) => {
 
 // Autosave makes leaving seamless — no "unsaved changes" prompt. If a debounced
 // write is still pending, flush it best-effort (IndexedDB may not finish, but the
-// previous autosave is at most ~1s old).
+// previous autosave is at most a few seconds old).
 window.addEventListener('beforeunload', () => {
   if (_autosaveTimer) {
     clearTimeout(_autosaveTimer);
