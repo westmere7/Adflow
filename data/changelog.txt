@@ -2,6 +2,10 @@ RMIT Adflow - Version & Changelog History
 
 v0.16.62 (Current) - May 2026 — Engine v2.16
 - Relocated all transition settings from the top-bar controls to a dedicated visual sub-section in the sidebar Animation panel (positioned below Continuous FX).
+- Added bookmarking/favoriting support for frame-level transitions via right-click, fully integrated with the global favorites filter.
+- Removed horizontal line separators between the three Animation sub-panels, styling each sub-panel with a subtle card background and optimized spacing to eliminate wasted room.
+- Added the "Push" viewport-wide panning frame transition supporting custom directions, fade, and elastic spring bounce.
+- Added the "Iris" focal expansion frame transition supporting Circle, Square, and Diamond shapes expanding from Center or any corner with optional fade.
 - Added the "Zoom" frame transition supporting custom starting scale (Zoom From %), opacity fade toggle, and multi-step elastic spring bounce physics.
 - Added the "Split" frame transition supporting diagonal reveals along customizable angles and fade toggling.
 - Refined the loop preview triggers for all three animation panels (Entrance Transitions, Continuous FX, and Frame Transitions) to disable container-wide hover triggers, launching previews only when hovering over presets or interacting with settings/inputs, and updating settings instantly.

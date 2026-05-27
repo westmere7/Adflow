@@ -381,11 +381,16 @@ body.theme-navy {
 
 
     @keyframes eff-pan {
-
-      0% { translate: 0 0; }
-
-      100% { translate: var(--pan-x, 0px) var(--pan-y, 0px); }
-
+      0% {
+        translate: var(--pan-x, 0px) var(--pan-y, 0px);
+        rotate: var(--pan-rotate, 0deg);
+        opacity: var(--pan-opacity-start, 1);
+      }
+      100% {
+        translate: 0 0;
+        rotate: 0deg;
+        opacity: 1;
+      }
     }
 
 
@@ -4315,6 +4320,25 @@ body.fullscreen-mode .workspace-isolation-outline {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   user-select: none;
+}
+
+.custom-select-item:hover {
+  background: var(--accent-base) !important;
+  color: var(--text-bright) !important;
+}
+
+.custom-select-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-select-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-select-dropdown::-webkit-scrollbar-thumb {
+  background: #272c3a;
+  border-radius: 2px;
+}
+.custom-select-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-base);
 }
 
 

@@ -936,7 +936,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     });
   }
   if (sync.effect) {
-    const effectProps = ['effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat'];
+    const effectProps = ['effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY'];
     effectProps.forEach(p => {
       if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
       else delete targetEl[p];
@@ -1538,6 +1538,9 @@ function render(skipProps = false) {
         else if (animType === 'slide-left') { tempEl.animDirection = 'left'; tempEl.animDistance = 20; }
         else if (animType === 'slide-right') { tempEl.animDirection = 'right'; tempEl.animDistance = 20; }
         dynamicStyles += '\n' + getSlideKeyframes(tempEl);
+      }
+      if (el.effectType === 'pan' && el.panMidX !== undefined && el.panMidY !== undefined) {
+        dynamicStyles += '\n' + getPanCurveKeyframes(el);
       }
     });
     
@@ -2199,7 +2202,12 @@ function canvasFrameNode(c) {
         else if (sels.length === 1) canvas.appendChild(selectionOverlay(sels[0]));
       } else if (state.selectedElementId) {
         const sel = c.elements.find(e => e.id === state.selectedElementId);
-        if (sel && !sel.hidden) canvas.appendChild(selectionOverlay(sel));
+        if (sel && !sel.hidden) {
+          canvas.appendChild(selectionOverlay(sel));
+          if (sel.effectType === 'pan') {
+            canvas.appendChild(moveGuideOverlay(sel, c));
+          }
+        }
       }
     }
 
@@ -2550,16 +2558,28 @@ function getElementAnimationCSS(el, isImageExport) {
     const effDur = el.effDuration !== undefined ? el.effDuration : 2;
     const effDelay = el.effDelay !== undefined ? el.effDelay : 0;
     if (effType === 'pan') {
-      const dist = el.panDist !== undefined ? el.panDist : 50;
-      let px = 0, py = 0;
-      if (el.panDir === 'L') px = -dist;
-      else if (el.panDir === 'U') py = -dist;
-      else if (el.panDir === 'D') py = dist;
-      else px = dist; // R
+      let px = el.panFromX !== undefined ? el.panFromX : 0;
+      let py = el.panFromY !== undefined ? el.panFromY : 0;
+
+      // Fallback migration for legacy projects:
+      if (el.panFromX === undefined && el.panFromY === undefined) {
+        const dist = el.panDist !== undefined ? el.panDist : 50;
+        if (el.panDir === 'L') px = dist;
+        else if (el.panDir === 'R') px = -dist;
+        else if (el.panDir === 'U') py = dist;
+        else if (el.panDir === 'D') py = -dist;
+        else px = dist;
+      }
+      let animName = 'eff-pan';
+      if (el.panMidX !== undefined && el.panMidY !== undefined) {
+        animName = `eff-pan-${el.id}`;
+      }
       const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
       const fill = el.effOnce ? 'forwards' : 'infinite';
-      if (!isImageExport) effAnims.push(`eff-pan ${effDur}s ${ease} ${effDelay}s ${fill}`);
-      effVars = `--pan-x:${px}px; --pan-y:${py}px;`;
+      if (!isImageExport) effAnims.push(`${animName} ${effDur}s ${ease} ${effDelay}s ${fill}`);
+      const rot = el.panRotate !== undefined ? el.panRotate : 0;
+      const opStart = el.panFade ? 0 : 1;
+      effVars = `--pan-x:${px}px; --pan-y:${py}px; --pan-rotate:${rot}deg; --pan-opacity-start:${opStart};`;
     } else if (effType === 'zoom') {
       const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
       const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
@@ -3532,6 +3552,237 @@ function isolatedGroupOverlay(elements) {
   w.style.border = 'calc(1.5px / var(--z, 1)) solid rgba(255, 171, 0, 0.4)';
   w.style.pointerEvents = 'none';
   return w;
+}
+
+function moveGuideOverlay(el, c) {
+  const container = document.createElement('div');
+  container.className = 'move-guide-overlay';
+  container.style.position = 'absolute';
+  container.style.inset = '0';
+  container.style.pointerEvents = 'none';
+  container.style.zIndex = '9998';
+
+  const cx = el.x + el.width / 2;
+  const cy = el.y + el.height / 2;
+
+  // Initialize or fallback to old panDist/panDir if undefined:
+  if (el.panFromX === undefined && el.panFromY === undefined) {
+    const dist = el.panDist !== undefined ? el.panDist : 50;
+    if (el.panDir === 'L') { el.panFromX = dist; el.panFromY = 0; }
+    else if (el.panDir === 'R') { el.panFromX = -dist; el.panFromY = 0; }
+    else if (el.panDir === 'U') { el.panFromX = 0; el.panFromY = dist; }
+    else if (el.panDir === 'D') { el.panFromX = 0; el.panFromY = -dist; }
+    else { el.panFromX = 0; el.panFromY = -50; }
+  }
+
+  const dx = el.panFromX;
+  const dy = el.panFromY;
+  const px = cx + dx;
+  const py = cy + dy;
+
+  const mx = el.panMidX !== undefined ? el.panMidX : dx / 2;
+  const my = el.panMidY !== undefined ? el.panMidY : dy / 2;
+  const mpx = cx + mx;
+  const mpy = cy + my;
+
+  // 1. Create SVG curved path
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.style.position = 'absolute';
+  svg.style.inset = '0';
+  svg.style.width = '100%';
+  svg.style.height = '100%';
+  svg.style.pointerEvents = 'none';
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', `M ${px} ${py} Q ${mpx} ${mpy} ${cx} ${cy}`);
+  path.setAttribute('stroke', 'var(--accent-base)');
+  path.setAttribute('stroke-width', '1.5');
+  path.setAttribute('stroke-dasharray', '4,4');
+  path.setAttribute('fill', 'none');
+
+  svg.appendChild(path);
+  container.appendChild(svg);
+
+  // 2. Create start circle handle
+  const handle = document.createElement('div');
+  handle.className = 'move-guide-handle';
+  handle.style.position = 'absolute';
+  handle.style.left = px + 'px';
+  handle.style.top = py + 'px';
+  handle.style.width = '12px';
+  handle.style.height = '12px';
+  handle.style.borderRadius = '50%';
+  handle.style.background = 'var(--accent-base)';
+  handle.style.border = '2px solid var(--text-bright)';
+  handle.style.transform = 'translate(-50%, -50%)';
+  handle.style.cursor = 'move';
+  handle.style.pointerEvents = 'all';
+  handle.style.boxShadow = '0 2px 6px rgba(0,0,0,0.5)';
+  handle.title = 'Drag to change starting location for Move effect';
+
+  // 3. Create midpoint circle handle
+  const midHandle = document.createElement('div');
+  midHandle.className = 'move-guide-mid-handle';
+  midHandle.style.position = 'absolute';
+  midHandle.style.left = mpx + 'px';
+  midHandle.style.top = mpy + 'px';
+  midHandle.style.width = '9px';
+  midHandle.style.height = '9px';
+  midHandle.style.borderRadius = '50%';
+  midHandle.style.background = 'var(--accent-light)';
+  midHandle.style.border = '1.5px solid var(--text-bright)';
+  midHandle.style.transform = 'translate(-50%, -50%)';
+  midHandle.style.cursor = 'move';
+  midHandle.style.pointerEvents = 'all';
+  midHandle.style.boxShadow = '0 1px 4px rgba(0,0,0,0.5)';
+  midHandle.title = 'Drag to curve the Move motion path';
+
+  // 4. Add drag listeners for start handle
+  handle.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const z = state.zoom || 1;
+    const canvasDom = e.target.closest('.canvas');
+    const canvasRect = canvasDom.getBoundingClientRect();
+    const startDx = el.panFromX;
+    const startDy = el.panFromY;
+
+    const onMove = (ev) => {
+      const mouseCanvasX = (ev.clientX - canvasRect.left) / z;
+      const mouseCanvasY = (ev.clientY - canvasRect.top) / z;
+      let newDx = Math.round(mouseCanvasX - cx);
+      let newDy = Math.round(mouseCanvasY - cy);
+
+      if (ev.shiftKey) {
+        const dist = Math.hypot(newDx, newDy);
+        let ang = Math.atan2(newDy, newDx);
+        const snapStep = Math.PI / 4; // 45 degrees
+        ang = Math.round(ang / snapStep) * snapStep;
+        newDx = Math.round(dist * Math.cos(ang));
+        newDy = Math.round(dist * Math.sin(ang));
+      }
+
+      el.panFromX = newDx;
+      el.panFromY = newDy;
+
+      const px = cx + newDx;
+      const py = cy + newDy;
+
+      // Update midpoint if it tracks the start handle automatically
+      const mx = el.panMidX !== undefined ? el.panMidX : newDx / 2;
+      const my = el.panMidY !== undefined ? el.panMidY : newDy / 2;
+      const mpx = cx + mx;
+      const mpy = cy + my;
+
+      midHandle.style.left = mpx + 'px';
+      midHandle.style.top = mpy + 'px';
+
+      // Update SVG path
+      path.setAttribute('d', `M ${px} ${py} Q ${mpx} ${mpy} ${cx} ${cy}`);
+
+      // Update handle position
+      handle.style.left = px + 'px';
+      handle.style.top = py + 'px';
+
+      // Update input elements in Sidebar if they are visible
+      const fromXInput = document.getElementById('prop-pan-from-x');
+      const fromYInput = document.getElementById('prop-pan-from-y');
+      if (fromXInput) fromXInput.value = newDx;
+      if (fromYInput) fromYInput.value = newDy;
+
+      const midXInput = document.getElementById('prop-pan-mid-x');
+      const midYInput = document.getElementById('prop-pan-mid-y');
+      if (midXInput && el.panMidX === undefined) midXInput.value = Math.round(newDx / 2);
+      if (midYInput && el.panMidY === undefined) midYInput.value = Math.round(newDy / 2);
+
+      // Trigger temporary preview update during drag
+      startEffectPreview(el);
+    };
+
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      if (el.panFromX !== startDx || el.panFromY !== startDy) {
+        pushHistory();
+        renderProps();
+      }
+      render(true);
+      startEffectPreview(el);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+
+  // 5. Add drag listeners for midpoint handle
+  midHandle.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const z = state.zoom || 1;
+    const canvasDom = e.target.closest('.canvas');
+    const canvasRect = canvasDom.getBoundingClientRect();
+    const startMx = el.panMidX !== undefined ? el.panMidX : el.panFromX / 2;
+    const startMy = el.panMidY !== undefined ? el.panMidY : el.panFromY / 2;
+
+    const onMoveMid = (ev) => {
+      const mouseCanvasX = (ev.clientX - canvasRect.left) / z;
+      const mouseCanvasY = (ev.clientY - canvasRect.top) / z;
+      let newMx = Math.round(mouseCanvasX - cx);
+      let newMy = Math.round(mouseCanvasY - cy);
+
+      if (ev.shiftKey) {
+        const dist = Math.hypot(newMx, newMy);
+        let ang = Math.atan2(newMy, newMx);
+        const snapStep = Math.PI / 4; // 45 degrees
+        ang = Math.round(ang / snapStep) * snapStep;
+        newMx = Math.round(dist * Math.cos(ang));
+        newMy = Math.round(dist * Math.sin(ang));
+      }
+
+      el.panMidX = newMx;
+      el.panMidY = newMy;
+
+      const mpx = cx + newMx;
+      const mpy = cy + newMy;
+
+      const px = cx + el.panFromX;
+      const py = cy + el.panFromY;
+
+      // Update SVG path
+      path.setAttribute('d', `M ${px} ${py} Q ${mpx} ${mpy} ${cx} ${cy}`);
+
+      // Update midHandle position
+      midHandle.style.left = mpx + 'px';
+      midHandle.style.top = mpy + 'px';
+
+      // Update inputs in sidebar if visible
+      const midXInput = document.getElementById('prop-pan-mid-x');
+      const midYInput = document.getElementById('prop-pan-mid-y');
+      if (midXInput) midXInput.value = newMx;
+      if (midYInput) midYInput.value = newMy;
+
+      // Trigger temporary preview update during drag
+      startEffectPreview(el);
+    };
+
+    const onUpMid = () => {
+      window.removeEventListener('mousemove', onMoveMid);
+      window.removeEventListener('mouseup', onUpMid);
+      if (el.panMidX !== startMx || el.panMidY !== startMy) {
+        pushHistory();
+        renderProps();
+      }
+      render(true);
+      startEffectPreview(el);
+    };
+
+    window.addEventListener('mousemove', onMoveMid);
+    window.addEventListener('mouseup', onUpMid);
+  });
+
+  container.appendChild(handle);
+  container.appendChild(midHandle);
+  return container;
 }
 
 function selectionOverlay(el) {
@@ -7123,6 +7374,8 @@ function startFrameTransitionPreview(type) {
     const zoomFrom = currentFrame.transitionZoomFrom !== undefined ? currentFrame.transitionZoomFrom : 80;
     const angle = currentFrame.transitionAngle !== undefined ? currentFrame.transitionAngle : 0;
     const dir = currentFrame.transitionDirection || (type.startsWith('slide-') ? type.replace('slide-', '') : (type.startsWith('swipe-') ? type.replace('swipe-', '') : 'left'));
+    const irisShape = currentFrame.transitionIrisShape || 'circle';
+    const irisOrigin = currentFrame.transitionIrisOrigin || 'center';
 
     let overlay = canvasDom.querySelector('.frame-transition-preview-overlay');
     if (overlay) overlay.remove();
@@ -7183,11 +7436,20 @@ function startFrameTransitionPreview(type) {
       nextContainer.style.display = 'block';
 
       const animName = `preview-frame-trans-${Date.now()}`;
+      const animNameOut = `preview-frame-trans-out-${Date.now()}`;
       let keyframes = '';
+      let keyframesOut = '';
 
       if (type === 'fade') {
         keyframes = `@keyframes ${animName} { from { opacity: 0; } to { opacity: 1; } }`;
-      } else if (type === 'slide') {
+      } else if (type === 'slide' || type === 'push') {
+        let transformFrom = '';
+        let transformToOut = '';
+        if (dir === 'up') { transformFrom = 'translateY(100%)'; transformToOut = 'translateY(-100%)'; }
+        else if (dir === 'down') { transformFrom = 'translateY(-100%)'; transformToOut = 'translateY(100%)'; }
+        else if (dir === 'left') { transformFrom = 'translateX(100%)'; transformToOut = 'translateX(-100%)'; }
+        else if (dir === 'right') { transformFrom = 'translateX(-100%)'; transformToOut = 'translateX(100%)'; }
+
         if (bounce) {
           keyframes = `@keyframes ${animName} {\n`;
           const d = 4.0;
@@ -7215,14 +7477,16 @@ function startFrameTransitionPreview(type) {
           }
           keyframes += '    }';
         } else {
-          let transformFrom = '';
-          if (dir === 'up') transformFrom = 'translateY(100%)';
-          else if (dir === 'down') transformFrom = 'translateY(-100%)';
-          else if (dir === 'left') transformFrom = 'translateX(100%)';
-          else if (dir === 'right') transformFrom = 'translateX(-100%)';
           keyframes = `@keyframes ${animName} {
             from { transform: ${transformFrom}; ${fade ? 'opacity: 0;' : ''} }
             to { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
+          }`;
+        }
+
+        if (type === 'push') {
+          keyframesOut = `@keyframes ${animNameOut} {
+            from { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
+            to { transform: ${transformToOut}; ${fade ? 'opacity: 0;' : ''} }
           }`;
         }
       } else if (type === 'swipe') {
@@ -7271,6 +7535,59 @@ function startFrameTransitionPreview(type) {
           from { clip-path: ${fromPoly}; ${fade ? 'opacity: 0;' : ''} }
           to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fade ? 'opacity: 1;' : ''} }
         }`;
+      } else if (type === 'iris') {
+        let originCoords = '50% 50%';
+        if (irisOrigin === 'top-left') originCoords = '0% 0%';
+        else if (irisOrigin === 'top-right') originCoords = '100% 0%';
+        else if (irisOrigin === 'bottom-left') originCoords = '0% 100%';
+        else if (irisOrigin === 'bottom-right') originCoords = '100% 100%';
+
+        let fromClip = '';
+        let toClip = '';
+
+        if (irisShape === 'circle') {
+          fromClip = `circle(0% at ${originCoords})`;
+          toClip = `circle(150% at ${originCoords})`;
+        } else if (irisShape === 'square') {
+          if (irisOrigin === 'center') {
+            fromClip = 'inset(50%)';
+            toClip = 'inset(0%)';
+          } else if (irisOrigin === 'top-left') {
+            fromClip = 'inset(0% 100% 100% 0%)';
+            toClip = 'inset(0%)';
+          } else if (irisOrigin === 'top-right') {
+            fromClip = 'inset(0% 0% 100% 100%)';
+            toClip = 'inset(0%)';
+          } else if (irisOrigin === 'bottom-left') {
+            fromClip = 'inset(100% 100% 0% 0%)';
+            toClip = 'inset(0%)';
+          } else if (irisOrigin === 'bottom-right') {
+            fromClip = 'inset(100% 0% 0% 100%)';
+            toClip = 'inset(0%)';
+          }
+        } else if (irisShape === 'diamond') {
+          if (irisOrigin === 'center') {
+            fromClip = 'polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%)';
+            toClip = 'polygon(50% -100%, 200% 50%, 50% 200%, -100% 50%)';
+          } else if (irisOrigin === 'top-left') {
+            fromClip = 'polygon(0% 0%, 0% 0%, 0% 0%)';
+            toClip = 'polygon(0% 0%, 250% 0%, 0% 250%)';
+          } else if (irisOrigin === 'top-right') {
+            fromClip = 'polygon(100% 0%, 100% 0%, 100% 0%)';
+            toClip = 'polygon(100% 0%, -150% 0%, 100% 250%)';
+          } else if (irisOrigin === 'bottom-left') {
+            fromClip = 'polygon(0% 100%, 0% 100%, 0% 100%)';
+            toClip = 'polygon(0% 100%, 250% 100%, 0% -150%)';
+          } else if (irisOrigin === 'bottom-right') {
+            fromClip = 'polygon(100% 100%, 100% 100%, 100% 100%)';
+            toClip = 'polygon(100% 100%, -150% 100%, 100% -150%)';
+          }
+        }
+
+        keyframes = `@keyframes ${animName} {
+          from { clip-path: ${fromClip}; ${fade ? 'opacity: 0;' : ''} }
+          to { clip-path: ${toClip}; ${fade ? 'opacity: 1;' : ''} }
+        }`;
       }
 
       let styleEl = document.getElementById('frame-transition-preview-styles');
@@ -7279,8 +7596,11 @@ function startFrameTransitionPreview(type) {
         styleEl.id = 'frame-transition-preview-styles';
         document.head.appendChild(styleEl);
       }
-      styleEl.textContent = keyframes;
+      styleEl.textContent = keyframes + '\n' + (keyframesOut || '');
 
+      if (keyframesOut) {
+        prevContainer.style.animation = `${animNameOut} ${duration}s ease both`;
+      }
       nextContainer.style.animation = `${animName} ${duration}s ease both`;
 
       framePreviewTimeoutId = setTimeout(() => {
@@ -7319,33 +7639,74 @@ function stopFrameTransitionPreview() {
   if (styleEl) styleEl.remove();
 }
 
+function customSelect(key, options, currentVal, title, isFrameTrans = false, frameTransId = '') {
+  const currentOpt = options.find(o => o.val === currentVal) || options[0];
+  const dropdownItems = options.map(opt => `
+    <div class="custom-select-item" data-value="${opt.val}" style="padding: 5px 8px; font-size: 11px; color: var(--text-main); cursor: pointer; transition: background 0.1s;" title="${opt.label}">
+      ${opt.label}
+    </div>
+  `).join('');
+
+  const containerIdHtml = frameTransId ? `id="${frameTransId}"` : '';
+  const dataKeyAttr = isFrameTrans ? `data-frame-k="${key}"` : `data-k="${key}"`;
+
+  return `
+    <div class="custom-select-container ${isFrameTrans ? 'frame-trans-select' : ''}" ${dataKeyAttr} ${containerIdHtml} style="position: relative; width: 100%;">
+      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid #272c3a; color: var(--text-main); border-radius: 4px; padding: 4px 6px; font-size: 11px; height: 24px; text-align: left; cursor: pointer; outline: none;">
+        <span class="custom-select-label">${currentOpt.label}</span>
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left: 4px; opacity: 0.7; pointer-events: none;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      <div class="custom-select-dropdown" style="display: none; position: absolute; top: 26px; left: 0; right: 0; background: #171a22; border: 1px solid #272c3a; border-radius: 4px; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-height: 200px; overflow-y: auto; padding: 4px 0;">
+        ${dropdownItems}
+      </div>
+    </div>
+  `;
+}
+
 function getFrameTransitionHtml(currentFrame) {
   let tType = currentFrame.transition || 'none';
   let activePreset = 'none';
   if (tType === 'fade') activePreset = 'fade';
-  else if (tType.startsWith('slide')) activePreset = 'slide';
-  else if (tType.startsWith('swipe')) activePreset = 'swipe';
+  else if (tType === 'slide') activePreset = 'slide';
+  else if (tType === 'push') activePreset = 'push';
+  else if (tType === 'swipe') activePreset = 'swipe';
   else if (tType === 'zoom') activePreset = 'zoom';
   else if (tType === 'split') activePreset = 'split';
+  else if (tType === 'iris') activePreset = 'iris';
 
   const presets = [
     { val: 'none', label: 'None' },
     { val: 'fade', label: 'Fade' },
     { val: 'slide', label: 'Slide' },
+    { val: 'push', label: 'Push' },
     { val: 'swipe', label: 'Swipe' },
     { val: 'zoom', label: 'Zoom' },
-    { val: 'split', label: 'Split' }
+    { val: 'split', label: 'Split' },
+    { val: 'iris', label: 'Iris' }
   ];
 
-  const presetButtons = presets.map(o => {
+  let filteredPresets = presets;
+  let favMessageHtml = '';
+  if (state.filterFavorites) {
+    filteredPresets = presets.filter(o => o.val === 'none' || state.favoriteAnimations?.includes('frame-' + o.val));
+    if (filteredPresets.length <= 1) {
+      favMessageHtml = `<div style="grid-column: span 3; font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
+        No favorite transitions. Right-click presets to add to favorites.
+      </div>`;
+    }
+  }
+
+  const presetButtons = filteredPresets.map(o => {
     const isActive = o.val === activePreset;
-    return `<button class="align-btn frame-trans-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Transition: ${o.label}">${o.label}</button>`;
+    const isFav = state.favoriteAnimations?.includes('frame-' + o.val);
+    const favStyle = isFav ? 'outline: 1px solid var(--accent-base); outline-offset: -1px;' : '';
+    return `<button class="align-btn frame-trans-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px; ${favStyle}" title="Transition: ${o.label}">${o.label}</button>`;
   }).join('');
 
   const durVal = currentFrame.transitionDuration !== undefined ? currentFrame.transitionDuration : 0.5;
   const durHtml = `<div class="prop-row" style="margin:0;"><label>Duration (s)</label><input type="number" step="0.1" id="frame-trans-duration" value="${durVal}" min="0.1" /></div>`;
 
-  const showFade = ['slide', 'swipe', 'zoom', 'split'].includes(activePreset);
+  const showFade = ['slide', 'push', 'swipe', 'zoom', 'split', 'iris'].includes(activePreset);
   let fadeToggleHtml = '';
   if (showFade) {
     const resolvedFade = (currentFrame.transitionFade !== false);
@@ -7367,10 +7728,10 @@ function getFrameTransitionHtml(currentFrame) {
   `;
 
   let conditionalControls = '';
-  if (activePreset === 'slide' || activePreset === 'swipe') {
-    const currentDir = currentFrame.transitionDirection || (currentFrame.transition.startsWith('slide-') ? currentFrame.transition.replace('slide-', '') : (currentFrame.transition.startsWith('swipe-') ? currentFrame.transition.replace('swipe-', '') : 'left'));
+  if (activePreset === 'slide' || activePreset === 'push' || activePreset === 'swipe') {
+    const currentDir = currentFrame.transitionDirection || 'left';
     let bounceHtml = '';
-    if (activePreset === 'slide') {
+    if (activePreset === 'slide' || activePreset === 'push') {
       const hasBounce = !!currentFrame.transitionBounce;
       bounceHtml = `
         <div class="checkbox-row" style="height:24px; align-items:center; margin-top:14px;">
@@ -7384,12 +7745,12 @@ function getFrameTransitionHtml(currentFrame) {
         <div class="prop-grid-2">
           <div style="display:flex; flex-direction:column; gap:4px;">
             <label>Direction</label>
-            <select id="frame-trans-direction" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;">
-              <option value="left" ${currentDir === 'left' ? 'selected' : ''}>Left</option>
-              <option value="right" ${currentDir === 'right' ? 'selected' : ''}>Right</option>
-              <option value="up" ${currentDir === 'up' ? 'selected' : ''}>Up</option>
-              <option value="down" ${currentDir === 'down' ? 'selected' : ''}>Down</option>
-            </select>
+            ${customSelect('direction', [
+              { val: 'left', label: 'Left' },
+              { val: 'right', label: 'Right' },
+              { val: 'up', label: 'Up' },
+              { val: 'down', label: 'Down' }
+            ], currentDir, 'Transition direction', true, 'frame-trans-direction')}
           </div>
           ${bounceHtml}
         </div>
@@ -7424,13 +7785,41 @@ function getFrameTransitionHtml(currentFrame) {
         </div>
       </div>
     `;
+  } else if (activePreset === 'iris') {
+    const currentShape = currentFrame.transitionIrisShape || 'circle';
+    const currentOrigin = currentFrame.transitionIrisOrigin || 'center';
+    conditionalControls = `
+      <div class="prop-row" style="margin-bottom:8px;">
+        <div class="prop-grid-2">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label>Shape</label>
+            ${customSelect('irisShape', [
+              { val: 'circle', label: 'Circle' },
+              { val: 'square', label: 'Square' },
+              { val: 'diamond', label: 'Diamond' }
+            ], currentShape, 'Iris Shape', true, 'frame-trans-iris-shape')}
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label>Origin</label>
+            ${customSelect('irisOrigin', [
+              { val: 'center', label: 'Center' },
+              { val: 'top-left', label: 'Top-Left' },
+              { val: 'top-right', label: 'Top-Right' },
+              { val: 'bottom-left', label: 'Bottom-Left' },
+              { val: 'bottom-right', label: 'Bottom-Right' }
+            ], currentOrigin, 'Iris Origin', true, 'frame-trans-iris-origin')}
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   return `
-    <div id="frame-transition-preview-area">
-      <div class="prop-row" style="margin-bottom:8px;"><label>TRANSITION</label></div>
+    <div id="frame-transition-preview-area" style="background: rgba(255, 255, 255, 0.035); padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+      <div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">TRANSITION</label></div>
       <div class="anim-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:12px;">
         ${presetButtons}
+        ${favMessageHtml}
       </div>
       ${activePreset !== 'none' ? standardProps + conditionalControls : ''}
     </div>
@@ -7445,7 +7834,7 @@ function wireFrameTransitionEvents() {
     const val = btn.dataset.val;
     btn.addEventListener('click', () => {
       currentFrame.transition = val;
-      if (val === 'slide' || val === 'swipe') {
+      if (val === 'slide' || val === 'push' || val === 'swipe') {
         if (!currentFrame.transitionDirection) currentFrame.transitionDirection = 'left';
       }
       if (val === 'zoom') {
@@ -7453,6 +7842,10 @@ function wireFrameTransitionEvents() {
       }
       if (val === 'split') {
         if (currentFrame.transitionAngle === undefined) currentFrame.transitionAngle = 0;
+      }
+      if (val === 'iris') {
+        if (!currentFrame.transitionIrisShape) currentFrame.transitionIrisShape = 'circle';
+        if (!currentFrame.transitionIrisOrigin) currentFrame.transitionIrisOrigin = 'center';
       }
       pushHistory();
       renderProps();
@@ -7543,6 +7936,32 @@ function wireFrameTransitionEvents() {
     });
     angleInp.addEventListener('change', () => {
       pushHistory();
+    });
+  }
+
+  const shapeSelect = propsEl.querySelector('#frame-trans-iris-shape');
+  if (shapeSelect) {
+    shapeSelect.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    shapeSelect.addEventListener('change', (e) => {
+      currentFrame.transitionIrisShape = e.target.value;
+      pushHistory();
+      renderProps();
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+  }
+
+  const originSelect = propsEl.querySelector('#frame-trans-iris-origin');
+  if (originSelect) {
+    originSelect.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    originSelect.addEventListener('change', (e) => {
+      currentFrame.transitionIrisOrigin = e.target.value;
+      pushHistory();
+      renderProps();
+      startFrameTransitionPreview(currentFrame.transition || 'none');
     });
   }
 
@@ -8432,8 +8851,8 @@ function renderProps() {
       </h3>
       <div class="panel-section-content">`);
 
-    f.push(`<div id="in-transition-preview-area">`);
-    f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>IN TRANSITIONS</label></div>`);
+    f.push(`<div id="in-transition-preview-area" style="background: rgba(255, 255, 255, 0.035); padding: 10px; border-radius: 6px; margin-bottom: 8px;">`);
+    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">IN TRANSITIONS</label></div>`);
 
     const animOptions = [
       { val: 'none', label: 'None' },
@@ -8526,23 +8945,23 @@ function renderProps() {
             </div>
             <div style="width:85px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
               <label style="white-space:nowrap; text-align:right;">Direction</label>
-              <select id="prop-anim-direction" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation direction">
-                <option value="up" ${currentDirection === 'up' ? 'selected' : ''}>Up</option>
-                <option value="down" ${currentDirection === 'down' ? 'selected' : ''}>Down</option>
-                <option value="left" ${currentDirection === 'left' ? 'selected' : ''}>Left</option>
-                <option value="right" ${currentDirection === 'right' ? 'selected' : ''}>Right</option>
-              </select>
+              ${customSelect('animDirection', [
+                { val: 'up', label: 'Up' },
+                { val: 'down', label: 'Down' },
+                { val: 'left', label: 'Left' },
+                { val: 'right', label: 'Right' }
+              ], currentDirection, 'Animation direction', false, 'prop-anim-direction')}
             </div>
           </div>
         </div>
         <div class="prop-row" style="margin-bottom:8px;">
-          <div class="prop-grid-2">
+          <div style="display: grid; grid-template-columns: 3.5fr 6.5fr; gap: 6px;">
             <div style="display:flex; flex-direction:column; gap:4px;">
-              <label>Distance (px)</label>
+              <label>Dist. (px)</label>
               <input type="number" min="1" max="500" data-k="animDistance" value="${el.animDistance !== undefined ? el.animDistance : (el.animType.startsWith('slide-') ? 20 : 100)}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation slide distance in pixels" />
             </div>
             <div style="display:flex; flex-direction:column; gap:4px;">
-              <label>Rotation Offset (°)</label>
+              <label>Rot. Offset (°)</label>
               <input type="number" data-k="animRotateOffset" value="${el.animRotateOffset !== undefined ? el.animRotateOffset : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Entrance animation rotation offset in degrees" />
             </div>
           </div>
@@ -8561,12 +8980,12 @@ function renderProps() {
             </div>
             <div style="width:80px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
               <label style="white-space:nowrap; text-align:right;">Direction</label>
-              <select id="prop-anim-direction" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation direction">
-                <option value="up" ${currentDirection === 'up' ? 'selected' : ''}>Up</option>
-                <option value="down" ${currentDirection === 'down' ? 'selected' : ''}>Down</option>
-                <option value="left" ${currentDirection === 'left' ? 'selected' : ''}>Left</option>
-                <option value="right" ${currentDirection === 'right' ? 'selected' : ''}>Right</option>
-              </select>
+              ${customSelect('animDirection', [
+                { val: 'up', label: 'Up' },
+                { val: 'down', label: 'Down' },
+                { val: 'left', label: 'Left' },
+                { val: 'right', label: 'Right' }
+              ], currentDirection, 'Animation direction', false, 'prop-anim-direction')}
             </div>
           </div>
         </div>
@@ -8616,9 +9035,8 @@ function renderProps() {
     }
 
     f.push(`</div>`); // Close in-transition-preview-area
-    f.push(`<div style="height:1px; background:var(--border-color, #272c3a); margin:16px 0;"></div>`);
-    f.push(`<div id="effects-preview-area">`);
-    f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>CONTINUOUS EFFECT</label></div>`);
+    f.push(`<div id="effects-preview-area" style="background: rgba(255, 255, 255, 0.035); padding: 10px; border-radius: 6px; margin-bottom: 8px;">`);
+    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">CONTINUOUS EFFECT</label></div>`);
     const effectOptions = [
       { val: 'none', label: 'None' },
       { val: 'pulse', label: 'Pulse' },
@@ -8627,7 +9045,7 @@ function renderProps() {
       { val: 'wiggle', label: 'Wiggle' },
       { val: 'spin', label: 'Spin' },
       { val: 'heartbeat', label: 'Heartbeat' },
-      { val: 'pan', label: 'Pan' },
+      { val: 'pan', label: 'Move' },
       { val: 'zoom', label: 'Zoom' }
     ];
 
@@ -8654,22 +9072,31 @@ function renderProps() {
 
     if (el.effectType && el.effectType !== 'none') {
       if (el.effectType === 'pan') {
+        if (el.panFromX === undefined && el.panFromY === undefined) {
+          const dist = el.panDist !== undefined ? el.panDist : 50;
+          if (el.panDir === 'L') { el.panFromX = dist; el.panFromY = 0; }
+          else if (el.panDir === 'R') { el.panFromX = -dist; el.panFromY = 0; }
+          else if (el.panDir === 'U') { el.panFromX = 0; el.panFromY = dist; }
+          else if (el.panDir === 'D') { el.panFromX = 0; el.panFromY = -dist; }
+          else { el.panFromX = 0; el.panFromY = -50; }
+        }
+        const px_val = el.panFromX !== undefined ? el.panFromX : 0;
+        const py_val = el.panFromY !== undefined ? el.panFromY : -50;
+        const mx_val = el.panMidX !== undefined ? el.panMidX : Math.round(px_val / 2);
+        const my_val = el.panMidY !== undefined ? el.panMidY : Math.round(py_val / 2);
         f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
         ${num('effDuration', 'Duration (s)', 5)}
         ${num('effDelay', 'Delay (s)', 0)}
-        ${num('panDist', 'Distance (px)', 50)}
-        <div class="prop-row" style="margin:0"><label>Direction</label>
-          <select data-k="panDir" title="Pan translation direction">
-            <option value="R" ${el.panDir === 'R' ? 'selected' : ''}>Right</option>
-            <option value="L" ${el.panDir === 'L' ? 'selected' : ''}>Left</option>
-            <option value="U" ${el.panDir === 'U' ? 'selected' : ''}>Up</option>
-            <option value="D" ${el.panDir === 'D' ? 'selected' : ''}>Down</option>
-          </select>
-        </div>
+        <div class="prop-row"><label>From X (px)</label><input type="number" data-k="panFromX" id="prop-pan-from-x" value="${px_val}" title="X offset for starting position of Move effect" /></div>
+        <div class="prop-row"><label>From Y (px)</label><input type="number" data-k="panFromY" id="prop-pan-from-y" value="${py_val}" title="Y offset for starting position of Move effect" /></div>
+        <div class="prop-row"><label>Rot. Offset (°)</label><input type="number" data-k="panRotate" id="prop-pan-rotate" value="${el.panRotate !== undefined ? el.panRotate : 0}" title="Rotational offset angle in degrees" /></div>
+        <div class="prop-row"><label>Curve X (px)</label><input type="number" data-k="panMidX" id="prop-pan-mid-x" value="${mx_val}" title="X offset for path control point of Move effect" /></div>
+        <div class="prop-row"><label>Curve Y (px)</label><input type="number" data-k="panMidY" id="prop-pan-mid-y" value="${my_val}" title="Y offset for path control point of Move effect" /></div>
       </div>
-      <div style="display:flex; gap:16px; margin-top:8px;">
+      <div style="display:flex; gap:16px; margin-top:8px; flex-wrap:wrap;">
         <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
-        <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once" title="Run the effect cycle only once" ${el.effOnce ? 'checked' : ''}/><label for="prop-eff-once" title="Run the effect cycle only once" style="cursor:pointer;">Perform once</label></div>
+        <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once" title="Run the effect cycle only once" ${el.effOnce !== false ? 'checked' : ''}/><label for="prop-eff-once" title="Run the effect cycle only once" style="cursor:pointer;">Perform once</label></div>
+        <div class="checkbox-row"><input type="checkbox" data-k="panFade" id="prop-pan-fade" title="Fade opacity from 0 to 1 during movement" ${el.panFade ? 'checked' : ''}/><label for="prop-pan-fade" title="Fade opacity from 0 to 1 during movement" style="cursor:pointer;">Fade</label></div>
       </div>
       </div>`);
       } else if (el.effectType === 'zoom') {
@@ -8706,7 +9133,6 @@ function renderProps() {
 
     const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
     if (state.frames.length > 1 && activeIdx > 0) {
-      f.push(`<div style="height:1px; background:var(--border-color, #272c3a); margin:16px 0;"></div>`);
       f.push(getFrameTransitionHtml(state.frames[activeIdx]));
     }
 
@@ -8930,6 +9356,7 @@ function checkButtonFontSizeWarning(el) {
         inp.value = clampNum(inp, rounded);
         updateProp(inp.dataset.k, Number(inp.value));
         syncLockRatio(inp.dataset.k);
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
         clearTimeout(inp.wheelHistTimer);
         inp.wheelHistTimer = setTimeout(() => pushHistory(), 400);
       });
@@ -9357,17 +9784,37 @@ function checkButtonFontSizeWarning(el) {
         const applyEffAnim = (tNode) => {
           const effDur = nodeEl.effDuration !== undefined ? nodeEl.effDuration : 2;
           if (val === 'pan') {
-            const dist = nodeEl.panDist !== undefined ? nodeEl.panDist : 50;
-            let px = 0, py = 0;
-            if (nodeEl.panDir === 'L') px = -dist;
-            else if (nodeEl.panDir === 'U') py = -dist;
-            else if (nodeEl.panDir === 'D') py = dist;
-            else px = dist;
+            let px = nodeEl.panFromX !== undefined ? nodeEl.panFromX : 0;
+            let py = nodeEl.panFromY !== undefined ? nodeEl.panFromY : 0;
+            if (nodeEl.panFromX === undefined && nodeEl.panFromY === undefined) {
+              const dist = nodeEl.panDist !== undefined ? nodeEl.panDist : 50;
+              if (nodeEl.panDir === 'L') px = dist;
+              else if (nodeEl.panDir === 'R') px = -dist;
+              else if (nodeEl.panDir === 'U') py = dist;
+              else if (nodeEl.panDir === 'D') py = -dist;
+              else px = dist;
+            }
+            let animName = 'eff-pan';
+            if (nodeEl.panMidX !== undefined && nodeEl.panMidY !== undefined) {
+              animName = `eff-pan-${nodeEl.id}`;
+              let styleTag = document.getElementById('dynamic-anim-styles');
+              if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'dynamic-anim-styles';
+                document.head.appendChild(styleTag);
+              }
+              const regex = new RegExp(`@keyframes\\s+eff-pan-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+              styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + getPanCurveKeyframes(nodeEl);
+            }
             tNode.style.setProperty('--pan-x', px + 'px');
             tNode.style.setProperty('--pan-y', py + 'px');
+            const rot = nodeEl.panRotate !== undefined ? nodeEl.panRotate : 0;
+            const opStart = nodeEl.panFade ? 0 : 1;
+            tNode.style.setProperty('--pan-rotate', rot + 'deg');
+            tNode.style.setProperty('--pan-opacity-start', opStart);
             const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
             const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
-            tNode.style.animation = `eff-pan ${effDur}s ${ease} 0s ${fill}`;
+            tNode.style.animation = `${animName} ${effDur}s ${ease} 0s ${fill}`;
           } else if (val === 'zoom') {
             const zt = nodeEl.zoomTarget !== undefined ? nodeEl.zoomTarget / 100 : 1.5;
             tNode.style.setProperty('--zoom-target', zt);
@@ -9454,9 +9901,16 @@ function checkButtonFontSizeWarning(el) {
     btn.addEventListener('click', () => {
       updateProp('effectType', val);
       if (val === 'pan') {
-        if (el.panDir === undefined) updateProp('panDir', 'R');
-        if (el.panDist === undefined) updateProp('panDist', 50);
+        if (el.panFromX === undefined && el.panFromY === undefined) {
+          const dist = el.panDist !== undefined ? el.panDist : 50;
+          if (el.panDir === 'L') { updateProp('panFromX', dist); updateProp('panFromY', 0); }
+          else if (el.panDir === 'R') { updateProp('panFromX', -dist); updateProp('panFromY', 0); }
+          else if (el.panDir === 'U') { updateProp('panFromX', 0); updateProp('panFromY', dist); }
+          else if (el.panDir === 'D') { updateProp('panFromX', 0); updateProp('panFromY', -dist); }
+          else { updateProp('panFromX', 0); updateProp('panFromY', -50); }
+        }
         if (el.effDuration === undefined) updateProp('effDuration', 5);
+        if (el.effOnce === undefined) updateProp('effOnce', true);
       } else if (val === 'zoom') {
         if (el.zoomTarget === undefined) updateProp('zoomTarget', 150);
         if (el.effDuration === undefined) updateProp('effDuration', 5);
@@ -9610,6 +10064,143 @@ function checkButtonFontSizeWarning(el) {
     wireFrameTransitionEvents();
   }
   initCollapsiblePanels();
+
+  // Wire Custom Styled Select Dropdowns & Preview on Hover
+  propsEl.querySelectorAll('.custom-select-trigger').forEach(trigger => {
+    trigger.onclick = (e) => {
+      e.stopPropagation();
+      const container = trigger.closest('.custom-select-container');
+      const dropdown = container.querySelector('.custom-select-dropdown');
+      const isOpen = dropdown.style.display === 'block';
+      propsEl.querySelectorAll('.custom-select-dropdown').forEach(d => {
+        if (d !== dropdown) d.style.display = 'none';
+      });
+      dropdown.style.display = isOpen ? 'none' : 'block';
+    };
+
+    trigger.onmouseenter = () => {
+      const container = trigger.closest('.custom-select-container');
+      const isFrame = container.classList.contains('frame-trans-select');
+      const key = isFrame ? container.dataset.frameK : container.dataset.k;
+      if (isFrame) {
+        const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+        if (activeIdx > 0) {
+          startFrameTransitionPreview(state.frames[activeIdx].transition || 'none');
+        }
+      } else {
+        if (key === 'animDirection') {
+          startPreviewLoop(el.animType || 'none');
+        } else if (key === 'panDir') {
+          startEffectPreview(el);
+        }
+      }
+    };
+  });
+
+  propsEl.querySelectorAll('.custom-select-item').forEach(item => {
+    const container = item.closest('.custom-select-container');
+    const isFrame = container.classList.contains('frame-trans-select');
+    const key = isFrame ? container.dataset.frameK : container.dataset.k;
+    const val = item.dataset.value;
+
+    item.onclick = (e) => {
+      e.stopPropagation();
+      container.querySelector('.custom-select-label').textContent = item.textContent.trim();
+      container.querySelector('.custom-select-dropdown').style.display = 'none';
+
+      if (isFrame) {
+        const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+        if (activeIdx > 0) {
+          const currentFrame = state.frames[activeIdx];
+          if (key === 'direction') currentFrame.transitionDirection = val;
+          else if (key === 'irisShape') currentFrame.transitionIrisShape = val;
+          else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = val;
+
+          pushHistory();
+          renderProps();
+          startFrameTransitionPreview(currentFrame.transition || 'none');
+        }
+      } else {
+        if (key === 'animDirection') {
+          if ((el.animType || '').startsWith('swipe-')) {
+            updateProp('animType', `swipe-${val}`);
+          } else {
+            updateProp('animDirection', val);
+          }
+        } else {
+          updateProp(key, val);
+        }
+        pushHistory();
+        renderProps();
+        if (key === 'animDirection') {
+          startPreviewLoop(el.animType || 'none');
+        } else if (key === 'panDir') {
+          startEffectPreview(el);
+        }
+      }
+    };
+
+    item.onmouseenter = () => {
+      if (isFrame) {
+        const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+        if (activeIdx > 0) {
+          const currentFrame = state.frames[activeIdx];
+          const origDirection = currentFrame.transitionDirection || 'left';
+          const origShape = currentFrame.transitionIrisShape || 'circle';
+          const origOrigin = currentFrame.transitionIrisOrigin || 'center';
+
+          if (key === 'direction') currentFrame.transitionDirection = val;
+          else if (key === 'irisShape') currentFrame.transitionIrisShape = val;
+          else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = val;
+
+          startFrameTransitionPreview(currentFrame.transition || 'none');
+
+          item.onmouseleave = () => {
+            if (key === 'direction') currentFrame.transitionDirection = origDirection;
+            else if (key === 'irisShape') currentFrame.transitionIrisShape = origShape;
+            else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = origOrigin;
+            startFrameTransitionPreview(currentFrame.transition || 'none');
+          };
+        }
+      } else {
+        if (el) {
+          const origType = el.animType;
+          const origDirection = el.animDirection;
+          const origPanDir = el.panDir;
+
+          if (key === 'animDirection') {
+            if ((el.animType || '').startsWith('swipe-')) {
+              el.animType = `swipe-${val}`;
+            } else {
+              el.animDirection = val;
+            }
+            startPreviewLoop(el.animType || 'none');
+          } else if (key === 'panDir') {
+            el.panDir = val;
+            startEffectPreview(el);
+          }
+
+          item.onmouseleave = () => {
+            el.animType = origType;
+            el.animDirection = origDirection;
+            el.panDir = origPanDir;
+            if (key === 'animDirection') {
+              startPreviewLoop(el.animType || 'none');
+            } else if (key === 'panDir') {
+              startEffectPreview(el);
+            }
+          };
+        }
+      }
+    };
+  });
+
+  if (!window.customSelectGlobalBound) {
+    window.customSelectGlobalBound = true;
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.custom-select-dropdown').forEach(d => d.style.display = 'none');
+    });
+  }
 }
 
 // ============================================================================
@@ -12579,16 +13170,23 @@ document.addEventListener('contextmenu', (e) => {
 
   const animBtn = e.target.closest('.anim-btn');
   const effBtn = e.target.closest('.eff-btn');
-  if (animBtn || effBtn) {
-    const isEff = !!effBtn;
-    const btn = animBtn || effBtn;
+  const frameTransBtn = e.target.closest('.frame-trans-btn');
+  if (animBtn || effBtn || frameTransBtn) {
+    const btn = animBtn || effBtn || frameTransBtn;
     const rawVal = btn.dataset.val;
     if (rawVal === 'none') return; // Cannot favorite 'None' preset
     
-    const val = isEff ? `eff-${rawVal}` : `in-${rawVal}`;
+    let val = '';
+    if (animBtn) val = `in-${rawVal}`;
+    else if (effBtn) val = `eff-${rawVal}`;
+    else if (frameTransBtn) val = `frame-${rawVal}`;
+    
     const isFav = state.favoriteAnimations?.includes(val);
     const menu = document.getElementById('ctx-menu');
-    menu.innerHTML = `<div class="ctx-item" id="ctx-toggle-fav">${isFav ? '★ Remove from Favorites' : '☆ Add to Favorites'}</div>`;
+    menu.innerHTML = `
+      <div class="ctx-item" id="ctx-toggle-fav">${isFav ? '★ Remove from Favorites' : '☆ Add to Favorites'}</div>
+      <div class="ctx-item" id="ctx-reset-settings">⟲ Reset Settings</div>
+    `;
     menu.style.display = 'flex';
     const mw = menu.offsetWidth;
     const mh = menu.offsetHeight;
@@ -12610,6 +13208,31 @@ document.addEventListener('contextmenu', (e) => {
         localStorage.setItem('favoriteAnimations', JSON.stringify(state.favoriteAnimations));
         menu.style.display = 'none';
         renderProps();
+      };
+    }
+
+    const resetBtn = document.getElementById('ctx-reset-settings');
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        const activeC = getActiveCanvas();
+        const el = activeC ? activeC.elements.find(x => x.id === state.selectedElementId) : null;
+        if (animBtn && el) {
+          const inAnimProps = ['animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset'];
+          inAnimProps.forEach(p => delete el[p]);
+        } else if (effBtn && el) {
+          const effectProps = ['effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY'];
+          effectProps.forEach(p => delete el[p]);
+        } else if (frameTransBtn) {
+          const currentFrame = state.frames.find(f => f.id === state.activeFrameId);
+          if (currentFrame) {
+            const frameProps = ['transitionDuration', 'transitionFade', 'transitionDirection', 'transitionBounce', 'transitionZoomFrom', 'transitionAngle', 'transitionIrisShape', 'transitionIrisOrigin'];
+            frameProps.forEach(p => delete currentFrame[p]);
+          }
+        }
+        pushHistory();
+        menu.style.display = 'none';
+        renderProps();
+        render(true);
       };
     }
     return;

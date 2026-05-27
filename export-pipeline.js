@@ -52,6 +52,32 @@ function getSplitClipPath(angleDeg) {
   return `polygon(${projected.join(', ')})`;
 }
 
+// Helper to calculate the keyframes for a curved motion path Move effect
+function getPanCurveKeyframes(el) {
+  const px = el.panFromX !== undefined ? el.panFromX : 0;
+  const py = el.panFromY !== undefined ? el.panFromY : -50;
+  const mx = el.panMidX !== undefined ? el.panMidX : px / 2;
+  const my = el.panMidY !== undefined ? el.panMidY : py / 2;
+  const rot = el.panRotate !== undefined ? el.panRotate : 0;
+  const opStart = el.panFade ? 0 : 1;
+  const animName = `eff-pan-${el.id}`;
+
+  let steps = [];
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20;
+    const pct = i * 5;
+    const mt = 1 - t;
+    const bx = mt * mt * px + 2 * mt * t * mx;
+    const by = mt * mt * py + 2 * mt * t * my;
+    const r = mt * rot;
+    const o = mt * opStart + t * 1.0;
+
+    steps.push(`      ${pct}% { translate: ${bx.toFixed(1)}px ${by.toFixed(1)}px; rotate: ${r.toFixed(1)}deg; opacity: ${o.toFixed(2)}; }`);
+  }
+
+  return `@keyframes ${animName} {\n${steps.join('\n')}\n    }`;
+}
+
 // Helper to calculate the keyframes for a zoom transition (with optional elastic bounce)
 function getZoomKeyframes(el) {
   const zf = el.zoomFrom !== undefined ? el.zoomFrom / 100 : 0.8;
@@ -158,7 +184,14 @@ function getFrameTransitionKeyframes(f) {
 
   if (t === 'fade') {
     keyframes = `@keyframes ${animName} { from { opacity: 0; } to { opacity: 1; } }`;
-  } else if (t.startsWith('slide') || t === 'slide') {
+  } else if (t === 'slide' || t === 'push') {
+    let transformFrom = '';
+    let transformToOut = '';
+    if (dir === 'up') { transformFrom = 'translateY(100%)'; transformToOut = 'translateY(-100%)'; }
+    else if (dir === 'down') { transformFrom = 'translateY(-100%)'; transformToOut = 'translateY(100%)'; }
+    else if (dir === 'left') { transformFrom = 'translateX(100%)'; transformToOut = 'translateX(-100%)'; }
+    else if (dir === 'right') { transformFrom = 'translateX(-100%)'; transformToOut = 'translateX(100%)'; }
+
     if (bounce) {
       keyframes = `@keyframes ${animName} {\n`;
       const d = 4.0; // damping
@@ -187,15 +220,17 @@ function getFrameTransitionKeyframes(f) {
       }
       keyframes += '    }';
     } else {
-      let transformFrom = '';
-      if (dir === 'up') transformFrom = 'translateY(100%)';
-      else if (dir === 'down') transformFrom = 'translateY(-100%)';
-      else if (dir === 'left') transformFrom = 'translateX(100%)';
-      else if (dir === 'right') transformFrom = 'translateX(-100%)';
-      
       keyframes = `@keyframes ${animName} {
         from { transform: ${transformFrom}; ${fade ? 'opacity: 0;' : ''} }
         to { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
+      }`;
+    }
+
+    if (t === 'push') {
+      const animNameOut = `anim-frame-trans-out-${f.id}`;
+      keyframes += '\n' + `@keyframes ${animNameOut} {
+        from { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
+        to { transform: ${transformToOut}; ${fade ? 'opacity: 0;' : ''} }
       }`;
     }
   } else if (t.startsWith('swipe') || t === 'swipe') {
@@ -245,6 +280,61 @@ function getFrameTransitionKeyframes(f) {
     keyframes = `@keyframes ${animName} {
       from { clip-path: ${fromPoly}; ${fade ? 'opacity: 0;' : ''} }
       to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fade ? 'opacity: 1;' : ''} }
+    }`;
+  } else if (t === 'iris') {
+    const shape = f.transitionIrisShape || 'circle';
+    const origin = f.transitionIrisOrigin || 'center';
+    let originCoords = '50% 50%';
+    if (origin === 'top-left') originCoords = '0% 0%';
+    else if (origin === 'top-right') originCoords = '100% 0%';
+    else if (origin === 'bottom-left') originCoords = '0% 100%';
+    else if (origin === 'bottom-right') originCoords = '100% 100%';
+
+    let fromClip = '';
+    let toClip = '';
+
+    if (shape === 'circle') {
+      fromClip = `circle(0% at ${originCoords})`;
+      toClip = `circle(150% at ${originCoords})`;
+    } else if (shape === 'square') {
+      if (origin === 'center') {
+        fromClip = 'inset(50%)';
+        toClip = 'inset(0%)';
+      } else if (origin === 'top-left') {
+        fromClip = 'inset(0% 100% 100% 0%)';
+        toClip = 'inset(0%)';
+      } else if (origin === 'top-right') {
+        fromClip = 'inset(0% 0% 100% 100%)';
+        toClip = 'inset(0%)';
+      } else if (origin === 'bottom-left') {
+        fromClip = 'inset(100% 100% 0% 0%)';
+        toClip = 'inset(0%)';
+      } else if (origin === 'bottom-right') {
+        fromClip = 'inset(100% 0% 0% 100%)';
+        toClip = 'inset(0%)';
+      }
+    } else if (shape === 'diamond') {
+      if (origin === 'center') {
+        fromClip = 'polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%)';
+        toClip = 'polygon(50% -100%, 200% 50%, 50% 200%, -100% 50%)';
+      } else if (origin === 'top-left') {
+        fromClip = 'polygon(0% 0%, 0% 0%, 0% 0%)';
+        toClip = 'polygon(0% 0%, 250% 0%, 0% 250%)';
+      } else if (origin === 'top-right') {
+        fromClip = 'polygon(100% 0%, 100% 0%, 100% 0%)';
+        toClip = 'polygon(100% 0%, -150% 0%, 100% 250%)';
+      } else if (origin === 'bottom-left') {
+        fromClip = 'polygon(0% 100%, 0% 100%, 0% 100%)';
+        toClip = 'polygon(0% 100%, 250% 100%, 0% -150%)';
+      } else if (origin === 'bottom-right') {
+        fromClip = 'polygon(100% 100%, 100% 100%, 100% 100%)';
+        toClip = 'polygon(100% 100%, -150% 100%, 100% -150%)';
+      }
+    }
+
+    keyframes = `@keyframes ${animName} {
+      from { clip-path: ${fromClip}; ${fade ? 'opacity: 0;' : ''} }
+      to { clip-path: ${toClip}; ${fade ? 'opacity: 1;' : ''} }
     }`;
   }
 
@@ -621,6 +711,9 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       else if (animType === 'slide-right') { tempEl.animDirection = 'right'; tempEl.animDistance = 20; }
       dynamicKeyframes += '\n' + getSlideKeyframes(tempEl);
     }
+    if (el.effectType === 'pan' && el.panMidX !== undefined && el.panMidY !== undefined && !isImageExport) {
+      dynamicKeyframes += '\n' + getPanCurveKeyframes(el);
+    }
     const { entryConfig, entryVars, effConfig, effVars } = getElementAnimationCSS(el, isImageExport);
     const openDivs = `<div style="width:100%;height:100%;${entryConfig}${entryVars}"><div style="width:100%;height:100%;${effConfig}${effVars}">`;
     const closeDivs = `</div></div>`;
@@ -904,7 +997,7 @@ ${dynamicKeyframes}
   @keyframes eff-wiggle { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
   @keyframes eff-spin { 100% { transform: rotate(var(--spin-target, 360deg)); } }
   @keyframes eff-heartbeat { 0% { transform: scale(1); } 14% { transform: scale(1.3); } 28% { transform: scale(1); } 42% { transform: scale(1.3); } 70% { transform: scale(1); } }
-  @keyframes eff-pan { 0% { translate: 0 0; } 100% { translate: var(--pan-x, 0px) var(--pan-y, 0px); } }
+  @keyframes eff-pan { 0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); opacity: var(--pan-opacity-start, 1); } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
   @keyframes eff-zoom { 0% { scale: 1; } 100% { scale: var(--zoom-target, 1.5); } }
 
   /* html/body intentionally transparent (no width/height/background).
@@ -966,11 +1059,18 @@ ${elsTop}
       var t = frames[currentFrame].transition;
       var td = (frames[currentFrame].transitionDuration || 0.5) + 's';
       var anim = '';
+      var animOut = '';
       if (t && t !== 'none') {
         anim = 'anim-frame-trans-' + frames[currentFrame].id;
+        if (t === 'push') {
+          animOut = 'anim-frame-trans-out-' + frames[currentFrame].id;
+        }
       }
       
       nextFrameEl.style.animation = anim ? (anim + ' ' + td + ' ease both') : '';
+      if (animOut) {
+        prevFrameEl.style.animation = animOut + ' ' + td + ' ease both';
+      }
       
       if (anim) {
         var transDurationMs = (frames[currentFrame].transitionDuration || 0.5) * 1000;
