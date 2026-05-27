@@ -973,7 +973,7 @@ function getCanvasBg(c, frameId) {
 function createAndLinkGroup(name) {
   const c = getActiveCanvas();
   if (!c || !state.layerSelection?.length) return;
-  const activeEl = getSelectedElement();
+  const activeEl = getSelectedElement() || (state.layerSelection?.length > 0 ? c.elements.find(x => x.id === state.layerSelection[0]) : null);
   const cat = getElementCategory(activeEl);
   if (!cat) return;
 
@@ -1187,7 +1187,7 @@ function autoAddAndLink(srcEl) {
 }
 
 function pushGroupChanges() {
-  const sourceEl = getSelectedElement();
+  const sourceEl = getSelectedElement() || (state.layerSelection?.length > 0 ? getActiveCanvas()?.elements.find(x => x.id === state.layerSelection[0]) : null);
   if (!sourceEl || !sourceEl.linkGroupId) return;
   const gid = sourceEl.linkGroupId;
   const group = state.linkGroups[gid];
@@ -3108,7 +3108,7 @@ function elementNode(el, canvasCtx) {
       }
       state.layerSelection = [targetEl.id];
       state.selectedElementId = targetEl.id;
-      render(true);
+      render();
       return;
     }
 
@@ -6971,7 +6971,20 @@ function renderProps() {
   let dynamicHtml = '';
   if (typeof dmFieldsForType === 'function') {
     const dmFields = el ? dmFieldsForType(el.type) : [];
-    if (el && el.isMask) {
+    if (state.layerSelection && state.layerSelection.length > 1) {
+      dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
+        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
+          <span>Dynamic Data</span>
+          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </h3>
+        <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.45; padding:10px 12px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:5px;">
+          <b style="color:var(--text-label);">Disabled for groups / multi-selection.</b><br>
+          Isolate the group (double-click) to configure dynamic data on individual elements.
+        </div>
+      </div>`;
+    } else if (el && el.isMask) {
       // Masks don't participate in dynamic data — show a permanent notice.
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
         <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
@@ -7743,183 +7756,198 @@ function renderProps() {
 
   // Animation section
   f.push(`</div></div>`); // end of properties section
-  f.push(`<div class="panel-section" id="panel-section-animation">
-    <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none;">
-      <span>Animation</span>
-      <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
-        <polyline points="6 9 12 15 18 9"></polyline>
-      </svg>
-    </h3>
-    <div class="panel-section-content">`);
-
-  f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>IN TRANSITIONS</label></div>`);
-
-  const animOptions = [
-    { val: 'none', label: 'None' },
-    { val: 'fade-in', label: 'Fade In' },
-    { val: 'slide-up', label: 'Slide Up' },
-    { val: 'slide-down', label: 'Slide Down' },
-    { val: 'slide-left', label: 'Slide Left' },
-    { val: 'slide-right', label: 'Slide Right' },
-    { val: 'swipe', label: 'Swipe' },
-    { val: 'pop-in', label: 'Pop In' },
-    { val: 'zoom-in', label: 'Zoom Out' }
-  ];
-  if (el.type === 'text') {
-    animOptions.push({ val: 'typing', label: 'Typing' });
-    animOptions.push({ val: 'fade-typing', label: 'Fade Typing' });
-  }
-
-  const isSwipeActive = (el.animType || 'none').startsWith('swipe-');
-
-  f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
-    ${animOptions.map(o => {
-      const isActive = o.val === 'swipe' ? isSwipeActive : o.val === (el.animType || 'none');
-      return `<button class="align-btn anim-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Transition: ${o.label}">${o.label}</button>`;
-    }).join('')}
-  </div>`);
-
-  // Seconds inputs use step=0.1 so wheel-scroll and arrow keys nudge by 0.1.
-  const secNum = (key, label, def = '') => `<div class="prop-row" style="margin:0;"><label>${label}</label><input type="number" step="0.1" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
-  f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
-    ${secNum('animDuration', 'Duration (s)')}
-    ${secNum('animDelay', 'Delay (s)')}
-  </div></div>`);
-
-  const isSwipe = (el.animType || 'none').startsWith('swipe-');
-  const currentDirection = isSwipe ? el.animType.replace('swipe-', '') : 'right';
-
-  const directionSelector = isSwipe ? `
-    <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
-      <label>Direction</label>
-      <select id="prop-swipe-direction" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Swipe direction">
-        <option value="up" ${currentDirection === 'up' ? 'selected' : ''}>Up</option>
-        <option value="down" ${currentDirection === 'down' ? 'selected' : ''}>Down</option>
-        <option value="left" ${currentDirection === 'left' ? 'selected' : ''}>Left</option>
-        <option value="right" ${currentDirection === 'right' ? 'selected' : ''}>Right</option>
-      </select>
-    </div>
-  ` : '';
-
-  const hasFadeToggle = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'swipe-up', 'swipe-down', 'swipe-left', 'swipe-right', 'pop-in', 'zoom-in'].includes(el.animType);
-  const fadeCheckbox = hasFadeToggle ? `
-    <div style="flex:1; display:flex; align-items:center; height:100%; padding-top:14px;">
-      <div class="checkbox-row" style="margin:0;">
-        <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during movement transition" ${el.animFade !== false ? 'checked' : ''}/>
-        <label for="prop-anim-fade" title="Fade in element during movement transition" style="cursor:pointer; font-size:11px;">Fade</label>
-      </div>
-    </div>
-  ` : '';
-
-  const zoomFromControl = el.animType === 'zoom-in' ? `
-    <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
-      <label>Zoom From (%)</label>
-      <input type="number" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : 110}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation zoom starting scale percentage" />
-    </div>
-  ` : '';
-
-  if (fadeCheckbox || directionSelector || zoomFromControl) {
-    f.push(`<div class="prop-row" style="margin-bottom:8px;">
-      <div class="prop-grid-2">
-        ${fadeCheckbox || '<div></div>'}
-        ${directionSelector || zoomFromControl || '<div></div>'}
+  if (state.layerSelection && state.layerSelection.length > 1) {
+    f.push(`<div class="panel-section" id="panel-section-animation">
+      <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none; color: var(--text-label);">
+        <span>Animation</span>
+        <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </h3>
+      <div class="panel-section-content" style="font-size:11px; color:var(--text-muted); line-height:1.45; padding:10px 12px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:5px; margin-top: 10px;">
+        <b style="color:var(--text-label);">Disabled for groups / multi-selection.</b><br>
+        Isolate the group (double-click) to configure animations on individual elements.
       </div>
     </div>`);
-  }
+  } else {
+    f.push(`<div class="panel-section" id="panel-section-animation">
+      <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none;">
+        <span>Animation</span>
+        <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </h3>
+      <div class="panel-section-content">`);
 
-  if (el.type === 'text' && el.hasBg && (el.animType === 'typing' || el.animType === 'fade-typing')) {
-    let animTextBgRow = '';
-    if (el.animateBg) {
-      animTextBgRow = `
-        <div class="checkbox-row" style="align-self: end; margin-bottom: 4px;">
-          <input type="checkbox" data-k="animateBg" id="prop-animate-bg" title="Animate text background block alongside typing animation" ${el.animateBg ? 'checked' : ''}/>
-          <label for="prop-animate-bg" title="Animate text background block alongside typing animation" style="cursor:pointer;">Animate text BG</label>
-        </div>
-        <div class="prop-row" style="margin: 0;">
-          <label for="prop-bg-offset" style="text-transform: none;">Time offset</label>
-          <input type="number" step="0.1" data-k="bgOffset" id="prop-bg-offset" value="${el.bgOffset !== undefined ? el.bgOffset : 0}" title="Delay offset for background block animation in seconds" />
-        </div>
-      `;
-    } else {
-      animTextBgRow = `
-        <div class="checkbox-row" style="align-self: center; margin-top: 4px;">
-          <input type="checkbox" data-k="animateBg" id="prop-animate-bg" title="Animate text background block alongside typing animation" ${el.animateBg ? 'checked' : ''}/>
-          <label for="prop-animate-bg" title="Animate text background block alongside typing animation" style="cursor:pointer;">Animate text BG</label>
-        </div>
-        <div></div>
-      `;
+    f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>IN TRANSITIONS</label></div>`);
+
+    const animOptions = [
+      { val: 'none', label: 'None' },
+      { val: 'fade-in', label: 'Fade In' },
+      { val: 'slide-up', label: 'Slide Up' },
+      { val: 'slide-down', label: 'Slide Down' },
+      { val: 'slide-left', label: 'Slide Left' },
+      { val: 'slide-right', label: 'Slide Right' },
+      { val: 'swipe', label: 'Swipe' },
+      { val: 'pop-in', label: 'Pop In' },
+      { val: 'zoom-in', label: 'Zoom Out' }
+    ];
+    if (el.type === 'text') {
+      animOptions.push({ val: 'typing', label: 'Typing' });
+      animOptions.push({ val: 'fade-typing', label: 'Fade Typing' });
     }
-    f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">${animTextBgRow}</div></div>`);
-  }
 
-  f.push(`<div style="height:1px; background:var(--border-color, #272c3a); margin:16px 0;"></div>`);
-  f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>CONTINUOUS EFFECT</label></div>`);
-  const effectOptions = [
-    { val: 'none', label: 'None' },
-    { val: 'pulse', label: 'Pulse' },
-    { val: 'float', label: 'Float' },
-    { val: 'flash', label: 'Flash' },
-    { val: 'wiggle', label: 'Wiggle' },
-    { val: 'spin', label: 'Spin' },
-    { val: 'heartbeat', label: 'Heartbeat' },
-    { val: 'pan', label: 'Pan' },
-    { val: 'zoom', label: 'Zoom' }
-  ];
-  f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:16px;">
-    ${effectOptions.map(o => `<button class="align-btn eff-btn ${o.val === (el.effectType || 'none') ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Effect: ${o.label}">${o.label}</button>`).join('')}
-  </div>`);
+    const isSwipeActive = (el.animType || 'none').startsWith('swipe-');
 
-  if (el.effectType && el.effectType !== 'none') {
-    if (el.effectType === 'pan') {
-      f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
-      ${num('effDuration', 'Duration (s)', 5)}
-      ${num('effDelay', 'Delay (s)', 0)}
-      ${num('panDist', 'Distance (px)', 50)}
-      <div class="prop-row" style="margin:0"><label>Direction</label>
-        <select data-k="panDir" title="Pan translation direction">
-          <option value="R" ${el.panDir === 'R' ? 'selected' : ''}>Right</option>
-          <option value="L" ${el.panDir === 'L' ? 'selected' : ''}>Left</option>
-          <option value="U" ${el.panDir === 'U' ? 'selected' : ''}>Up</option>
-          <option value="D" ${el.panDir === 'D' ? 'selected' : ''}>Down</option>
+    f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
+      ${animOptions.map(o => {
+        const isActive = o.val === 'swipe' ? isSwipeActive : o.val === (el.animType || 'none');
+        return `<button class="align-btn anim-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Transition: ${o.label}">${o.label}</button>`;
+      }).join('')}
+    </div>`);
+
+    // Seconds inputs use step=0.1 so wheel-scroll and arrow keys nudge by 0.1.
+    const secNum = (key, label, def = '') => `<div class="prop-row" style="margin:0;"><label>${label}</label><input type="number" step="0.1" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
+    f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
+      ${secNum('animDuration', 'Duration (s)')}
+      ${secNum('animDelay', 'Delay (s)')}
+    </div></div>`);
+
+    const isSwipe = (el.animType || 'none').startsWith('swipe-');
+    const currentDirection = isSwipe ? el.animType.replace('swipe-', '') : 'right';
+
+    const directionSelector = isSwipe ? `
+      <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
+        <label>Direction</label>
+        <select id="prop-swipe-direction" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Swipe direction">
+          <option value="up" ${currentDirection === 'up' ? 'selected' : ''}>Up</option>
+          <option value="down" ${currentDirection === 'down' ? 'selected' : ''}>Down</option>
+          <option value="left" ${currentDirection === 'left' ? 'selected' : ''}>Left</option>
+          <option value="right" ${currentDirection === 'right' ? 'selected' : ''}>Right</option>
         </select>
       </div>
-    </div>
-    <div style="display:flex; gap:16px; margin-top:8px;">
-      <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
-      <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once" title="Run the effect cycle only once" ${el.effOnce ? 'checked' : ''}/><label for="prop-eff-once" title="Run the effect cycle only once" style="cursor:pointer;">Perform once</label></div>
-    </div>
-    </div>`);
-    } else if (el.effectType === 'zoom') {
-      f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
-      ${num('effDuration', 'Duration (s)', 5)}
-      ${num('effDelay', 'Delay (s)', 0)}
-      ${num('zoomTarget', 'Target (%)', 150)}
-    </div>
-    <div style="display:flex; gap:16px; margin-top:8px;">
-      <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease-zoom" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease-zoom" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
-      <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once-zoom" title="Run the effect cycle only once" ${el.effOnce ? 'checked' : ''}/><label for="prop-eff-once-zoom" title="Run the effect cycle only once" style="cursor:pointer;">Perform once</label></div>
-    </div>
-    </div>`);
-    } else if (el.effectType === 'spin') {
-      f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
-      ${num('effDuration', 'Duration (s)', 2)}
-      ${num('effDelay', 'Delay (s)', 0)}
-      ${num('spinTarget', 'Target (deg)', 360)}
-      <div class="prop-row"><label>Repeat</label><input type="number" data-k="spinRepeat" min="1" value="${el.spinRepeat !== undefined ? el.spinRepeat : 1}" title="${propTooltips.spinRepeat || 'Repeat count'}" /></div>
-    </div>
-    <div style="display:flex; gap:16px; margin-top:8px;">
-      <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease-spin" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease-spin" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
-    </div>
-    </div>`);
-    } else {
-      f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
-      ${num('effSpeed', 'Speed (%)', 100)}
-      ${num('effDelay', 'Delay (s)', 0)}
-    </div></div>`);
-    }
-  }
+    ` : '';
 
-  f.push(`</div></div>`);
+    const hasFadeToggle = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'swipe-up', 'swipe-down', 'swipe-left', 'swipe-right', 'pop-in', 'zoom-in'].includes(el.animType);
+    const fadeCheckbox = hasFadeToggle ? `
+      <div style="flex:1; display:flex; align-items:center; height:100%; padding-top:14px;">
+        <div class="checkbox-row" style="margin:0;">
+          <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during movement transition" ${el.animFade !== false ? 'checked' : ''}/>
+          <label for="prop-anim-fade" title="Fade in element during movement transition" style="cursor:pointer; font-size:11px;">Fade</label>
+        </div>
+      </div>
+    ` : '';
+
+    const zoomFromControl = el.animType === 'zoom-in' ? `
+      <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
+        <label>Zoom From (%)</label>
+        <input type="number" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : 110}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation zoom starting scale percentage" />
+      </div>
+    ` : '';
+
+    if (fadeCheckbox || directionSelector || zoomFromControl) {
+      f.push(`<div class="prop-row" style="margin-bottom:8px;">
+        <div class="prop-grid-2">
+          ${fadeCheckbox || '<div></div>'}
+          ${directionSelector || zoomFromControl || '<div></div>'}
+        </div>
+      </div>`);
+    }
+
+    if (el.type === 'text' && el.hasBg && (el.animType === 'typing' || el.animType === 'fade-typing')) {
+      let animTextBgRow = '';
+      if (el.animateBg) {
+        animTextBgRow = `
+          <div class="checkbox-row" style="align-self: end; margin-bottom: 4px;">
+            <input type="checkbox" data-k="animateBg" id="prop-animate-bg" title="Animate text background block alongside typing animation" ${el.animateBg ? 'checked' : ''}/>
+            <label for="prop-animate-bg" title="Animate text background block alongside typing animation" style="cursor:pointer;">Animate text BG</label>
+          </div>
+          <div class="prop-row" style="margin: 0;">
+            <label for="prop-bg-offset" style="text-transform: none;">Time offset</label>
+            <input type="number" step="0.1" data-k="bgOffset" id="prop-bg-offset" value="${el.bgOffset !== undefined ? el.bgOffset : 0}" title="Delay offset for background block animation in seconds" />
+          </div>
+        `;
+      } else {
+        animTextBgRow = `
+          <div class="checkbox-row" style="align-self: center; margin-top: 4px;">
+            <input type="checkbox" data-k="animateBg" id="prop-animate-bg" title="Animate text background block alongside typing animation" ${el.animateBg ? 'checked' : ''}/>
+            <label for="prop-animate-bg" title="Animate text background block alongside typing animation" style="cursor:pointer;">Animate text BG</label>
+          </div>
+          <div></div>
+        `;
+      }
+      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">${animTextBgRow}</div></div>`);
+    }
+
+    f.push(`<div style="height:1px; background:var(--border-color, #272c3a); margin:16px 0;"></div>`);
+    f.push(`<div class="prop-row" style="margin-bottom:8px;"><label>CONTINUOUS EFFECT</label></div>`);
+    const effectOptions = [
+      { val: 'none', label: 'None' },
+      { val: 'pulse', label: 'Pulse' },
+      { val: 'float', label: 'Float' },
+      { val: 'flash', label: 'Flash' },
+      { val: 'wiggle', label: 'Wiggle' },
+      { val: 'spin', label: 'Spin' },
+      { val: 'heartbeat', label: 'Heartbeat' },
+      { val: 'pan', label: 'Pan' },
+      { val: 'zoom', label: 'Zoom' }
+    ];
+    f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:16px;">
+      ${effectOptions.map(o => `<button class="align-btn eff-btn ${o.val === (el.effectType || 'none') ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Effect: ${o.label}">${o.label}</button>`).join('')}
+    </div>`);
+
+    if (el.effectType && el.effectType !== 'none') {
+      if (el.effectType === 'pan') {
+        f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
+        ${num('effDuration', 'Duration (s)', 5)}
+        ${num('effDelay', 'Delay (s)', 0)}
+        ${num('panDist', 'Distance (px)', 50)}
+        <div class="prop-row" style="margin:0"><label>Direction</label>
+          <select data-k="panDir" title="Pan translation direction">
+            <option value="R" ${el.panDir === 'R' ? 'selected' : ''}>Right</option>
+            <option value="L" ${el.panDir === 'L' ? 'selected' : ''}>Left</option>
+            <option value="U" ${el.panDir === 'U' ? 'selected' : ''}>Up</option>
+            <option value="D" ${el.panDir === 'D' ? 'selected' : ''}>Down</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex; gap:16px; margin-top:8px;">
+        <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
+        <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once" title="Run the effect cycle only once" ${el.effOnce ? 'checked' : ''}/><label for="prop-eff-once" title="Run the effect cycle only once" style="cursor:pointer;">Perform once</label></div>
+      </div>
+      </div>`);
+      } else if (el.effectType === 'zoom') {
+        f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
+        ${num('effDuration', 'Duration (s)', 5)}
+        ${num('effDelay', 'Delay (s)', 0)}
+        ${num('zoomTarget', 'Target (%)', 150)}
+      </div>
+      <div style="display:flex; gap:16px; margin-top:8px;">
+        <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease-zoom" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease-zoom" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
+        <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once-zoom" title="Run the effect cycle only once" ${el.effOnce ? 'checked' : ''}/><label for="prop-eff-once-zoom" title="Run the effect cycle only once" style="cursor:pointer;">Perform once</label></div>
+      </div>
+      </div>`);
+      } else if (el.effectType === 'spin') {
+        f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
+        ${num('effDuration', 'Duration (s)', 2)}
+        ${num('effDelay', 'Delay (s)', 0)}
+        ${num('spinTarget', 'Target (deg)', 360)}
+        <div class="prop-row"><label>Repeat</label><input type="number" data-k="spinRepeat" min="1" value="${el.spinRepeat !== undefined ? el.spinRepeat : 1}" title="${propTooltips.spinRepeat || 'Repeat count'}" /></div>
+      </div>
+      <div style="display:flex; gap:16px; margin-top:8px;">
+        <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease-spin" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease-spin" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
+      </div>
+      </div>`);
+      } else {
+        f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
+        ${num('effSpeed', 'Speed (%)', 100)}
+        ${num('effDelay', 'Delay (s)', 0)}
+      </div></div>`);
+      }
+    }
+
+    f.push(`</div></div>`);
+  }
 
   propsEl.innerHTML = `
     ${dynamicHtml}
@@ -11707,7 +11735,7 @@ document.addEventListener('contextmenu', (e) => {
       if (hasGroup) html += `<div class="ctx-item" id="ctx-ungroup">Ungroup</div>`;
     }
 
-    const activeEl = getSelectedElement();
+    const activeEl = getSelectedElement() || (state.layerSelection?.length > 0 ? c.elements.find(x => x.id === state.layerSelection[0]) : null);
     const cat = activeEl ? getElementCategory(activeEl) : null;
     const sameCat = state.layerSelection?.every(id => {
       const el = c.elements.find(x => x.id === id);
@@ -11978,7 +12006,7 @@ document.addEventListener('contextmenu', (e) => {
     }
   });
   bind('ctx-link-autoadd', () => {
-    const activeEl = getSelectedElement();
+    const activeEl = getSelectedElement() || (state.layerSelection?.length > 0 ? getActiveCanvas()?.elements.find(x => x.id === state.layerSelection[0]) : null);
     if (activeEl) {
       autoAddAndLink(activeEl);
     }
