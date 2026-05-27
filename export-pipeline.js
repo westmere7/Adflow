@@ -1211,17 +1211,34 @@ function openExportModal() {
   };
   const activeVersionIdx = (hasVersions && dm.activeVersion != null) ? dm.activeVersion : 0;
 
+  const selectedCount = dm && dm.rows ? dm.rows.filter(r => r._selected !== false).length : 0;
+
   const tbody = state.canvases.map((c) => {
-    const html = generateExportHTML(c);
+    let html = '';
+    let ct = '';
+    const savedActive = dm ? dm.activeVersion : null;
+    if (dm && activeVersionIdx != null) dm.activeVersion = activeVersionIdx;
+    const restore = (dm && dm.enabled && dm.activeVersion != null) ? dmBakeRow(dm.activeVersion) : null;
+    try {
+      html = generateExportHTML(c);
+      const ctCol = dm ? dm.mappings['clicktag::url'] : null;
+      if (dm && ctCol && dm.rows[activeVersionIdx]) {
+        ct = dm.rows[activeVersionIdx][ctCol] || state.clickTag || 'No clickTag';
+      } else {
+        ct = state.clickTag || 'No clickTag';
+      }
+    } finally {
+      if (restore) restore();
+      if (dm) dm.activeVersion = savedActive;
+    }
     const kb = (new Blob([html]).size / 1024).toFixed(1);
-    const ct = state.clickTag || 'No clickTag';
     return `
       <tr data-cid="${c.id}">
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;"><input type="checkbox" class="export-chk" data-cid="${c.id}" checked title="Include this canvas size in the export" /></td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.name || (c.width + '×' + c.height)}</td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.width}×${c.height}</td>
-        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330; color:${kb > 150 ? '#ef4444' : '#c7ccdb'}">${kb} KB</td>
-        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330; font-family:monospace; font-size:10px; color:var(--text-label); word-break:break-all; max-width:200px;">${ct}</td>
+        <td class="exp-weight" style="padding: 6px 0; border-bottom: 1px solid #1f2330; color:${kb > 150 ? '#ef4444' : '#c7ccdb'}">${kb} KB</td>
+        <td class="exp-clicktag" style="padding: 6px 0; border-bottom: 1px solid #1f2330; font-family:monospace; font-size:10.5px; color:var(--text-label); word-break:break-all; max-width:400px;">${ct}</td>
       </tr>
     `;
   }).join('');
@@ -1230,7 +1247,7 @@ function openExportModal() {
     <!-- Header: filename, format, skip-frames toggle, version (when data
          versions exist). The filename is a build-time override only —
          it doesn't touch state.projectName. -->
-    <div style="display:grid; grid-template-columns: ${hasVersions ? '1.3fr 1fr 0.9fr' : '1.4fr 1fr'}; gap:14px; margin-bottom:14px;">
+    <div style="display:grid; grid-template-columns: ${hasVersions ? '1.2fr 1fr 1.1fr' : '1.4fr 1fr'}; gap:14px; margin-bottom:14px;">
       <div>
         <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Filename prefix</label>
         <input type="text" id="exp-filename" value="${defaultPrefix}" placeholder="${defaultPrefix}" style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; font-family:ui-monospace,Consolas,monospace;" title="Just renames the download files. Does NOT change the project name." />
@@ -1253,11 +1270,21 @@ function openExportModal() {
       ${hasVersions ? `
       <div>
         <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Data version</label>
-        <select id="exp-version" style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; outline:none; font-family:inherit;" title="Pick which data row to bake into the export, or All selected versions for one folder per row (ZIP only).">
-          ${dm.rows.map((row, i) => `<option value="${i}" ${i === activeVersionIdx ? 'selected' : ''}>${(versionLabel(i) || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</option>`).join('')}
-          <option value="all">All selected versions (separate folders)</option>
-        </select>
-        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">"All selected versions" forces HTML5 ZIP — one folder per selected data row.</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; font-weight:600; color:var(--text-main);">
+            <input type="radio" name="exp-version-mode" value="single" checked style="margin:0;" />
+            <span>Single Version</span>
+          </label>
+          <select id="exp-version" style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; outline:none; font-family:inherit; margin-left:18px; width:calc(100% - 18px);" title="Pick which data row to bake into the export.">
+            ${dm.rows.map((row, i) => `<option value="${i}" ${i === activeVersionIdx ? 'selected' : ''}>${(versionLabel(i) || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</option>`).join('')}
+          </select>
+          
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; font-weight:600; color:var(--text-main); margin-top:2px;">
+            <input type="radio" name="exp-version-mode" value="all" style="margin:0;" />
+            <span>All Selected Versions (${selectedCount})</span>
+          </label>
+        </div>
+        <div style="font-size:10px; color:var(--text-muted); margin-top:6px; line-height:1.3;">"All selected versions" forces HTML5 ZIP — one folder per selected data row.</div>
       </div>
       ` : ''}
     </div>
@@ -1275,10 +1302,10 @@ function openExportModal() {
     <table style="width:100%; text-align:left; border-collapse:collapse; font-size:13px; color:var(--text-main);">
       <thead>
         <tr>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;width:30px;"><input type="checkbox" id="chk-all" checked title="Select/deselect all canvas sizes" /></th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Name</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Size</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Est. Weight</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;width:40px;"><input type="checkbox" id="chk-all" checked title="Select/deselect all canvas sizes" /></th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:220px;">Name</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:100px;">Size</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:120px;">Est. Weight</th>
           <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Click Tag</th>
         </tr>
       </thead>
@@ -1286,19 +1313,95 @@ function openExportModal() {
     </table>
 
     <div style="margin-top: 16px; display: flex; gap: 8px; align-items:center; justify-content:flex-end;">
-      <button class="btn primary" id="btn-export-selected" title="Export the selected canvases in the chosen format using the filename above${hasVersions ? '. Honours the Data version dropdown — pick "All versions" to export every row as separate folders' : ''}">Export Selected</button>
+      <button class="btn primary" id="btn-export-selected" title="Export the selected canvases in the chosen format using the filename above. Honors version export settings.">Export Selected</button>
     </div>
   `;
 
   openModal('Export', bodyHTML, false);
 
   const modalBg = document.body.lastElementChild;
+  const modal = modalBg.querySelector('.modal');
+  if (modal) {
+    modal.style.width = '1050px';
+    modal.style.maxWidth = '92vw';
+  }
 
   const chkAll = modalBg.querySelector('#chk-all');
   const chks = modalBg.querySelectorAll('.export-chk');
   chkAll.addEventListener('change', (e) => {
     chks.forEach(chk => chk.checked = e.target.checked);
   });
+
+  const updateExportTableDetails = () => {
+    const versionModeRadio = modalBg.querySelector('input[name="exp-version-mode"]:checked');
+    const mode = versionModeRadio ? versionModeRadio.value : 'single';
+    const versionSelect = modalBg.querySelector('#exp-version');
+    
+    if (versionSelect) {
+      versionSelect.disabled = (mode === 'all');
+    }
+    
+    const versionChoice = mode === 'all' ? 'all' : (versionSelect ? versionSelect.value : null);
+    
+    let exportVersionIdx = null;
+    if (hasVersions && versionChoice !== 'all' && versionChoice !== null) {
+      const idx = parseInt(versionChoice, 10);
+      if (!isNaN(idx) && dm.rows[idx]) exportVersionIdx = idx;
+    }
+    
+    state.canvases.forEach(c => {
+      const tr = modalBg.querySelector(`tr[data-cid="${c.id}"]`);
+      if (!tr) return;
+      
+      const weightTd = tr.querySelector('.exp-weight');
+      const clicktagTd = tr.querySelector('.exp-clicktag');
+      
+      if (hasVersions && mode === 'all') {
+        if (weightTd) {
+          weightTd.textContent = '— (Varies)';
+          weightTd.style.color = 'var(--text-muted)';
+        }
+        if (clicktagTd) {
+          clicktagTd.textContent = '— (Varies)';
+        }
+      } else {
+        let html = '';
+        let ct = '';
+        
+        const savedActive = dm ? dm.activeVersion : null;
+        if (dm && exportVersionIdx != null) dm.activeVersion = exportVersionIdx;
+        const restore = (dm && dm.enabled && dm.activeVersion != null) ? dmBakeRow(dm.activeVersion) : null;
+        try {
+          html = generateExportHTML(c);
+          const ctCol = dm ? dm.mappings['clicktag::url'] : null;
+          if (dm && ctCol && dm.rows[exportVersionIdx]) {
+            ct = dm.rows[exportVersionIdx][ctCol] || state.clickTag || 'No clickTag';
+          } else {
+            ct = state.clickTag || 'No clickTag';
+          }
+        } finally {
+          if (restore) restore();
+          if (dm) dm.activeVersion = savedActive;
+        }
+        
+        const kb = (new Blob([html]).size / 1024).toFixed(1);
+        if (weightTd) {
+          weightTd.textContent = `${kb} KB`;
+          weightTd.style.color = kb > 150 ? '#ef4444' : '#c7ccdb';
+        }
+        if (clicktagTd) {
+          clicktagTd.textContent = ct;
+        }
+      }
+    });
+  };
+
+  if (hasVersions) {
+    modalBg.querySelectorAll('input[name="exp-version-mode"]').forEach(r => {
+      r.addEventListener('change', updateExportTableDetails);
+    });
+    modalBg.querySelector('#exp-version')?.addEventListener('change', updateExportTableDetails);
+  }
 
   modalBg.querySelector('#btn-export-selected').addEventListener('click', async () => {
     const selectedIds = Array.from(chks).filter(c => c.checked).map(c => c.dataset.cid);
@@ -1309,22 +1412,19 @@ function openExportModal() {
     const skipChk = modalBg.querySelector('#exp-skip-frames');
     const includeSkippedFrames = !(skipChk && skipChk.checked);
     const format = (modalBg.querySelector('input[name="exp-format"]:checked') || {}).value || 'zip';
+    
+    const versionModeRadio = modalBg.querySelector('input[name="exp-version-mode"]:checked');
+    const mode = versionModeRadio ? versionModeRadio.value : 'single';
     const versionSelect = modalBg.querySelector('#exp-version');
-    const versionChoice = versionSelect ? versionSelect.value : null; // 'all' | '<row-index>' | null
+    const versionChoice = mode === 'all' ? 'all' : (versionSelect ? versionSelect.value : null);
+    
     const selectedCanvases = selectedIds.map(id => state.canvases.find(x => x.id === id)).filter(Boolean);
 
-    // "All versions" routes to the existing dmExportAllVersions path,
-    // which already handles its own ZIP-of-folders output. PNG/format
-    // selector and filename input are ignored in this mode (matches the
-    // old standalone-button behaviour).
     if (hasVersions && versionChoice === 'all') {
       await dmExportAllVersions(selectedCanvases, filenamePrefix);
       return;
     }
 
-    // Resolve which data row to bake into the export. When the dropdown
-    // is present we honour its current value; otherwise fall back to
-    // whatever is currently active in the version switcher (or null).
     let exportVersionIdx = dmActiveRowForOutput();
     if (hasVersions && versionChoice !== null && versionChoice !== 'all') {
       const idx = parseInt(versionChoice, 10);
