@@ -182,7 +182,7 @@ function makeElement(type) {
 
 // Initial state: all 5 preset canvases pre-seeded
 const state = {
-  projectName: 'RMIT_Ad',
+  projectName: 'RMIT_ad',
   clickTag: 'https://www.rmit.edu.au/',
   frames: [{ id: 1, duration: 2 }],
   activeFrameId: 1,
@@ -191,7 +191,7 @@ const state = {
   selectedElementId: null,
   layerSelection: [],
   assetSelection: [],
-  zoom: 0.6,
+  zoom: 1.0,
   editingElementId: null,      // inline-edit (text) mode
   isolatedGroupId: null,
   assets: {
@@ -1516,12 +1516,12 @@ function render(skipProps = false) {
 
   const projectNameDisp = document.getElementById('project-name-display');
   if (projectNameDisp && document.activeElement !== projectNameDisp && projectNameDisp.contentEditable !== 'true') {
-    projectNameDisp.innerText = state.projectName || 'RMIT_Ad';
+    projectNameDisp.innerText = state.projectName || 'RMIT_ad';
   }
   // Keep the browser tab title in sync with the project name. Driven from
   // render() so every project-rename / load / new / undo path picks it up
   // automatically — no need to thread updates through each call site.
-  const desiredTitle = (state.projectName || 'RMIT_Ad') + ' - RMIT Adflow';
+  const desiredTitle = (state.projectName || 'RMIT_ad') + ' - RMIT Adflow';
   if (document.title !== desiredTitle) document.title = desiredTitle;
   const clicktagEl = document.getElementById('clicktag');
   if (clicktagEl && document.activeElement !== clicktagEl) {
@@ -1618,7 +1618,7 @@ function centerWorkspace(behavior = 'smooth') {
 
 // Show a toast offering to jump back to the user's last saved scroll position.
 // Called on startup and on Open Project, after we've already centered the view.
-function offerResumeView(savedScrollLeft, savedScrollTop) {
+function offerResumeView(savedScrollLeft, savedScrollTop, savedZoom) {
   if (savedScrollLeft === undefined || savedScrollTop === undefined) return;
   if (typeof showCanvasNotification !== 'function') return;
   showCanvasNotification('View centered.', {
@@ -1629,7 +1629,13 @@ function offerResumeView(savedScrollLeft, savedScrollTop) {
       onClick: () => {
         const area = document.getElementById('canvas-area');
         if (area && area.scrollTo) {
-          area.scrollTo({ left: savedScrollLeft, top: savedScrollTop, behavior: 'smooth' });
+          if (savedZoom !== undefined) {
+            const centerX = (savedScrollLeft + area.clientWidth / 2) / savedZoom;
+            const centerY = (savedScrollTop + area.clientHeight / 2) / savedZoom;
+            animateViewTo(savedZoom, centerX, centerY);
+          } else {
+            area.scrollTo({ left: savedScrollLeft, top: savedScrollTop, behavior: 'smooth' });
+          }
         }
       }
     }
@@ -8917,7 +8923,16 @@ window.addEventListener('keydown', (e) => {
       // if Supabase isn't configured or the user is signed out.
       if (typeof authState !== 'undefined' && authState.enabled && authState.currentUser()) {
         (async () => {
-          try { await pushCurrentProjectToCloud(); showCanvasNotification('Pushed to cloud', { type: 'success' }); }
+          try {
+            const res = await pushCurrentProjectToCloud();
+            if (res && res.collisionHandled) {
+              // handled inside
+            } else if (res && res.isFirstSave) {
+              showCanvasNotification(`"${state.projectName}" project saved to cloud`, { type: 'success' });
+            } else {
+              showCanvasNotification('Pushed to cloud', { type: 'success' });
+            }
+          }
           catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
         })();
       } else {
@@ -9317,7 +9332,7 @@ function allCanvasesCenter() {
 document.getElementById('zoom-level-display')?.addEventListener('click', () => {
   if (state.canvases.length === 0) return;
   const { x, y } = allCanvasesCenter();
-  animateViewTo(0.6, x, y);
+  animateViewTo(1.0, x, y);
 });
 
 document.getElementById('app-version-display')?.addEventListener('click', () => {
@@ -9459,13 +9474,13 @@ async function buildFlowBlob() {
     magic: 'adflow',
     version: 1,
     savedAt,
-    projectName: state.projectName || 'RMIT_Ad',
+    projectName: state.projectName || 'RMIT_ad',
     projectId: exportState.projectId
   }, null, 2));
   zip.file('project.json', JSON.stringify(exportState, null, 2));
 
   const blob = await zip.generateAsync({ type: 'blob' });
-  const projName = (state.projectName || 'RMIT_Ad').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const projName = (state.projectName || 'RMIT_ad').replace(/[^a-zA-Z0-9_-]/g, '_');
   const datePart = savedAt.slice(0, 10);
   return { blob, exportState, savedAt, suggestedName: `${projName}-${datePart}.flow` };
 }
@@ -9505,7 +9520,7 @@ const saveProjectToZip = saveProjectAsFlow;
 async function addRecentProject(exportState) {
   try {
     const recents = (await _idbGet('recents')) || [];
-    const projName = state.projectName || 'RMIT_Ad';
+    const projName = state.projectName || 'RMIT_ad';
     const filtered = recents.filter(r => r.name !== projName);
     filtered.unshift({
       name: projName,
@@ -9714,7 +9729,12 @@ async function loadProjectFromBlob(file) {
       }
     }
   }
+  const savedLeft = loadedState.viewScrollLeft;
+  const savedTop = loadedState.viewScrollTop;
+  const savedZoom = loadedState.zoom;
+
   Object.assign(state, loadedState);
+  state.zoom = 1.0;
   state.assets = newAssets || {};
   if (!state.projectId) state.projectId = uid('proj_');
   await syncRmitAssets();
@@ -9732,11 +9752,9 @@ async function loadProjectFromBlob(file) {
   render();
   // Open Project: drop into the canvas-centered view, then offer to restore
   // wherever the user last left off.
-  const savedLeft = loadedState.viewScrollLeft;
-  const savedTop = loadedState.viewScrollTop;
   setTimeout(() => {
     centerWorkspace('instant');
-    offerResumeView(savedLeft, savedTop);
+    offerResumeView(savedLeft, savedTop, savedZoom);
   }, 10);
 }
 
@@ -9940,7 +9958,7 @@ function startRenameProject() {
   selection.removeAllRanges();
   selection.addRange(range);
 
-  const originalName = state.projectName || 'RMIT_Ad';
+  const originalName = state.projectName || 'RMIT_ad';
 
   const onKeyDown = (e) => {
     if (e.key === 'Enter') {
@@ -10202,7 +10220,7 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
     return c;
   });
 
-  state.projectName = (name || 'RMIT_Ad').trim() || 'RMIT_Ad';
+  state.projectName = (name || 'RMIT_ad').trim() || 'RMIT_ad';
   state.projectId = uid('proj_');
   state.clickTag = (clickTag || 'https://www.rmit.edu.au/').trim();
   state.adSizeLimit = Math.max(1, parseInt(sizeLimitKb, 10) || 150);
@@ -10232,7 +10250,7 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
     locked: false,
     mappings: {}
   };
-  state.zoom = 0.6;
+  state.zoom = 1.0;
 
   history.length = 0;
   historyIndex = -1;
@@ -10272,7 +10290,7 @@ function openNewProjectDialog() {
       <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project name</label>
-          <input type="text" id="np-name" value="${(state.projectName || 'RMIT_Ad').replace(/"/g, '&quot;')}" title="Enter the name for the new project" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="text" id="np-name" value="${(state.projectName || 'RMIT_ad').replace(/"/g, '&quot;')}" title="Enter the name for the new project" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
@@ -10359,7 +10377,7 @@ function openProjectSettingsDialog() {
       <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project Name</label>
-          <input type="text" id="ps-name" value="${(state.projectName || 'RMIT_Ad').replace(/"/g, '&quot;')}" title="Enter the name for the project" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="text" id="ps-name" value="${(state.projectName || 'RMIT_ad').replace(/"/g, '&quot;')}" title="Enter the name for the project" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
@@ -10386,7 +10404,7 @@ function openProjectSettingsDialog() {
   bg.onclick = (e) => { if (e.target === bg) closeFn(); };
 
   bg.querySelector('#ps-save').onclick = () => {
-    const newName = bg.querySelector('#ps-name').value.trim() || 'RMIT_Ad';
+    const newName = bg.querySelector('#ps-name').value.trim() || 'RMIT_ad';
     const newClickTag = bg.querySelector('#ps-clicktag').value.trim();
     const newSizeLimit = Math.max(1, parseInt(bg.querySelector('#ps-size-limit').value, 10) || 150);
 
@@ -12211,6 +12229,15 @@ const appSplash = (() => {
   await syncRmitAssets();
   appSplash.setPhase(3);
   updateRecentProjectsMenu();
+
+  const savedLeft = restored ? state.viewScrollLeft : undefined;
+  const savedTop = restored ? state.viewScrollTop : undefined;
+  const savedZoom = restored ? state.zoom : undefined;
+
+  if (restored) {
+    state.zoom = 1.0;
+  }
+
   render();
   initCollapsiblePanels();
   appSplash.setPhase(4);
@@ -12219,8 +12246,6 @@ const appSplash = (() => {
   // Always boot to a centered view, regardless of last saved scroll. If the
   // user had a non-default position saved, offer a toast to jump back to it
   // — but only after the splash has finished so the toast isn't hidden under it.
-  const savedLeft = restored ? state.viewScrollLeft : undefined;
-  const savedTop = restored ? state.viewScrollTop : undefined;
   setTimeout(() => centerWorkspace('instant'), 10);
   // Enable autosave now that the initial state is settled, and persist the seed
   // project once if there was nothing to restore.
@@ -12239,7 +12264,7 @@ const appSplash = (() => {
     }
   }
   await appSplash.finish();
-  offerResumeView(savedLeft, savedTop);
+  offerResumeView(savedLeft, savedTop, savedZoom);
 })();
 
 

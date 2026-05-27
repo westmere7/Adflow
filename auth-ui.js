@@ -540,8 +540,14 @@ async function openCloudProjectsModal() {
     const btn = document.getElementById('cloud-push-btn');
     btn.disabled = true; btn.textContent = 'Pushing…';
     try {
-      await pushCurrentProjectToCloud({ folderId: selectedFolderId });
-      showCanvasNotification(`Pushed to ${ctxLabel}`, { type: 'success' });
+      const res = await pushCurrentProjectToCloud({ folderId: selectedFolderId });
+      if (res && res.collisionHandled) {
+        // handled inside
+      } else if (res && res.isFirstSave) {
+        showCanvasNotification(`"${state.projectName}" project saved to cloud`, { type: 'success' });
+      } else {
+        showCanvasNotification(`Pushed to ${ctxLabel}`, { type: 'success' });
+      }
       btn.disabled = false; btn.textContent = 'Push current';
       refreshProjects();
     } catch (err) {
@@ -571,7 +577,7 @@ async function pushCurrentProjectToCloud(opts = {}) {
   if (!u) throw new Error('Not signed in.');
   const spaceId = spacesState.currentId();
   const folderId = opts.folderId || null;
-  const projectName = state.projectName || 'RMIT_Ad';
+  const projectName = state.projectName || 'RMIT_ad';
 
   // Promote any local short id (e.g. "proj_xyz123") to a real UUID up-front so
   // the same value can be used as the row id, the storage filename, AND the
@@ -600,8 +606,12 @@ async function pushCurrentProjectToCloud(opts = {}) {
             { text: 'Replace', onClick: async () => {
               try {
                 state.projectId = existing.id;
-                await pushCurrentProjectToCloud({ ...opts, skipCollisionCheck: true });
-                showCanvasNotification(`Replaced "${projectName}" in the cloud`, { type: 'success' });
+                const res = await pushCurrentProjectToCloud({ ...opts, skipCollisionCheck: true });
+                if (res && res.isFirstSave) {
+                  showCanvasNotification(`"${projectName}" project saved to cloud`, { type: 'success' });
+                } else {
+                  showCanvasNotification(`Replaced "${projectName}" in the cloud`, { type: 'success' });
+                }
               } catch (err) { showCanvasNotification(`Replace failed: ${err.message || err}`, { type: 'error' }); }
               finally { resolve(); }
             }},
@@ -617,15 +627,19 @@ async function pushCurrentProjectToCloud(opts = {}) {
               state.projectId = undefined;
               try { render(); } catch (e) {}
               try {
-                await pushCurrentProjectToCloud({ ...opts, skipCollisionCheck: true });
-                showCanvasNotification(`Pushed as "${newName}"`, { type: 'success' });
+                const res = await pushCurrentProjectToCloud({ ...opts, skipCollisionCheck: true });
+                if (res && res.isFirstSave) {
+                  showCanvasNotification(`"${newName}" project saved to cloud`, { type: 'success' });
+                } else {
+                  showCanvasNotification(`Pushed as "${newName}"`, { type: 'success' });
+                }
               } catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
               finally { resolve(); }
             }}
           ]
         });
       });
-      return; // Resolution path either pushed or cancelled.
+      return { collisionHandled: true }; // Resolution path either pushed or cancelled.
     }
   }
 
@@ -642,9 +656,10 @@ async function pushCurrentProjectToCloud(opts = {}) {
   // Upsert by id — the same UUID is used as both the row id and the storage
   // filename, so updates land on the same record on every push.
   const { data: existing } = await sb.from('projects').select('id').eq('id', state.projectId).maybeSingle();
+  const isFirstSave = !existing?.id;
   if (existing?.id) {
     const { error: upd } = await sb.from('projects').update({
-      name: state.projectName || 'RMIT_Ad',
+      name: state.projectName || 'RMIT_ad',
       ad_size_limit_kb: state.adSizeLimit || 150,
       size_bytes: blob.size,
       folder_id: folderId,
@@ -658,7 +673,7 @@ async function pushCurrentProjectToCloud(opts = {}) {
       user_id: u.id,
       space_id: spaceId,
       folder_id: folderId,
-      name: state.projectName || 'RMIT_Ad',
+      name: state.projectName || 'RMIT_ad',
       ad_size_limit_kb: state.adSizeLimit || 150,
       size_bytes: blob.size,
       storage_path: path
@@ -666,6 +681,7 @@ async function pushCurrentProjectToCloud(opts = {}) {
     if (ins) { setSaveStatus('error'); throw ins; }
   }
   setSaveStatus('saved');
+  return { isFirstSave };
 }
 
 async function pullCloudProject(row) {
@@ -687,7 +703,16 @@ authState.subscribe(() => renderAuthChip());
 spacesState.subscribe(() => renderAuthChip());
 document.getElementById('menu-file-cloud')?.addEventListener('click', () => openCloudProjectsModal());
 document.getElementById('menu-file-push')?.addEventListener('click', async () => {
-  try { await pushCurrentProjectToCloud(); showCanvasNotification('Pushed to cloud', { type: 'success' }); }
+  try {
+    const res = await pushCurrentProjectToCloud();
+    if (res && res.collisionHandled) {
+      // handled inside
+    } else if (res && res.isFirstSave) {
+      showCanvasNotification(`"${state.projectName}" project saved to cloud`, { type: 'success' });
+    } else {
+      showCanvasNotification('Pushed to cloud', { type: 'success' });
+    }
+  }
   catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
 });
 

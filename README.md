@@ -4,7 +4,7 @@
 
 # RMIT Adflow
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-adflow.netlify.app-brightgreen?style=for-the-badge&logo=netlify)](https://rmit-adflow.netlify.app/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-rmit--adflow.netlify.app-brightgreen?style=for-the-badge&logo=netlify)](https://rmit-adflow.netlify.app/)
 
 A professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. RMIT Adflow eliminates the need for complex build pipelines and third-party software installations, providing a streamlined environment tailored for high-volume banner production.
 
@@ -201,7 +201,7 @@ No build tools, `npm install`, or server configuration required.
 
 ### Hosted Environment
 Access the application immediately via the live deployment:
-**[adflow.netlify.app](https://adflow.netlify.app/)**
+**[rmit-adflow.netlify.app](https://rmit-adflow.netlify.app/)**
 
 ### Local Environment
 1. **Clone the repository**
