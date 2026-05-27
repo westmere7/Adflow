@@ -1496,6 +1496,11 @@ function render(skipProps = false) {
   }
 
   document.querySelector('.app').classList.toggle('preview-lock', !!(state.isPreviewMode || state.singlePreviewId));
+
+  const isolationOutline = document.getElementById('workspace-isolation-outline');
+  if (isolationOutline) {
+    isolationOutline.style.display = state.isolatedGroupId ? 'block' : 'none';
+  }
   // workspace sizing
   const z = state.zoom || 0.6;
   workspaceEl.style.zoom = z;
@@ -2066,7 +2071,11 @@ function startGuideDrag(e, type, existingGuideId = null) {
 
 function canvasFrameNode(c) {
   const frame = document.createElement('div');
-  frame.className = 'canvas-frame' + (c.id === state.activeCanvasId ? ' active' : '');
+  let frameClass = 'canvas-frame';
+  if (c.id === state.activeCanvasId) {
+    frameClass += ' active';
+  }
+  frame.className = frameClass;
   frame.dataset.canvasId = c.id;
 
   frame.style.left = c.workspaceX + 'px';
@@ -4320,6 +4329,36 @@ canvasArea.addEventListener('mousedown', (e) => {
   }
   if (e.target !== canvasArea && e.target !== workspaceEl) return;
   if (e.button !== 0) return;
+
+  // In isolation mode, perform canvas hit-testing to select elements that lie outside the canvas bounds
+  if (state.isolatedGroupId) {
+    const c = getActiveCanvas();
+    const activeCanvasInner = c && document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas-inner`);
+    if (c && activeCanvasInner) {
+      const rect = activeCanvasInner.getBoundingClientRect();
+      const z = state.zoom || 1;
+      const clickX = (e.clientX - rect.left) / z;
+      const clickY = (e.clientY - rect.top) / z;
+
+      const groupElements = c.elements.filter(el => el.groupId === state.isolatedGroupId);
+      const hitElement = [...groupElements].reverse().find(el => {
+        if (el.hidden) return false;
+        const cx = el.x + el.width / 2;
+        const cy = el.y + el.height / 2;
+        const dx = clickX - cx;
+        const dy = clickY - cy;
+        const rad = -(el.rotation || 0) * Math.PI / 180;
+        const rx = dx * Math.cos(rad) - dy * Math.sin(rad) + cx;
+        const ry = dx * Math.sin(rad) + dy * Math.cos(rad) + cy;
+        return rx >= el.x && rx <= el.x + el.width && ry >= el.y && ry <= el.y + el.height;
+      });
+
+      if (hitElement) {
+        onElementMouseDown(e, hitElement, c);
+        return; // Select the element and do not click through or exit isolation
+      }
+    }
+  }
 
   if (state.singlePreviewId) state.singlePreviewId = null;
   if (!e.shiftKey) {

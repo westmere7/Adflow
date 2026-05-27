@@ -924,6 +924,8 @@ body.theme-navy {
 
       min-height: 0;
 
+      position: relative;
+
     }
 
 
@@ -2180,6 +2182,9 @@ body.theme-navy {
       box-shadow: 0 0 0 1.5px var(--accent-base), 0 8px 30px rgba(0, 0, 0, 0.5);
 
     }
+
+
+
 
 
 
@@ -4308,6 +4313,41 @@ input[type="checkbox"]:disabled {
 .ar-btn-settings:active {
   transform: scale(0.95);
   transition-duration: 0.07s;
+}
+
+/* Workspace Isolation Outline */
+.workspace-isolation-outline {
+  grid-column: 2;
+  grid-row: 1;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  border: 2px solid var(--accent-base);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 1000;
+  box-sizing: border-box;
+}
+
+body.fullscreen-mode .workspace-isolation-outline {
+  grid-column: 1 !important;
+}
+
+.workspace-isolation-label {
+  position: absolute;
+  top: -8px;
+  left: 20px;
+  background: var(--bg-body);
+  padding: 0 8px;
+  color: var(--accent-light);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  user-select: none;
 }
 
 
