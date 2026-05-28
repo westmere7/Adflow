@@ -14694,6 +14694,11 @@ document.addEventListener('contextmenu', (e) => {
     const autoResizeSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3H13M21 3V11M21 3L11 13M3 21H11M3 21V13M3 21L13 11"/></svg>`;
     html += `<div class="ctx-item highlight" id="ctx-canvas-auto-resize" style="display:flex; align-items:center; gap:8px;">${autoResizeSvg}Auto-Resize</div>`;
     html += `<div class="ctx-divider"></div>`;
+    html += `<div class="ctx-item" id="ctx-canvas-clone">Clone Canvas</div>`;
+    if (state.canvases.length > 1) {
+      html += `<div class="ctx-item" id="ctx-canvas-delete" style="color:#ef4444;">Delete Canvas</div>`;
+    }
+    html += `<div class="ctx-divider"></div>`;
 
     html += `<div class="ctx-item has-submenu">
       ${svgWrap(brandSvg, 'Brand Elements')}
@@ -14919,33 +14924,31 @@ document.addEventListener('contextmenu', (e) => {
       menu.style.display = 'none';
     };
   });
-  if (canvasItemNode) {
-    bind('ctx-canvas-clone', () => {
-      const id = canvasItemNode.dataset.canvasId;
-      const c = state.canvases.find(x => x.id === id);
-      if (c) {
-        const clone = JSON.parse(JSON.stringify(c));
-        clone.id = uid();
-        clone.workspaceX += 40;
-        clone.workspaceY += 40;
-        clone.elements.forEach(el => el.id = uid());
-        state.canvases.push(clone);
-        state.activeCanvasId = clone.id;
-        pushHistory();
-        render();
-      }
-    });
-    bind('ctx-canvas-delete', () => {
-      const id = canvasItemNode.dataset.canvasId;
-      if (state.canvases.length > 1) {
-        const idx = state.canvases.findIndex(x => x.id === id);
-        state.canvases.splice(idx, 1);
-        if (state.activeCanvasId === id) state.activeCanvasId = state.canvases[0].id;
-        pushHistory();
-        render();
-      }
-    });
-  }
+  bind('ctx-canvas-clone', () => {
+    const id = canvasItemNode ? canvasItemNode.dataset.canvasId : state.activeCanvasId;
+    const c = state.canvases.find(x => x.id === id);
+    if (c) {
+      const clone = JSON.parse(JSON.stringify(c));
+      clone.id = uid();
+      clone.workspaceX += 40;
+      clone.workspaceY += 40;
+      clone.elements.forEach(el => el.id = uid());
+      state.canvases.push(clone);
+      state.activeCanvasId = clone.id;
+      pushHistory();
+      render();
+    }
+  });
+  bind('ctx-canvas-delete', () => {
+    const id = canvasItemNode ? canvasItemNode.dataset.canvasId : state.activeCanvasId;
+    if (state.canvases.length > 1) {
+      const idx = state.canvases.findIndex(x => x.id === id);
+      state.canvases.splice(idx, 1);
+      if (state.activeCanvasId === id) state.activeCanvasId = state.canvases[0].id;
+      pushHistory();
+      render();
+    }
+  });
   bind('ctx-add-text', () => addElement('text'));
   bind('ctx-add-image', () => addElement('image'));
   bind('ctx-add-rect', () => addElement('rect'));
