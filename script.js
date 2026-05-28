@@ -8643,6 +8643,27 @@ function renderProps() {
             Preview
           </button>
           <div style="display:flex; gap:6px;">
+            <button id="btn-ai-resize" title="Auto-resize from selected canvas" style="
+              flex:1; padding:8px 12px; border-radius:6px; border:1px solid var(--border-light); cursor:pointer;
+              background:var(--bg-btn); color:var(--text-main); font-size:11px; font-weight:600;
+              font-family:inherit; display:flex; align-items:center; justify-content:center; gap:6px;
+              transition:border-color 0.15s; white-space:nowrap;
+            ">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3H13M21 3V11M21 3L11 13M3 21H11M3 21V13M3 21L13 11"/></svg>
+              Auto-resize
+            </button>
+            <button id="btn-ai-resize-settings" title="Auto-Resize settings — engine + behaviour + live linking" style="
+              padding:8px; border-radius:6px; border:1px solid var(--border-light); cursor:pointer;
+              background:var(--bg-btn); color:var(--text-main); display:flex; align-items:center; justify-content:center;
+              transition:border-color 0.15s;
+            ">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </button>
+          </div>
+          <div style="display:flex; gap:6px;">
             <button id="c-btn-dl-zip" title="Download this size as a zip package containing HTML and assets" style="
               flex:1; padding:7px 0; border-radius:6px; border:1px solid #272c3a; cursor:pointer;
               background:var(--bg-input); color:var(--text-main); font-size:11px; font-weight:500;
@@ -8823,6 +8844,20 @@ function renderProps() {
         state.singlePreviewId = (state.singlePreviewId === c.id) ? null : c.id;
         render();
       });
+    }
+
+    // ── Auto-resize buttons ──
+    const btnAiResize = document.getElementById('btn-ai-resize');
+    if (btnAiResize && typeof handleAutoResizeClick === 'function') {
+      btnAiResize.addEventListener('mouseenter', () => { btnAiResize.style.borderColor = 'var(--accent-base)'; });
+      btnAiResize.addEventListener('mouseleave', () => { btnAiResize.style.borderColor = 'var(--border-light)'; });
+      btnAiResize.addEventListener('click', handleAutoResizeClick);
+    }
+    const btnAiResizeSettings = document.getElementById('btn-ai-resize-settings');
+    if (btnAiResizeSettings && typeof openAutoResizeSettingsModal === 'function') {
+      btnAiResizeSettings.addEventListener('mouseenter', () => { btnAiResizeSettings.style.borderColor = 'var(--accent-base)'; });
+      btnAiResizeSettings.addEventListener('mouseleave', () => { btnAiResizeSettings.style.borderColor = 'var(--border-light)'; });
+      btnAiResizeSettings.addEventListener('click', openAutoResizeSettingsModal);
     }
 
     // ── Download ZIP button ──
@@ -13906,7 +13941,7 @@ document.addEventListener('contextmenu', (e) => {
     // Auto-Resize sits directly under Preview with the same highlight style.
     // Click forces the canvas-selection dialogue regardless of the bypass
     // setting — when the user invokes via this menu they expect to pick targets.
-    const autoResizeSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 L13.4 8.6 L18.5 10 L13.4 11.4 L12 16.5 L10.6 11.4 L5.5 10 L10.6 8.6 Z"/><path d="M19 4 L19.7 5.8 L21.5 6.5 L19.7 7.2 L19 9 L18.3 7.2 L16.5 6.5 L18.3 5.8 Z"/></svg>`;
+    const autoResizeSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3H13M21 3V11M21 3L11 13M3 21H11M3 21V13M3 21L13 11"/></svg>`;
     html += `<div class="ctx-item highlight" id="ctx-canvas-auto-resize" style="display:flex; align-items:center; gap:8px;">${autoResizeSvg}Auto-Resize</div>`;
     html += `<div class="ctx-divider"></div>`;
 
