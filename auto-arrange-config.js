@@ -66,12 +66,12 @@ const AUTO_ARRANGE_CONFIG = {
 
   // Configuration for 300x600 canvas size
   "300x600": {
-    // Safezone boundaries
+    // Safezone boundaries (Shrunk to 20px margins on all sides: Left, Right, Top, Bottom)
     safezone: {
-      minX: 15,
-      maxX: 285,
-      minY: 16,
-      maxY: 584,
+      minX: 20,
+      maxX: 280,
+      minY: 20,
+      maxY: 580,
     },
 
     // Heading placement parameters
@@ -92,29 +92,29 @@ const AUTO_ARRANGE_CONFIG = {
 
     // Brand elements: Logo quadrant coordinates
     logoCoords: {
-      TL: { x: 15,  y: 16,  w: 93, h: 33 },
-      TR: { x: 191, y: 16,  w: 93, h: 33 },
-      BL: { x: 15,  y: 551, w: 93, h: 33 },
-      BR: { x: 191, y: 551, w: 93, h: 33 }
+      TL: { x: 20,  y: 20,  w: 93, h: 33 },
+      TR: { x: 187, y: 20,  w: 93, h: 33 },
+      BL: { x: 20,  y: 547, w: 93, h: 33 },
+      BR: { x: 187, y: 547, w: 93, h: 33 }
     },
     // Brand elements: RFWN Tagline quadrant coordinates and sizing
     tagline: {
       fontSize: 11,
       coords: {
-        TL: { x: 17,  y: 16,  w: 75, h: 26 },
-        TR: { x: 219, y: 16,  w: 75, h: 26 },
-        BR: { x: 219, y: 560, w: 75, h: 26 },
-        BL: { x: 17,  y: 560, w: 75, h: 26 }
+        TL: { x: 22,  y: 20,  w: 75, h: 26 },
+        TR: { x: 203, y: 20,  w: 75, h: 26 },
+        BR: { x: 203, y: 554, w: 75, h: 26 },
+        BL: { x: 22,  y: 554, w: 75, h: 26 }
       }
     },
     // Brand elements: CRICOS quadrant coordinates and sizing
     cricos: {
       fontSize: 7,
       coords: {
-        TL: { x: 16,  y: 8,   w: 100, h: 12 },
-        TR: { x: 190, y: 8,   w: 100, h: 12 },
-        BR: { x: 190, y: 584, w: 100, h: 12 },
-        BL: { x: 16,  y: 584, w: 100, h: 12 }
+        TL: { x: 21,  y: 12,  w: 100, h: 12 },
+        TR: { x: 179, y: 12,  w: 100, h: 12 },
+        BR: { x: 179, y: 580, w: 100, h: 12 },
+        BL: { x: 21,  y: 580, w: 100, h: 12 }
       }
     }
   }
