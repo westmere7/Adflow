@@ -754,19 +754,6 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
           const animStyle = isImageExport ? '' : `opacity:0; display:inline-block; animation: anim-fade-in ${wordDur}s linear ${del}s both;`;
           return `<span style="${animStyle}">${wordContent}</span>`;
         }).join('');
-      } else if (animType === 'line-fade') {
-        const lines = (el.text || '').split('\n');
-        const totalDur = el.animDuration || 1;
-        const lineDur = 0.4;
-        const baseDelay = el.animDelay || 0;
-        const lineDelay = totalDur / Math.max(1, lines.length);
-
-        content = lines.map((l, i) => {
-          const del = (Number(baseDelay) + i * lineDelay).toFixed(3);
-          const lineContent = esc(l);
-          const animStyle = isImageExport ? '' : `opacity:0; display:block; animation: anim-fade-in ${lineDur}s linear ${del}s both;`;
-          return `<span style="${animStyle}">${lineContent || '&nbsp;'}</span>`;
-        }).join('');
       }
       const vAlignMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
       const hAlignMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
@@ -784,7 +771,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       //     share of the typing duration.
       let bgStyle = '';
       let bgDataAttrs = '';
-      const useLineBgScript = el.hasBg && el.animateBg && !isImageExport && (animType === 'typing' || animType === 'fade-typing');
+      const useLineBgScript = el.hasBg && el.animateBg && !isImageExport && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade');
       if (el.hasBg) {
         const lr = el.bgPadL !== undefined ? el.bgPadL : 8;
         const tb = el.bgPadV !== undefined ? el.bgPadV : 4;
