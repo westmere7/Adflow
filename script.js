@@ -1760,6 +1760,7 @@ function syncAdflowLogos() {
 function render(skipProps = false) {
   if (state.canvases) {
     state.canvases.forEach(sanitizeMasks);
+    state.canvases.forEach(runAuditChecks);
   }
   // Lazy role auto-assignment — fills el.role on any element missing it.
   // Short-circuits per-element when role is already set, so the cost is
@@ -8379,6 +8380,7 @@ function wireFrameTransitionEvents() {
     durInp.addEventListener('input', (e) => {
       currentFrame.transitionDuration = parseFloat(e.target.value) || 0.5;
       startFrameTransitionPreview(currentFrame.transition || 'none');
+      render(true);
     });
     durInp.addEventListener('change', () => {
       pushHistory();
@@ -8430,6 +8432,7 @@ function wireFrameTransitionEvents() {
     zfInp.addEventListener('input', (e) => {
       currentFrame.transitionZoomFrom = parseInt(e.target.value, 10) || 80;
       startFrameTransitionPreview(currentFrame.transition || 'none');
+      render(true);
     });
     zfInp.addEventListener('change', () => {
       pushHistory();
@@ -8444,6 +8447,7 @@ function wireFrameTransitionEvents() {
     angleInp.addEventListener('input', (e) => {
       currentFrame.transitionAngle = parseInt(e.target.value, 10) || 0;
       startFrameTransitionPreview(currentFrame.transition || 'none');
+      render(true);
     });
     angleInp.addEventListener('change', () => {
       pushHistory();
