@@ -162,6 +162,24 @@ body.theme-amethyst {
   --accent-dark: #4a044e;
   --text-on-accent: #ffffff;
 }
+
+body.theme-rmit-navy {
+  --bg-body: #000022;
+  --bg-panel: #00003b;
+  --bg-input: #000054;
+  --bg-btn: #0c0c66;
+  --border-light: #151578;
+  --border-btn: #222294;
+  --text-main: #cfd7f6;
+  --text-muted: #687ab8;
+  --text-bright: #ffffff;
+  --text-label: #92a2d7;
+  --accent-base: #e60028;
+  --accent-hover: #ff1a40;
+  --accent-light: #ff667e;
+  --accent-dark: #4d000a;
+  --text-on-accent: #ffffff;
+}
     @font-face {
       font-family: 'Museo';
       src: url('data/fonts/Museo300-Regular.woff2') format('woff2');

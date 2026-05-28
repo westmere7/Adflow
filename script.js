@@ -223,8 +223,6 @@ const state = {
     textSize: true,
     contrast: true,
     transitionTiming: true,
-    targetSize: true,
-    altText: true,
     infiniteMotion: true,
     cricos: true,
     logo: true,
@@ -1552,35 +1550,7 @@ function runAuditChecks(c) {
     });
   }
 
-  // D. Touch Target Size (targetSize)
-  if (settings.targetSize !== false && c.fullClickArea === false) {
-    c.elements.forEach(el => {
-      if (el.type === 'button') {
-        if ((el.width || 0) < 44 || (el.height || 0) < 44) {
-          a11yWarnings.push({
-            type: 'target-size',
-            layerId: el.id,
-            message: `Button '${el.customName || el.text}' target size (${el.width}×${el.height}px) is too small. Minimum touch target size is 44×44px.`
-          });
-        }
-      }
-    });
-  }
-
-  // E. Missing Alt Text (altText)
-  if (settings.altText !== false) {
-    c.elements.forEach(el => {
-      if (el.type === 'image') {
-        if (!el.altText || el.altText.trim() === '') {
-          a11yWarnings.push({
-            type: 'alt-text',
-            layerId: el.id,
-            message: `Image '${el.customName || el.name || 'Image'}' lacks descriptive alt text for screen readers.`
-          });
-        }
-      }
-    });
-  }
+  // Touch Target Size and Missing Alt Text checks removed
 
   // 2. Branding Compliance Checks
   // A. CRICOS Compliance (cricos)
@@ -5214,14 +5184,7 @@ function openValidatorDetails(initialCanvas) {
             <input type="checkbox" class="val-setting-chk" data-setting="transitionTiming" ${settings.transitionTiming !== false ? 'checked' : ''} />
             <span>Timing & transitions</span>
           </label>
-          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
-            <input type="checkbox" class="val-setting-chk" data-setting="targetSize" ${settings.targetSize !== false ? 'checked' : ''} />
-            <span>Touch target size</span>
-          </label>
-          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
-            <input type="checkbox" class="val-setting-chk" data-setting="altText" ${settings.altText !== false ? 'checked' : ''} />
-            <span>Missing alt text</span>
-          </label>
+
           <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
             <input type="checkbox" class="val-setting-chk" data-setting="infiniteMotion" ${settings.infiniteMotion !== false ? 'checked' : ''} />
             <span>Infinite motion</span>
@@ -12866,6 +12829,7 @@ const THEMES = [
   { id: 'amber', label: 'Amber' },
   { id: 'amethyst', label: 'Amethyst' },
   { id: 'rmit', label: 'RMIT' },
+  { id: 'rmit-navy', label: 'RMIT Navy' },
   { id: 'ocean', label: 'Ocean' },
   { id: 'navy', label: 'Navy' },
   { id: 'light', label: 'Light' },
