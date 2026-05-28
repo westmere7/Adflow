@@ -5265,6 +5265,13 @@ function openValidatorDetails(initialCanvas) {
           <div style="flex:1; min-width:0;">
             <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">ZIP File Size Limit</span>
             <span style="font-size:12px; opacity:0.8;">The compressed package must be under ${limitKb}KB. Current: ${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'Calculating...'}</span>
+            ${sizeExceeded && imageElements.length > 0 ? `
+              <div style="margin-top: 8px;">
+                <button id="val-criteria-auto-compress" class="btn primary" style="background:#10b981; color:#fff; border:none; padding:5px 12px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; height:24px; line-height:1;" title="Automatically compress all images on this canvas to WebP to fit size limit">
+                  ⚡ Auto Compress Images to Fit Limit
+                </button>
+              </div>
+            ` : ''}
           </div>
           <span style="color:${isSizePassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">${isSizePassed ? '✓ Pass' : '✗ Fail'}</span>
         </div>
@@ -5600,13 +5607,24 @@ function openValidatorDetails(initialCanvas) {
           ${sidebarHtml}
           ${settingsHtml}
         </div>
-        <div style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto; height:100%; padding-right:4px;">
+        <div style="flex:1; display:flex; flex-direction:column; gap:12px; height:100%; overflow:hidden;">
           <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
             <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright);">${focusedCanvas.width} × ${focusedCanvas.height} Details</h3>
-            <span style="font-size:12.5px; font-weight:bold; color:var(--text-label);">ZIP Size: <span style="color:${errors.some(e => e.includes('limit')) ? '#f97316' : '#10b981'}; font-size:14px;">${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'calc...'}</span></span>
+            <div style="display:flex; align-items:center; gap:12px;">
+              ${sizeExceeded && imageElements.length > 0 ? `
+                <button id="val-auto-compress" class="btn primary" style="background:#10b981; color:#fff; border:none; padding:4px 10px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:4px; height:24px; line-height:1;" title="Automatically compress all images on this canvas to WebP to fit size limit">
+                  ⚡ Auto Compress (WebP)
+                </button>
+              ` : ''}
+              <span style="font-size:12.5px; font-weight:bold; color:var(--text-label);">ZIP Size: <span style="color:${errors.some(e => e.includes('limit')) ? '#f97316' : '#10b981'}; font-size:14px;">${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'calc...'}</span></span>
+            </div>
           </div>
-          ${tabSelectorHtml}
-          ${activeContentHtml}
+          <div style="flex-shrink:0;">
+            ${tabSelectorHtml}
+          </div>
+          <div style="flex:1; overflow-y:auto; padding-right:4px; display:flex; flex-direction:column; gap:12px;">
+            ${activeContentHtml}
+          </div>
         </div>
         ${breakdownHTML}
       </div>
@@ -5734,6 +5752,43 @@ function openValidatorDetails(initialCanvas) {
         showCanvasNotification('Layer selected for troubleshooting.', { type: 'info' });
       };
     });
+
+    const triggerAutoCompress = async (btn) => {
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Compressing...';
+      btn.style.opacity = '0.7';
+      btn.style.cursor = 'not-allowed';
+      
+      try {
+        await autoCompressCanvasImages(currentId);
+        
+        const modalContainer = document.getElementById(modalId);
+        if (modalContainer) {
+          const parent = modalContainer.parentElement;
+          parent.innerHTML = generateModalContent(activeDetailsId, activeTab);
+          const newContainer = parent.querySelector(`#${modalId}`);
+          setupModalListeners(newContainer, activeDetailsId, activeTab);
+        }
+      } catch (err) {
+        console.error(err);
+        showCanvasNotification('Auto-compression failed: ' + err.message, { type: 'error' });
+        btn.disabled = false;
+        btn.textContent = originalText;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      }
+    };
+
+    const headerCompressBtn = modalEl.querySelector('#val-auto-compress');
+    if (headerCompressBtn) {
+      headerCompressBtn.onclick = () => triggerAutoCompress(headerCompressBtn);
+    }
+
+    const criteriaCompressBtn = modalEl.querySelector('#val-criteria-auto-compress');
+    if (criteriaCompressBtn) {
+      criteriaCompressBtn.onclick = () => triggerAutoCompress(criteriaCompressBtn);
+    }
 
     // Settings checkboxes
     modalEl.querySelectorAll('.val-setting-chk').forEach(chk => {
@@ -12737,6 +12792,153 @@ function queueSizeUpdate() {
     }
     renderCanvasesList();
   }, 300);
+}
+
+async function updateCanvasSizeSync(c) {
+  if (typeof JSZip === 'undefined') return;
+  let errors = [];
+  if (!state.clickTag || state.clickTag.trim() === '') {
+    errors.push('Missing clickTag URL');
+  } else {
+    try {
+      const urlStr = state.clickTag.trim();
+      const url = new URL(urlStr);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        errors.push('clickTag URL must start with http:// or https://');
+      } else if (!url.hostname.includes('.') || url.hostname.split('.').pop().length < 2) {
+        errors.push('clickTag URL must be a valid website name with domain');
+      }
+    } catch (e) {
+      errors.push('clickTag URL format is invalid (e.g. https://example.com)');
+    }
+  }
+
+  let hasMissing = false;
+  let hasExt = false;
+  c.elements.forEach(el => {
+    if (el.type === 'image') {
+      let src = state.assets[el.assetId] || el.assetId;
+      if (!src) {
+        hasMissing = true;
+      } else if (src.startsWith('http://') || src.startsWith('https://')) {
+        hasExt = true;
+      } else if (src.startsWith('data/Elements/')) {
+        // Valid local application asset
+      } else if (!state.assets[el.assetId]) {
+        hasMissing = true;
+      }
+    }
+  });
+
+  if (hasMissing) errors.push('Contains missing assets');
+  if (hasExt) errors.push('Contains external URLs (Google Ads requires local assets)');
+
+  const zip = new JSZip();
+  await dmRunExport(dmActiveRowForOutput(), async () => {
+    await addCanvasAssetsToZip(c, zip);
+    zip.file('index.html', generateExportHTML(c, zip));
+  });
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const kb = (blob.size / 1024).toFixed(1);
+
+  const limitKb = state.adSizeLimit || 150;
+  if (blob.size > limitKb * 1024) {
+    errors.push(`Filesize (${kb} KB) exceeds ${limitKb}KB limit`);
+  }
+
+  c._valKb = kb;
+  c._valErrors = errors;
+  runAuditChecks(c);
+  renderCanvasesList();
+  render();
+}
+
+async function autoCompressCanvasImages(canvasId) {
+  const canvas = state.canvases.find(c => c.id === canvasId);
+  if (!canvas) return;
+
+  const limitKb = state.adSizeLimit || 150;
+  const currentAdSize = canvas._valKb ? parseFloat(canvas._valKb) : 0;
+  
+  const imageElements = canvas.elements.filter(el => el.type === 'image');
+  if (imageElements.length === 0) {
+    showCanvasNotification('No image layers found to compress.', { type: 'warning' });
+    return;
+  }
+
+  const imageTasks = [];
+  let totalOriginalImagesSizeKB = 0;
+  for (const el of imageElements) {
+    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+    const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+    const originalDataUrl = (activeAssetId && state.assets && state.assets[activeAssetId]) || activeAssetId;
+    if (originalDataUrl) {
+      const sizeStr = await getImageSizeKB(originalDataUrl);
+      const sizeKB = parseFloat(sizeStr) || 0;
+      totalOriginalImagesSizeKB += sizeKB;
+      imageTasks.push({
+        el,
+        activeAssetId,
+        originalDataUrl,
+        originalSizeKB: sizeKB
+      });
+    }
+  }
+
+  if (imageTasks.length === 0) {
+    showCanvasNotification('No valid image data found to compress.', { type: 'warning' });
+    return;
+  }
+
+  const qualities = [90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10];
+  let optimalQuality = 10;
+
+  const scanPromises = qualities.map(async (q) => {
+    try {
+      let compSumKB = 0;
+      for (const task of imageTasks) {
+        const compressed = await compressImage(task.originalDataUrl, 'image/webp', q / 100);
+        const compSizeStr = await getImageSizeKB(compressed);
+        const compSizeKB = parseFloat(compSizeStr) || 0;
+        compSumKB += compSizeKB;
+      }
+      const estAdSize = Math.max(0, currentAdSize - totalOriginalImagesSizeKB + compSumKB);
+      return { q, estAdSize, compSumKB };
+    } catch (e) {
+      return { q, estAdSize: Infinity, compSumKB: Infinity };
+    }
+  });
+
+  const scanResults = await Promise.all(scanPromises);
+  scanResults.sort((a, b) => b.q - a.q);
+
+  const match = scanResults.find(r => r.estAdSize <= limitKb);
+  optimalQuality = match ? match.q : 10;
+
+  for (const task of imageTasks) {
+    const finalCompressed = await compressImage(task.originalDataUrl, 'image/webp', optimalQuality / 100);
+    const newId = 'img_' + uid();
+    
+    if (!state.assets) state.assets = {};
+    state.assets[newId] = finalCompressed;
+
+    if (!state.assetNames) state.assetNames = {};
+    const origName = state.assetNames && state.assetNames[task.activeAssetId] ? state.assetNames[task.activeAssetId] : (task.el.name || 'image');
+    state.assetNames[newId] = origName.replace(/\.[a-z0-9]+$/i, '') + '.webp';
+
+    const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(task.el, 'image');
+    if (_imgDyn) {
+      if (!state.dataMerge.locked) dmWriteCell(task.el, 'image', newId);
+    } else {
+      task.el.assetId = newId;
+    }
+    task.el.isCompressed = true;
+    task.el.webpQuality = optimalQuality;
+    task.el.compressionFormat = 'image/webp';
+  }
+
+  showCanvasNotification(`Compressed ${imageTasks.length} images to WebP at ${optimalQuality}% quality.`, { type: 'success' });
+  await updateCanvasSizeSync(canvas);
 }
 
 document.getElementById('menu-edit-undo').addEventListener('click', undo);
