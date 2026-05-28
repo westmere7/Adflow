@@ -85,6 +85,11 @@ const AUTO_ARRANGE_CONFIG = {
       gapBelowHeading: 4, // vertical distance between Heading and Subheading boxes
     },
 
+    // CTA Button placement parameters
+    button: {
+      gapBelowText: 8,     // vertical distance between subheading/heading box and button box
+    },
+
     // Brand elements: Logo quadrant coordinates
     logoCoords: {
       TL: { x: 15,  y: 16,  w: 93, h: 33 },

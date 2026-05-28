@@ -13124,8 +13124,16 @@ function runAutoArrange(canvasId, selectedIds) {
     const buttonEl = canvas.elements.find(el => el.role === 'cta-button');
 
     if (headingEl) {
-      const centerX = headingEl.x + headingEl.width / 2;
-      const isLeft = centerX < canvas.width / 2;
+      const distLeft = Math.abs(headingEl.x - config.safezone.minX);
+      const distRight = Math.abs((headingEl.x + headingEl.width) - config.safezone.maxX);
+      let isLeft = true;
+      if (headingEl.textAlign === 'left') {
+        isLeft = true;
+      } else if (headingEl.textAlign === 'right') {
+        isLeft = false;
+      } else {
+        isLeft = distLeft < distRight;
+      }
 
       if (isSelected(headingEl)) {
         if (isLeft) {
@@ -13252,10 +13260,19 @@ function runAutoArrange(canvasId, selectedIds) {
     const cricosEl = canvas.elements.find(el => el.role === 'cricos');
     const headingEl = canvas.elements.find(el => el.role === 'heading');
     const subheadingEl = canvas.elements.find(el => el.role === 'subheading');
+    const buttonEl = canvas.elements.find(el => el.role === 'cta-button');
 
     if (headingEl) {
-      const centerX = headingEl.x + headingEl.width / 2;
-      const isLeft = centerX < canvas.width / 2;
+      const distLeft = Math.abs(headingEl.x - config.safezone.minX);
+      const distRight = Math.abs((headingEl.x + headingEl.width) - config.safezone.maxX);
+      let isLeft = true;
+      if (headingEl.textAlign === 'left') {
+        isLeft = true;
+      } else if (headingEl.textAlign === 'right') {
+        isLeft = false;
+      } else {
+        isLeft = distLeft < distRight;
+      }
 
       if (isSelected(headingEl)) {
         if (isLeft) {
@@ -13326,6 +13343,54 @@ function runAutoArrange(canvasId, selectedIds) {
         subheadingEl.autoSize = true;
         subheadingEl.maxFontSize = config.subheading.maxFontSize;
         subheadingEl.autoArranged = true;
+        changed = true;
+      }
+
+      if (buttonEl && isSelected(buttonEl)) {
+        // Just edge alignment, LR only (respect buttonEl.width as is, do not assign from config)
+        if (isLeft) {
+          buttonEl.x = config.safezone.minX;
+        } else {
+          buttonEl.x = config.safezone.maxX - buttonEl.width;
+        }
+
+        // Resolve overlap with text boxes: push down if touching/overlapping, otherwise preserve current Y
+        let minYLimit = config.safezone.minY;
+        const gap = config.button.gapBelowText || 8;
+        if (headingEl) {
+          const minHeadingY = headingEl.y + headingEl.height + gap;
+          if (minYLimit < minHeadingY) {
+            minYLimit = minHeadingY;
+          }
+        }
+        if (subheadingEl) {
+          const minSubheadingY = subheadingEl.y + subheadingEl.height + gap;
+          if (minYLimit < minSubheadingY) {
+            minYLimit = minSubheadingY;
+          }
+        }
+
+        if (buttonEl.y < minYLimit) {
+          buttonEl.y = minYLimit;
+        }
+
+        // If outside safezone bottom boundary, push it up
+        const maxY = config.safezone.maxY;
+        if (buttonEl.y + buttonEl.height > maxY) {
+          buttonEl.y = maxY - buttonEl.height;
+          // If pushing up causes it to violate the text box boundary, clamp to minYLimit
+          if (buttonEl.y < minYLimit) {
+            buttonEl.y = minYLimit;
+            buttonEl.height = maxY - minYLimit;
+            if (buttonEl.height < 0) {
+              buttonEl.height = 0;
+            }
+          }
+        }
+
+        buttonEl.autoSize = true;
+        buttonEl.wrapText = true;
+        buttonEl.autoArranged = true;
         changed = true;
       }
     }
