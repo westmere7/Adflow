@@ -13036,13 +13036,30 @@ function solveBrandElements(canvas, present, config) {
     });
 
     // Validate cross-quadrant constraint: Logo and Tagline must be on the same horizontal half (both top, or both bottom).
-    // For 300x600 skyscraper canvas, this ensures they stay on the same shorter edge (horizontal top/bottom).
-    if (assignment.logo && assignment.tagline) {
+    // If Logo or Tagline is not selected but present on canvas, the selected one follows the existing one's half.
+    const logoOnCanvas = canvas.elements.find(el => el.role === 'rmit-logo');
+    const taglineOnCanvas = canvas.elements.find(el => el.role === 'rfwn');
+
+    let resolvedLogoIsTop = null;
+    if (assignment.logo) {
       const qLogo = assignment.logo;
+      resolvedLogoIsTop = (qLogo === 'TL' || qLogo === 'TR');
+    } else if (logoOnCanvas) {
+      const centerY = logoOnCanvas.y + logoOnCanvas.height / 2;
+      resolvedLogoIsTop = centerY < canvas.height / 2;
+    }
+
+    let resolvedTaglineIsTop = null;
+    if (assignment.tagline) {
       const qTagline = assignment.tagline;
-      const logoIsTop = (qLogo === 'TL' || qLogo === 'TR');
-      const taglineIsTop = (qTagline === 'TL' || qTagline === 'TR');
-      if (logoIsTop !== taglineIsTop) {
+      resolvedTaglineIsTop = (qTagline === 'TL' || qTagline === 'TR');
+    } else if (taglineOnCanvas) {
+      const centerY = taglineOnCanvas.y + taglineOnCanvas.height / 2;
+      resolvedTaglineIsTop = centerY < canvas.height / 2;
+    }
+
+    if (resolvedLogoIsTop !== null && resolvedTaglineIsTop !== null) {
+      if (resolvedLogoIsTop !== resolvedTaglineIsTop) {
         return; // Invalid assignment
       }
     }
@@ -13086,11 +13103,11 @@ function solveBrandElements(canvas, present, config) {
       if (item.role === 'cricos' && config.cricos) {
         el.fontSize = config.cricos.fontSize;
         el.autoSize = false;
-        el.textAlign = 'left';
+        el.textAlign = config.cricos.textAlign || 'left';
       } else if (item.role === 'tagline' && config.tagline) {
         el.fontSize = config.tagline.fontSize;
         el.autoSize = false;
-        el.textAlign = 'left';
+        el.textAlign = config.tagline.textAlign || 'left';
       }
 
       if (el.locked) delete el.locked;
@@ -13262,31 +13279,23 @@ function runAutoArrange(canvasId, selectedIds) {
     const subheadingEl = canvas.elements.find(el => el.role === 'subheading');
     const buttonEl = canvas.elements.find(el => el.role === 'cta-button');
 
+    let headingJustification = 'center';
     if (headingEl) {
-      const distLeft = Math.abs(headingEl.x - config.safezone.minX);
-      const distRight = Math.abs((headingEl.x + headingEl.width) - config.safezone.maxX);
-      let isLeft = true;
       if (headingEl.textAlign === 'left') {
-        isLeft = true;
+        headingJustification = 'left';
       } else if (headingEl.textAlign === 'right') {
-        isLeft = false;
+        headingJustification = 'right';
+      } else if (headingEl.textAlign === 'center') {
+        headingJustification = 'center';
       } else {
-        isLeft = distLeft < distRight;
+        const distLeft = Math.abs(headingEl.x - config.safezone.minX);
+        const distRight = Math.abs((headingEl.x + headingEl.width) - config.safezone.maxX);
+        headingJustification = distLeft < distRight ? 'left' : 'right';
       }
 
       if (isSelected(headingEl)) {
-        if (isLeft) {
-          headingEl.x = config.safezone.minX;
-          if (headingEl.x + headingEl.width > config.safezone.maxX) {
-            headingEl.width = config.safezone.maxX - headingEl.x;
-          }
-        } else {
-          headingEl.x = config.safezone.maxX - headingEl.width;
-          if (headingEl.x < config.safezone.minX) {
-            headingEl.x = config.safezone.minX;
-            headingEl.width = config.safezone.maxX - config.safezone.minX;
-          }
-        }
+        headingEl.x = config.safezone.minX;
+        headingEl.width = config.safezone.maxX - config.safezone.minX;
 
         // Vertical clamping to safezone
         const minY = config.safezone.minY;
@@ -13304,58 +13313,200 @@ function runAutoArrange(canvasId, selectedIds) {
 
         headingEl.autoSize = true;
         headingEl.maxFontSize = config.heading.maxFontSize;
-        headingEl.textAlign = isLeft ? 'left' : 'right';
+        headingEl.textAlign = headingJustification;
         headingEl.autoArranged = true;
         changed = true;
       }
+    } else {
+      headingJustification = 'center';
+    }
 
-      if (subheadingEl && isSelected(subheadingEl)) {
-        subheadingEl.textAlign = isLeft ? 'left' : 'right';
-        if (isLeft) {
-          subheadingEl.x = config.safezone.minX;
-          if (subheadingEl.x + subheadingEl.width > config.safezone.maxX) {
-            subheadingEl.width = config.safezone.maxX - subheadingEl.x;
-          }
-        } else {
-          subheadingEl.x = config.safezone.maxX - subheadingEl.width;
-          if (subheadingEl.x < config.safezone.minX) {
-            subheadingEl.x = config.safezone.minX;
-            subheadingEl.width = config.safezone.maxX - config.safezone.minX;
-          }
-        }
+    if (subheadingEl && isSelected(subheadingEl)) {
+      subheadingEl.x = config.safezone.minX;
+      subheadingEl.width = config.safezone.maxX - config.safezone.minX;
 
-        // Stack right under heading's box
-        subheadingEl.y = headingEl.y + headingEl.height + config.subheading.gapBelowHeading;
+      const subGap = config.subheading.gapBelowHeading || 4;
+      const minY = config.safezone.minY;
+      const maxY = config.safezone.maxY;
+      const minSubY = headingEl ? (headingEl.y + headingEl.height + subGap) : minY;
 
-        // Fit entirely within vertical safezone
-        const minY = config.safezone.minY;
-        const maxY = config.safezone.maxY;
-        if (subheadingEl.y < minY) {
-          subheadingEl.y = minY;
-        }
-        if (subheadingEl.y + subheadingEl.height > maxY) {
-          subheadingEl.height = maxY - subheadingEl.y;
+      if (subheadingEl.y < minSubY) {
+        subheadingEl.y = minSubY;
+      }
+      if (subheadingEl.y + subheadingEl.height > maxY) {
+        subheadingEl.y = maxY - subheadingEl.height;
+        if (subheadingEl.y < minSubY) {
+          subheadingEl.y = minSubY;
+          subheadingEl.height = maxY - minSubY;
           if (subheadingEl.height < 0) {
             subheadingEl.height = 0;
           }
         }
-
-        subheadingEl.autoSize = true;
-        subheadingEl.maxFontSize = config.subheading.maxFontSize;
-        subheadingEl.autoArranged = true;
-        changed = true;
       }
 
-      if (buttonEl && isSelected(buttonEl)) {
-        // Just edge alignment, LR only (respect buttonEl.width as is, do not assign from config)
-        if (isLeft) {
-          buttonEl.x = config.safezone.minX;
+      subheadingEl.autoSize = true;
+      subheadingEl.maxFontSize = config.subheading.maxFontSize;
+      subheadingEl.textAlign = headingJustification;
+      subheadingEl.autoArranged = true;
+      changed = true;
+    }
+
+    if (buttonEl && isSelected(buttonEl)) {
+      buttonEl.x = config.safezone.minX;
+      buttonEl.width = config.safezone.maxX - config.safezone.minX;
+
+      // Resolve overlap with text boxes: push down if touching/overlapping, otherwise preserve current Y
+      let minYLimit = config.safezone.minY;
+      const gap = config.button.gapBelowText || 8;
+      if (headingEl) {
+        const minHeadingY = headingEl.y + headingEl.height + gap;
+        if (minYLimit < minHeadingY) {
+          minYLimit = minHeadingY;
+        }
+      }
+      if (subheadingEl) {
+        const minSubheadingY = subheadingEl.y + subheadingEl.height + gap;
+        if (minYLimit < minSubheadingY) {
+          minYLimit = minSubheadingY;
+        }
+      }
+
+      if (buttonEl.y < minYLimit) {
+        buttonEl.y = minYLimit;
+      }
+
+      // If outside safezone bottom boundary, push it up (Ignore button height, clamp only position to minYLimit to avoid overlap)
+      const maxY = config.safezone.maxY;
+      if (buttonEl.y + buttonEl.height > maxY) {
+        buttonEl.y = maxY - buttonEl.height;
+        // If pushing up causes it to violate the text box boundary, clamp to minYLimit (do not shrink button height)
+        if (buttonEl.y < minYLimit) {
+          buttonEl.y = minYLimit;
+        }
+      }
+
+      buttonEl.autoSize = true;
+      buttonEl.wrapText = true;
+      buttonEl.textAlign = headingJustification;
+      buttonEl.autoArranged = true;
+      changed = true;
+    }
+
+    const present = [];
+    if (logoEl && isSelected(logoEl)) present.push({ el: logoEl, role: 'logo', priority: 1, costWeight: 100 });
+    if (taglineEl && isSelected(taglineEl) && config.tagline) present.push({ el: taglineEl, role: 'tagline', priority: 2, costWeight: 10 });
+    if (cricosEl && isSelected(cricosEl) && config.cricos) present.push({ el: cricosEl, role: 'cricos', priority: 3, costWeight: 1 });
+
+    if (solveBrandElements(canvas, present, config)) {
+      changed = true;
+    }
+  } else if (canvas.width === 160 && canvas.height === 600) {
+    const config = AUTO_ARRANGE_CONFIG["160x600"];
+
+    const logoEl = canvas.elements.find(el => el.role === 'rmit-logo');
+    const taglineEl = canvas.elements.find(el => el.role === 'rfwn');
+    const cricosEl = canvas.elements.find(el => el.role === 'cricos');
+    const headingEl = canvas.elements.find(el => el.role === 'heading');
+    const subheadingEl = canvas.elements.find(el => el.role === 'subheading');
+    const buttonEl = canvas.elements.find(el => el.role === 'cta-button');
+
+    // Dynamically calculate vertical safezone based on brand element placement
+    let minY = config.safezone.minY;
+    let maxY = config.safezone.maxY;
+    canvas.elements.forEach(el => {
+      if (el.role === 'rmit-logo' || el.role === 'rfwn') {
+        if (el.y + el.height < canvas.height / 2) {
+          minY = Math.max(minY, el.y + el.height + 12);
         } else {
-          buttonEl.x = config.safezone.maxX - buttonEl.width;
+          maxY = Math.min(maxY, el.y - 12);
+        }
+      }
+    });
+
+    const hasBrandMaster = !!(logoEl || taglineEl || cricosEl);
+
+    let headingJustification = 'center';
+    if (headingEl) {
+      if (headingEl.textAlign === 'left') {
+        headingJustification = 'left';
+      } else if (headingEl.textAlign === 'right') {
+        headingJustification = 'right';
+      } else if (headingEl.textAlign === 'center') {
+        headingJustification = 'center';
+      } else {
+        const distLeft = Math.abs(headingEl.x - config.safezone.minX);
+        const distRight = Math.abs((headingEl.x + headingEl.width) - config.safezone.maxX);
+        headingJustification = distLeft < distRight ? 'left' : 'right';
+      }
+
+      if (isSelected(headingEl)) {
+        // Full width within safezone
+        headingEl.x = config.safezone.minX;
+        headingEl.width = config.safezone.maxX - config.safezone.minX;
+
+        // Vertical clamping to dynamic safezone (only if brand master is present)
+        if (hasBrandMaster) {
+          if (headingEl.y < minY) {
+            headingEl.y = minY;
+          }
+          if (headingEl.y + headingEl.height > maxY) {
+            headingEl.y = maxY - headingEl.height;
+            if (headingEl.y < minY) {
+              headingEl.y = minY;
+              headingEl.height = maxY - minY;
+            }
+          }
         }
 
-        // Resolve overlap with text boxes: push down if touching/overlapping, otherwise preserve current Y
-        let minYLimit = config.safezone.minY;
+        headingEl.autoSize = true;
+        headingEl.maxFontSize = config.heading.maxFontSize;
+        headingEl.textAlign = headingJustification;
+        headingEl.autoArranged = true;
+        changed = true;
+      }
+    } else {
+      headingJustification = 'center';
+    }
+
+    if (subheadingEl && isSelected(subheadingEl)) {
+      // Full width within safezone
+      subheadingEl.x = config.safezone.minX;
+      subheadingEl.width = config.safezone.maxX - config.safezone.minX;
+
+      if (hasBrandMaster) {
+        const subGap = config.subheading.gapBelowHeading || 4;
+        const minSubY = headingEl ? (headingEl.y + headingEl.height + subGap) : minY;
+
+        if (subheadingEl.y < minSubY) {
+          subheadingEl.y = minSubY;
+        }
+        if (subheadingEl.y + subheadingEl.height > maxY) {
+          subheadingEl.y = maxY - subheadingEl.height;
+          if (subheadingEl.y < minSubY) {
+            subheadingEl.y = minSubY;
+            subheadingEl.height = maxY - minSubY;
+            if (subheadingEl.height < 0) {
+              subheadingEl.height = 0;
+            }
+          }
+        }
+      }
+
+      subheadingEl.autoSize = true;
+      subheadingEl.maxFontSize = config.subheading.maxFontSize;
+      subheadingEl.textAlign = headingJustification;
+      subheadingEl.autoArranged = true;
+      changed = true;
+    }
+
+    if (buttonEl && isSelected(buttonEl)) {
+      // Full width within safezone
+      buttonEl.x = config.safezone.minX;
+      buttonEl.width = config.safezone.maxX - config.safezone.minX;
+
+      if (hasBrandMaster) {
+        // Resolve overlap with text boxes: push down if touching/overlapping, otherwise preserve Y
+        let minYLimit = minY;
         const gap = config.button.gapBelowText || 8;
         if (headingEl) {
           const minHeadingY = headingEl.y + headingEl.height + gap;
@@ -13374,25 +13525,21 @@ function runAutoArrange(canvasId, selectedIds) {
           buttonEl.y = minYLimit;
         }
 
-        // If outside safezone bottom boundary, push it up
-        const maxY = config.safezone.maxY;
+        // If outside dynamic safezone bottom boundary, push it up (Ignore button height, clamp only position to minYLimit to avoid overlap)
         if (buttonEl.y + buttonEl.height > maxY) {
           buttonEl.y = maxY - buttonEl.height;
-          // If pushing up causes it to violate the text box boundary, clamp to minYLimit
+          // If pushing up causes it to violate the text box boundary, clamp to minYLimit (do not shrink button height)
           if (buttonEl.y < minYLimit) {
             buttonEl.y = minYLimit;
-            buttonEl.height = maxY - minYLimit;
-            if (buttonEl.height < 0) {
-              buttonEl.height = 0;
-            }
           }
         }
-
-        buttonEl.autoSize = true;
-        buttonEl.wrapText = true;
-        buttonEl.autoArranged = true;
-        changed = true;
       }
+
+      buttonEl.autoSize = true;
+      buttonEl.wrapText = true;
+      buttonEl.textAlign = headingJustification;
+      buttonEl.autoArranged = true;
+      changed = true;
     }
 
     const present = [];
@@ -13401,6 +13548,41 @@ function runAutoArrange(canvasId, selectedIds) {
     if (cricosEl && isSelected(cricosEl) && config.cricos) present.push({ el: cricosEl, role: 'cricos', priority: 3, costWeight: 1 });
 
     if (solveBrandElements(canvas, present, config)) {
+      changed = true;
+    }
+  } else if (canvas.width === 728 && canvas.height === 90) {
+    const config = AUTO_ARRANGE_CONFIG["728x90"];
+
+    const logoEl = canvas.elements.find(el => el.role === 'rmit-logo');
+    const taglineEl = canvas.elements.find(el => el.role === 'rfwn');
+    const cricosEl = canvas.elements.find(el => el.role === 'cricos');
+
+    if (logoEl && isSelected(logoEl)) {
+      logoEl.x = 607;
+      logoEl.y = 8;
+      logoEl.width = 113;
+      logoEl.height = 40;
+      logoEl.autoArranged = true;
+      changed = true;
+    }
+
+    if (taglineEl && isSelected(taglineEl)) {
+      taglineEl.x = 630;
+      taglineEl.y = 72;
+      taglineEl.width = 90;
+      taglineEl.height = 10;
+      taglineEl.fontSize = 8;
+      taglineEl.autoArranged = true;
+      changed = true;
+    }
+
+    if (cricosEl && isSelected(cricosEl)) {
+      cricosEl.x = 3;
+      cricosEl.y = 77;
+      cricosEl.width = 106;
+      cricosEl.height = 10;
+      cricosEl.fontSize = 7;
+      cricosEl.autoArranged = true;
       changed = true;
     }
   }

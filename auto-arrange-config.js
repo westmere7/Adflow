@@ -97,14 +97,14 @@ const AUTO_ARRANGE_CONFIG = {
       BL: { x: 20,  y: 547, w: 93, h: 33 },
       BR: { x: 187, y: 547, w: 93, h: 33 }
     },
-    // Brand elements: RFWN Tagline quadrant coordinates and sizing
+    // Brand elements: RFWN Tagline quadrant coordinates and sizing (adjusted to w: 63, h: 22)
     tagline: {
       fontSize: 11,
       coords: {
-        TL: { x: 22,  y: 20,  w: 75, h: 26 },
-        TR: { x: 203, y: 20,  w: 75, h: 26 },
-        BR: { x: 203, y: 554, w: 75, h: 26 },
-        BL: { x: 22,  y: 554, w: 75, h: 26 }
+        TL: { x: 22,  y: 20,  w: 63, h: 22 },
+        TR: { x: 215, y: 20,  w: 63, h: 22 },
+        BR: { x: 215, y: 558, w: 63, h: 22 },
+        BL: { x: 22,  y: 558, w: 63, h: 22 }
       }
     },
     // Brand elements: CRICOS quadrant coordinates and sizing
@@ -115,6 +115,88 @@ const AUTO_ARRANGE_CONFIG = {
         TR: { x: 179, y: 12,  w: 100, h: 12 },
         BR: { x: 179, y: 580, w: 100, h: 12 },
         BL: { x: 21,  y: 580, w: 100, h: 12 }
+      }
+    }
+  },
+
+  // Configuration for 160x600 canvas size
+  "160x600": {
+    // Safezone boundaries (19px horizontal margin, 15px vertical margin)
+    safezone: {
+      minX: 19,
+      maxX: 141,
+      minY: 15,
+      maxY: 585,
+    },
+
+    // Heading placement parameters
+    heading: {
+      maxFontSize: 24,
+    },
+
+    // Subheading placement parameters
+    subheading: {
+      maxFontSize: 18,
+      gapBelowHeading: 4, // vertical distance between Heading and Subheading boxes
+    },
+
+    // CTA Button placement parameters
+    button: {
+      gapBelowText: 8,     // vertical distance between subheading/heading box and button box
+    },
+
+    // Brand elements: Logo quadrant coordinates (T/B sets mapped to TL/TR and BL/BR)
+    logoCoords: {
+      TL: { x: 19,  y: 15,  w: 113, h: 40 },
+      TR: { x: 19,  y: 15,  w: 113, h: 40 },
+      BL: { x: 19,  y: 526, w: 113, h: 40 },
+      BR: { x: 19,  y: 526, w: 113, h: 40 }
+    },
+    // Brand elements: RFWN Tagline quadrant coordinates and sizing
+    tagline: {
+      fontSize: 9,
+      textAlign: 'center',
+      coords: {
+        TL: { x: 19,  y: 62,  w: 123, h: 15 },
+        TR: { x: 19,  y: 62,  w: 123, h: 15 },
+        BL: { x: 19,  y: 573, w: 123, h: 15 },
+        BR: { x: 19,  y: 573, w: 123, h: 15 }
+      }
+    },
+    // Brand elements: CRICOS quadrant coordinates and sizing (adjusted to size 8, center just., B: 19/582/122/10, T: 19/13/122/10)
+    cricos: {
+      fontSize: 8,
+      textAlign: 'center',
+      coords: {
+        TL: { x: 19,  y: 13,  w: 122, h: 10 },
+        TR: { x: 19,  y: 13,  w: 122, h: 10 },
+        BL: { x: 19,  y: 582, w: 122, h: 10 },
+        BR: { x: 19,  y: 582, w: 122, h: 10 }
+      }
+    }
+  },
+
+  // Configuration for 728x90 canvas size
+  "728x90": {
+    safezone: {
+      minX: 10,
+      maxX: 718,
+      minY: 10,
+      maxY: 80,
+    },
+    logoCoords: {
+      TL: { x: 607, y: 8, w: 113, h: 40 }
+    },
+    tagline: {
+      fontSize: 8,
+      coords: {
+        TL: { x: 630, y: 72, w: 90, h: 10 }
+      }
+    },
+    cricos: {
+      fontSize: 7,
+      coords: {
+        TL: { x: 3, y: 77, w: 106, h: 10 }
       }
     }
   }
