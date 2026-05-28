@@ -866,7 +866,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
           }
         }
       }
-      return `    <div style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="" />${closeDivs}</div>`;
+      return `    <div style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="${esc(el.altText || '')}" />${closeDivs}</div>`;
     }
     return '';
   };

@@ -219,6 +219,18 @@ const state = {
   assetFolders: [],      // folders organizing the Assets panel (1 level deep)
   favoriteAnimations: JSON.parse(localStorage.getItem('favoriteAnimations') || '[]'),
   filterFavorites: false,
+  validationSettings: {
+    textSize: true,
+    contrast: true,
+    transitionTiming: true,
+    targetSize: true,
+    altText: true,
+    infiniteMotion: true,
+    cricos: true,
+    logo: true,
+    brandColors: true,
+    brandFonts: true
+  },
   // Data-merge / versioning: bind named element "slots" to spreadsheet columns so a
   // single template produces one finished ad set per row (e.g. one per RMIT course).
   dataMerge: {
@@ -363,7 +375,8 @@ function pushHistory() {
     guides:            state.guides,
     linkGroups:        state.linkGroups,
     dataMerge:         state.dataMerge,
-    projectName:       state.projectName
+    projectName:       state.projectName,
+    validationSettings: state.validationSettings
   });
   // Skip exact duplicates (e.g. a no-op drag).
   if (historyIndex >= 0 && history[historyIndex] === snapshot) return;
@@ -615,6 +628,7 @@ function restoreSnapshot(snapStr) {
     if (snap.activeFrameId !== undefined) state.activeFrameId = snap.activeFrameId;
     if (snap.dataMerge     !== undefined) state.dataMerge     = snap.dataMerge;
     if (snap.projectName   !== undefined) state.projectName   = snap.projectName;
+    if (snap.validationSettings !== undefined) state.validationSettings = snap.validationSettings;
     state.editingElementId = null;
     render();
   } finally {
@@ -1396,6 +1410,285 @@ function hexToRgba(hex, alpha) {
   const g = parseInt(h.substr(2, 2), 16);
   const b = parseInt(h.substr(4, 2), 16);
   return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function parseColorToRGB(colorStr) {
+  if (!colorStr) return null;
+  let str = String(colorStr).trim().toLowerCase();
+  if (str.startsWith('#')) {
+    let h = str.substring(1);
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    if (h.length === 6 || h.length === 8) {
+      const r = parseInt(h.substring(0, 2), 16);
+      const g = parseInt(h.substring(2, 4), 16);
+      const b = parseInt(h.substring(4, 6), 16);
+      return [r, g, b];
+    }
+  } else if (str.startsWith('rgb')) {
+    const m = str.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (m) {
+      return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)];
+    }
+  }
+  return null;
+}
+
+function getColorDistance(rgb1, rgb2) {
+  if (!rgb1 || !rgb2) return Infinity;
+  const dr = rgb1[0] - rgb2[0];
+  const dg = rgb1[1] - rgb2[1];
+  const db = rgb1[2] - rgb2[2];
+  return Math.sqrt(dr * dr + dg * dg + db * db);
+}
+
+function getLuminance(r, g, b) {
+  const a = [r, g, b].map(function (v) {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+}
+
+function getContrastRatio(rgb1, rgb2) {
+  const l1 = getLuminance(rgb1[0], rgb1[1], rgb1[2]);
+  const l2 = getLuminance(rgb2[0], rgb2[1], rgb2[2]);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+function runAuditChecks(c) {
+  if (!c) return;
+  const a11yWarnings = [];
+  const brandWarnings = [];
+  const settings = state.validationSettings || {};
+
+  // 1. Accessibility Checks
+  // A. Tiny Text Legibility (textSize)
+  if (settings.textSize !== false) {
+    c.elements.forEach(el => {
+      if (el.type === 'text') {
+        const computedSize = el.autoSize && typeof calculateAutoSize === 'function'
+          ? calculateAutoSize(el, el.text)
+          : (el.fontSize || 14);
+        if (computedSize < 10) {
+          a11yWarnings.push({
+            type: 'text-size',
+            layerId: el.id,
+            message: `Text layer '${el.customName || el.text}' is too small (${computedSize}px). Minimum readable font size is 10px.`
+          });
+        }
+      }
+    });
+  }
+
+  // B. Color Contrast (contrast)
+  if (settings.contrast !== false) {
+    c.elements.forEach(el => {
+      if (el.type === 'text') {
+        const textRGB = parseColorToRGB(el.color || '#ffffff');
+        const bgRGB = parseColorToRGB(el.hasBg ? (el.bg || '#000000') : (c.bgColor || state.defaultBg || '#0f172a'));
+        if (textRGB && bgRGB) {
+          const ratio = getContrastRatio(textRGB, bgRGB);
+          const computedSize = el.autoSize && typeof calculateAutoSize === 'function'
+            ? calculateAutoSize(el, el.text)
+            : (el.fontSize || 14);
+          const requiredRatio = computedSize >= 18 ? 3.0 : 4.5;
+          if (ratio < requiredRatio) {
+            a11yWarnings.push({
+              type: 'contrast',
+              layerId: el.id,
+              message: `Text layer '${el.customName || el.text}' has low contrast (${ratio.toFixed(1)}:1). WCAG AA requires ${requiredRatio.toFixed(1)}:1 (${computedSize >= 18 ? 'large' : 'normal'} text).`
+            });
+          }
+        }
+      } else if (el.type === 'button') {
+        const textRGB = parseColorToRGB(el.color || '#ffffff');
+        const bgRGB = parseColorToRGB(el.bg || '#7c5cff');
+        if (textRGB && bgRGB) {
+          const ratio = getContrastRatio(textRGB, bgRGB);
+          const requiredRatio = (el.fontSize || 14) >= 18 ? 3.0 : 4.5;
+          if (ratio < requiredRatio) {
+            a11yWarnings.push({
+              type: 'contrast',
+              layerId: el.id,
+              message: `Button '${el.customName || el.text}' has low contrast (${ratio.toFixed(1)}:1). WCAG AA requires ${requiredRatio.toFixed(1)}:1.`
+            });
+          }
+        }
+      }
+    });
+  }
+
+  // C. Timing & Animation (transitionTiming)
+  if (settings.transitionTiming !== false) {
+    state.frames.forEach((f, idx) => {
+      const trans = f.transition || 'none';
+      const dur = f.transitionDuration !== undefined ? f.transitionDuration : 0.5;
+      if (trans !== 'none' && dur < 0.2) {
+        a11yWarnings.push({
+          type: 'transition-duration',
+          message: `Frame ${idx + 1} transition duration is too fast (${dur}s). Smooth transitions should be at least 0.2s.`
+        });
+      }
+      const frameDur = f.duration !== undefined ? f.duration : 2.0;
+      if (frameDur < 1.0) {
+        a11yWarnings.push({
+          type: 'frame-duration',
+          message: `Frame ${idx + 1} duration is very short (${frameDur}s). Fast-cycling screens can cause reading difficulties and flashing risks.`
+        });
+      }
+    });
+  }
+
+  // Infinite looping motion (infiniteMotion)
+  if (settings.infiniteMotion !== false) {
+    c.elements.forEach(el => {
+      if (el.effectType && el.effectType !== 'none' && el.effOnce === false) {
+        a11yWarnings.push({
+          type: 'infinite-motion',
+          layerId: el.id,
+          message: `Layer '${el.customName || el.text || baseLayerLabel(el)}' has an infinite loop animation. Consider selecting 'Perform once' to avoid distracting motion.`
+        });
+      }
+    });
+  }
+
+  // D. Touch Target Size (targetSize)
+  if (settings.targetSize !== false && c.fullClickArea === false) {
+    c.elements.forEach(el => {
+      if (el.type === 'button') {
+        if ((el.width || 0) < 44 || (el.height || 0) < 44) {
+          a11yWarnings.push({
+            type: 'target-size',
+            layerId: el.id,
+            message: `Button '${el.customName || el.text}' target size (${el.width}×${el.height}px) is too small. Minimum touch target size is 44×44px.`
+          });
+        }
+      }
+    });
+  }
+
+  // E. Missing Alt Text (altText)
+  if (settings.altText !== false) {
+    c.elements.forEach(el => {
+      if (el.type === 'image') {
+        if (!el.altText || el.altText.trim() === '') {
+          a11yWarnings.push({
+            type: 'alt-text',
+            layerId: el.id,
+            message: `Image '${el.customName || el.name || 'Image'}' lacks descriptive alt text for screen readers.`
+          });
+        }
+      }
+    });
+  }
+
+  // 2. Branding Compliance Checks
+  // A. CRICOS Compliance (cricos)
+  if (settings.cricos !== false) {
+    let hasCricosCode = false;
+    c.elements.forEach(el => {
+      if (el.type === 'text') {
+        const text = (el.text || '').toLowerCase();
+        if (text.includes('00122a')) {
+          hasCricosCode = true;
+        }
+      }
+    });
+    if (!hasCricosCode) {
+      brandWarnings.push({
+        type: 'cricos',
+        message: `RMIT CRICOS provider code '00122A' is missing from the canvas text. All RMIT University marketing materials must display the CRICOS code.`
+      });
+    }
+  }
+
+  // B. RMIT Logo (logo)
+  if (settings.logo !== false) {
+    let hasLogo = false;
+    c.elements.forEach(el => {
+      if (el.role === 'rmit-logo') {
+        hasLogo = true;
+      }
+    });
+    if (!hasLogo) {
+      brandWarnings.push({
+        type: 'logo',
+        message: `RMIT Logo layer is missing from the canvas. Brand guidelines require the RMIT logo to be present.`
+      });
+    }
+  }
+
+  // C. Brand Colors check (brandColors)
+  if (settings.brandColors !== false) {
+    const brandRedRGB = [230, 30, 42]; // #E61E2A
+    const brandNavyRGB = [0, 0, 84];  // #000054
+    const threshold = 20;
+
+    const checkColorField = (rgbVal, hexStr, fieldName, layerName, layerId) => {
+      if (!rgbVal) return;
+      const dRed = getColorDistance(rgbVal, brandRedRGB);
+      const dNavy = getColorDistance(rgbVal, brandNavyRGB);
+
+      if (dRed > 0 && dRed <= threshold) {
+        brandWarnings.push({
+          type: 'color',
+          layerId: layerId,
+          message: `Color ${hexStr} in '${layerName}' (${fieldName}) is in proximity of RMIT Red, please use exact brand color (#E61E2A).`
+        });
+      } else if (dNavy > 0 && dNavy <= threshold) {
+        brandWarnings.push({
+          type: 'color',
+          layerId: layerId,
+          message: `Color ${hexStr} in '${layerName}' (${fieldName}) is in proximity of RMIT Navy, please use exact brand color (#000054).`
+        });
+      }
+    };
+
+    // Canvas bg
+    const canvasBgRGB = parseColorToRGB(c.bgColor || state.defaultBg || '#0f172a');
+    checkColorField(canvasBgRGB, c.bgColor || state.defaultBg || '#0f172a', 'Canvas Background', 'Canvas', null);
+
+    // Elements colors
+    c.elements.forEach(el => {
+      const name = el.customName || el.text || baseLayerLabel(el);
+      if (el.color) {
+        const rgb = parseColorToRGB(el.color);
+        checkColorField(rgb, el.color, el.type === 'button' ? 'Text Color' : 'Fill Color', name, el.id);
+      }
+      if (el.bg) {
+        if (el.type === 'button' || (el.type === 'text' && el.hasBg)) {
+          const rgb = parseColorToRGB(el.bg);
+          checkColorField(rgb, el.bg, 'Background Color', name, el.id);
+        }
+      }
+      if (el.strokeWidth > 0 && el.strokeColor) {
+        const rgb = parseColorToRGB(el.strokeColor);
+        checkColorField(rgb, el.strokeColor, 'Stroke Color', name, el.id);
+      }
+    });
+  }
+
+  // D. Brand Fonts check (brandFonts)
+  if (settings.brandFonts !== false) {
+    c.elements.forEach(el => {
+      if (el.type === 'text' || el.type === 'button') {
+        const font = el.fontFamily || 'Arial';
+        const isMuseo = font.toLowerCase() === 'museo';
+        const isHelvetica = font.toLowerCase().includes('helvetica') || font.toLowerCase().includes('helvatica');
+
+        if (!isMuseo && !isHelvetica) {
+          brandWarnings.push({
+            type: 'font',
+            layerId: el.id,
+            message: `Layer '${el.customName || el.text || baseLayerLabel(el)}' uses font '${font}'. Brand guidelines restrict typography to Museo and Helvetica.`
+          });
+        }
+      }
+    });
+  }
+
+  c._valA11y = a11yWarnings;
+  c._valBrand = brandWarnings;
 }
 
 // Stroke for rect/circle/button. Drawn as an SVG overlay sized to the element box.
@@ -4836,14 +5129,29 @@ canvasArea.addEventListener('wheel', (e) => {
 // ============================================================================
 function openValidatorDetails(initialCanvas) {
   const modalId = `val-modal-${Date.now()}`;
-  
-  const generateModalContent = (focusedCanvasId) => {
+  let activeDetailsId = initialCanvas.id;
+  let activeTab = 'specs'; // 'specs' | 'a11y' | 'brand'
+
+  const generateModalContent = (focusedCanvasId, currentTab) => {
+    activeDetailsId = focusedCanvasId;
+    activeTab = currentTab || activeTab;
+
     let sidebarHtml = '';
     state.canvases.forEach((c, index) => {
       const isFocused = c.id === focusedCanvasId;
       const hasErrors = c._valErrors && c._valErrors.length > 0;
-      const statusIcon = hasErrors ? '⚠️' : '✓';
-      const statusColor = hasErrors ? '#f97316' : '#10b981';
+      const hasA11y = c._valA11y && c._valA11y.length > 0;
+      const hasBrand = c._valBrand && c._valBrand.length > 0;
+
+      let statusIcon = '✓';
+      let statusColor = '#10b981';
+      if (hasErrors) {
+        statusIcon = '⚠️';
+        statusColor = '#ef4444';
+      } else if (hasA11y || hasBrand) {
+        statusIcon = '⚠️';
+        statusColor = '#f97316';
+      }
       
       let itemBg = 'transparent';
       let itemColor = 'var(--text-main)';
@@ -4885,6 +5193,61 @@ function openValidatorDetails(initialCanvas) {
         </button>
       `;
     });
+
+    const settings = state.validationSettings || {};
+    const settingsHtml = `
+      <div style="margin-top: 16px; border-top: 1px solid var(--border-light); padding-top: 12px; display:flex; flex-direction:column; gap:10px;">
+        <div style="font-size:10px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em; padding-left:4px;">Audit Settings</div>
+        
+        <div style="display:flex; flex-direction:column; gap:5px; padding-left:4px;">
+          <div style="font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px;">Accessibility</div>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
+            <input type="checkbox" class="val-setting-chk" data-setting="textSize" ${settings.textSize !== false ? 'checked' : ''} />
+            <span>Text size</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
+            <input type="checkbox" class="val-setting-chk" data-setting="contrast" ${settings.contrast !== false ? 'checked' : ''} />
+            <span>Contrast ratio</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
+            <input type="checkbox" class="val-setting-chk" data-setting="transitionTiming" ${settings.transitionTiming !== false ? 'checked' : ''} />
+            <span>Timing & transitions</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
+            <input type="checkbox" class="val-setting-chk" data-setting="targetSize" ${settings.targetSize !== false ? 'checked' : ''} />
+            <span>Touch target size</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
+            <input type="checkbox" class="val-setting-chk" data-setting="altText" ${settings.altText !== false ? 'checked' : ''} />
+            <span>Missing alt text</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
+            <input type="checkbox" class="val-setting-chk" data-setting="infiniteMotion" ${settings.infiniteMotion !== false ? 'checked' : ''} />
+            <span>Infinite motion</span>
+          </label>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:5px; padding-left:4px; margin-top:4px;">
+          <div style="font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px;">Branding Compliance</div>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
+            <input type="checkbox" class="val-setting-chk" data-setting="cricos" ${settings.cricos !== false ? 'checked' : ''} />
+            <span>CRICOS text</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
+            <input type="checkbox" class="val-setting-chk" data-setting="logo" ${settings.logo !== false ? 'checked' : ''} />
+            <span>RMIT Logo presence</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
+            <input type="checkbox" class="val-setting-chk" data-setting="brandColors" ${settings.brandColors !== false ? 'checked' : ''} />
+            <span>Brand colors</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-main); cursor:pointer;">
+            <input type="checkbox" class="val-setting-chk" data-setting="brandFonts" ${settings.brandFonts !== false ? 'checked' : ''} />
+            <span>Brand fonts</span>
+          </label>
+        </div>
+      </div>
+    `;
     
     const focusedCanvas = state.canvases.find(c => c.id === focusedCanvasId) || initialCanvas;
     const errors = focusedCanvas._valErrors || [];
@@ -5000,9 +5363,93 @@ function openValidatorDetails(initialCanvas) {
         <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
           <span>✓</span> All validation checks passed!
         </strong>
-        <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to the specified file size limit and Google Ad specs.</p>
+        <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to all Google Ad compliance rules and file size limits.</p>
       </div>
     `;
+
+    const a11yWarnings = focusedCanvas._valA11y || [];
+    const brandWarnings = focusedCanvas._valBrand || [];
+    const specsCount = errors.length;
+    const a11yCount = a11yWarnings.length;
+    const brandCount = brandWarnings.length;
+
+    let tabSelectorHtml = `
+      <div class="val-tabs" style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; margin-bottom: 12px; flex-shrink: 0;">
+        <button class="val-tab-btn ${activeTab === 'specs' ? 'active' : ''}" data-tab="specs" style="
+          background: ${activeTab === 'specs' ? 'var(--accent-base)' : 'transparent'};
+          color: ${activeTab === 'specs' ? 'var(--text-bright)' : 'var(--text-muted)'};
+          border: 1px solid ${activeTab === 'specs' ? 'var(--accent-base)' : 'var(--border-light)'};
+          padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; outline: none;
+        ">Ad Compliance (${specsCount})</button>
+        <button class="val-tab-btn ${activeTab === 'a11y' ? 'active' : ''}" data-tab="a11y" style="
+          background: ${activeTab === 'a11y' ? 'var(--accent-base)' : 'transparent'};
+          color: ${activeTab === 'a11y' ? 'var(--text-bright)' : 'var(--text-muted)'};
+          border: 1px solid ${activeTab === 'a11y' ? 'var(--accent-base)' : 'var(--border-light)'};
+          padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; outline: none;
+        ">Accessibility Audit (${a11yCount})</button>
+        <button class="val-tab-btn ${activeTab === 'brand' ? 'active' : ''}" data-tab="brand" style="
+          background: ${activeTab === 'brand' ? 'var(--accent-base)' : 'transparent'};
+          color: ${activeTab === 'brand' ? 'var(--text-bright)' : 'var(--text-muted)'};
+          border: 1px solid ${activeTab === 'brand' ? 'var(--accent-base)' : 'var(--border-light)'};
+          padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; outline: none;
+        ">Branding Compliance (${brandCount})</button>
+      </div>
+    `;
+
+    let activeContentHtml = '';
+    if (activeTab === 'specs') {
+      activeContentHtml = `<div style="display:flex; flex-direction:column; gap:16px; flex:1;">${errorsHTML}${criteriaHTML}</div>`;
+    } else if (activeTab === 'a11y') {
+      if (a11yCount > 0) {
+        activeContentHtml = `
+          <div style="font-size:13px; color:#f97316; background:rgba(249, 115, 22, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(249, 115, 22, 0.2); display:flex; flex-direction:column; gap:6px;">
+            <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
+              <span>⚠️</span> Accessibility Warnings (${a11yCount})
+            </strong>
+            <ul style="margin:0; padding-left:18px; line-height:1.5; display:flex; flex-direction:column; gap:8px;">
+              ${a11yWarnings.map(w => {
+                const locateBtn = w.layerId ? `<button class="val-locate-btn" data-layer-id="${w.layerId}" style="background:none; border:none; color:var(--accent-light); cursor:pointer; text-decoration:underline; font-size:11px; padding:0; margin-left:8px; display:inline-block;">Locate Layer</button>` : '';
+                return `<li>${w.message}${locateBtn}</li>`;
+              }).join('')}
+            </ul>
+          </div>
+        `;
+      } else {
+        activeContentHtml = `
+          <div style="font-size:13px; color:#10b981; background:rgba(16, 185, 129, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.2); display:flex; flex-direction:column; gap:6px;">
+            <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
+              <span>✓</span> All accessibility checks passed!
+            </strong>
+            <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to the active accessibility settings.</p>
+          </div>
+        `;
+      }
+    } else if (activeTab === 'brand') {
+      if (brandCount > 0) {
+        activeContentHtml = `
+          <div style="font-size:13px; color:#f97316; background:rgba(249, 115, 22, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(249, 115, 22, 0.2); display:flex; flex-direction:column; gap:6px;">
+            <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
+              <span>⚠️</span> Branding Warnings (${brandCount})
+            </strong>
+            <ul style="margin:0; padding-left:18px; line-height:1.5; display:flex; flex-direction:column; gap:8px;">
+              ${brandWarnings.map(w => {
+                const locateBtn = w.layerId ? `<button class="val-locate-btn" data-layer-id="${w.layerId}" style="background:none; border:none; color:var(--accent-light); cursor:pointer; text-decoration:underline; font-size:11px; padding:0; margin-left:8px; display:inline-block;">Locate Layer</button>` : '';
+                return `<li>${w.message}${locateBtn}</li>`;
+              }).join('')}
+            </ul>
+          </div>
+        `;
+      } else {
+        activeContentHtml = `
+          <div style="font-size:13px; color:#10b981; background:rgba(16, 185, 129, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.2); display:flex; flex-direction:column; gap:6px;">
+            <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
+              <span>✓</span> All branding compliance checks passed!
+            </strong>
+            <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to the active RMIT branding settings.</p>
+          </div>
+        `;
+      }
+    }
     
     // Calculate elements stats
     const totalCount = focusedCanvas.elements.length;
@@ -5184,30 +5631,29 @@ function openValidatorDetails(initialCanvas) {
     
     return `
       <div id="${modalId}" style="display:flex; gap:24px; min-height:600px; height: 100%;">
-        <div style="width:190px; flex-shrink:0; border-right:1px solid var(--border-light); padding-right:16px; display:flex; flex-direction:column; gap:4px; height:100%; overflow-y:auto;">
+        <div style="width:200px; flex-shrink:0; border-right:1px solid var(--border-light); padding-right:16px; display:flex; flex-direction:column; gap:4px; height:100%; overflow-y:auto;">
           <div style="font-size:11.5px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; padding-left:4px;">Canvases</div>
           ${sidebarHtml}
+          ${settingsHtml}
         </div>
-        <div style="flex:1; display:flex; flex-direction:column; gap:16px; overflow-y:auto; height:100%; padding-right:4px;">
+        <div style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto; height:100%; padding-right:4px;">
           <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
             <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright);">${focusedCanvas.width} × ${focusedCanvas.height} Details</h3>
             <span style="font-size:12.5px; font-weight:bold; color:var(--text-label);">ZIP Size: <span style="color:${errors.some(e => e.includes('limit')) ? '#f97316' : '#10b981'}; font-size:14px;">${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'calc...'}</span></span>
           </div>
-          ${errorsHTML}
-          ${criteriaHTML}
+          ${tabSelectorHtml}
+          ${activeContentHtml}
         </div>
         ${breakdownHTML}
       </div>
     `;
   };
 
-  let activeDetailsId = initialCanvas.id;
-
-  openModal(`Validation Dashboard`, generateModalContent(initialCanvas.id), false);
+  openModal(`Validation Dashboard`, generateModalContent(initialCanvas.id, activeTab), false);
   
   const modalEl = document.querySelector('.modal-bg:last-child .modal');
   if (modalEl) {
-    modalEl.style.width = '1200px';
+    modalEl.style.width = '1250px';
     modalEl.style.maxWidth = '98vw';
     modalEl.style.height = '720px';
     const bodyEl = modalEl.querySelector('.modal-body');
@@ -5238,15 +5684,12 @@ function openValidatorDetails(initialCanvas) {
         const currentCanvas = state.canvases.find(c => c.id === activeDetailsId);
         if (!currentCanvas) return;
         
-        // Close modal
         const modalBg = modalEl.closest('.modal-bg');
         if (modalBg) modalBg.remove();
         
-        // Activate target canvas
         state.activeCanvasId = currentCanvas.id;
         render();
         
-        // Enter preview mode
         const area = document.getElementById('canvas-area');
         state.prePreviewScrollLeft = area.scrollLeft;
         state.prePreviewScrollTop = area.scrollTop;
@@ -5277,8 +5720,11 @@ function openValidatorDetails(initialCanvas) {
     }
   }
 
-  const setupModalListeners = (modalEl, currentId) => {
+  const setupModalListeners = (modalEl, currentId, currentTab) => {
     activeDetailsId = currentId;
+    activeTab = currentTab;
+    
+    // Canvas sidebar items selection
     const buttons = modalEl.querySelectorAll('.val-sidebar-item');
     buttons.forEach(btn => {
       const canvasId = btn.dataset.canvasId;
@@ -5289,9 +5735,65 @@ function openValidatorDetails(initialCanvas) {
         const modalContainer = document.getElementById(modalId);
         if (modalContainer) {
           const parent = modalContainer.parentElement;
-          parent.innerHTML = generateModalContent(canvasId);
+          parent.innerHTML = generateModalContent(canvasId, activeTab);
           const newContainer = parent.querySelector(`#${modalId}`);
-          setupModalListeners(newContainer, canvasId);
+          setupModalListeners(newContainer, canvasId, activeTab);
+        }
+      };
+    });
+
+    // Tab buttons
+    modalEl.querySelectorAll('.val-tab-btn').forEach(btn => {
+      btn.onclick = () => {
+        const tab = btn.dataset.tab;
+        activeTab = tab;
+        const modalContainer = document.getElementById(modalId);
+        if (modalContainer) {
+          const parent = modalContainer.parentElement;
+          parent.innerHTML = generateModalContent(activeDetailsId, activeTab);
+          const newContainer = parent.querySelector(`#${modalId}`);
+          setupModalListeners(newContainer, activeDetailsId, activeTab);
+        }
+      };
+    });
+
+    // Locate Layer buttons
+    modalEl.querySelectorAll('.val-locate-btn').forEach(btn => {
+      btn.onclick = () => {
+        const layerId = btn.dataset.layerId;
+        const modalBg = modalEl.closest('.modal-bg');
+        if (modalBg) modalBg.remove();
+        
+        state.selectedElementId = layerId;
+        state.layerSelection = [layerId];
+        render();
+        showCanvasNotification('Layer selected for troubleshooting.', { type: 'info' });
+      };
+    });
+
+    // Settings checkboxes
+    modalEl.querySelectorAll('.val-setting-chk').forEach(chk => {
+      chk.onchange = (e) => {
+        const key = chk.dataset.setting;
+        if (!state.validationSettings) state.validationSettings = {};
+        state.validationSettings[key] = chk.checked;
+        
+        // Sync audit check immediately for the active canvas
+        const currentCanvas = state.canvases.find(c => c.id === activeDetailsId);
+        if (currentCanvas) {
+          runAuditChecks(currentCanvas);
+        }
+        
+        // Queue size and audits update
+        queueSizeUpdate();
+        
+        // Instantly re-render
+        const modalContainer = document.getElementById(modalId);
+        if (modalContainer) {
+          const parent = modalContainer.parentElement;
+          parent.innerHTML = generateModalContent(activeDetailsId, activeTab);
+          const newContainer = parent.querySelector(`#${modalId}`);
+          setupModalListeners(newContainer, activeDetailsId, activeTab);
         }
       };
     });
@@ -5299,7 +5801,7 @@ function openValidatorDetails(initialCanvas) {
 
   const modalContainer = document.getElementById(modalId);
   if (modalContainer) {
-    setupModalListeners(modalContainer.parentElement, initialCanvas.id);
+    setupModalListeners(modalContainer.parentElement, initialCanvas.id, activeTab);
   }
 }
 
@@ -5373,7 +5875,16 @@ function renderCanvasesList() {
 
     if (c._valKb) {
       const hasErrors = c._valErrors && c._valErrors.length > 0;
+      const hasA11y = c._valA11y && c._valA11y.length > 0;
+      const hasBrand = c._valBrand && c._valBrand.length > 0;
+
       if (hasErrors) {
+        btnBg = 'rgba(239, 68, 68, 0.15)';
+        btnColor = '#ef4444';
+        btnBgHover = 'rgba(239, 68, 68, 0.3)';
+        btnText = '⚠️';
+        btnTitle = 'Ad compliance errors found. Click to open validator dashboard.';
+      } else if (hasA11y || hasBrand) {
         btnBg = 'rgba(249, 115, 22, 0.15)';
         btnColor = '#f97316';
         btnBgHover = 'rgba(249, 115, 22, 0.3)';
@@ -8811,6 +9322,13 @@ function renderProps() {
         <input type="number" data-k="opacity" id="prop-opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Opacity percentage" />
       </div>
     </div>`);
+
+    // Alt Text for screen readers
+    const altTextDisabled = isFieldDisabled('altText');
+    f.push(`<div class="prop-row" ${altTextDisabled ? 'data-locked-field="true"' : ''}>
+      <label for="prop-alt-text">Alt Text</label>
+      <input type="text" data-k="altText" id="prop-alt-text" value="${(el.altText || '').replace(/"/g, '&quot;')}" placeholder="Alt text for screen readers..." title="Alt text for screen readers" ${altTextDisabled ? 'disabled style="pointer-events:none;"' : ''} />
+    </div>`);
   }
 
   // Animation section
@@ -12199,6 +12717,7 @@ function queueSizeUpdate() {
 
       c._valKb = kb;
       c._valErrors = errors;
+      runAuditChecks(c);
     }
     renderCanvasesList();
   }, 300);
