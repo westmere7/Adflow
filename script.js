@@ -2810,7 +2810,7 @@ function getElementAnimationCSS(el, isImageExport) {
       const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
       const fadeOn = el.animFade !== false;
       const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
-      if (el.type !== 'text' || (animType !== 'typing' && animType !== 'fade-typing')) {
+      if (el.type !== 'text' || (animType !== 'typing' && animType !== 'fade-typing' && animType !== 'word-fade' && animType !== 'line-fade')) {
         entryAnims.push(`anim-${animType}${suffix} ${el.animDuration || 1}s ${animType === 'typing' ? 'steps(30, end)' : 'ease-out'} ${el.animDelay || 0}s both`);
       }
     }
@@ -9288,9 +9288,7 @@ function renderProps() {
       </div>`);
 
       if (el.name && !isVector) {
-        const compressBtnStyle = el.isCompressed
-          ? 'background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); cursor:not-allowed;'
-          : 'background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); border:none; cursor:pointer;';
+        const compressBtnStyle = 'background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); border:none; cursor:pointer;';
         const isCropped = !!el.cropOriginalAssetId;
         const cropBtnStyle = isCropped
           ? 'background:rgba(124,92,255,0.15); color:var(--accent-light); border:1px solid rgba(124,92,255,0.4); cursor:pointer;'
@@ -9299,8 +9297,8 @@ function renderProps() {
           ? 'Re-crop / re-rotate. Reopens the crop dialogue with the original (uncropped) image and the current crop region preselected.'
           : 'Crop & level — rotate the image and pull the corners to crop. Result is baked into the image (element rotation stays 0).';
         f.push(`<div class="prop-row" style="margin-top:4px; margin-bottom:8px; display:flex; gap:6px;">
-          <button id="btn-webp-compress" class="btn" title="Compress image to WebP format to reduce file size" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; ${compressBtnStyle}" ${el.isCompressed || imgDisabled ? 'disabled' : ''}>
-            ${el.isCompressed ? '✓ Compressed' : 'Compress'}
+          <button id="btn-webp-compress" class="btn" title="Compress image to WebP format to reduce file size" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; ${compressBtnStyle}" ${imgDisabled ? 'disabled' : ''}>
+            ${el.isCompressed ? 'Compress more' : 'Compress'}
           </button>
           <button id="btn-image-crop" class="btn" title="${cropTitle}" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; ${cropBtnStyle}" ${imgDisabled ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}>
             ${isCropped ? '✓ Crop & Level' : 'Crop & Level'}
@@ -9385,6 +9383,8 @@ function renderProps() {
     if (el.type === 'text') {
       animOptions.push({ val: 'typing', label: 'Typing' });
       animOptions.push({ val: 'fade-typing', label: 'Fade Typing' });
+      animOptions.push({ val: 'line-fade', label: 'Line Fade' });
+      animOptions.push({ val: 'word-fade', label: 'Word Fade' });
     }
 
     let filteredOptions = animOptions;
@@ -10029,23 +10029,50 @@ function checkButtonFontSizeWarning(el) {
           const del = Number(nodeEl.animDelay || 0);
           maxDur = Math.max(maxDur, dur + del);
 
-          if (nodeEl.type === 'text' && (previewVal === 'typing' || previewVal === 'fade-typing')) {
+          if (nodeEl.type === 'text' && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade' || previewVal === 'line-fade')) {
             const target = node.querySelector('.editable') || node.querySelector('span');
             if (target) {
               target.dataset.origHtml = target.innerHTML;
               target.dataset.origStyle = target.getAttribute('style') || '';
-              const chars = [...(nodeEl.text || '')];
               const totalDur = nodeEl.animDuration || 1;
-              const charDur = previewVal === 'fade-typing' ? 0.3 : 0.01;
               const baseDelay = nodeEl.animDelay || 0;
-              const charDelay = totalDur / Math.max(1, chars.length);
-              target.innerHTML = chars.map((c, i) => {
-                if (c === '\n') return '<br/>';
-                const del = (Number(baseDelay) + i * charDelay).toFixed(3);
-                const escC = c === ' ' ? ' ' : c.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-                return `<span style="opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;">${escC}</span>`;
-              }).join('');
-              if (nodeEl.hasBg && nodeEl.animateBg) {
+
+              if (previewVal === 'typing' || previewVal === 'fade-typing') {
+                const chars = [...(nodeEl.text || '')];
+                const charDur = previewVal === 'fade-typing' ? 0.3 : 0.01;
+                const charDelay = totalDur / Math.max(1, chars.length);
+                target.innerHTML = chars.map((c, i) => {
+                  if (c === '\n') return '<br/>';
+                  const del = (Number(baseDelay) + i * charDelay).toFixed(3);
+                  const escC = c === ' ' ? ' ' : c.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                  return `<span style="opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;">${escC}</span>`;
+                }).join('');
+              } else if (previewVal === 'word-fade') {
+                const words = (nodeEl.text || '').split(/(\s+)/);
+                const nonSpas = words.filter(w => /\S/.test(w));
+                const wordDur = 0.3;
+                const wordDelay = totalDur / Math.max(1, nonSpas.length);
+                let wordIdx = 0;
+                target.innerHTML = words.map(w => {
+                  if (w === '\n') return '<br/>';
+                  if (/\s+/.test(w)) return w.replace(/\n/g, '<br/>');
+                  const del = (Number(baseDelay) + wordIdx * wordDelay).toFixed(3);
+                  wordIdx++;
+                  const escW = w.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                  return `<span style="opacity:0; display:inline-block; animation: anim-fade-in ${wordDur}s linear ${del}s both;">${escW}</span>`;
+                }).join('');
+              } else if (previewVal === 'line-fade') {
+                const lines = (nodeEl.text || '').split('\n');
+                const lineDur = 0.4;
+                const lineDelay = totalDur / Math.max(1, lines.length);
+                target.innerHTML = lines.map((l, i) => {
+                  const del = (Number(baseDelay) + i * lineDelay).toFixed(3);
+                  const escL = l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                  return `<span style="opacity:0; display:block; animation: anim-fade-in ${lineDur}s linear ${del}s both;">${escL || '&nbsp;'}</span>`;
+                }).join('');
+              }
+
+              if (nodeEl.hasBg && nodeEl.animateBg && (previewVal === 'typing' || previewVal === 'fade-typing')) {
                 const lr = nodeEl.bgPadL !== undefined ? nodeEl.bgPadL : 8;
                 const tb = nodeEl.bgPadV !== undefined ? nodeEl.bgPadV : 4;
                 const cov = nodeEl.bgCoverage !== undefined ? nodeEl.bgCoverage : 100;
@@ -10225,7 +10252,25 @@ function checkButtonFontSizeWarning(el) {
       if (targetVal === 'swipe') {
         targetVal = 'swipe-right';
       }
+      let disabledBg = false;
+      if (targetVal === 'word-fade' || targetVal === 'line-fade') {
+        const c = getActiveCanvas();
+        if (state.layerSelection && state.layerSelection.length > 1 && c) {
+          c.elements.filter(e => state.layerSelection.includes(e.id)).forEach(selEl => {
+            if (selEl.type === 'text' && selEl.hasBg) {
+              selEl.hasBg = false;
+              disabledBg = true;
+            }
+          });
+        } else if (el && el.type === 'text' && el.hasBg) {
+          el.hasBg = false;
+          disabledBg = true;
+        }
+      }
       updateProp('animType', targetVal);
+      if (disabledBg) {
+        showCanvasNotification('Text background disabled to support word/line animations.', { type: 'info' });
+      }
       pushHistory();
       renderProps();
     });
@@ -13151,6 +13196,7 @@ function openWebpCompressionModal(el) {
   if (!originalDataUrl) return;
 
   const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const warningDisplay = el.isCompressed ? 'block' : 'none';
 
   const bg = document.createElement('div');
   bg.className = 'modal-bg';
@@ -13180,6 +13226,10 @@ function openWebpCompressionModal(el) {
             <span id="webp-quality-display" style="font-size:12px; font-weight:700; color:var(--accent-light);">80%</span>
           </div>
           <input type="range" id="webp-quality-slider" min="10" max="100" value="80" style="width:100%; cursor:pointer; accent-color:var(--accent-base);" title="Adjust compression quality percentage" />
+        </div>
+
+        <div style="display:${warningDisplay}; font-size:11px; color:#e2a537; background:rgba(226,165,55,0.08); border:1px solid rgba(226,165,55,0.25); padding:8px 10px; border-radius:6px; line-height:1.4;">
+          <strong>⚠️ Quality Degradation Warning:</strong> Re-compressing an already compressed image may cause visible and cumulative quality loss.
         </div>
       </div>
       <div class="modal-foot" style="justify-content:flex-end; gap: 8px; display: flex;">
