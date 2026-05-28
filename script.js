@@ -2771,7 +2771,7 @@ function updatePreviewZoomNotice() {
 
   const setBtn = document.createElement('button');
   setBtn.innerText = 'Set';
-  setBtn.style.cssText = 'background:var(--accent-base); border:none; color:var(--text-bright); cursor:pointer; padding:6px 18px; border-radius:4px; font-size:13px; font-weight:600;';
+  setBtn.style.cssText = 'background:var(--accent-base); border:none; color:var(--text-on-accent, var(--text-bright)); cursor:pointer; padding:6px 18px; border-radius:4px; font-size:13px; font-weight:600;';
   setBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     const c = state.canvases.find(x => x.id === state.singlePreviewId);
@@ -5378,19 +5378,19 @@ function openValidatorDetails(initialCanvas) {
       <div class="val-tabs" style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; margin-bottom: 12px; flex-shrink: 0;">
         <button class="val-tab-btn ${activeTab === 'specs' ? 'active' : ''}" data-tab="specs" style="
           background: ${activeTab === 'specs' ? 'var(--accent-base)' : 'transparent'};
-          color: ${activeTab === 'specs' ? 'var(--text-bright)' : 'var(--text-muted)'};
+          color: ${activeTab === 'specs' ? 'var(--text-on-accent, var(--text-bright))' : 'var(--text-muted)'};
           border: 1px solid ${activeTab === 'specs' ? 'var(--accent-base)' : 'var(--border-light)'};
           padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; outline: none;
         ">Ad Compliance (${specsCount})</button>
         <button class="val-tab-btn ${activeTab === 'a11y' ? 'active' : ''}" data-tab="a11y" style="
           background: ${activeTab === 'a11y' ? 'var(--accent-base)' : 'transparent'};
-          color: ${activeTab === 'a11y' ? 'var(--text-bright)' : 'var(--text-muted)'};
+          color: ${activeTab === 'a11y' ? 'var(--text-on-accent, var(--text-bright))' : 'var(--text-muted)'};
           border: 1px solid ${activeTab === 'a11y' ? 'var(--accent-base)' : 'var(--border-light)'};
           padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; outline: none;
         ">Accessibility Audit (${a11yCount})</button>
         <button class="val-tab-btn ${activeTab === 'brand' ? 'active' : ''}" data-tab="brand" style="
           background: ${activeTab === 'brand' ? 'var(--accent-base)' : 'transparent'};
-          color: ${activeTab === 'brand' ? 'var(--text-bright)' : 'var(--text-muted)'};
+          color: ${activeTab === 'brand' ? 'var(--text-on-accent, var(--text-bright))' : 'var(--text-muted)'};
           border: 1px solid ${activeTab === 'brand' ? 'var(--accent-base)' : 'var(--border-light)'};
           padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; outline: none;
         ">Branding Compliance (${brandCount})</button>
@@ -7155,7 +7155,7 @@ function showAddAssetDropdown(e) {
     btn.style.color = 'var(--text-main)';
     btn.addEventListener('mouseenter', () => {
       btn.style.background = 'var(--accent-base)';
-      btn.style.color = 'var(--text-bright)';
+      btn.style.color = 'var(--text-on-accent, var(--text-bright))';
     });
     btn.addEventListener('mouseleave', () => {
       btn.style.background = 'transparent';
@@ -8672,9 +8672,9 @@ function renderProps() {
         <div class="prop-row" style="margin-top:16px; display:flex; flex-direction:column; gap:8px;">
           <button id="c-btn-preview" title="Toggle preview mode for this canvas" style="
             width:100%; padding:8px 12px; border-radius:6px; border:none; cursor:pointer;
-            background:var(--accent-base); color:#fff; font-size:12px; font-weight:600;
+            background:var(--accent-base); color:var(--text-on-accent, #fff); font-size:12px; font-weight:600;
             font-family:inherit; display:flex; align-items:center; justify-content:center; gap:6px;
-            box-shadow:0 2px 8px rgba(124,92,255,0.35); transition:filter 0.15s;
+            box-shadow:0 2px 8px rgba(0,0,0,0.25); transition:filter 0.15s;
           ">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             Preview
@@ -9283,7 +9283,7 @@ function renderProps() {
         <div class="img-preview-container" style="position:relative; width:100%; border-radius:4px; overflow:hidden; border:1px solid #272c3a; background:#12131a; cursor:pointer;">
           <img src="${src}" style="display:block; width:100%; max-height:160px; object-fit:contain; pointer-events:none;" />
           <div class="img-preview-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.65); display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s ease; gap:8px;">
-            <button id="overlay-browse-btn" class="btn" style="background:var(--accent-base); color:var(--text-bright); border:none; border-radius:4px; padding:6px 16px; font-size:11px; font-weight:600; cursor:pointer;">Browse...</button>
+            <button id="overlay-browse-btn" class="btn" style="background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); border:none; border-radius:4px; padding:6px 16px; font-size:11px; font-weight:600; cursor:pointer;">Browse...</button>
             <span class="overlay-filename" style="color:var(--text-muted); font-size:10px; max-width:90%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(el.name || '')}">${esc(el.name || '')}</span>
           </div>
         </div>
@@ -9292,7 +9292,7 @@ function renderProps() {
       if (el.name && !isVector) {
         const compressBtnStyle = el.isCompressed
           ? 'background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid rgba(255,255,255,0.1); cursor:not-allowed;'
-          : 'background:var(--accent-base); color:var(--text-bright); border:none; cursor:pointer;';
+          : 'background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); border:none; cursor:pointer;';
         const isCropped = !!el.cropOriginalAssetId;
         const cropBtnStyle = isCropped
           ? 'background:rgba(124,92,255,0.15); color:var(--accent-light); border:1px solid rgba(124,92,255,0.4); cursor:pointer;'
@@ -10833,7 +10833,7 @@ function showBackgroundDropdown(e) {
     btn.style.color = 'var(--text-main)';
     btn.addEventListener('mouseenter', () => {
       btn.style.background = 'var(--accent-base)';
-      btn.style.color = 'var(--text-bright)';
+      btn.style.color = 'var(--text-on-accent, var(--text-bright))';
     });
     btn.addEventListener('mouseleave', () => {
       btn.style.background = 'transparent';
@@ -12861,6 +12861,10 @@ document.getElementById('menu-open-settings').addEventListener('click', () => { 
 // theme) plus the new Crop-to-Canvas toggle.
 const THEMES = [
   { id: 'default', label: 'Dark (Default)' },
+  { id: 'obsidian', label: 'Obsidian' },
+  { id: 'nordic', label: 'Nordic' },
+  { id: 'amber', label: 'Amber' },
+  { id: 'amethyst', label: 'Amethyst' },
   { id: 'rmit', label: 'RMIT' },
   { id: 'ocean', label: 'Ocean' },
   { id: 'navy', label: 'Navy' },
@@ -12877,7 +12881,7 @@ function openSettings() {
 
   const themeBtns = THEMES.map(t => {
     const active = (state.theme || 'default') === t.id;
-    return `<button class="settings-theme-btn" data-theme="${t.id}" style="padding:8px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:500; font-family:inherit; text-align:left; border:1px solid ${active ? 'var(--accent-base)' : '#272c3a'}; background:${active ? 'rgba(124,92,255,0.18)' : 'var(--bg-input)'}; color:${active ? 'var(--accent-base)' : 'var(--text-main)'};">${t.label}</button>`;
+    return `<button class="settings-theme-btn" data-theme="${t.id}" style="padding:8px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:500; font-family:inherit; text-align:left; border:1px solid ${active ? 'var(--accent-base)' : 'var(--border-light)'}; background:${active ? 'var(--accent-dark)' : 'var(--bg-input)'}; color:${active ? 'var(--text-bright)' : 'var(--text-main)'};">${t.label}</button>`;
   }).join('');
 
   const row = (id, label, checked, hint = '') => `
@@ -12915,7 +12919,7 @@ function openSettings() {
             </section>
             <section>
               <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Theme</h3>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">${themeBtns}</div>
+              <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">${themeBtns}</div>
             </section>
             <section>
               <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">History & Saving</h3>
@@ -12996,9 +13000,9 @@ function openSettings() {
       // Restyle the theme buttons in place without rebuilding the panel.
       bg.querySelectorAll('.settings-theme-btn').forEach(b => {
         const active = b.dataset.theme === state.theme;
-        b.style.border = `1px solid ${active ? 'var(--accent-base)' : '#272c3a'}`;
-        b.style.background = active ? 'rgba(124,92,255,0.18)' : 'var(--bg-input)';
-        b.style.color = active ? 'var(--accent-base)' : 'var(--text-main)';
+        b.style.border = `1px solid ${active ? 'var(--accent-base)' : 'var(--border-light)'}`;
+        b.style.background = active ? 'var(--accent-dark)' : 'var(--bg-input)';
+        b.style.color = active ? 'var(--text-bright)' : 'var(--text-main)';
       });
     });
   });

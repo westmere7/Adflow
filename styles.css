@@ -14,6 +14,7 @@
   --accent-hover: #9079ff;
   --accent-light: #b5a9ff;
   --accent-dark: #2a1f55;
+  --text-on-accent: #ffffff;
 }
 
 body.theme-rmit {
@@ -32,6 +33,7 @@ body.theme-rmit {
   --accent-hover: #ff1a40;
   --accent-light: #ff667e;
   --accent-dark: #ffdbe0;
+  --text-on-accent: #ffffff;
 }
 
 body.theme-ocean {
@@ -49,6 +51,7 @@ body.theme-ocean {
   --accent-hover: #33b5ff;
   --accent-light: #80d4ff;
   --accent-dark: #004d80;
+  --text-on-accent: #ffffff;
 }
 
 body.theme-light {
@@ -67,6 +70,7 @@ body.theme-light {
   --accent-hover: #60a5fa;
   --accent-light: #93c5fd;
   --accent-dark: #e0f2fe;
+  --text-on-accent: #ffffff;
 }
 
 body.theme-navy {
@@ -84,6 +88,79 @@ body.theme-navy {
   --accent-hover: #7caeff;
   --accent-light: #b3cfff;
   --accent-dark: #102a5c;
+  --text-on-accent: #ffffff;
+}
+
+body.theme-obsidian {
+  --bg-body: #050507;
+  --bg-panel: #0b0c10;
+  --bg-input: #12141c;
+  --bg-btn: #1a1d29;
+  --border-light: #202433;
+  --border-btn: #2d3347;
+  --text-main: #d1d5db;
+  --text-muted: #5e667e;
+  --text-bright: #ffffff;
+  --text-label: #9ca3af;
+  --accent-base: #00f5a0;
+  --accent-hover: #33ffb8;
+  --accent-light: #80ffd4;
+  --accent-dark: #003d28;
+  --text-on-accent: #050507;
+}
+
+body.theme-nordic {
+  --bg-body: #090e1a;
+  --bg-panel: #0f172a;
+  --bg-input: #1e293b;
+  --bg-btn: #334155;
+  --border-light: #1e293b;
+  --border-btn: #475569;
+  --text-main: #e2e8f0;
+  --text-muted: #64748b;
+  --text-bright: #f8fafc;
+  --text-label: #94a3b8;
+  --accent-base: #38bdf8;
+  --accent-hover: #7dd3fc;
+  --accent-light: #bae6fd;
+  --accent-dark: #0369a1;
+  --text-on-accent: #090e1a;
+}
+
+body.theme-amber {
+  --bg-body: #09090b;
+  --bg-panel: #18181b;
+  --bg-input: #27272a;
+  --bg-btn: #3f3f46;
+  --border-light: #27272a;
+  --border-btn: #52525b;
+  --text-main: #e4e4e7;
+  --text-muted: #71717a;
+  --text-bright: #ffffff;
+  --text-label: #a1a1aa;
+  --accent-base: #f59e0b;
+  --accent-hover: #fbbf24;
+  --accent-light: #fde68a;
+  --accent-dark: #78350f;
+  --text-on-accent: #09090b;
+}
+
+body.theme-amethyst {
+  --bg-body: #090514;
+  --bg-panel: #110924;
+  --bg-input: #1b0f39;
+  --bg-btn: #26164f;
+  --border-light: #321c68;
+  --border-btn: #472894;
+  --text-main: #e8dff5;
+  --text-muted: #7b6a9e;
+  --text-bright: #ffffff;
+  --text-label: #a79ac2;
+  --accent-base: #d946ef;
+  --accent-hover: #f472b6;
+  --accent-light: #fbcfe8;
+  --accent-dark: #4a044e;
+  --text-on-accent: #ffffff;
 }
     @font-face {
       font-family: 'Museo';
@@ -829,13 +906,9 @@ body.theme-navy {
 
 
     .btn.primary {
-
       background: var(--accent-base);
-
       border-color: var(--accent-base);
-
-      color: var(--text-bright);
-
+      color: var(--text-on-accent);
     }
 
 
