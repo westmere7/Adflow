@@ -2352,7 +2352,29 @@ function canvasFrameNode(c) {
   header.innerHTML = `
     <span class="dim" style="font-weight:600; color:var(--text-bright);">${c.width} × ${c.height}</span>
   `;
+  if (!isSinglePreview) {
+    const autoAlignBtn = document.createElement('button');
+    autoAlignBtn.className = "canvas-auto-align-btn";
+    autoAlignBtn.style.cssText = "background:none; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; transition:color 0.15s; padding:2px; margin:0; margin-left:auto;";
+    autoAlignBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+      </svg>
+    `;
+    autoAlignBtn.title = 'Auto-arrange elements';
+    autoAlignBtn.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      runAutoArrange(c.id);
+    });
+    autoAlignBtn.onmouseover = () => autoAlignBtn.style.color = '#fff';
+    autoAlignBtn.onmouseout = () => autoAlignBtn.style.color = '#5a6178';
+    header.appendChild(autoAlignBtn);
+  }
   header.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.canvas-auto-align-btn')) return;
     onCanvasHeaderDrag(e, c);
   });
   frame.appendChild(header);
@@ -2638,11 +2660,11 @@ function canvasFrameNode(c) {
     const opts = state.frames.map((f, i) => `<option value="${f.id}" ${f.id === state.activeFrameId ? 'selected' : ''} style="${f.skip ? 'color: var(--text-muted); font-style: italic;' : ''}">Frame ${i + 1}</option>`).join('');
     leftSide.innerHTML = `
       <div style="display:flex; align-items:center; gap:3px;">
-        <button class="btn-prev-inline" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&lsaquo;</button>
-        <select class="frame-select-inline" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:3px; padding:0 2px; font-size:9px; height:18px; outline:none; cursor:pointer;">
+        <button class="btn-prev-inline" title="Previous frame" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&lsaquo;</button>
+        <select class="frame-select-inline" title="Select active frame" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:3px; padding:0 2px; font-size:9px; height:18px; outline:none; cursor:pointer;">
           ${opts}
         </select>
-        <button class="btn-next-inline" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&rsaquo;</button>
+        <button class="btn-next-inline" title="Next frame" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&rsaquo;</button>
         <div style="width:2px"></div>
         <button class="btn-add-frame-inline" title="Add Frame" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">+</button>
         <button class="btn-remove-frame-inline" title="Remove Frame" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">-</button>
@@ -2658,6 +2680,7 @@ function canvasFrameNode(c) {
   rightSideBtn.className = "single-preview-btn";
   rightSideBtn.style.cssText = "background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:9px; text-decoration:underline; font-weight:500; transition:color 0.15s; padding:0;";
   rightSideBtn.innerHTML = isSinglePreview ? 'Back' : 'Preview';
+  rightSideBtn.title = isSinglePreview ? 'Go back to edit mode' : 'Preview interactive animation for this canvas';
   rightSideBtn.onmouseover = () => rightSideBtn.style.color = '#9aa1b6';
   rightSideBtn.onmouseout = () => rightSideBtn.style.color = '#5a6178';
   footer.appendChild(rightSideBtn);
@@ -4432,8 +4455,13 @@ function onElementMouseDown(e, el, canvasCtx) {
         nx = Math.round(nx / 10) * 10;
         ny = Math.round(ny / 10) * 10;
       }
-      t.x = Math.round(nx);
-      t.y = Math.round(ny);
+      const mx = Math.round(nx);
+      const my = Math.round(ny);
+      if (mx !== t.x || my !== t.y) {
+        if (t.autoArranged) delete t.autoArranged;
+      }
+      t.x = mx;
+      t.y = my;
     });
 
     const ap = document.getElementById('panel-section-assets');
@@ -4705,6 +4733,9 @@ function onResizeMouseDown(e, el, corner) {
     const cy_new = py_curr - (lx_rel_new * sin_cw + ly_rel_new * cos_cw);
     el.x = Math.round(cx_new - el.width / 2);
     el.y = Math.round(cy_new - el.height / 2);
+    if (el.x !== o.x || el.y !== o.y || el.width !== o.w || el.height !== o.h || el.fontSize !== o.fs) {
+      if (el.autoArranged) delete el.autoArranged;
+    }
 
     render();
   };
@@ -4771,11 +4802,20 @@ function onMultiResizeMouseDown(e, elements, bb, corner) {
 
     elements.forEach((el, i) => {
       const o = origElements[i];
-      el.x = Math.round(nbb.x + (o.x - obb.x) * scaleX);
-      el.y = Math.round(nbb.y + (o.y - obb.y) * scaleY);
-      el.width = Math.round(Math.max(2, o.w * scaleX));
-      el.height = Math.round(Math.max(2, o.h * scaleY));
-      if (o.fs) el.fontSize = Math.max(8, Math.round(o.fs * Math.min(scaleX, scaleY)));
+      const nx = Math.round(nbb.x + (o.x - obb.x) * scaleX);
+      const ny = Math.round(nbb.y + (o.y - obb.y) * scaleY);
+      const nw = Math.round(Math.max(2, o.w * scaleX));
+      const nh = Math.round(Math.max(2, o.h * scaleY));
+      let nfs = el.fontSize;
+      if (o.fs) nfs = Math.max(8, Math.round(o.fs * Math.min(scaleX, scaleY)));
+      if (nx !== el.x || ny !== el.y || nw !== el.width || nh !== el.height || nfs !== el.fontSize) {
+        if (el.autoArranged) delete el.autoArranged;
+      }
+      el.x = nx;
+      el.y = ny;
+      el.width = nw;
+      el.height = nh;
+      if (o.fs) el.fontSize = nfs;
       if (el.type === 'button' && el.autoHug && (Math.abs(el.width - o.w) > 2 || Math.abs(el.height - o.h) > 2)) {
         el.autoHug = false;
       }
@@ -7437,7 +7477,8 @@ function renderLayers() {
       div.className = 'layer' + (isSel ? ' selected' : '') + maskLink;
       div.draggable = true;
       div.dataset.id = el.id;
-      const iconHtml = `<svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${layerIcon(el.type)}</svg>`;
+      const iconStyle = el.autoArranged ? 'style="color: var(--accent-base); opacity: 1;"' : '';
+      const iconHtml = `<svg class="layer-icon" ${iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${layerIcon(el.type)}</svg>`;
 
       const eyeIconHtml = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
 
@@ -9745,6 +9786,9 @@ function checkButtonFontSizeWarning(el) {
     const c = getActiveCanvas();
     if (state.layerSelection && state.layerSelection.length > 1 && c) {
       c.elements.filter(e => state.layerSelection.includes(e.id)).forEach(selEl => {
+        if (['x', 'y', 'width', 'height', 'lockRatio', 'fontSize', 'autoSize', 'textAlign'].includes(k)) {
+          if (selEl.autoArranged) delete selEl.autoArranged;
+        }
         if (k === 'text' && selEl.id !== el.id) return; // Don't copy specific text content across elements
         if (['fontFamily', 'fontSize', 'weight', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'verticalAlign', 'autoSize', 'maxFontSize', 'paddingLR', 'paddingTB'].includes(k) && selEl.type !== 'text' && selEl.type !== 'button') return;
         
@@ -9801,6 +9845,9 @@ function checkButtonFontSizeWarning(el) {
         }
       });
     } else {
+      if (['x', 'y', 'width', 'height', 'lockRatio', 'fontSize', 'autoSize', 'textAlign'].includes(k)) {
+        if (el.autoArranged) delete el.autoArranged;
+      }
       if ((k === 'width' || k === 'height') && el.type === 'button') {
         el.autoHug = false;
       }
@@ -10558,6 +10605,7 @@ function checkButtonFontSizeWarning(el) {
           if (align === 'top') targetEl.y = 0;
           if (align === 'middle') targetEl.y = Math.round((c.height - targetEl.height) / 2);
           if (align === 'bottom') targetEl.y = c.height - targetEl.height;
+          if (targetEl.autoArranged) delete targetEl.autoArranged;
         });
 
         pushHistory();
@@ -11424,6 +11472,7 @@ window.addEventListener('keydown', (e) => {
             if (toMove.includes(x.id) && !x.locked) {
               x.x += dx;
               x.y += dy;
+              if (x.autoArranged) delete x.autoArranged;
             }
           });
           e.preventDefault();
@@ -12939,6 +12988,287 @@ async function autoCompressCanvasImages(canvasId) {
 
   showCanvasNotification(`Compressed ${imageTasks.length} images to WebP at ${optimalQuality}% quality.`, { type: 'success' });
   await updateCanvasSizeSync(canvas);
+}
+
+function solveBrandElements(canvas, present, config) {
+  if (present.length === 0) return false;
+
+  // Calculate preferred quadrant based on current centroid
+  const getPreferredQuadrant = (el) => {
+    const centerX = el.x + el.width / 2;
+    const centerY = el.y + el.height / 2;
+    const isTop = centerY < canvas.height / 2;
+    const isLeft = centerX < canvas.width / 2;
+    if (isTop && isLeft) return 'TL';
+    if (isTop && !isLeft) return 'TR';
+    if (!isTop && isLeft) return 'BL';
+    return 'BR';
+  };
+
+  present.forEach(p => {
+    p.pref = getPreferredQuadrant(p.el);
+  });
+
+  const quadrants = ['TL', 'TR', 'BL', 'BR'];
+
+  // Generate all permutations of size len from quadrants
+  const getPermutations = (arr, len) => {
+    if (len === 1) return arr.map(x => [x]);
+    const results = [];
+    arr.forEach((item, index) => {
+      const rest = arr.filter((_, i) => i !== index);
+      const perm = getPermutations(rest, len - 1);
+      perm.forEach(p => {
+        results.push([item, ...p]);
+      });
+    });
+    return results;
+  };
+
+  const perms = getPermutations(quadrants, present.length);
+  let bestAssignment = null;
+  let minCost = Infinity;
+
+  perms.forEach(p => {
+    const assignment = {};
+    present.forEach((item, idx) => {
+      assignment[item.role] = p[idx];
+    });
+
+    // Validate cross-quadrant constraint: Logo and Tagline must be on the same horizontal half (both top, or both bottom).
+    // For 300x600 skyscraper canvas, this ensures they stay on the same shorter edge (horizontal top/bottom).
+    if (assignment.logo && assignment.tagline) {
+      const qLogo = assignment.logo;
+      const qTagline = assignment.tagline;
+      const logoIsTop = (qLogo === 'TL' || qLogo === 'TR');
+      const taglineIsTop = (qTagline === 'TL' || qTagline === 'TR');
+      if (logoIsTop !== taglineIsTop) {
+        return; // Invalid assignment
+      }
+    }
+
+    // Calculate cost based on deviation from preferred quadrant
+    let cost = 0;
+    present.forEach(item => {
+      if (assignment[item.role] !== item.pref) {
+        cost += item.costWeight;
+      }
+    });
+
+    if (cost < minCost) {
+      minCost = cost;
+      bestAssignment = assignment;
+    }
+  });
+
+  if (bestAssignment) {
+    const logoCoords = config.logoCoords;
+    const cricosCoords = config.cricos ? config.cricos.coords : null;
+    const rfwnCoords = config.tagline ? config.tagline.coords : null;
+
+    const roleCoords = {
+      logo: logoCoords,
+      cricos: cricosCoords,
+      tagline: rfwnCoords
+    };
+
+    present.forEach(item => {
+      const assignedQuad = bestAssignment[item.role];
+      const coords = roleCoords[item.role][assignedQuad];
+      const el = item.el;
+
+      el.x = coords.x;
+      el.y = coords.y;
+      el.width = coords.w;
+      el.height = coords.h;
+      el.lockRatio = true;
+
+      if (item.role === 'cricos' && config.cricos) {
+        el.fontSize = config.cricos.fontSize;
+        el.autoSize = false;
+        el.textAlign = 'left';
+      } else if (item.role === 'tagline' && config.tagline) {
+        el.fontSize = config.tagline.fontSize;
+        el.autoSize = false;
+        el.textAlign = 'left';
+      }
+
+      if (el.locked) delete el.locked;
+      el.autoArranged = true;
+    });
+    return true;
+  }
+  return false;
+}
+
+function runAutoArrange(canvasId, selectedIds) {
+  const canvas = state.canvases.find(c => c.id === canvasId);
+  if (!canvas) return;
+
+  let changed = false;
+
+  const isSelected = (el) => {
+    if (!el) return false;
+    if (!selectedIds || selectedIds.length === 0) return true;
+    return selectedIds.includes(el.id);
+  };
+
+  if (canvas.width === 300 && canvas.height === 250) {
+    const config = AUTO_ARRANGE_CONFIG["300x250"];
+
+    const logoEl = canvas.elements.find(el => el.role === 'rmit-logo');
+    const taglineEl = canvas.elements.find(el => el.role === 'rfwn');
+    const cricosEl = canvas.elements.find(el => el.role === 'cricos');
+    const headingEl = canvas.elements.find(el => el.role === 'heading');
+    const subheadingEl = canvas.elements.find(el => el.role === 'subheading');
+    const buttonEl = canvas.elements.find(el => el.role === 'cta-button');
+
+    if (headingEl) {
+      const centerX = headingEl.x + headingEl.width / 2;
+      const isLeft = centerX < canvas.width / 2;
+
+      if (isSelected(headingEl)) {
+        if (isLeft) {
+          headingEl.x = config.safezone.minX;
+          if (headingEl.x + headingEl.width > config.safezone.maxX) {
+            headingEl.width = config.safezone.maxX - headingEl.x;
+          }
+        } else {
+          headingEl.x = config.safezone.maxX - headingEl.width;
+          if (headingEl.x < config.safezone.minX) {
+            headingEl.x = config.safezone.minX;
+            headingEl.width = config.safezone.maxX - config.safezone.minX;
+          }
+        }
+
+        // Vertical clamping to safezone
+        const minY = config.safezone.minY;
+        const maxY = config.safezone.maxY;
+        if (headingEl.y < minY) {
+          headingEl.y = minY;
+        }
+        if (headingEl.y + headingEl.height > maxY) {
+          headingEl.y = maxY - headingEl.height;
+          if (headingEl.y < minY) {
+            headingEl.y = minY;
+            headingEl.height = maxY - minY;
+          }
+        }
+
+        headingEl.autoSize = true;
+        headingEl.maxFontSize = config.heading.maxFontSize;
+        headingEl.textAlign = isLeft ? 'left' : 'right';
+        headingEl.autoArranged = true;
+        changed = true;
+      }
+
+      if (subheadingEl && isSelected(subheadingEl)) {
+        subheadingEl.textAlign = isLeft ? 'left' : 'right';
+        if (isLeft) {
+          subheadingEl.x = config.safezone.minX;
+          if (subheadingEl.x + subheadingEl.width > config.safezone.maxX) {
+            subheadingEl.width = config.safezone.maxX - subheadingEl.x;
+          }
+        } else {
+          subheadingEl.x = config.safezone.maxX - subheadingEl.width;
+          if (subheadingEl.x < config.safezone.minX) {
+            subheadingEl.x = config.safezone.minX;
+            subheadingEl.width = config.safezone.maxX - config.safezone.minX;
+          }
+        }
+
+        // Stack right under heading's box
+        subheadingEl.y = headingEl.y + headingEl.height + config.subheading.gapBelowHeading;
+
+        // Fit entirely within vertical safezone
+        const minY = config.safezone.minY;
+        const maxY = config.safezone.maxY;
+        if (subheadingEl.y < minY) {
+          subheadingEl.y = minY;
+        }
+        if (subheadingEl.y + subheadingEl.height > maxY) {
+          subheadingEl.height = maxY - subheadingEl.y;
+          if (subheadingEl.height < 0) {
+            subheadingEl.height = 0;
+          }
+        }
+
+        subheadingEl.autoSize = true;
+        subheadingEl.maxFontSize = config.subheading.maxFontSize;
+        subheadingEl.autoArranged = true;
+        changed = true;
+      }
+
+      if (buttonEl && isSelected(buttonEl)) {
+        // Edge alignment with heading/subheading (isLeft vs isRight)
+        buttonEl.width = config.button.width;
+        if (isLeft) {
+          buttonEl.x = config.safezone.minX;
+        } else {
+          buttonEl.x = config.safezone.maxX - buttonEl.width;
+        }
+
+        // Stack right under subheading (or heading if subheading is missing)
+        if (subheadingEl) {
+          buttonEl.y = subheadingEl.y + subheadingEl.height + config.button.gapBelowText;
+        } else {
+          buttonEl.y = headingEl.y + headingEl.height + config.button.gapBelowText;
+        }
+
+        // Fit entirely within vertical safezone
+        const minY = config.safezone.minY;
+        const maxY = config.safezone.maxY;
+        if (buttonEl.y < minY) {
+          buttonEl.y = minY;
+        }
+        if (buttonEl.y + buttonEl.height > maxY) {
+          buttonEl.height = maxY - buttonEl.y;
+          if (buttonEl.height < 0) {
+            buttonEl.height = 0;
+          }
+        }
+
+        // Auto font size and wrapText on
+        buttonEl.autoSize = true;
+        buttonEl.wrapText = true;
+        buttonEl.autoArranged = true;
+        changed = true;
+      }
+    }
+
+    const present = [];
+    if (logoEl && isSelected(logoEl)) present.push({ el: logoEl, role: 'logo', priority: 1, costWeight: 100 });
+    if (taglineEl && isSelected(taglineEl) && config.tagline) present.push({ el: taglineEl, role: 'tagline', priority: 2, costWeight: 10 });
+    if (cricosEl && isSelected(cricosEl) && config.cricos) present.push({ el: cricosEl, role: 'cricos', priority: 3, costWeight: 1 });
+
+    if (solveBrandElements(canvas, present, config)) {
+      changed = true;
+    }
+  } else if (canvas.width === 300 && canvas.height === 600) {
+    const config = AUTO_ARRANGE_CONFIG["300x600"];
+
+    const logoEl = canvas.elements.find(el => el.role === 'rmit-logo');
+    const taglineEl = canvas.elements.find(el => el.role === 'rfwn');
+    const cricosEl = canvas.elements.find(el => el.role === 'cricos');
+
+    const present = [];
+    if (logoEl && isSelected(logoEl)) present.push({ el: logoEl, role: 'logo', priority: 1, costWeight: 100 });
+    if (taglineEl && isSelected(taglineEl) && config.tagline) present.push({ el: taglineEl, role: 'tagline', priority: 2, costWeight: 10 });
+    if (cricosEl && isSelected(cricosEl) && config.cricos) present.push({ el: cricosEl, role: 'cricos', priority: 3, costWeight: 1 });
+
+    if (solveBrandElements(canvas, present, config)) {
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    pushHistory();
+    render();
+    renderProps();
+    showCanvasNotification('Elements auto-arranged.', { type: 'success' });
+  } else {
+    showCanvasNotification('No auto-arrange sets matched for this canvas size.', { type: 'info' });
+  }
 }
 
 document.getElementById('menu-edit-undo').addEventListener('click', undo);
@@ -14587,6 +14917,10 @@ document.addEventListener('contextmenu', (e) => {
       render(true);
     }
 
+    const autoArrangeSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>`;
+    html += `<div class="ctx-item highlight" id="ctx-canvas-auto-arrange" style="display:flex; align-items:center; gap:8px;">${autoArrangeSvg}Auto-arrange elements</div>`;
+    html += `<div class="ctx-divider"></div>`;
+
     html += `<div class="ctx-item" id="ctx-bring-fwd">Bring Forward</div>`;
     html += `<div class="ctx-item" id="ctx-send-bwd">Send Backward</div>`;
     html += `<div class="ctx-divider"></div>`;
@@ -15003,6 +15337,9 @@ document.addEventListener('contextmenu', (e) => {
         includeUnassigned: settings.behaviour?.includeUnassigned === true
       });
     }
+  });
+  bind('ctx-canvas-auto-arrange', () => {
+    runAutoArrange(state.activeCanvasId, state.layerSelection);
   });
   bind('ctx-clear-current',   () => clearCurrentCanvasContents());
   bind('ctx-clear-others',    () => clearOtherCanvasesContents());
