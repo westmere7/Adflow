@@ -13250,6 +13250,85 @@ function runAutoArrange(canvasId, selectedIds) {
     const logoEl = canvas.elements.find(el => el.role === 'rmit-logo');
     const taglineEl = canvas.elements.find(el => el.role === 'rfwn');
     const cricosEl = canvas.elements.find(el => el.role === 'cricos');
+    const headingEl = canvas.elements.find(el => el.role === 'heading');
+    const subheadingEl = canvas.elements.find(el => el.role === 'subheading');
+
+    if (headingEl) {
+      const centerX = headingEl.x + headingEl.width / 2;
+      const isLeft = centerX < canvas.width / 2;
+
+      if (isSelected(headingEl)) {
+        if (isLeft) {
+          headingEl.x = config.safezone.minX;
+          if (headingEl.x + headingEl.width > config.safezone.maxX) {
+            headingEl.width = config.safezone.maxX - headingEl.x;
+          }
+        } else {
+          headingEl.x = config.safezone.maxX - headingEl.width;
+          if (headingEl.x < config.safezone.minX) {
+            headingEl.x = config.safezone.minX;
+            headingEl.width = config.safezone.maxX - config.safezone.minX;
+          }
+        }
+
+        // Vertical clamping to safezone
+        const minY = config.safezone.minY;
+        const maxY = config.safezone.maxY;
+        if (headingEl.y < minY) {
+          headingEl.y = minY;
+        }
+        if (headingEl.y + headingEl.height > maxY) {
+          headingEl.y = maxY - headingEl.height;
+          if (headingEl.y < minY) {
+            headingEl.y = minY;
+            headingEl.height = maxY - minY;
+          }
+        }
+
+        headingEl.autoSize = true;
+        headingEl.maxFontSize = config.heading.maxFontSize;
+        headingEl.textAlign = isLeft ? 'left' : 'right';
+        headingEl.autoArranged = true;
+        changed = true;
+      }
+
+      if (subheadingEl && isSelected(subheadingEl)) {
+        subheadingEl.textAlign = isLeft ? 'left' : 'right';
+        if (isLeft) {
+          subheadingEl.x = config.safezone.minX;
+          if (subheadingEl.x + subheadingEl.width > config.safezone.maxX) {
+            subheadingEl.width = config.safezone.maxX - subheadingEl.x;
+          }
+        } else {
+          subheadingEl.x = config.safezone.maxX - subheadingEl.width;
+          if (subheadingEl.x < config.safezone.minX) {
+            subheadingEl.x = config.safezone.minX;
+            subheadingEl.width = config.safezone.maxX - config.safezone.minX;
+          }
+        }
+
+        // Stack right under heading's box
+        subheadingEl.y = headingEl.y + headingEl.height + config.subheading.gapBelowHeading;
+
+        // Fit entirely within vertical safezone
+        const minY = config.safezone.minY;
+        const maxY = config.safezone.maxY;
+        if (subheadingEl.y < minY) {
+          subheadingEl.y = minY;
+        }
+        if (subheadingEl.y + subheadingEl.height > maxY) {
+          subheadingEl.height = maxY - subheadingEl.y;
+          if (subheadingEl.height < 0) {
+            subheadingEl.height = 0;
+          }
+        }
+
+        subheadingEl.autoSize = true;
+        subheadingEl.maxFontSize = config.subheading.maxFontSize;
+        subheadingEl.autoArranged = true;
+        changed = true;
+      }
+    }
 
     const present = [];
     if (logoEl && isSelected(logoEl)) present.push({ el: logoEl, role: 'logo', priority: 1, costWeight: 100 });

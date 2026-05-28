@@ -66,6 +66,25 @@ const AUTO_ARRANGE_CONFIG = {
 
   // Configuration for 300x600 canvas size
   "300x600": {
+    // Safezone boundaries
+    safezone: {
+      minX: 15,
+      maxX: 285,
+      minY: 16,
+      maxY: 584,
+    },
+
+    // Heading placement parameters
+    heading: {
+      maxFontSize: 40,
+    },
+
+    // Subheading placement parameters
+    subheading: {
+      maxFontSize: 35,
+      gapBelowHeading: 4, // vertical distance between Heading and Subheading boxes
+    },
+
     // Brand elements: Logo quadrant coordinates
     logoCoords: {
       TL: { x: 15,  y: 16,  w: 93, h: 33 },
@@ -81,6 +100,16 @@ const AUTO_ARRANGE_CONFIG = {
         TR: { x: 219, y: 16,  w: 75, h: 26 },
         BR: { x: 219, y: 560, w: 75, h: 26 },
         BL: { x: 17,  y: 560, w: 75, h: 26 }
+      }
+    },
+    // Brand elements: CRICOS quadrant coordinates and sizing
+    cricos: {
+      fontSize: 7,
+      coords: {
+        TL: { x: 16,  y: 8,   w: 100, h: 12 },
+        TR: { x: 190, y: 8,   w: 100, h: 12 },
+        BR: { x: 190, y: 584, w: 100, h: 12 },
+        BL: { x: 16,  y: 584, w: 100, h: 12 }
       }
     }
   }
