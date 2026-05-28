@@ -1,6 +1,14 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.62 (Current) - May 2026 — Engine v2.16
+v0.16.63 (Current) - May 2026 — Engine v2.16
+- Renamed the validator specifications tab to "Ad Compliance" and updated its layout and status icons.
+- Refactored validation status badge indicators in the editor sidebar and modal list to support three states: green check (✓) only when all checks pass, orange warning (⚠️) when warnings exist but no blocker errors exist, and red warning (⚠️) if any critical Ad Compliance blockers are tripped.
+- Made the Accessibility and Branding audit engine evaluation synchronous and real-time, executing automatically inside the main render() loop on every canvas edit.
+- Placed interactive input event listeners on frame transition numbers to propagate edits instantly to the validation checks.
+- Bypassed touch target checks for canvases configured as a full-screen click area (c.fullClickArea !== false).
+- Customised the brand colors warning message to state that the color is "in proximity of brand color, so use exact brand color (#E61E2A or #000054)".
+
+v0.16.62 - May 2026 — Engine v2.16
 - Relocated all transition settings from the top-bar controls to a dedicated visual sub-section in the sidebar Animation panel (positioned below Continuous FX).
 - Added bookmarking/favoriting support for frame-level transitions via right-click, fully integrated with the global favorites filter.
 - Removed horizontal line separators between the three Animation sub-panels, styling each sub-panel with a subtle card background and optimized spacing to eliminate wasted room.

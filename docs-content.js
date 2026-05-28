@@ -650,6 +650,18 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.63',
+    date: 'May 2026 — Engine v2.16',
+    items: [
+      'Renamed the validator specifications tab to "Ad Compliance" and updated its layout and status icons.',
+      'Refactored validation status badge indicators in the editor sidebar and modal list to support three states: green check (✓) only when all checks pass, orange warning (⚠️) when warnings exist but no blocker errors exist, and red warning (⚠️) if any critical Ad Compliance blockers are tripped.',
+      'Made the Accessibility and Branding audit engine evaluation synchronous and real-time, executing automatically inside the main render() loop on every canvas edit.',
+      'Placed interactive input event listeners on frame transition numbers to propagate edits instantly to the validation checks.',
+      'Bypassed touch target checks for canvases configured as a full-screen click area (c.fullClickArea !== false).',
+      'Customised the brand colors warning message to state that the color is "in proximity of brand color, so use exact brand color (#E61E2A or #000054)".'
+    ]
+  },
+  {
     version: 'v0.16.62',
     date: 'May 2026 — Engine v2.16',
     items: [
