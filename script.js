@@ -9298,7 +9298,7 @@ function renderProps() {
           : 'Crop & level — rotate the image and pull the corners to crop. Result is baked into the image (element rotation stays 0).';
         f.push(`<div class="prop-row" style="margin-top:4px; margin-bottom:8px; display:flex; gap:6px;">
           <button id="btn-webp-compress" class="btn" title="Compress image to WebP format to reduce file size" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; ${compressBtnStyle}" ${imgDisabled ? 'disabled' : ''}>
-            ${el.isCompressed ? 'Compress more' : 'Compress'}
+            ${el.isCompressed ? '✓ Compression' : 'Compression'}
           </button>
           <button id="btn-image-crop" class="btn" title="${cropTitle}" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; ${cropBtnStyle}" ${imgDisabled ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}>
             ${isCropped ? '✓ Crop & Level' : 'Crop & Level'}
@@ -13164,7 +13164,26 @@ async function getImageSizeKB(url) {
   }
 }
 
-function compressImageToWebP(dataUrl, quality = 0.8) {
+function checkTransparency(img) {
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.min(100, img.naturalWidth);
+  canvas.height = Math.min(100, img.naturalHeight);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  try {
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let i = 3; i < imgData.length; i += 4) {
+      if (imgData[i] < 255) {
+        return true;
+      }
+    }
+  } catch (e) {
+    console.warn("Transparency scan failed:", e);
+  }
+  return false;
+}
+
+function compressImage(dataUrl, format, quality = 0.8) {
   return new Promise((resolve, reject) => {
     if (!dataUrl || typeof dataUrl !== 'string') {
       reject(new Error('Invalid image data URL'));
@@ -13176,10 +13195,36 @@ function compressImageToWebP(dataUrl, quality = 0.8) {
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
       const ctx = canvas.getContext('2d');
+      
+      if (format === 'image/jpeg') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      
       ctx.drawImage(img, 0, 0);
+      
       try {
-        const webpDataUrl = canvas.toDataURL('image/webp', quality);
-        resolve(webpDataUrl);
+        if (format === 'image/png') {
+          if (quality < 1.0) {
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            const step = Math.round(1 + Math.pow(1 - quality, 1.5) * 63);
+            if (step > 1) {
+              for (let i = 0; i < data.length; i += 4) {
+                data[i]     = Math.min(255, Math.round(data[i] / step) * step);
+                data[i + 1] = Math.min(255, Math.round(data[i + 1] / step) * step);
+                data[i + 2] = Math.min(255, Math.round(data[i + 2] / step) * step);
+                if (data[i + 3] < 255) {
+                  data[i + 3] = Math.min(255, Math.round(data[i + 3] / step) * step);
+                }
+              }
+              ctx.putImageData(imgData, 0, 0);
+            }
+          }
+          resolve(canvas.toDataURL('image/png'));
+        } else {
+          resolve(canvas.toDataURL(format, quality));
+        }
       } catch (err) {
         reject(err);
       }
@@ -13198,41 +13243,189 @@ function openWebpCompressionModal(el) {
   const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const warningDisplay = el.isCompressed ? 'block' : 'none';
 
+  const activeC = getActiveCanvas();
+  const currentAdSize = activeC && activeC._valKb ? parseFloat(activeC._valKb) : 0;
+  const limitKb = state.adSizeLimit || 150;
+
   const bg = document.createElement('div');
   bg.className = 'modal-bg';
   bg.innerHTML = `
-    <div class="modal" style="width:480px;">
+    <style>
+      #webp-quality-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border-light);
+        margin: 0;
+        cursor: pointer;
+        outline: none;
+        background-size: 100% 100%, 28px 28px;
+        background-repeat: no-repeat, repeat;
+        animation: webp-zebra 2s linear infinite;
+      }
+      #webp-quality-slider:focus {
+        outline: none;
+      }
+      
+      /* Webkit track style - transparent since input holds background */
+      #webp-quality-slider::-webkit-slider-runnable-track {
+        height: 12px;
+        background: transparent;
+        border: none;
+      }
+      
+      /* Webkit thumb style */
+      #webp-quality-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--accent-base);
+        border: 2px solid var(--text-bright);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        margin-top: -3px; /* Centering */
+        transition: transform 0.15s ease, background-color 0.15s ease;
+      }
+      #webp-quality-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+        background: var(--accent-light);
+      }
+      
+      /* Moz track style - transparent since input holds background */
+      #webp-quality-slider::-moz-range-track {
+        height: 12px;
+        background: transparent;
+        border: none;
+      }
+      
+      /* Moz thumb style */
+      #webp-quality-slider::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--accent-base);
+        border: 2px solid var(--text-bright);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        transition: transform 0.15s ease, background-color 0.15s ease;
+      }
+      #webp-quality-slider::-moz-range-thumb:hover {
+        transform: scale(1.2);
+        background: var(--accent-light);
+      }
+      
+      /* Animate only the second background layer (the zebra stripes) */
+      @keyframes webp-zebra {
+        0% { background-position: 0 0, 0 0; }
+        100% { background-position: 0 0, 28px 0; }
+      }
+      
+      #webp-suggested-marker {
+        transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.15s ease;
+      }
+      #webp-suggested-marker:hover {
+        transform: translate(-50%, -30px) scale(1.08) !important;
+        background-color: #059669 !important;
+      }
+      #webp-suggested-marker:hover #webp-suggested-arrow {
+        border-top-color: #059669 !important;
+      }
+      #webp-suggested-marker:active {
+        transform: translate(-50%, -30px) scale(0.98) !important;
+      }
+      .format-opt:not(.active):hover {
+        background: rgba(255,255,255,0.06) !important;
+        color: var(--text-bright) !important;
+      }
+    </style>
+    <div class="modal" style="width:850px;">
       <div class="modal-head">
-        <h2>WebP Image Compression</h2>
+        <h2>Image Compression</h2>
         <button class="btn" id="webp-close" title="Close dialog">Close</button>
       </div>
-      <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
-        <div style="display:flex; gap:12px; align-items:center; background:rgba(255,255,255,0.03); padding:10px; border-radius:6px;">
-          <img id="webp-preview-img" src="${originalDataUrl}" title="WebP compression preview" style="width:80px; height:80px; object-fit:contain; border:1px solid var(--border-light); border-radius:4px; background:#12131a;" />
-          <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:4px;">
-            <div style="font-size:12px; font-weight:600; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(el.name)}</div>
-            <div style="font-size:11px; color:var(--text-muted);">
-              Original size: <span id="webp-original-size" style="font-weight:600; color:var(--text-bright);">Calculating...</span>
+      <div class="modal-body" style="display:grid; grid-template-columns:1.2fr 1fr; gap:24px; max-height:580px; overflow-y:auto; padding-right:6px;">
+        <!-- Left Column: Interactive controls & zoom preview -->
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="position:relative; width:100%; height:250px; background:#12131a; border:1px solid var(--border-light); border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+            <div id="webp-preview-viewport" style="width:100%; height:100%; overflow:hidden; position:relative; display:flex; align-items:center; justify-content:center; cursor:default; user-select:none;">
+              <img id="webp-preview-img" src="${originalDataUrl}" title="Image preview (Drag/Scroll to zoom, drag to pan)" style="max-width:100%; max-height:100%; object-fit:contain; transition:transform 0.1s ease; transform-origin:center center;" />
             </div>
-            <div style="font-size:11px; color:var(--text-muted);">
-              Compressed size: <span id="webp-compressed-size" style="font-weight:600; color:var(--accent-light);">Calculating...</span>
+            <div style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.6); padding:4px 8px; border-radius:4px; display:flex; gap:6px; align-items:center; z-index:10; border:1px solid var(--border-light);">
+              <button class="btn" id="webp-zoom-out" style="padding:2px 6px; font-size:10px; min-width:20px; border:none; background:var(--bg-input); color:var(--text-bright); font-weight:bold; cursor:pointer;">-</button>
+              <span id="webp-zoom-display" style="font-size:10px; color:var(--text-bright); font-weight:600; min-width:32px; text-align:center; user-select:none;">100%</span>
+              <button class="btn" id="webp-zoom-in" style="padding:2px 6px; font-size:10px; min-width:20px; border:none; background:var(--bg-input); color:var(--text-bright); font-weight:bold; cursor:pointer;">+</button>
+              <button class="btn" id="webp-zoom-reset" style="padding:2px 6px; font-size:10px; border:none; background:var(--bg-input); color:var(--text-bright); font-weight:bold; cursor:pointer;" title="Reset zoom to 100%">100%</button>
             </div>
+            <div style="position:absolute; top:8px; left:8px; background:rgba(0,0,0,0.6); padding:2px 6px; border-radius:4px; font-size:9px; color:var(--accent-light); font-weight:bold; border:1px solid var(--border-light);">
+              PREVIEW VIEWPORT
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:6px; background:rgba(255,255,255,0.02); padding:8px 12px; border-radius:6px; border:1px solid var(--border-light);">
+            <div style="font-size:11.5px; font-weight:600; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(el.name)}</div>
+            <div style="font-size:10px; color:var(--text-muted); display:grid; grid-template-columns:auto 1fr auto 1fr; gap:4px 16px; align-items:center;">
+              <span>Original size:</span><span id="webp-original-size" style="font-weight:600; color:var(--text-bright);">Calculating...</span>
+              <span>Compressed size:</span><span id="webp-compressed-size" style="font-weight:600; color:var(--accent-light);">Calculating...</span>
+              <span>Est. Ad ZIP size:</span><span id="webp-est-ad-size" style="font-weight:700; color:var(--text-bright);">Calculating...</span>
+              <span>Ad size limit:</span><span style="font-weight:600; color:var(--text-bright);">${limitKb} KB</span>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Output Format</label>
+            <div style="display:flex; background:var(--bg-input); padding:2px; border-radius:6px; border:1px solid var(--border-light);">
+              <button class="btn format-opt active" data-format="image/webp" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:var(--accent-base); color:var(--text-bright); transition:all 0.15s ease;">WebP</button>
+              <button class="btn format-opt" data-format="image/jpeg" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:var(--text-muted); transition:all 0.15s ease;">JPEG</button>
+              <button class="btn format-opt" data-format="image/png" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:var(--text-muted); transition:all 0.15s ease;">PNG</button>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Compression Quality</label>
+            </div>
+            <div style="position:relative; padding-top:20px; padding-bottom:4px;">
+              <input type="range" id="webp-quality-slider" min="10" max="100" value="80" title="Adjust compression quality percentage" />
+              <div id="webp-slider-marker-container" style="position:absolute; left:9px; right:9px; top:23px; height:12px; pointer-events:none;">
+                <div id="webp-suggested-marker" style="display:none; position:absolute; transform:translate(-50%, -30px); z-index:2; background:#10b981; color:#fff; font-size:10.5px; font-weight:700; padding:4px 8px; border-radius:4px; white-space:nowrap; box-shadow:0 2px 4px rgba(0,0,0,0.3); pointer-events:auto; cursor:pointer;">
+                  SUGGESTED: <span id="webp-suggested-val">...</span>
+                  <div id="webp-suggested-arrow" style="position:absolute; bottom:-4px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-top:4px solid #10b981; transition:border-top-color 0.15s ease;"></div>
+                </div>
+                <div id="webp-suggested-tick" style="display:none; position:absolute; width:2px; height:12px; background:#fff; transform:translate(-50%, 0); z-index:1; border-radius:1px; opacity:0.8;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:${warningDisplay}; font-size:10.5px; color:#e2a537; background:rgba(226,165,55,0.08); border:1px solid rgba(226,165,55,0.25); padding:6px 10px; border-radius:4px; line-height:1.35; margin-top:-4px;">
+            <strong>⚠️ Quality Degradation Warning:</strong> Re-compressing an already compressed image may cause visible and cumulative quality loss. Use the zoomable viewport to inspect details.
+          </div>
+
+          <div id="webp-transparency-warning" style="display:none; font-size:10.5px; color:#e2a537; background:rgba(226,165,55,0.08); border:1px solid rgba(226,165,55,0.25); padding:6px 10px; border-radius:4px; line-height:1.35; margin-top:-4px;">
+            <strong>⚠️ JPEG Transparency Warning:</strong> JPEG does not support transparency. Transparent areas will be filled with white in the output.
           </div>
         </div>
 
-        <div style="display:flex; flex-direction:column; gap:6px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Compression Quality</label>
-            <span id="webp-quality-display" style="font-size:12px; font-weight:700; color:var(--accent-light);">80%</span>
+        <!-- Right Column: Ad Size Breakdown -->
+        <div style="display:flex; flex-direction:column; gap:12px; border-left:1px solid var(--border-light); padding-left:20px; font-size:11.5px; line-height:1.5; color:var(--text-main); min-height:100%;">
+          <h3 style="font-size:12px; color:var(--text-bright); text-transform:uppercase; letter-spacing:0.05em; margin:0 0 6px 0;">Ad Size Breakdown</h3>
+          <div id="webp-breakdown-list" style="display:flex; flex-direction:column; gap:8px; max-height:360px; overflow-y:auto; padding-right:4px;">
+            <!-- Populated dynamically by renderBreakdown -->
           </div>
-          <input type="range" id="webp-quality-slider" min="10" max="100" value="80" style="width:100%; cursor:pointer; accent-color:var(--accent-base);" title="Adjust compression quality percentage" />
-        </div>
-
-        <div style="display:${warningDisplay}; font-size:11px; color:#e2a537; background:rgba(226,165,55,0.08); border:1px solid rgba(226,165,55,0.25); padding:8px 10px; border-radius:6px; line-height:1.4;">
-          <strong>⚠️ Quality Degradation Warning:</strong> Re-compressing an already compressed image may cause visible and cumulative quality loss.
+          <div style="border-top:1px solid var(--border-light); padding-top:10px; margin-top:auto; display:flex; flex-direction:column; gap:4px;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted);">
+              <span>Uncompressed Sum:</span>
+              <span id="webp-breakdown-sum" style="font-weight:600; color:var(--text-bright);">0.0 KB</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:700; color:var(--text-bright);">
+              <span>Est. Ad ZIP Size:</span>
+              <span id="webp-breakdown-total" style="color:var(--accent-light);">0.0 KB</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="modal-foot" style="justify-content:flex-end; gap: 8px; display: flex;">
+      <div class="modal-foot" style="justify-content:flex-end; gap: 8px; display: flex; border-top: 1px solid var(--border-light); padding-top:12px; margin-top:4px;">
         <button class="btn" id="webp-btn-cancel" title="Cancel image compression">Cancel</button>
         <button class="btn primary" id="webp-btn-apply" title="Apply compression and replace image with WebP version">Apply Compression</button>
       </div>
@@ -13240,47 +13433,381 @@ function openWebpCompressionModal(el) {
   
   document.body.appendChild(bg);
 
+  const viewport = bg.querySelector('#webp-preview-viewport');
   const previewImg = bg.querySelector('#webp-preview-img');
   const origSizeDisplay = bg.querySelector('#webp-original-size');
   const sizeDisplay = bg.querySelector('#webp-compressed-size');
+  const estAdSizeDisplay = bg.querySelector('#webp-est-ad-size');
   const qualityDisplay = bg.querySelector('#webp-quality-display');
   const slider = bg.querySelector('#webp-quality-slider');
+  const autoBtn = bg.querySelector('#webp-btn-auto');
+  const marker = bg.querySelector('#webp-suggested-marker');
+  const tick = bg.querySelector('#webp-suggested-tick');
+  const suggestedVal = bg.querySelector('#webp-suggested-val');
+  const btnZoomIn = bg.querySelector('#webp-zoom-in');
+  const btnZoomOut = bg.querySelector('#webp-zoom-out');
+  const btnZoomReset = bg.querySelector('#webp-zoom-reset');
+  const zoomDisplay = bg.querySelector('#webp-zoom-display');
+
+  let selectedFormat = 'image/webp';
+  let originalHasTransparency = false;
+
+  const formatButtons = bg.querySelectorAll('.format-opt');
+  formatButtons.forEach(btn => {
+    btn.onclick = async (e) => {
+      e.preventDefault();
+      if (btn.classList.contains('active')) return;
+      
+      formatButtons.forEach(b => {
+        b.classList.remove('active');
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text-muted)';
+      });
+      
+      btn.classList.add('active');
+      btn.style.background = 'var(--accent-base)';
+      btn.style.color = 'var(--text-bright)';
+      
+      selectedFormat = btn.dataset.format;
+      
+      const transpWarning = bg.querySelector('#webp-transparency-warning');
+      if (transpWarning) {
+        transpWarning.style.display = (selectedFormat === 'image/jpeg' && originalHasTransparency) ? 'block' : 'none';
+      }
+      
+      sizeDisplay.textContent = 'Calculating...';
+      await updateCompression();
+      await runSuggestedScan(selectedFormat);
+    };
+  });
 
   let currentCompressedDataUrl = originalDataUrl;
+  let originalImageSizeKB = 0;
+  let suggestedQuality = null;
 
-  // Load original size asynchronously
-  getImageSizeKB(originalDataUrl).then(size => {
-    origSizeDisplay.textContent = size + ' KB';
+  // Viewport Zoomable Drag-to-Pan state
+  let scale = 1;
+  let isPanning = false;
+  let startX = 0, startY = 0;
+  let translateX = 0, translateY = 0;
+
+  const updateTransform = () => {
+    previewImg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    zoomDisplay.textContent = Math.round(scale * 100) + '%';
+    viewport.style.cursor = scale > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default';
+  };
+
+  const updateSliderBg = () => {
+    const val = parseInt(slider.value, 10);
+    const pct = ((val - 10) / 90 * 100);
+    const zebra = `repeating-linear-gradient(
+      -45deg,
+      var(--accent-base),
+      var(--accent-base) 10px,
+      var(--accent-hover) 10px,
+      var(--accent-hover) 20px
+    )`;
+    slider.style.backgroundImage = `linear-gradient(to right, transparent ${pct}%, #13141b ${pct}%), ${zebra}`;
+  };
+
+  const renderBreakdown = (compSize) => {
+    const breakdownList = bg.querySelector('#webp-breakdown-list');
+    const breakdownSum = bg.querySelector('#webp-breakdown-sum');
+    const breakdownTotal = bg.querySelector('#webp-breakdown-total');
+    if (!breakdownList) return;
+
+    let html = '';
+    let totalUncompressed = 0;
+
+    // 1. index.html size
+    const dummyZip = { file: () => {} };
+    const htmlString = (typeof generateExportHTML === 'function') ? generateExportHTML(activeC, dummyZip) : '';
+    const htmlSize = htmlString.length / 1024;
+    totalUncompressed += htmlSize;
+
+    html += `
+      <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); padding:6px 10px; border-radius:4px;">
+        <div>
+          <span style="color:var(--text-bright); font-weight:500;">index.html</span>
+          <div style="font-size:9px; color:var(--text-muted);">HTML Structure & Logic</div>
+        </div>
+        <span style="font-weight:600; color:var(--text-bright);">${htmlSize.toFixed(1)} KB</span>
+      </div>
+    `;
+
+    // 2. Font assets
+    const req = (typeof getRequiredFonts === 'function') ? getRequiredFonts(activeC) : { museo: new Set(), helvetica: new Set() };
+    const fonts = [];
+    if (req.museo.has(300)) fonts.push({ name: 'Museo300-Regular.woff2', size: 32 });
+    if (req.museo.has(500)) fonts.push({ name: 'Museo500-Regular.woff2', size: 33 });
+    if (req.museo.has(700)) fonts.push({ name: 'Museo700-Regular.woff2', size: 33 });
+    if (req.helvetica.has(300)) fonts.push({ name: 'helveticaneueltpro_lt.woff2', size: 38 });
+    if (req.helvetica.has(400)) fonts.push({ name: 'helveticaneueltpro_roman.woff2', size: 39 });
+    if (req.helvetica.has(500)) fonts.push({ name: 'helveticaneueltpro.woff2', size: 38 });
+
+    fonts.forEach(f => {
+      totalUncompressed += f.size;
+      html += `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); padding:6px 10px; border-radius:4px;">
+          <div>
+            <span style="color:var(--text-bright); font-weight:500;">${f.name}</span>
+            <div style="font-size:9px; color:var(--text-muted);">Font Asset (WOFF2)</div>
+          </div>
+          <span style="font-weight:600; color:var(--text-bright);">${f.size.toFixed(1)} KB</span>
+        </div>
+      `;
+    });
+
+    // 3. Image assets
+    activeC.elements.forEach(imgEl => {
+      if (imgEl.type === 'image') {
+        const isActive = imgEl.id === el.id;
+        const sizeVal = isActive ? compSize : getElementSizeKB(imgEl);
+        totalUncompressed += sizeVal;
+
+        if (isActive) {
+          html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0, 0, 84, 0.2); border:1px solid var(--accent-base); padding:6px 10px; border-radius:4px;">
+              <div>
+                <span style="color:var(--accent-light); font-weight:600;">${escapeHtml(imgEl.name)} <span style="font-size:9px; opacity:0.8;">(Active)</span></span>
+                <div style="font-size:9px; color:var(--accent-light); opacity:0.8;">Image Asset (Compressing)</div>
+              </div>
+              <span style="font-weight:700; color:var(--accent-light);">${sizeVal.toFixed(1)} KB</span>
+            </div>
+          `;
+        } else {
+          html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); padding:6px 10px; border-radius:4px;">
+              <div>
+                <span style="color:var(--text-bright); font-weight:500;">${escapeHtml(imgEl.name)}</span>
+                <div style="font-size:9px; color:var(--text-muted);">Image Asset</div>
+              </div>
+              <span style="font-weight:600; color:var(--text-bright);">${sizeVal.toFixed(1)} KB</span>
+            </div>
+          `;
+        }
+      }
+    });
+
+    breakdownList.innerHTML = html;
+    if (breakdownSum) {
+      breakdownSum.textContent = totalUncompressed.toFixed(1) + ' KB';
+    }
+
+    if (originalImageSizeKB > 0 && currentAdSize > 0) {
+      const estAdSize = Math.max(0, currentAdSize - originalImageSizeKB + compSize);
+      if (breakdownTotal) {
+        breakdownTotal.textContent = estAdSize.toFixed(1) + ' KB';
+        if (estAdSize > limitKb) {
+          breakdownTotal.style.color = '#ef4444';
+        } else {
+          breakdownTotal.style.color = '#10b981';
+        }
+      }
+    } else {
+      if (breakdownTotal) breakdownTotal.textContent = 'Calculating...';
+    }
+  };
+
+  btnZoomIn.onclick = (e) => {
+    e.preventDefault();
+    scale = Math.min(8, scale * 2);
+    if (scale === 1) { translateX = 0; translateY = 0; }
+    updateTransform();
+  };
+
+  btnZoomOut.onclick = (e) => {
+    e.preventDefault();
+    scale = Math.max(1, scale / 2);
+    if (scale === 1) { translateX = 0; translateY = 0; }
+    updateTransform();
+  };
+
+  btnZoomReset.onclick = (e) => {
+    e.preventDefault();
+    scale = 1;
+    translateX = 0;
+    translateY = 0;
+    updateTransform();
+  };
+
+  // Allow scrollwheel to zoom
+  viewport.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomFactor = 1.15;
+    if (e.deltaY < 0) {
+      scale = Math.min(8, scale * zoomFactor);
+    } else {
+      scale = Math.max(1, scale / zoomFactor);
+    }
+    if (scale === 1) {
+      translateX = 0;
+      translateY = 0;
+    }
+    updateTransform();
+  }, { passive: false });
+
+  viewport.addEventListener('mousedown', (e) => {
+    if (scale <= 1) return;
+    isPanning = true;
+    startX = e.clientX - translateX;
+    startY = e.clientY - translateY;
+    updateTransform();
+    e.preventDefault();
   });
+
+  const onMouseMove = (e) => {
+    if (!isPanning) return;
+    translateX = e.clientX - startX;
+    translateY = e.clientY - startY;
+    updateTransform();
+  };
+
+  const onMouseUp = () => {
+    if (isPanning) {
+      isPanning = false;
+      updateTransform();
+    }
+  };
+
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
 
   const updateCompression = async () => {
     const quality = parseInt(slider.value, 10) / 100;
     try {
-      const compressed = await compressImageToWebP(originalDataUrl, quality);
+      const compressed = await compressImage(originalDataUrl, selectedFormat, quality);
       previewImg.src = compressed;
-      const compSize = await getImageSizeKB(compressed);
-      sizeDisplay.textContent = compSize + ' KB';
+      const compSizeStr = await getImageSizeKB(compressed);
+      const compSize = parseFloat(compSizeStr) || 0;
+      sizeDisplay.textContent = compSize.toFixed(1) + ' KB';
       currentCompressedDataUrl = compressed;
+
+      if (originalImageSizeKB > 0 && currentAdSize > 0) {
+        const estAdSize = Math.max(0, currentAdSize - originalImageSizeKB + compSize);
+        estAdSizeDisplay.textContent = estAdSize.toFixed(1) + ' KB';
+        if (estAdSize > limitKb) {
+          estAdSizeDisplay.style.color = '#ef4444';
+        } else {
+          estAdSizeDisplay.style.color = '#10b981';
+        }
+      } else {
+        estAdSizeDisplay.textContent = 'Calculating...';
+      }
+
+      // Render breakdown in real-time
+      renderBreakdown(compSize);
+      updateSliderBg();
     } catch (err) {
       console.error(err);
       sizeDisplay.textContent = 'Error';
     }
   };
 
-  // Run initial compression calculation asynchronously
-  updateCompression();
+  const runSuggestedScan = async (format) => {
+    if (marker) marker.style.display = 'none';
+    if (tick) tick.style.display = 'none';
+    suggestedQuality = null;
+
+    const qualities = [];
+    for (let q = 100; q >= 10; q -= 5) {
+      qualities.push(q);
+    }
+
+    const scanPromises = qualities.map(async (q) => {
+      try {
+        const compressed = await compressImage(originalDataUrl, format, q / 100);
+        const compSizeStr = await getImageSizeKB(compressed);
+        const compSize = parseFloat(compSizeStr) || 0;
+        const estAdSize = currentAdSize - originalImageSizeKB + compSize;
+        return { q, estAdSize };
+      } catch (err) {
+        return { q, estAdSize: Infinity };
+      }
+    });
+
+    const scanResults = await Promise.all(scanPromises);
+    if (selectedFormat !== format) return; // Prevent race conditions
+    scanResults.sort((a, b) => b.q - a.q);
+
+    const match = scanResults.find(r => r.estAdSize <= limitKb);
+    suggestedQuality = match ? match.q : 10;
+
+    const pct = ((suggestedQuality - 10) / 90 * 100);
+    if (marker) {
+      marker.style.left = pct + '%';
+      marker.style.display = 'block';
+    }
+    if (tick) {
+      tick.style.left = pct + '%';
+      tick.style.display = 'block';
+    }
+    if (suggestedVal) {
+      suggestedVal.textContent = suggestedQuality + '%';
+    }
+  };
+
+  getImageSizeKB(originalDataUrl).then(async (sizeStr) => {
+    originalImageSizeKB = parseFloat(sizeStr) || 0;
+    origSizeDisplay.textContent = originalImageSizeKB.toFixed(1) + ' KB';
+    
+    // Check transparency
+    const tempImg = new Image();
+    tempImg.onload = async () => {
+      originalHasTransparency = checkTransparency(tempImg);
+      
+      const transpWarning = bg.querySelector('#webp-transparency-warning');
+      if (transpWarning) {
+        transpWarning.style.display = (selectedFormat === 'image/jpeg' && originalHasTransparency) ? 'block' : 'none';
+      }
+      
+      await updateCompression();
+      await runSuggestedScan(selectedFormat);
+    };
+    tempImg.onerror = async () => {
+      await updateCompression();
+      await runSuggestedScan(selectedFormat);
+    };
+    tempImg.src = originalDataUrl;
+  });
 
   slider.oninput = () => {
-    qualityDisplay.textContent = slider.value + '%';
+    if (qualityDisplay) {
+      qualityDisplay.textContent = slider.value + '%';
+      qualityDisplay.classList.add('webp-val-change');
+    }
+    clearTimeout(slider._t);
+    slider._t = setTimeout(() => {
+      if (qualityDisplay) {
+        qualityDisplay.classList.remove('webp-val-change');
+      }
+    }, 150);
+    updateSliderBg();
   };
   slider.onchange = async () => {
     sizeDisplay.textContent = 'Calculating...';
     await updateCompression();
   };
 
+  if (marker) {
+    marker.onclick = async (e) => {
+      e.stopPropagation();
+      if (suggestedQuality) {
+        slider.value = suggestedQuality;
+        if (qualityDisplay) {
+          qualityDisplay.textContent = suggestedQuality + '%';
+        }
+        sizeDisplay.textContent = 'Calculating...';
+        await updateCompression();
+      }
+    };
+  }
+
   const closeFn = () => {
     bg.remove();
     document.removeEventListener('keydown', escHandler);
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
   };
   const escHandler = (e) => { if (e.key === 'Escape') closeFn(); };
   document.addEventListener('keydown', escHandler);
@@ -13297,7 +13824,8 @@ function openWebpCompressionModal(el) {
     
     if (!state.assetNames) state.assetNames = {};
     const origName = state.assetNames && state.assetNames[activeAssetId] ? state.assetNames[activeAssetId] : (el.name || 'image');
-    state.assetNames[newId] = origName.replace(/\.[a-z0-9]+$/i, '') + '.webp';
+    const ext = selectedFormat === 'image/webp' ? '.webp' : (selectedFormat === 'image/jpeg' ? '.jpg' : '.png');
+    state.assetNames[newId] = origName.replace(/\.[a-z0-9]+$/i, '') + ext;
     
     const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
     if (_imgDyn) {
@@ -13307,6 +13835,7 @@ function openWebpCompressionModal(el) {
     }
     el.isCompressed = true;
     el.webpQuality = parseInt(slider.value, 10);
+    el.compressionFormat = selectedFormat;
     pushHistory();
     render();
     renderProps();
