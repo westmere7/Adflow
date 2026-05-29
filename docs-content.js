@@ -344,6 +344,14 @@ const DOCS_SECTIONS = [
       { id: 'settings', title: 'App settings', body: `
         <p><b>File → Settings</b>: theme (Dark, RMIT Brand, Ocean, Navy, Light), rulers, snapping, Crop to Canvas, history limit, autosave behaviour. <b>File → Project Settings</b> covers per-project options (name, ClickTag, weight limit).</p>
       `},
+      { id: 'startup-templates-docs', title: 'Startup Templates', body: `
+        <p>Adflow supports initializing new projects from pre-defined startup templates (such as branding guides, base layouts, or canvas sets) stored inside the <code>Startup/</code> directory.</p>
+        <ul>
+          <li><b>Global Preference:</b> In <b>File → Settings</b> under <i>Canvas Configuration</i>, you can set your default **Startup Template preference** (either to start fresh with a blank project or to load one of the scanned templates automatically on first boot).</li>
+          <li><b>New Project dialog:</b> When creating a new project via <b>File → New Project…</b>, tick the **"Use pre-defined startup template"** checkbox to select a template from the list. Toggling this on automatically disables the other canvas configuration inputs, as those are driven by the template archive.</li>
+          <li><b>Project Name preservation:</b> Any custom project name entered in the New Project dialog is applied directly to the loaded template, keeping your workspace name in sync.</li>
+        </ul>
+      `},
       { id: 'startup-view', title: 'Startup view & resume', body: `
         <p>The view is always centred on your canvases at startup. If you had a saved scroll position from your last session, a toast appears with <b>Resume previous view</b> to jump back.</p>
       `},
@@ -649,6 +657,16 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.16.65',
+    date: 'May 2026 — Engine v2.18',
+    items: [
+      'Added dynamic scanning of the `Startup/` templates directory, automatically parsing flow archives to register pre-defined templates in a generated registry manifest.',
+      'Refactored the Settings panel and the New Project wizard to display dynamic template options instead of hardcoded startup preferences.',
+      'Preserved user-defined Project Names when spawning a new workspace from a custom startup template instead of overwriting state metadata.',
+      'Corrected layout version headers in settings modals and dialogs to match current release version (v0.16.65).'
+    ]
+  },
   {
     version: 'v0.16.64',
     date: 'May 2026 — Engine v2.17',
