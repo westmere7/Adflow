@@ -751,7 +751,7 @@ function getDefaultSync(el) {
   return defaultSync;
 }
 
-function autoLinkElements(forceSelectedOnly = false) {
+async function autoLinkElements(forceSelectedOnly = false) {
   const chkSelectedOnly = document.getElementById('lnk-opt-selected-only');
   const selectedOnly = forceSelectedOnly || (chkSelectedOnly ? chkSelectedOnly.checked : false);
 
@@ -759,7 +759,7 @@ function autoLinkElements(forceSelectedOnly = false) {
   if (selectedOnly) {
     const selectedCanvas = getActiveCanvas();
     if (!selectedCanvas || !state.layerSelection?.length) {
-      alert("No elements are currently selected. Select one or more elements to use 'Selected only' auto-linking.");
+      await showAdflowAlert("No elements are currently selected. Select one or more elements to use 'Selected only' auto-linking.");
       return;
     }
     allowedTargets = state.layerSelection.map(id => {
@@ -848,16 +848,16 @@ function autoLinkElements(forceSelectedOnly = false) {
         : [];
       const allSelectedLinked = selectedEls.length > 0 && selectedEls.every(el => el.linkGroupId && state.linkGroups?.[el.linkGroupId]);
       if (allSelectedLinked) {
-        alert("The selected element is already linked, and no other matching elements were found to link.");
+        await showAdflowAlert("The selected element is already linked, and no other matching elements were found to link.");
         return;
       }
     }
 
     const anyLinked = allElements.some(el => el.linkGroupId && state.linkGroups?.[el.linkGroupId]);
     if (anyLinked) {
-      alert("Matching elements are already linked, and no new matching elements were found.");
+      await showAdflowAlert("Matching elements are already linked, and no new matching elements were found.");
     } else {
-      alert("No matching elements with the same layer name and style were found.");
+      await showAdflowAlert("No matching elements with the same layer name and style were found.");
     }
   }
 }
@@ -2076,7 +2076,7 @@ function createCanvasActions(c) {
   btnDownload.onmouseout = () => btnDownload.style.color = '#5a6178';
   btnDownload.onclick = async (e) => {
     e.stopPropagation();
-    if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
+    if (typeof JSZip === 'undefined') { await showAdflowAlert('JSZip is not loaded.'); return; }
     const zip = new JSZip();
     const projName = state.projectName || 'Ad';
     const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -4522,7 +4522,7 @@ function onElementMouseDown(e, el, canvasCtx) {
     state.activeSmartGuides = { x: snapX, y: snapY };
     render(true);
   };
-  const onUp = (ev) => {
+  const onUp = async (ev) => {
     state.isDragging = false;
     window.removeEventListener('mousemove', onMove);
     window.removeEventListener('mouseup', onUp);
@@ -4568,11 +4568,11 @@ function onElementMouseDown(e, el, canvasCtx) {
       }
       const targetFolder = targetFolderId ? (state.assetFolders || []).find(f => f.id === targetFolderId) : null;
       if (targetFolder && targetFolder.readOnly) {
-        alert("Cannot add assets to a read-only folder.");
+        await showAdflowAlert("Cannot add assets to a read-only folder.");
         render();
         return;
       }
-      saveSelectionAsAsset(targetFolderId);
+      await saveSelectionAsAsset(targetFolderId);
       return;
     }
 
@@ -6339,8 +6339,8 @@ function renderLinkControl() {
 
   const btnAutolink = document.getElementById('lnk-btn-autolink');
   if (btnAutolink) {
-    btnAutolink.onclick = () => {
-      autoLinkElements();
+    btnAutolink.onclick = async () => {
+      await autoLinkElements();
     };
   }
 
@@ -6672,7 +6672,7 @@ function ensureAssetsPanelExpanded() {
 // Snapshot the current selection into the asset library. A single grouped
 // element pulls in its whole group. Link-group membership is dropped; per-element
 // dynamic-data flags are kept.
-function saveSelectionAsAsset(folderId) {
+async function saveSelectionAsAsset(folderId) {
   ensureAssetsPanelExpanded();
   const c = getActiveCanvas();
   if (!c) return;
@@ -6680,7 +6680,7 @@ function saveSelectionAsAsset(folderId) {
     ? state.layerSelection
     : (state.selectedElementId ? [state.selectedElementId] : []);
   let els = c.elements.filter(e => ids.includes(e.id));
-  if (!els.length) { alert('Select an element or group first, then save it to Assets.'); return; }
+  if (!els.length) { await showAdflowAlert('Select an element or group first, then save it to Assets.'); return; }
   if (els.length === 1 && els[0].groupId) {
     els = c.elements.filter(e => e.groupId === els[0].groupId);
   }
@@ -7179,8 +7179,8 @@ function showAddAssetDropdown(e) {
   const items = [
     {
       label: 'Add current selection',
-      action: () => {
-        saveSelectionAsAsset();
+      action: async () => {
+        await saveSelectionAsAsset();
       }
     },
     {
@@ -7361,14 +7361,14 @@ document.getElementById('btn-asset-folder')?.addEventListener('click', (e) => { 
       e.preventDefault();
       e.stopPropagation();
       if (isTargetReadOnly) {
-        alert("Cannot add assets to a read-only folder.");
+        await showAdflowAlert("Cannot add assets to a read-only folder.");
         return;
       }
       const files = Array.from(e.dataTransfer.files).filter(f => 
         /^image\/(png|jpeg|svg\+xml)$/i.test(f.type) || /\.(png|jpg|jpeg|svg)$/i.test(f.name)
       );
       if (files.length === 0) {
-        alert('Only image files (PNG, JPEG, SVG) are allowed.');
+        await showAdflowAlert('Only image files (PNG, JPEG, SVG) are allowed.');
         return;
       }
       for (const file of files) {
@@ -7414,14 +7414,14 @@ document.getElementById('btn-asset-folder')?.addEventListener('click', (e) => { 
           e.preventDefault();
           e.stopPropagation();
           if (isTargetReadOnly) {
-            alert("Cannot add assets to a read-only folder.");
+            await showAdflowAlert("Cannot add assets to a read-only folder.");
             return;
           }
           const prevSelection = state.layerSelection;
           const prevSelectedId = state.selectedElementId;
           state.layerSelection = ids;
           state.selectedElementId = ids[ids.length - 1];
-          saveSelectionAsAsset(targetFolderId);
+          await saveSelectionAsAsset(targetFolderId);
           state.layerSelection = prevSelection;
           state.selectedElementId = prevSelectedId;
           render();
@@ -14727,6 +14727,134 @@ function openModal(title, body, isCode) {
   }
 }
 
+function showAdflowAlert(message, title = 'Notification') {
+  return new Promise((resolve) => {
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML = `
+      <div class="modal" style="max-width: 400px; display: flex; flex-direction: column; gap: 16px;">
+        <div class="modal-head">
+          <h2>${title}</h2>
+          <button class="btn" id="adflow-alert-close" title="Close">Close</button>
+        </div>
+        <div class="modal-body" style="font-size: 13px; color: var(--text-main); line-height: 1.5; padding: 18px 22px;">
+          ${message}
+        </div>
+        <div class="modal-foot" style="display: flex; justify-content: flex-end;">
+          <button class="btn primary" id="adflow-alert-ok">OK</button>
+        </div>
+      </div>`;
+    document.body.appendChild(bg);
+
+    const closeFn = () => {
+      bg.remove();
+      document.removeEventListener('keydown', escHandler);
+      resolve();
+    };
+    const escHandler = (e) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        e.preventDefault();
+        closeFn();
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+    bg.querySelector('#adflow-alert-close').onclick = closeFn;
+    bg.querySelector('#adflow-alert-ok').onclick = closeFn;
+    bg.querySelector('#adflow-alert-ok').focus();
+    bg.onclick = (e) => { if (e.target === bg) closeFn(); };
+  });
+}
+
+function showAdflowConfirm(message, title = 'Confirm Action') {
+  return new Promise((resolve) => {
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML = `
+      <div class="modal" style="max-width: 400px; display: flex; flex-direction: column; gap: 16px;">
+        <div class="modal-head">
+          <h2>${title}</h2>
+          <button class="btn" id="adflow-confirm-close" title="Close">Close</button>
+        </div>
+        <div class="modal-body" style="font-size: 13px; color: var(--text-main); line-height: 1.5; padding: 18px 22px;">
+          ${message}
+        </div>
+        <div class="modal-foot" style="display: flex; justify-content: flex-end; gap: 12px;">
+          <button class="btn" id="adflow-confirm-cancel">Cancel</button>
+          <button class="btn primary" id="adflow-confirm-ok">Confirm</button>
+        </div>
+      </div>`;
+    document.body.appendChild(bg);
+
+    const closeFn = (val) => {
+      bg.remove();
+      document.removeEventListener('keydown', escHandler);
+      resolve(val);
+    };
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeFn(false);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        closeFn(true);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+    bg.querySelector('#adflow-confirm-close').onclick = () => closeFn(false);
+    bg.querySelector('#adflow-confirm-cancel').onclick = () => closeFn(false);
+    bg.querySelector('#adflow-confirm-ok').onclick = () => closeFn(true);
+    bg.querySelector('#adflow-confirm-ok').focus();
+    bg.onclick = (e) => { if (e.target === bg) closeFn(false); };
+  });
+}
+
+function showAdflowPrompt(message, defaultValue = '', title = 'Input Required') {
+  return new Promise((resolve) => {
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML = `
+      <div class="modal" style="max-width: 420px; display: flex; flex-direction: column; gap: 16px;">
+        <div class="modal-head">
+          <h2>${title}</h2>
+          <button class="btn" id="adflow-prompt-close" title="Close">Close</button>
+        </div>
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px; font-size: 13px; color: var(--text-main); padding: 18px 22px;">
+          <div>${message}</div>
+          <input type="text" id="adflow-prompt-input" value="${defaultValue.replace(/"/g, '&quot;')}" style="width: 100%; background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 4px; padding: 7px 9px; font-size: 12px; outline: none;" />
+        </div>
+        <div class="modal-foot" style="display: flex; justify-content: flex-end; gap: 12px;">
+          <button class="btn" id="adflow-prompt-cancel">Cancel</button>
+          <button class="btn primary" id="adflow-prompt-ok">OK</button>
+        </div>
+      </div>`;
+    document.body.appendChild(bg);
+
+    const input = bg.querySelector('#adflow-prompt-input');
+    input.focus();
+    input.select();
+
+    const closeFn = (val) => {
+      bg.remove();
+      document.removeEventListener('keydown', escHandler);
+      resolve(val);
+    };
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeFn(null);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        closeFn(input.value);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+    bg.querySelector('#adflow-prompt-close').onclick = () => closeFn(null);
+    bg.querySelector('#adflow-prompt-cancel').onclick = () => closeFn(null);
+    bg.querySelector('#adflow-prompt-ok').onclick = () => closeFn(input.value);
+    bg.onclick = (e) => { if (e.target === bg) closeFn(null); };
+  });
+}
+
 function getImageSizeKBSync(url) {
   if (!url || typeof url !== 'string') return 0;
   if (url.startsWith('data:')) {
@@ -16329,7 +16457,7 @@ document.addEventListener('contextmenu', (e) => {
       render();
     }
   });
-  bind('ctx-save-asset', () => saveSelectionAsAsset());
+  bind('ctx-save-asset', async () => await saveSelectionAsAsset());
   bind('ctx-delete', () => {
     const c = getActiveCanvas();
     if (c && state.layerSelection) {
@@ -16341,11 +16469,11 @@ document.addEventListener('contextmenu', (e) => {
     }
   });
 
-  bind('ctx-link-autolink', () => {
-    autoLinkElements(true);
+  bind('ctx-link-autolink', async () => {
+    await autoLinkElements(true);
   });
-  bind('ctx-link-new', () => {
-    const name = prompt("Enter new link group name:");
+  bind('ctx-link-new', async () => {
+    const name = await showAdflowPrompt("Enter new link group name:");
     if (name && name.trim()) {
       createAndLinkGroup(name.trim());
     }
