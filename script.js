@@ -1710,7 +1710,7 @@ function applyColorToText(node, colorVal) {
 // `<img data-adflow-logo>` in the DOM — the splash logo, the top-bar
 // logo, the size-overlay logo, and the docs-modal welcome image all have
 // this attribute. Add a new light theme by extending LIGHT_BG_THEMES below.
-const LIGHT_BG_THEMES = new Set(['light', 'rmit']);
+const LIGHT_BG_THEMES = new Set(['light', 'rmit', 'nordic-light', 'amber-light', 'sage-light']);
 function syncAdflowLogos() {
   const isLight = LIGHT_BG_THEMES.has(state.theme);
   const src = isLight
@@ -14082,19 +14082,22 @@ const THEMES = [
   { id: 'nordic', label: 'Nordic' },
   { id: 'amber', label: 'Amber' },
   { id: 'amethyst', label: 'Amethyst' },
-  { id: 'rmit', label: 'RMIT' },
   { id: 'rmit-navy', label: 'RMIT Navy' },
   { id: 'ocean', label: 'Ocean' },
   { id: 'navy', label: 'Navy' },
   { id: 'light', label: 'Light' },
+  { id: 'rmit', label: 'RMIT' },
+  { id: 'nordic-light', label: 'Nordic Light' },
+  { id: 'amber-light', label: 'Amber Light' },
+  { id: 'sage-light', label: 'Sage Light' },
 ];
 
 function openSettings() {
   const existing = document.getElementById('settings-panel-bg');
   if (existing) { existing.remove(); return; }
 
-  // Deep clone of settings variables into tempSettings
-  const tempSettings = {
+  // Store initial settings configuration for rollback
+  const initialSettings = {
     theme: state.theme || 'default',
     showRulers: state.showRulers !== false,
     cropToCanvas: !!state.cropToCanvas,
@@ -14121,14 +14124,22 @@ function openSettings() {
     }
   };
 
+  // Deep clone of settings variables into tempSettings
+  const tempSettings = JSON.parse(JSON.stringify(initialSettings));
+
   const bg = document.createElement('div');
   bg.id = 'settings-panel-bg';
   bg.className = 'modal-bg';
 
-  const themeBtns = THEMES.map(t => {
+  const lightThemeIds = new Set(['light', 'rmit', 'nordic-light', 'amber-light', 'sage-light']);
+
+  const buildThemeGrid = (filterFn) => THEMES.filter(filterFn).map(t => {
     const active = tempSettings.theme === t.id;
     return `<button class="settings-theme-btn${active ? ' active' : ''}" data-theme="${t.id}">${t.label}</button>`;
   }).join('');
+
+  const darkThemeBtns = buildThemeGrid(t => !lightThemeIds.has(t.id));
+  const lightThemeBtns = buildThemeGrid(t => lightThemeIds.has(t.id));
 
   const row = (id, label, checked, hint = '') => `
         <label class="settings-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; border-radius:6px; cursor:pointer;">
@@ -14186,9 +14197,18 @@ function openSettings() {
                   </div>
                 </section>
 
-                <section style="display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--border-light); padding-top:14px;">
+                <section style="display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--border-light); padding-top:14px;">
                   <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Theme</h3>
-                  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">${themeBtns}</div>
+                  
+                  <div style="display:flex; flex-direction:column; gap:6px;">
+                    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Dark Themes</span>
+                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">${darkThemeBtns}</div>
+                  </div>
+                  
+                  <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
+                    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Light Themes</span>
+                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">${lightThemeBtns}</div>
+                  </div>
                 </section>
               </div>
               
@@ -14269,16 +14289,90 @@ function openSettings() {
             </div>
           </div>
           
-          <!-- Modal Footer: Save and Cancel -->
-          <div class="modal-foot" style="border-top:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
-            <button class="btn" id="settings-cancel">Cancel</button>
-            <button class="btn primary" id="settings-save">Save Changes</button>
+          <!-- Modal Footer: Save and Cancel with Preview option -->
+          <div class="modal-foot" style="border-top:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0; display:flex; align-items:center; justify-content:space-between; width:100%;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-main); cursor:pointer; user-select:none; margin:0;">
+              <input type="checkbox" id="settings-preview-toggle" checked style="margin:0;" />
+              <span>Preview changes instantly</span>
+            </label>
+            <div style="display:flex; gap:8px;">
+              <button class="btn" id="settings-cancel">Cancel</button>
+              <button class="btn primary" id="settings-save">Save Changes</button>
+            </div>
           </div>
         </div>`;
 
   document.body.appendChild(bg);
 
+  const applyPreview = () => {
+    const isPreviewChecked = bg.querySelector('#settings-preview-toggle').checked;
+    if (isPreviewChecked) {
+      state.theme = tempSettings.theme;
+      state.showRulers = tempSettings.showRulers;
+      state.cropToCanvas = tempSettings.cropToCanvas;
+      state.tempTopDuringDrag = tempSettings.tempTopDuringDrag;
+      state.zoomStep = tempSettings.zoomStep;
+      state.defaultBg = tempSettings.defaultBg;
+      state.snapEnabled = tempSettings.snapEnabled;
+      state.snapToElements = tempSettings.snapToElements;
+      state.snapToCanvas = tempSettings.snapToCanvas;
+      state.snapToGuides = tempSettings.snapToGuides;
+      state.snapDistance = tempSettings.snapDistance;
+      state.savedHistoryLimit = tempSettings.savedHistoryLimit;
+      state.autosaveInterval = tempSettings.autosaveInterval;
+      state.adSizeLimit = tempSettings.adSizeLimit;
+
+      if (!state.validationSettings) state.validationSettings = {};
+      Object.assign(state.validationSettings, tempSettings.validationSettings);
+
+      document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
+      syncAdflowLogos();
+
+      if (state.activeCanvasId) {
+        const activeCanvas = state.canvases.find(c => c.id === state.activeCanvasId);
+        if (activeCanvas && typeof runAuditChecks === 'function') {
+          runAuditChecks(activeCanvas);
+        }
+      }
+      if (typeof queueSizeUpdate === 'function') queueSizeUpdate();
+      render();
+    }
+  };
+
+  const revertToInitial = () => {
+    state.theme = initialSettings.theme;
+    state.showRulers = initialSettings.showRulers;
+    state.cropToCanvas = initialSettings.cropToCanvas;
+    state.tempTopDuringDrag = initialSettings.tempTopDuringDrag;
+    state.zoomStep = initialSettings.zoomStep;
+    state.defaultBg = initialSettings.defaultBg;
+    state.snapEnabled = initialSettings.snapEnabled;
+    state.snapToElements = initialSettings.snapToElements;
+    state.snapToCanvas = initialSettings.snapToCanvas;
+    state.snapToGuides = initialSettings.snapToGuides;
+    state.snapDistance = initialSettings.snapDistance;
+    state.savedHistoryLimit = initialSettings.savedHistoryLimit;
+    state.autosaveInterval = initialSettings.autosaveInterval;
+    state.adSizeLimit = initialSettings.adSizeLimit;
+
+    if (!state.validationSettings) state.validationSettings = {};
+    state.validationSettings = JSON.parse(JSON.stringify(initialSettings.validationSettings));
+
+    document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
+    syncAdflowLogos();
+
+    if (state.activeCanvasId) {
+      const activeCanvas = state.canvases.find(c => c.id === state.activeCanvasId);
+      if (activeCanvas && typeof runAuditChecks === 'function') {
+        runAuditChecks(activeCanvas);
+      }
+    }
+    if (typeof queueSizeUpdate === 'function') queueSizeUpdate();
+    render();
+  };
+
   const closeFn = () => {
+    revertToInitial();
     bg.remove();
     document.removeEventListener('keydown', escHandler);
   };
@@ -14294,6 +14388,14 @@ function openSettings() {
     });
   }
   bg.addEventListener('click', (e) => { if (e.target === bg) closeFn(); });
+
+  bg.querySelector('#settings-preview-toggle').addEventListener('change', (e) => {
+    if (e.target.checked) {
+      applyPreview();
+    } else {
+      revertToInitial();
+    }
+  });
 
   // Tab switching logic for vertical layout
   const tabBtns = bg.querySelectorAll('.settings-tab-btn-vertical');
@@ -14315,6 +14417,7 @@ function openSettings() {
   // Bind settings change listeners to tempSettings
   const bind = (id, key) => bg.querySelector('#' + id).addEventListener('change', (e) => {
     tempSettings[key] = e.target.checked;
+    applyPreview();
   });
   bind('set-rulers', 'showRulers');
   bind('set-crop', 'cropToCanvas');
@@ -14327,6 +14430,7 @@ function openSettings() {
   // Validation checkbox bindings to tempSettings
   const bindVal = (id, key) => bg.querySelector('#' + id).addEventListener('change', (e) => {
     tempSettings.validationSettings[key] = e.target.checked;
+    applyPreview();
   });
   bindVal('val-text-size', 'textSize');
   bindVal('val-contrast', 'contrast');
@@ -14343,6 +14447,7 @@ function openSettings() {
     if (val > 100) val = 100;
     e.target.value = val;
     tempSettings.savedHistoryLimit = val;
+    applyPreview();
   });
 
   bg.querySelector('#set-zoom-step').addEventListener('change', (e) => {
@@ -14351,6 +14456,7 @@ function openSettings() {
     if (val > 50) val = 50;
     e.target.value = val;
     tempSettings.zoomStep = val / 100;
+    applyPreview();
   });
 
   bg.querySelector('#set-autosave-interval').addEventListener('change', (e) => {
@@ -14359,6 +14465,7 @@ function openSettings() {
     if (val > 60) val = 60;
     e.target.value = val;
     tempSettings.autosaveInterval = val;
+    applyPreview();
   });
 
   bg.querySelector('#set-snap-distance').addEventListener('change', (e) => {
@@ -14367,6 +14474,7 @@ function openSettings() {
     if (val > 25) val = 25;
     e.target.value = val;
     tempSettings.snapDistance = val;
+    applyPreview();
   });
 
   bg.querySelector('#set-ad-limit').addEventListener('change', (e) => {
@@ -14375,12 +14483,14 @@ function openSettings() {
     if (val > 1000) val = 1000;
     e.target.value = val;
     tempSettings.adSizeLimit = val;
+    applyPreview();
   });
 
   bg.querySelector('#set-default-bg').addEventListener('input', (e) => {
     tempSettings.defaultBg = e.target.value;
     const label = bg.querySelector('#default-bg-preview');
     if (label) label.textContent = tempSettings.defaultBg;
+    applyPreview();
   });
 
   bg.querySelectorAll('.settings-theme-btn').forEach(btn => {
@@ -14391,6 +14501,7 @@ function openSettings() {
         const active = b.dataset.theme === tempSettings.theme;
         b.classList.toggle('active', active);
       });
+      applyPreview();
     });
   });
 
@@ -14432,8 +14543,9 @@ function openSettings() {
     // Force autosave write
     scheduleAutosave();
 
-    // Close modal
-    closeFn();
+    // Close modal directly without rollback
+    bg.remove();
+    document.removeEventListener('keydown', escHandler);
     showCanvasNotification('Settings saved.', { type: 'success' });
   });
 }
