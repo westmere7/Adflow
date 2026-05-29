@@ -1447,6 +1447,18 @@ function getContrastRatio(rgb1, rgb2) {
   return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }
 
+const getWarningIcon = (color, size = 12) => `
+<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; display: inline-block;">
+  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+  <line x1="12" y1="9" x2="12" y2="13"/>
+  <line x1="12" y1="17" x2="12.01" y2="17"/>
+</svg>`;
+
+const getCheckIcon = (color, size = 12) => `
+<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; display: inline-block;">
+  <polyline points="20 6 9 17 4 12"/>
+</svg>`;
+
 function runAuditChecks(c) {
   if (!c) return;
   const a11yWarnings = [];
@@ -1461,11 +1473,11 @@ function runAuditChecks(c) {
         const computedSize = el.autoSize && typeof calculateAutoSize === 'function'
           ? calculateAutoSize(el, el.text)
           : (el.fontSize || 14);
-        if (computedSize < 10) {
+        if (computedSize < 5) {
           a11yWarnings.push({
             type: 'text-size',
             layerId: el.id,
-            message: `Text layer '${el.customName || el.text}' is too small (${computedSize}px). Minimum readable font size is 10px.`
+            message: `Text layer '${el.customName || el.text}' is too small (${computedSize}px). Minimum readable font size is 5px.`
           });
         }
       }
@@ -5151,13 +5163,13 @@ function openValidatorDetails(initialCanvas) {
       const hasA11y = c._valA11y && c._valA11y.length > 0;
       const hasBrand = c._valBrand && c._valBrand.length > 0;
 
-      let statusIcon = '✓';
+      let statusIcon = getCheckIcon('#10b981', 13);
       let statusColor = '#10b981';
       if (hasErrors) {
-        statusIcon = '⚠️';
+        statusIcon = getWarningIcon('#ef4444', 13);
         statusColor = '#ef4444';
       } else if (hasA11y || hasBrand) {
-        statusIcon = '⚠️';
+        statusIcon = getWarningIcon('#f97316', 13);
         statusColor = '#f97316';
       }
       
@@ -5360,7 +5372,7 @@ function openValidatorDetails(initialCanvas) {
     const errorsHTML = errors.length > 0 ? `
       <div style="font-size:13px; color:#ef4444; background:rgba(239, 68, 68, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.2); display:flex; flex-direction:column; gap:6px;">
         <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
-          <span>⚠️</span> Issues Found (${errors.length})
+          <span>${getWarningIcon('#ef4444', 14)}</span> Issues Found (${errors.length})
         </strong>
         <ul style="margin:0; padding-left:18px; line-height:1.5; display:flex; flex-direction:column; gap:4px;">
           ${errors.map(err => `<li>${err}</li>`).join('')}
@@ -5369,7 +5381,7 @@ function openValidatorDetails(initialCanvas) {
     ` : `
       <div style="font-size:13px; color:#10b981; background:rgba(16, 185, 129, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.2); display:flex; flex-direction:column; gap:6px;">
         <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
-          <span>✓</span> All validation checks passed!
+          <span>${getCheckIcon('#10b981', 14)}</span> All validation checks passed!
         </strong>
         <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to all Google Ad compliance rules and file size limits.</p>
       </div>
@@ -5412,7 +5424,7 @@ function openValidatorDetails(initialCanvas) {
         activeContentHtml = `
           <div style="font-size:13px; color:#f97316; background:rgba(249, 115, 22, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(249, 115, 22, 0.2); display:flex; flex-direction:column; gap:6px;">
             <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
-              <span>⚠️</span> Accessibility Warnings (${a11yCount})
+              <span>${getWarningIcon('#f97316', 14)}</span> Accessibility Warnings (${a11yCount})
             </strong>
             <ul style="margin:0; padding-left:18px; line-height:1.5; display:flex; flex-direction:column; gap:8px;">
               ${a11yWarnings.map(w => {
@@ -5426,7 +5438,7 @@ function openValidatorDetails(initialCanvas) {
         activeContentHtml = `
           <div style="font-size:13px; color:#10b981; background:rgba(16, 185, 129, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.2); display:flex; flex-direction:column; gap:6px;">
             <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
-              <span>✓</span> All accessibility checks passed!
+              <span>${getCheckIcon('#10b981', 14)}</span> All accessibility checks passed!
             </strong>
             <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to the active accessibility settings.</p>
           </div>
@@ -5437,7 +5449,7 @@ function openValidatorDetails(initialCanvas) {
         activeContentHtml = `
           <div style="font-size:13px; color:#f97316; background:rgba(249, 115, 22, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(249, 115, 22, 0.2); display:flex; flex-direction:column; gap:6px;">
             <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
-              <span>⚠️</span> Branding Warnings (${brandCount})
+              <span>${getWarningIcon('#f97316', 14)}</span> Branding Warnings (${brandCount})
             </strong>
             <ul style="margin:0; padding-left:18px; line-height:1.5; display:flex; flex-direction:column; gap:8px;">
               ${brandWarnings.map(w => {
@@ -5451,7 +5463,7 @@ function openValidatorDetails(initialCanvas) {
         activeContentHtml = `
           <div style="font-size:13px; color:#10b981; background:rgba(16, 185, 129, 0.08); padding:16px; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.2); display:flex; flex-direction:column; gap:6px;">
             <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
-              <span>✓</span> All branding compliance checks passed!
+              <span>${getCheckIcon('#10b981', 14)}</span> All branding compliance checks passed!
             </strong>
             <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to the active RMIT branding settings.</p>
           </div>
@@ -5938,19 +5950,19 @@ function renderCanvasesList() {
         btnBg = 'rgba(239, 68, 68, 0.15)';
         btnColor = '#ef4444';
         btnBgHover = 'rgba(239, 68, 68, 0.3)';
-        btnText = '⚠️';
+        btnText = getWarningIcon('#ef4444', 11);
         btnTitle = 'Ad compliance errors found. Click to open validator dashboard.';
       } else if (hasA11y || hasBrand) {
         btnBg = 'rgba(249, 115, 22, 0.15)';
         btnColor = '#f97316';
         btnBgHover = 'rgba(249, 115, 22, 0.3)';
-        btnText = '⚠️';
+        btnText = getWarningIcon('#f97316', 11);
         btnTitle = 'Validation warnings found. Click to open validator dashboard.';
       } else {
         btnBg = 'rgba(16, 185, 129, 0.15)';
         btnColor = '#10b981';
         btnBgHover = 'rgba(16, 185, 129, 0.3)';
-        btnText = '✓';
+        btnText = getCheckIcon('#10b981', 11);
         btnTitle = 'All validation checks passed. Click to open validator dashboard.';
       }
     }
