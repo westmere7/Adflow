@@ -16545,7 +16545,7 @@ function initCollapsiblePanels() {
           syncBtn.style.outline = 'none';
           syncBtn.style.color = 'var(--text-muted)';
           syncBtn.style.transition = 'color 0.15s';
-          syncBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
+          syncBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><title>Sync Layer Order</title><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
           
           syncBtn.addEventListener('mouseenter', () => syncBtn.style.color = 'var(--text-bright)');
           syncBtn.addEventListener('mouseleave', () => syncBtn.style.color = 'var(--text-muted)');
@@ -16933,23 +16933,26 @@ function showSyncLayersMenu(anchorEl) {
   }
 
   menu.innerHTML = `
-    <div style="font-weight: 700; font-size: 10.5px; color: var(--accent-light); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-light); padding-bottom: 6px; margin-bottom: 2px;">Sync Layer Order</div>
+    <div style="font-weight: 700; font-size: 10.5px; color: var(--accent-light); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-light); padding-bottom: 6px; margin-bottom: 4px;">Sync Layer Order</div>
+    <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 8px;">
+      Propagate stacking order and state updates across canvases for all linked layers sharing a group ID.
+    </div>
     
     <div style="display:flex; flex-direction:column; gap:6px;">
       <div style="font-size: 9.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Sync Options</div>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;" title="Reorders linked layers in target canvases to match the active canvas stack order. Local unlinked layers remain safe on top.">
         <input type="checkbox" id="chk-sync-order" ${syncOrder ? 'checked' : ''} style="margin:0;" />
         <span>Stacking Order</span>
       </label>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;" title="Synchronizes layer visibility state (hidden/visible) with the active canvas elements.">
         <input type="checkbox" id="chk-sync-visibility" ${syncVisibility ? 'checked' : ''} style="margin:0;" />
         <span>Visibility State</span>
       </label>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;" title="Synchronizes layers locking status (editable/locked) to match the active canvas state.">
         <input type="checkbox" id="chk-sync-lock" ${syncLock ? 'checked' : ''} style="margin:0;" />
         <span>Lock State</span>
       </label>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;" title="Synchronizes tier assignments (Always Top, Always Bottom, or Standard) and parent frames.">
         <input type="checkbox" id="chk-sync-persistent" ${syncPersistent ? 'checked' : ''} style="margin:0;" />
         <span>Persistent Tiers (Top/Bot)</span>
       </label>
@@ -16959,7 +16962,7 @@ function showSyncLayersMenu(anchorEl) {
 
     <div style="display:flex; flex-direction:column; gap:4px;">
       <div style="font-size: 9.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Target Canvases</div>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;" title="Apply the sync configuration to all other canvases in the document.">
         <input type="checkbox" id="chk-sync-all-canvases" ${syncAllCanvases ? 'checked' : ''} style="margin:0;" />
         <span>All other canvases</span>
       </label>
@@ -16968,7 +16971,7 @@ function showSyncLayersMenu(anchorEl) {
 
     <div style="display:flex; gap:8px; margin-top: 6px; justify-content: flex-end;">
       <button class="btn" id="btn-sync-layers-cancel" style="padding:4px 10px; font-size:11px; background:transparent; border:1px solid var(--border-light); color:var(--text-main); cursor:pointer;">Cancel</button>
-      <button class="btn primary" id="btn-sync-layers-apply" style="padding:4px 12px; font-size:11px; font-weight:600; background:var(--accent-base); color:var(--text-on-accent, #fff); border:none; border-radius:4px; cursor:pointer;">Sync</button>
+      <button class="btn primary" id="btn-sync-layers-apply" style="padding:4px 12px; font-size:11px; font-weight:600; background:var(--accent-base); color:var(--text-on-accent, #fff); border:none; border-radius:4px; cursor:pointer;" title="Execute layers sync configuration immediately">Sync</button>
     </div>
   `;
 
