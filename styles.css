@@ -2782,6 +2782,138 @@ body.theme-rmit-navy {
 
 
 
+    /* settings panel vertical tabs and theme selector */
+
+    .settings-tabs-nav-vertical {
+
+      width: 220px;
+
+      border-right: 1px solid var(--border-light);
+
+      background: var(--bg-header);
+
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 4px;
+
+      padding: 16px 12px;
+
+      flex-shrink: 0;
+
+      overflow-y: auto;
+
+    }
+
+
+
+    .settings-tab-btn-vertical {
+
+      padding: 10px 12px;
+
+      text-align: left;
+
+      background: none;
+
+      border: 1px solid transparent;
+
+      border-radius: 6px;
+
+      color: var(--text-muted);
+
+      font-size: 12px;
+
+      font-weight: 500;
+
+      cursor: pointer;
+
+      font-family: inherit;
+
+      transition: all 0.2s;
+
+      outline: none;
+
+    }
+
+
+
+    .settings-tab-btn-vertical:hover {
+
+      background: var(--bg-btn);
+
+      color: var(--text-main);
+
+    }
+
+
+
+    .settings-tab-btn-vertical.active {
+
+      background: var(--accent-dark);
+
+      border-color: var(--accent-base);
+
+      color: var(--text-bright);
+
+      font-weight: 600;
+
+    }
+
+
+
+    .settings-theme-btn {
+
+      padding: 8px 12px;
+
+      border-radius: 6px;
+
+      cursor: pointer;
+
+      font-size: 11px;
+
+      font-weight: 500;
+
+      font-family: inherit;
+
+      text-align: left;
+
+      border: 1px solid var(--border-light);
+
+      background: var(--bg-input);
+
+      color: var(--text-main);
+
+      transition: all 0.2s;
+
+      outline: none;
+
+    }
+
+
+
+    .settings-theme-btn:hover {
+
+      border-color: var(--text-muted);
+
+      background: var(--bg-btn);
+
+    }
+
+
+
+    .settings-theme-btn.active {
+
+      border-color: var(--accent-base);
+
+      background: var(--accent-dark);
+
+      color: var(--text-bright);
+
+    }
+
+
+
     .shortcuts-table {
 
       width: 100%;
@@ -4432,6 +4564,24 @@ body.fullscreen-mode .workspace-isolation-outline {
 }
 .custom-select-dropdown::-webkit-scrollbar-thumb:hover {
   background: var(--accent-base);
+}
+
+/* Settings tabbed interface style rules */
+.settings-tab-btn {
+  transition: all 0.15s ease;
+}
+.settings-tab-btn:hover {
+  background: var(--bg-input) !important;
+  color: var(--text-bright) !important;
+}
+.settings-tab-btn.active:hover {
+  background: none !important;
+}
+.settings-row {
+  transition: background 0.15s ease;
+}
+.settings-row:hover {
+  background: var(--bg-input) !important;
 }
 
 

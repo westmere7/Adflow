@@ -209,9 +209,21 @@ const state = {
   activeSmartGuides: null,
   showSafezones: false,
   adSizeLimit: 150,      // max exported ad weight in KB (IAB display-ad standard)
+  snapDistance: 5,       // snapping distance tolerance in pixels
   defaultBg: '#0f172a',  // default background for newly created canvases
   savedHistoryLimit: 50,    // undo-stack depth — bumped from 10 in v0.16.8
   autosaveInterval: 10,     // local IndexedDB auto-save interval in seconds (5-60)
+  zoomStep: 0.1,            // mouse scroll zoom step percentage (e.g. 0.1 = 10%)
+  showCanvasSizes: true,    // renders dimension labels inside canvas frame headers
+  canvasSpacing: 60,        // vertical/horizontal grid gap spacing between canvases
+  safezoneStandard: 5,      // standard aspect layouts safezone padding %
+  safezoneNarrow: 8,        // skinny aspect layouts safezone padding %
+  nudgeDefault: 1,          // standard arrow key nudge delta in pixels
+  nudgeShift: 10,           // Shift + arrow key nudge delta in pixels
+  exportFormat: 'png',      // export image format preference: png, jpeg, webp
+  exportQuality: 80,        // image quality compression factor % (for jpeg/webp)
+  subheadingAutoHide: true, // allow Auto-Hide Subheading setting override
+  defaultCricosCode: '00122A', // RMIT default compliance CRICOS code
   clipboard: null,
   linkGroups: {},
   assetNames: {},        // assetId -> original filename (for data-merge image lookup)
@@ -580,6 +592,42 @@ async function restoreAutosave() {
       if (state.autosaveInterval === undefined) {
         state.autosaveInterval = 10;
       }
+      if (state.zoomStep === undefined) {
+        state.zoomStep = 0.1;
+      }
+      if (state.snapDistance === undefined) {
+        state.snapDistance = 5;
+      }
+      if (state.showCanvasSizes === undefined) {
+        state.showCanvasSizes = true;
+      }
+      if (state.canvasSpacing === undefined) {
+        state.canvasSpacing = 60;
+      }
+      if (state.safezoneStandard === undefined) {
+        state.safezoneStandard = 5;
+      }
+      if (state.safezoneNarrow === undefined) {
+        state.safezoneNarrow = 8;
+      }
+      if (state.nudgeDefault === undefined) {
+        state.nudgeDefault = 1;
+      }
+      if (state.nudgeShift === undefined) {
+        state.nudgeShift = 10;
+      }
+      if (state.exportFormat === undefined) {
+        state.exportFormat = 'png';
+      }
+      if (state.exportQuality === undefined) {
+        state.exportQuality = 80;
+      }
+      if (state.subheadingAutoHide === undefined) {
+        state.subheadingAutoHide = true;
+      }
+      if (state.defaultCricosCode === undefined) {
+        state.defaultCricosCode = '00122A';
+      }
       if (rec.history && Array.isArray(rec.history) && rec.history.length > 0) {
         history.length = 0;
         history.push(...rec.history);
@@ -661,6 +709,7 @@ function getDefaultSync(el) {
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
     defaultSync.effect = true;
+    defaultSync.visibility = true;
   } else if (cat === 'button') {
     defaultSync.text = true;
     defaultSync.textColor = true;
@@ -672,6 +721,7 @@ function getDefaultSync(el) {
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
     defaultSync.effect = true;
+    defaultSync.visibility = true;
   } else if (cat === 'image') {
     defaultSync.image = true;
     defaultSync.transform = !isRoleAssigned; // Unchecked by default for role-assigned
@@ -679,6 +729,7 @@ function getDefaultSync(el) {
     defaultSync.rotation = true;
     defaultSync.inAnim = true;
     defaultSync.effect = true;
+    defaultSync.visibility = true;
   } else if (cat === 'shape') {
     defaultSync.fill = true;
     defaultSync.stroke = true;
@@ -687,12 +738,14 @@ function getDefaultSync(el) {
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
     defaultSync.effect = true;
+    defaultSync.visibility = true;
   } else if (cat === 'line') {
     defaultSync.color = true;
     defaultSync.thickness = true;
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
     defaultSync.effect = true;
+    defaultSync.visibility = true;
   }
   return defaultSync;
 }
@@ -956,6 +1009,10 @@ function applyLinkSync(sourceEl, targetEl, group) {
   if (sync.opacity) {
     if (sourceEl.opacity !== undefined) targetEl.opacity = sourceEl.opacity;
     else delete targetEl.opacity;
+  }
+  if (sync.visibility) {
+    if (sourceEl.hidden !== undefined) targetEl.hidden = sourceEl.hidden;
+    else delete targetEl.hidden;
   }
   if (sync.inAnim) {
     const inAnimProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset'];
@@ -2245,7 +2302,7 @@ function startGuideDrag(e, type, existingGuideId = null) {
     const rect = workspaceEl.getBoundingClientRect();
     let pos = (type === 'h' ? (ev.clientY - rect.top) : (ev.clientX - rect.left)) / z;
     if (!ev.ctrlKey && !ev.metaKey && snapTargets.length) {
-      let bestDelta = 5 / z, snapPos = null;
+      let bestDelta = (state.snapDistance !== undefined ? state.snapDistance : 5) / z, snapPos = null;
       snapTargets.forEach(t => {
         const d = Math.abs(pos - t);
         if (d < bestDelta) { bestDelta = d; snapPos = t; }
@@ -2287,7 +2344,7 @@ function canvasFrameNode(c) {
   const header = document.createElement('div');
   header.className = 'canvas-header';
   header.innerHTML = `
-    <span class="dim" style="font-weight:600; color:var(--text-bright);">${c.width} × ${c.height}</span>
+    <span class="dim" style="font-weight:600; color:var(--text-bright); display:${state.showCanvasSizes !== false ? 'inline' : 'none'};">${c.width} × ${c.height}</span>
   `;
   if (!isSinglePreview) {
     const autoAlignBtn = document.createElement('button');
@@ -3746,7 +3803,9 @@ function safezoneOverlay(c) {
   w.className = 'safezone-overlay';
   const minDim = Math.min(c.width, c.height);
   const aspect = Math.max(c.width, c.height) / minDim;
-  const factor = (minDim < 200 && aspect > 3) ? 0.08 : 0.05;
+  const standardFactor = (state.safezoneStandard !== undefined ? state.safezoneStandard : 5) / 100;
+  const narrowFactor = (state.safezoneNarrow !== undefined ? state.safezoneNarrow : 8) / 100;
+  const factor = (minDim < 200 && aspect > 3) ? narrowFactor : standardFactor;
   const inset = Math.max(4, Math.round(minDim * factor));
   w.style.left = inset + 'px';
   w.style.top = inset + 'px';
@@ -4356,7 +4415,7 @@ function onElementMouseDown(e, el, canvasCtx) {
     if (!ev.ctrlKey && !ev.metaKey) {
       const primary = el;
       const orig = origPos[targets.indexOf(el)];
-      let minDx = 5 / z, minDy = 5 / z;
+      let minDx = (state.snapDistance !== undefined ? state.snapDistance : 5) / z, minDy = (state.snapDistance !== undefined ? state.snapDistance : 5) / z;
 
       // Horizontal snapping
       if (!ev.shiftKey || dx !== 0) {
@@ -5053,8 +5112,9 @@ canvasArea.addEventListener('wheel', (e) => {
   if (state.isPreviewMode) return;
 
   const oldZoom = state.zoom || 0.6;
-  const zoomSpeed = e.deltaMode === 1 ? 0.05 : 0.002;
-  let newZoom = oldZoom - e.deltaY * zoomSpeed;
+  const zoomStep = state.zoomStep !== undefined ? state.zoomStep : 0.1;
+  const direction = Math.sign(e.deltaY);
+  let newZoom = oldZoom - direction * zoomStep;
   newZoom = Math.max(0.6, Math.min(newZoom, 5));
 
   if (newZoom === oldZoom) return;
@@ -6171,6 +6231,7 @@ function renderLinkControl() {
               <label title="Sync opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label title="Sync entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label title="Sync continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
             </div>`;
           } else if (cat === 'button') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
@@ -6184,6 +6245,7 @@ function renderLinkControl() {
               <label title="Sync button opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label title="Sync button entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label title="Sync button continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
             </div>`;
           } else if (cat === 'image') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
@@ -6193,6 +6255,7 @@ function renderLinkControl() {
               <label title="Sync image rotation angle across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="rotation" ${sync.rotation ? 'checked' : ''} /> Rotation</label>
               <label title="Sync image entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label title="Sync image continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
             </div>`;
           } else if (cat === 'shape') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
@@ -6203,6 +6266,7 @@ function renderLinkControl() {
               <label title="Sync shape opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label title="Sync shape entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label title="Sync shape continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
             </div>`;
           } else if (cat === 'line') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
@@ -6211,6 +6275,7 @@ function renderLinkControl() {
               <label title="Sync line opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label title="Sync line entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label title="Sync line continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
+              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
             </div>`;
           }
           html += `</div>`;
@@ -11395,7 +11460,9 @@ window.addEventListener('keydown', (e) => {
     }
 
     if (toMove.length > 0) {
-      const step = e.shiftKey ? 10 : 1;
+      const step = e.shiftKey
+        ? (state.nudgeShift !== undefined ? state.nudgeShift : 10)
+        : (state.nudgeDefault !== undefined ? state.nudgeDefault : 1);
       let dx = 0, dy = 0;
       if (e.key === 'ArrowLeft') dx = -step;
       if (e.key === 'ArrowRight') dx = step;
@@ -14026,13 +14093,41 @@ function openSettings() {
   const existing = document.getElementById('settings-panel-bg');
   if (existing) { existing.remove(); return; }
 
+  // Deep clone of settings variables into tempSettings
+  const tempSettings = {
+    theme: state.theme || 'default',
+    showRulers: state.showRulers !== false,
+    cropToCanvas: !!state.cropToCanvas,
+    tempTopDuringDrag: !!state.tempTopDuringDrag,
+    zoomStep: state.zoomStep !== undefined ? state.zoomStep : 0.1,
+    defaultBg: state.defaultBg || '#0f172a',
+    snapEnabled: state.snapEnabled !== false,
+    snapToElements: state.snapToElements !== false,
+    snapToCanvas: state.snapToCanvas !== false,
+    snapToGuides: state.snapToGuides !== false,
+    snapDistance: state.snapDistance !== undefined ? state.snapDistance : 5,
+    savedHistoryLimit: state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50,
+    autosaveInterval: state.autosaveInterval !== undefined ? state.autosaveInterval : 10,
+    adSizeLimit: state.adSizeLimit !== undefined ? state.adSizeLimit : 150,
+    validationSettings: {
+      textSize: state.validationSettings?.textSize !== false,
+      contrast: state.validationSettings?.contrast !== false,
+      transitionTiming: state.validationSettings?.transitionTiming !== false,
+      infiniteMotion: state.validationSettings?.infiniteMotion !== false,
+      cricos: state.validationSettings?.cricos !== false,
+      logo: state.validationSettings?.logo !== false,
+      brandColors: state.validationSettings?.brandColors !== false,
+      brandFonts: state.validationSettings?.brandFonts !== false
+    }
+  };
+
   const bg = document.createElement('div');
   bg.id = 'settings-panel-bg';
   bg.className = 'modal-bg';
 
   const themeBtns = THEMES.map(t => {
-    const active = (state.theme || 'default') === t.id;
-    return `<button class="settings-theme-btn" data-theme="${t.id}" style="padding:8px 12px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:500; font-family:inherit; text-align:left; border:1px solid ${active ? 'var(--accent-base)' : 'var(--border-light)'}; background:${active ? 'var(--accent-dark)' : 'var(--bg-input)'}; color:${active ? 'var(--text-bright)' : 'var(--text-main)'};">${t.label}</button>`;
+    const active = tempSettings.theme === t.id;
+    return `<button class="settings-theme-btn${active ? ' active' : ''}" data-theme="${t.id}">${t.label}</button>`;
   }).join('');
 
   const row = (id, label, checked, hint = '') => `
@@ -14045,8 +14140,9 @@ function openSettings() {
         </label>`;
 
   bg.innerHTML = `
-        <div class="modal" style="max-width:520px;">
-          <div class="modal-head">
+        <div class="modal" style="width:820px; max-width:95vw; height:600px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden; padding:0;">
+          <!-- Modal Header -->
+          <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
               <span style="font-size:11px; color:var(--text-muted);">v0.16.61</span>
@@ -14054,46 +14150,129 @@ function openSettings() {
             </div>
             <button class="btn" id="settings-close">Close</button>
           </div>
-          <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
-            <section>
-              <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">View</h3>
-              ${row('set-rulers', 'Show rulers & guides', state.showRulers !== false)}
-              ${row('set-crop', 'Crop to Canvas', !!state.cropToCanvas, 'Hide anything placed outside the canvas bounds while you work.')}
-              ${row('set-temp-top', 'Temporarily on top during drag', !!state.tempTopDuringDrag, 'Temporarily bring the dragged layer to the front layer during dragging.')}
-            </section>
-            <section>
-              <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Snapping</h3>
-              ${row('set-snap', 'Snapping', state.snapEnabled !== false, 'Master switch — turning off disables all snap types below.')}
-              ${row('set-snap-el', 'Snap to other elements', state.snapToElements !== false)}
-              ${row('set-snap-cv', 'Snap to canvas bounds', state.snapToCanvas !== false)}
-              ${row('set-snap-gd', 'Snap to guides', state.snapToGuides !== false)}
-            </section>
-            <section>
-              <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Theme</h3>
-              <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">${themeBtns}</div>
-            </section>
-            <section>
-              <h3 style="margin:0 0 6px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">History & Saving</h3>
-              <div style="display:flex; flex-direction:column; gap:10px; padding:4px 10px;">
-                <label style="display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-main); cursor:pointer;">
-                  <span>Save History Limit:</span>
-                  <input type="number" id="set-history-limit" value="${state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50}" min="5" max="100" style="width:55px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 6px; font-family:inherit; font-size:12px;" />
-                </label>
-                <label style="display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-main); cursor:pointer;">
-                  <span>Local Auto-Save Interval:</span>
-                  <input type="number" id="set-autosave-interval" value="${state.autosaveInterval !== undefined ? state.autosaveInterval : 10}" min="5" max="60" style="width:55px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 6px; font-family:inherit; font-size:12px;" />
-                  <span>seconds</span>
-                </label>
-                <div style="font-size:10px; color:#f59e0b; line-height:1.4; display:flex; align-items:flex-start; gap:6px; margin-top:2px;">
+          
+          <!-- Modal Content: Vertical Navigation + Panels Container -->
+          <div style="display:flex; flex:1; min-height:0;">
+            <!-- Left Navigation Sidebar -->
+            <div class="settings-tabs-nav-vertical">
+              <button class="settings-tab-btn-vertical active" data-tab="general">General & View</button>
+              <button class="settings-tab-btn-vertical" data-tab="snapping">Snapping & Layout</button>
+              <button class="settings-tab-btn-vertical" data-tab="validation">Validation & QC</button>
+              <button class="settings-tab-btn-vertical" data-tab="performance">History & Export</button>
+            </div>
+            
+            <!-- Right Panels Content -->
+            <div class="modal-body" style="flex:1; padding:20px 24px; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
+              <!-- Tab 1: General & View -->
+              <div class="settings-tab-panel" id="panel-general" style="display:flex; flex-direction:column; gap:14px;">
+                <section style="display:flex; flex-direction:column; gap:8px;">
+                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">View Settings</h3>
+                  ${row('set-rulers', 'Show rulers & guides', tempSettings.showRulers)}
+                  ${row('set-crop', 'Crop to Canvas', tempSettings.cropToCanvas, 'Hide anything placed outside the canvas bounds while you work.')}
+                  ${row('set-temp-top', 'Temporarily on top during drag', tempSettings.tempTopDuringDrag, 'Temporarily bring the dragged layer to the front layer during dragging.')}
+                </section>
+                
+                <section style="display:flex; flex-direction:column; gap:10px; padding:4px 0; border-top:1px solid var(--border-light); padding-top:14px;">
+                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Canvas Configuration</h3>
+                  <div style="display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text-main);">
+                    <span style="flex:1;">Mouse Scroll Zoom Step:</span>
+                    <input type="number" id="set-zoom-step" value="${Math.round(tempSettings.zoomStep * 100)}" min="1" max="50" style="width:65px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:3px 8px; font-family:inherit; font-size:12px;" />
+                    <span style="color:var(--text-muted); width:20px;">%</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text-main);">
+                    <span style="flex:1;">Default Canvas Background:</span>
+                    <input type="color" id="set-default-bg" value="${tempSettings.defaultBg}" style="width:65px; height:24px; padding:0; border:1px solid var(--border-light); background:none; border-radius:4px; cursor:pointer;" />
+                    <span id="default-bg-preview" style="color:var(--text-muted); font-size:11px; font-family:monospace; width:60px;">${tempSettings.defaultBg}</span>
+                  </div>
+                </section>
+
+                <section style="display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--border-light); padding-top:14px;">
+                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Theme</h3>
+                  <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">${themeBtns}</div>
+                </section>
+              </div>
+              
+              <!-- Tab 2: Snapping & Layout -->
+              <div class="settings-tab-panel" id="panel-snapping" style="display:none; flex-direction:column; gap:14px;">
+                <section style="display:flex; flex-direction:column; gap:8px;">
+                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Snapping Options</h3>
+                  ${row('set-snap', 'Enable Snapping', tempSettings.snapEnabled, 'Master switch — turning off disables all snapping behavior.')}
+                  ${row('set-snap-el', 'Snap to other elements', tempSettings.snapToElements)}
+                  ${row('set-snap-cv', 'Snap to canvas bounds', tempSettings.snapToCanvas)}
+                  ${row('set-snap-gd', 'Snap to guides', tempSettings.snapToGuides)}
+                </section>
+
+                <section style="display:flex; flex-direction:column; gap:10px; padding:4px 0; border-top:1px solid var(--border-light); padding-top:14px;">
+                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Snapping Threshold</h3>
+                  <div style="display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text-main);">
+                    <span style="flex:1;">Snapping Distance Tolerance:</span>
+                    <input type="number" id="set-snap-distance" value="${tempSettings.snapDistance}" min="2" max="25" style="width:65px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:3px 8px; font-family:inherit; font-size:12px;" />
+                    <span style="color:var(--text-muted); width:20px;">px</span>
+                  </div>
+                  <div style="font-size:10px; color:var(--text-muted); line-height:1.4;">
+                    Defines the sensitivity radius (in pixels) for magnet snapping when dragging guides or design elements.
+                  </div>
+                </section>
+              </div>
+
+              <!-- Tab 3: Validation & QC -->
+              <div class="settings-tab-panel" id="panel-validation" style="display:none; flex-direction:column; gap:14px;">
+                <section style="display:flex; flex-direction:column; gap:8px;">
+                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Active QC Audits</h3>
+                  ${row('val-text-size', 'Audit text minimum sizes', tempSettings.validationSettings.textSize, 'Flags text layers scaled below critical legibility heights.')}
+                  ${row('val-contrast', 'Audit color contrast ratio', tempSettings.validationSettings.contrast, 'Verifies background/foreground contrast conforms to WCAG AA accessibility rules.')}
+                  ${row('val-timing', 'Audit animation transition timings', tempSettings.validationSettings.transitionTiming, 'Flags invalid animation durations or custom timeline delays.')}
+                  ${row('val-motion', 'Audit infinite loop motion', tempSettings.validationSettings.infiniteMotion, 'Flags loop counts exceeding standard guidelines (e.g. max 15 seconds loop).')}
+                  ${row('val-cricos', 'CRICOS registration code verification', tempSettings.validationSettings.cricos, 'Warns if CRICOS provider code is missing or empty in RMIT brand ads.')}
+                  ${row('val-logo', 'RMIT Brand Logo presence', tempSettings.validationSettings.logo, 'Verifies RMIT brand logo is correctly present and visible.')}
+                  ${row('val-brand-colors', 'RMIT brand color validation', tempSettings.validationSettings.brandColors, 'Validates that color values match RMIT corporate identity guides.')}
+                  ${row('val-brand-fonts', 'RMIT brand typography validation', tempSettings.validationSettings.brandFonts, 'Validates that typography elements use corporate fonts.')}
+                </section>
+              </div>
+              
+              <!-- Tab 4: History & Export -->
+              <div class="settings-tab-panel" id="panel-performance" style="display:none; flex-direction:column; gap:14px;">
+                <section style="display:flex; flex-direction:column; gap:10px;">
+                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">History Engine</h3>
+                  <label style="display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text-main); cursor:pointer;">
+                    <span style="flex:1;">Undo / Redo History Limit:</span>
+                    <input type="number" id="set-history-limit" value="${tempSettings.savedHistoryLimit}" min="5" max="100" style="width:65px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:3px 8px; font-family:inherit; font-size:12px;" />
+                  </label>
+                  <label style="display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text-main); cursor:pointer;">
+                    <span style="flex:1;">Local Auto-Save Interval:</span>
+                    <input type="number" id="set-autosave-interval" value="${tempSettings.autosaveInterval}" min="5" max="60" style="width:65px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:3px 8px; font-family:inherit; font-size:12px;" />
+                    <span style="color:var(--text-muted); font-size:11px;">seconds</span>
+                  </label>
+                </section>
+
+                <section style="display:flex; flex-direction:column; gap:10px; border-top:1px solid var(--border-light); padding-top:14px;">
+                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Export Pipelines</h3>
+                  <label style="display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text-main); cursor:pointer;">
+                    <span style="flex:1;">Max Ad Weight Limit (IAB):</span>
+                    <input type="number" id="set-ad-limit" value="${tempSettings.adSizeLimit}" min="50" max="1000" style="width:65px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:3px 8px; font-family:inherit; font-size:12px;" />
+                    <span style="color:var(--text-muted); font-size:11px; width:20px;">KB</span>
+                  </label>
+                  <div style="font-size:10px; color:var(--text-muted); line-height:1.4;">
+                    Default payload threshold target (IAB Standard displays flag ads above this target size as non-compliant).
+                  </div>
+                </section>
+
+                <div style="font-size:10px; color:#f59e0b; line-height:1.4; display:flex; align-items:flex-start; gap:6px; border-top:1px solid var(--border-light); padding-top:14px; margin-top:4px;">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0; margin-top:1px;">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                     <line x1="12" y1="9" x2="12" y2="13"/>
                     <line x1="12" y1="17" x2="12.01" y2="17"/>
                   </svg>
-                  <span>Warning: Storing history does not persist deleted assets (like images) from a past session. Undoing after reopening a project might result in missing images if those assets were deleted and pruned.</span>
+                  <span>Warning: Undo stack stores element structures but does not persist deleted local files (like uncommitted custom fonts/images) after browser reloads.</span>
                 </div>
               </div>
-            </section>
+            </div>
+          </div>
+          
+          <!-- Modal Footer: Save and Cancel -->
+          <div class="modal-foot" style="border-top:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
+            <button class="btn" id="settings-cancel">Cancel</button>
+            <button class="btn primary" id="settings-save">Save Changes</button>
           </div>
         </div>`;
 
@@ -14105,7 +14284,9 @@ function openSettings() {
   };
   const escHandler = (e) => { if (e.key === 'Escape') closeFn(); };
   document.addEventListener('keydown', escHandler);
+  bg.querySelector('#settings-cancel').addEventListener('click', closeFn);
   bg.querySelector('#settings-close').addEventListener('click', closeFn);
+  
   const btnChangelog = bg.querySelector('#settings-changelog');
   if (btnChangelog) {
     btnChangelog.addEventListener('click', () => {
@@ -14114,9 +14295,26 @@ function openSettings() {
   }
   bg.addEventListener('click', (e) => { if (e.target === bg) closeFn(); });
 
+  // Tab switching logic for vertical layout
+  const tabBtns = bg.querySelectorAll('.settings-tab-btn-vertical');
+  const tabPanels = bg.querySelectorAll('.settings-tab-panel');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      
+      const tabId = btn.dataset.tab;
+      tabPanels.forEach(p => {
+        p.style.display = p.id === `panel-${tabId}` ? 'flex' : 'none';
+      });
+    });
+  });
+
+  // Bind settings change listeners to tempSettings
   const bind = (id, key) => bg.querySelector('#' + id).addEventListener('change', (e) => {
-    state[key] = e.target.checked;
-    render();
+    tempSettings[key] = e.target.checked;
   });
   bind('set-rulers', 'showRulers');
   bind('set-crop', 'cropToCanvas');
@@ -14126,13 +14324,33 @@ function openSettings() {
   bind('set-snap-cv', 'snapToCanvas');
   bind('set-snap-gd', 'snapToGuides');
 
+  // Validation checkbox bindings to tempSettings
+  const bindVal = (id, key) => bg.querySelector('#' + id).addEventListener('change', (e) => {
+    tempSettings.validationSettings[key] = e.target.checked;
+  });
+  bindVal('val-text-size', 'textSize');
+  bindVal('val-contrast', 'contrast');
+  bindVal('val-timing', 'transitionTiming');
+  bindVal('val-motion', 'infiniteMotion');
+  bindVal('val-cricos', 'cricos');
+  bindVal('val-logo', 'logo');
+  bindVal('val-brand-colors', 'brandColors');
+  bindVal('val-brand-fonts', 'brandFonts');
+
   bg.querySelector('#set-history-limit').addEventListener('change', (e) => {
     let val = parseInt(e.target.value, 10);
     if (isNaN(val) || val < 5) val = 5;
     if (val > 100) val = 100;
     e.target.value = val;
-    state.savedHistoryLimit = val;
-    scheduleAutosave();
+    tempSettings.savedHistoryLimit = val;
+  });
+
+  bg.querySelector('#set-zoom-step').addEventListener('change', (e) => {
+    let val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 1) val = 1;
+    if (val > 50) val = 50;
+    e.target.value = val;
+    tempSettings.zoomStep = val / 100;
   });
 
   bg.querySelector('#set-autosave-interval').addEventListener('change', (e) => {
@@ -14140,22 +14358,83 @@ function openSettings() {
     if (isNaN(val) || val < 5) val = 5;
     if (val > 60) val = 60;
     e.target.value = val;
-    state.autosaveInterval = val;
-    scheduleAutosave();
+    tempSettings.autosaveInterval = val;
+  });
+
+  bg.querySelector('#set-snap-distance').addEventListener('change', (e) => {
+    let val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 2) val = 2;
+    if (val > 25) val = 25;
+    e.target.value = val;
+    tempSettings.snapDistance = val;
+  });
+
+  bg.querySelector('#set-ad-limit').addEventListener('change', (e) => {
+    let val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 50) val = 50;
+    if (val > 1000) val = 1000;
+    e.target.value = val;
+    tempSettings.adSizeLimit = val;
+  });
+
+  bg.querySelector('#set-default-bg').addEventListener('input', (e) => {
+    tempSettings.defaultBg = e.target.value;
+    const label = bg.querySelector('#default-bg-preview');
+    if (label) label.textContent = tempSettings.defaultBg;
   });
 
   bg.querySelectorAll('.settings-theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      state.theme = btn.dataset.theme;
-      render();
+      tempSettings.theme = btn.dataset.theme;
       // Restyle the theme buttons in place without rebuilding the panel.
       bg.querySelectorAll('.settings-theme-btn').forEach(b => {
-        const active = b.dataset.theme === state.theme;
-        b.style.border = `1px solid ${active ? 'var(--accent-base)' : 'var(--border-light)'}`;
-        b.style.background = active ? 'var(--accent-dark)' : 'var(--bg-input)';
-        b.style.color = active ? 'var(--text-bright)' : 'var(--text-main)';
+        const active = b.dataset.theme === tempSettings.theme;
+        b.classList.toggle('active', active);
       });
     });
+  });
+
+  // Save Settings handler - applies changes to global state and persists them
+  bg.querySelector('#settings-save').addEventListener('click', () => {
+    // Apply changes
+    state.theme = tempSettings.theme;
+    state.showRulers = tempSettings.showRulers;
+    state.cropToCanvas = tempSettings.cropToCanvas;
+    state.tempTopDuringDrag = tempSettings.tempTopDuringDrag;
+    state.zoomStep = tempSettings.zoomStep;
+    state.defaultBg = tempSettings.defaultBg;
+    state.snapEnabled = tempSettings.snapEnabled;
+    state.snapToElements = tempSettings.snapToElements;
+    state.snapToCanvas = tempSettings.snapToCanvas;
+    state.snapToGuides = tempSettings.snapToGuides;
+    state.snapDistance = tempSettings.snapDistance;
+    state.savedHistoryLimit = tempSettings.savedHistoryLimit;
+    state.autosaveInterval = tempSettings.autosaveInterval;
+    state.adSizeLimit = tempSettings.adSizeLimit;
+
+    if (!state.validationSettings) state.validationSettings = {};
+    Object.assign(state.validationSettings, tempSettings.validationSettings);
+
+    // Apply theme change on body
+    document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
+    syncAdflowLogos();
+
+    // Trigger validation and rendering
+    if (state.activeCanvasId) {
+      const activeCanvas = state.canvases.find(c => c.id === state.activeCanvasId);
+      if (activeCanvas && typeof runAuditChecks === 'function') {
+        runAuditChecks(activeCanvas);
+      }
+    }
+    if (typeof queueSizeUpdate === 'function') queueSizeUpdate();
+    render();
+
+    // Force autosave write
+    scheduleAutosave();
+
+    // Close modal
+    closeFn();
+    showCanvasNotification('Settings saved.', { type: 'success' });
   });
 }
 

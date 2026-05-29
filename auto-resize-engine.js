@@ -980,7 +980,8 @@ function placeSubheading(srcEl, target, ctx) {
         width: sz.w - 8,
         height: subH,
         fontSize,
-        maxFontSize: fontSize
+        maxFontSize: fontSize,
+        hidden: srcEl.hidden || false
       };
     }
     if (h <= 100) {
@@ -995,7 +996,8 @@ function placeSubheading(srcEl, target, ctx) {
         width,
         height: subH,
         fontSize,
-        maxFontSize: fontSize
+        maxFontSize: fontSize,
+        hidden: srcEl.hidden || false
       };
     }
     return {
@@ -1004,7 +1006,8 @@ function placeSubheading(srcEl, target, ctx) {
       width: heading.width,
       height: subH,
       fontSize,
-      maxFontSize: fontSize
+      maxFontSize: fontSize,
+      hidden: srcEl.hidden || false
     };
   }
 
@@ -1014,7 +1017,7 @@ function placeSubheading(srcEl, target, ctx) {
   const gap = config.subheading ? (config.subheading.gapBelowHeading || 4) : 4;
   const heading = ctx.placedElements['heading'];
 
-  let x, y, width, height, textAlign, hidden = false;
+  let x, y, width, height, textAlign, hidden = srcEl.hidden || false;
   const isLeft = heading ? (heading.textAlign === 'left') : true;
 
   if (w === 970 && h === 250) {
@@ -1056,7 +1059,7 @@ function placeSubheading(srcEl, target, ctx) {
     width = srcEl.width || 100;
     height = 15;
     textAlign = 'center';
-    hidden = hideSub;
+    hidden = hideSub || srcEl.hidden || false;
   } else if (w === 300 && h === 600) {
     x = sz.minX;
     width = sz.maxX - x;
@@ -1099,9 +1102,9 @@ function placeSubheading(srcEl, target, ctx) {
     height,
     fontSize,
     maxFontSize,
-    textAlign
+    textAlign,
+    hidden: !!hidden
   };
-  if (hidden) result.hidden = true;
   return result;
 }
 
@@ -1813,6 +1816,8 @@ function runRuleBasedAutoResize(settings) {
       if (typeof geom.fontSize    === 'number') clone.fontSize    = geom.fontSize;
       if (typeof geom.maxFontSize === 'number') clone.maxFontSize = geom.maxFontSize;
       if (typeof geom.textAlign   === 'string') clone.textAlign   = geom.textAlign;
+      if (typeof geom.verticalAlign === 'string') clone.verticalAlign = geom.verticalAlign;
+      if (typeof geom.hidden      === 'boolean') clone.hidden      = geom.hidden;
 
       if (clone.type === 'button' && clone.autoHug && typeof measureButtonWidth === 'function') {
         clone.width = measureButtonWidth(clone);
@@ -1986,7 +1991,7 @@ function wireLinkGroup(srcEl, target, role, cat) {
 // category-specific properties (radius, image src, thickness, etc.) tag
 // along with the closest high-level toggle.
 function buildSyncFromLiveLink(ll, cat) {
-  const s = { transform: false, fontSize: false };
+  const s = { transform: false, fontSize: false, visibility: true };
 
   if (ll.syncOpacity)    s.opacity = true;
   if (ll.syncAnimations) { s.inAnim = true; s.effect = true; }
