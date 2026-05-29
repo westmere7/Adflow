@@ -14089,7 +14089,7 @@ document.getElementById('menu-open-settings').addEventListener('click', () => { 
 // panels. Houses everything that's an app/view preference (rulers, snapping,
 // theme) plus the new Crop-to-Canvas toggle.
 const THEMES = [
-  { id: 'default', label: 'Dark (Default)' },
+  { id: 'default', label: 'Adflow' },
   { id: 'obsidian', label: 'Obsidian' },
   { id: 'nordic', label: 'Nordic' },
   { id: 'amber', label: 'Amber' },
@@ -15036,7 +15036,7 @@ function openWebpCompressionModal(el) {
     totalUncompressed += htmlSize;
 
     html += `
-      <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); padding:6px 10px; border-radius:4px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--table-zebra-1); border:1px solid var(--border-light); padding:6px 10px; border-radius:4px;">
         <div>
           <span style="color:var(--text-bright); font-weight:500;">index.html</span>
           <div style="font-size:9px; color:var(--text-muted);">HTML Structure & Logic</div>
@@ -15058,7 +15058,7 @@ function openWebpCompressionModal(el) {
     fonts.forEach(f => {
       totalUncompressed += f.size;
       html += `
-        <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); padding:6px 10px; border-radius:4px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--table-zebra-1); border:1px solid var(--border-light); padding:6px 10px; border-radius:4px;">
           <div>
             <span style="color:var(--text-bright); font-weight:500;">${f.name}</span>
             <div style="font-size:9px; color:var(--text-muted);">Font Asset (WOFF2)</div>
@@ -15077,19 +15077,19 @@ function openWebpCompressionModal(el) {
 
         if (isActive) {
           html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0, 0, 84, 0.2); border:1px solid var(--accent-base); padding:6px 10px; border-radius:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--accent-dark); border:1px solid var(--accent-base); padding:6px 10px; border-radius:4px;">
               <div>
-                <span style="color:var(--accent-light); font-weight:600;">${escapeHtml(imgEl.name)} <span style="font-size:9px; opacity:0.8;">(Active)</span></span>
-                <div style="font-size:9px; color:var(--accent-light); opacity:0.8;">Image Asset (Compressing)</div>
+                <span style="color:var(--text-bright); font-weight:600;">${escapeHtml(imgEl.name || imgEl.customName || 'Unnamed Image')} <span style="font-size:9px; color:var(--accent-base); font-weight:bold; margin-left:4px;">(Active)</span></span>
+                <div style="font-size:9px; color:var(--text-muted);">Image Asset (Compressing)</div>
               </div>
-              <span style="font-weight:700; color:var(--accent-light);">${sizeVal.toFixed(1)} KB</span>
+              <span style="font-weight:700; color:var(--text-bright);">${sizeVal.toFixed(1)} KB</span>
             </div>
           `;
         } else {
           html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); border:1px solid var(--border-light); padding:6px 10px; border-radius:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--table-zebra-1); border:1px solid var(--border-light); padding:6px 10px; border-radius:4px;">
               <div>
-                <span style="color:var(--text-bright); font-weight:500;">${escapeHtml(imgEl.name)}</span>
+                <span style="color:var(--text-bright); font-weight:500;">${escapeHtml(imgEl.name || imgEl.customName || 'Unnamed Image')}</span>
                 <div style="font-size:9px; color:var(--text-muted);">Image Asset</div>
               </div>
               <span style="font-weight:600; color:var(--text-bright);">${sizeVal.toFixed(1)} KB</span>
