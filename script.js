@@ -12786,27 +12786,65 @@ function openNewProjectDialog() {
   bg.querySelector('#np-create').onclick = async () => {
     const useStartup = chkUseStartup.checked;
     const name = bg.querySelector('#np-name').value;
-    if (useStartup) {
-      const chosenTemplate = selectTemplate.value;
-      const ok = await loadStartupTemplate(chosenTemplate, name);
-      if (ok) {
-        closeFn();
-        showCanvasNotification('Loaded startup template.', { type: 'success' });
-      }
-      return;
-    }
 
-    const presetIndices = [...bg.querySelectorAll('.np-canvas:checked')].map(b => +b.dataset.idx);
-    if (presetIndices.length === 0) { alert('Pick at least one canvas size.'); return; }
-    const hex = '#' + (hexInp.value.replace(/[^0-9a-fA-F]/g, '').padEnd(6, '0').slice(0, 6) || '0f172a');
-    await createNewProject({
-      name,
-      presetIndices,
-      sizeLimitKb: bg.querySelector('#np-size-limit').value,
-      bgColor: hex,
-      clickTag: bg.querySelector('#np-clicktag').value,
-    });
-    closeFn();
+    const btn = bg.querySelector('#np-create');
+    const cancelBtn = bg.querySelector('#np-cancel');
+
+    const setButtonsLoading = (isLoading) => {
+      if (isLoading) {
+        btn.disabled = true;
+        cancelBtn.disabled = true;
+        btn.style.opacity = '0.7';
+        btn.style.cursor = 'not-allowed';
+        cancelBtn.style.opacity = '0.5';
+        cancelBtn.style.cursor = 'not-allowed';
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:14px; height:14px; animation: save-spin 1s linear infinite; margin-right:8px; display:inline-block; vertical-align:middle;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-dasharray="32" stroke-dashoffset="16" fill="none"></circle></svg>${useStartup ? 'Loading Template...' : 'Creating Project...'}`;
+      } else {
+        btn.disabled = false;
+        cancelBtn.disabled = false;
+        btn.style.opacity = '';
+        btn.style.cursor = '';
+        cancelBtn.style.opacity = '';
+        cancelBtn.style.cursor = '';
+        btn.innerHTML = 'Create Project';
+      }
+    };
+
+    setButtonsLoading(true);
+
+    try {
+      if (useStartup) {
+        const chosenTemplate = selectTemplate.value;
+        const ok = await loadStartupTemplate(chosenTemplate, name);
+        if (ok) {
+          closeFn();
+          showCanvasNotification('Loaded startup template.', { type: 'success' });
+        } else {
+          setButtonsLoading(false);
+        }
+        return;
+      }
+
+      const presetIndices = [...bg.querySelectorAll('.np-canvas:checked')].map(b => +b.dataset.idx);
+      if (presetIndices.length === 0) {
+        alert('Pick at least one canvas size.');
+        setButtonsLoading(false);
+        return;
+      }
+      const hex = '#' + (hexInp.value.replace(/[^0-9a-fA-F]/g, '').padEnd(6, '0').slice(0, 6) || '0f172a');
+      await createNewProject({
+        name,
+        presetIndices,
+        sizeLimitKb: bg.querySelector('#np-size-limit').value,
+        bgColor: hex,
+        clickTag: bg.querySelector('#np-clicktag').value,
+      });
+      closeFn();
+    } catch (err) {
+      console.error(err);
+      setButtonsLoading(false);
+      alert('Error creating project: ' + err.message);
+    }
   };
 }
 
