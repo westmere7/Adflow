@@ -6398,10 +6398,11 @@ function renderLinkControl() {
           
           const cat = group.category;
           let keys = [];
-          if (cat === 'text') keys = ['text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect'];
-          else if (cat === 'button') keys = ['text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
-          else if (cat === 'image') keys = ['image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
-          else if (cat === 'shape') keys = ['fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
+          if (cat === 'text') keys = ['text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect', 'visibility'];
+          else if (cat === 'button') keys = ['text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect', 'visibility'];
+          else if (cat === 'image') keys = ['image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect', 'visibility'];
+          else if (cat === 'shape') keys = ['fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect', 'visibility'];
+          else if (cat === 'line') keys = ['color', 'thickness', 'opacity', 'inAnim', 'effect', 'visibility'];
           
           keys.forEach(k => {
             group.syncProperties[k] = targetVal;
@@ -12093,7 +12094,7 @@ async function loadProjectFromState(loadedState) {
 
 // Shared inflater used by the menu Open dialog AND the drag-drop overlay. Both
 // formats — modern .flow and legacy .cook/.zip — share the same internal structure.
-async function loadProjectFromBlob(file) {
+async function loadProjectFromBlob(file, customProjectName) {
   if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
   const zip = await JSZip.loadAsync(file);
   const projFile = zip.file('project.json');
@@ -12133,6 +12134,9 @@ async function loadProjectFromBlob(file) {
   const savedZoom = loadedState.zoom;
 
   Object.assign(state, loadedState);
+  if (customProjectName) {
+    state.projectName = customProjectName;
+  }
   if (state.favoriteAnimations) {
     localStorage.setItem('favoriteAnimations', JSON.stringify(state.favoriteAnimations));
   }
@@ -12671,31 +12675,42 @@ function openNewProjectDialog() {
         <button class="btn" id="np-close" title="Close dialog">Close</button>
       </div>
       <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
+        <!-- Startup Template mode checkbox -->
+        <div style="border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 4px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:600; color:var(--text-bright); user-select:none;" title="If checked, initializes the project with the preset Startup template.">
+            <input type="checkbox" id="np-use-startup-template" ${localStorage.getItem('adflow-startup-mode') === 'startup' ? 'checked' : ''} style="margin:0;" />
+            <span>Use pre-defined startup template (Adflow_startup.flow)</span>
+          </label>
+        </div>
+
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project name</label>
           <input type="text" id="np-name" value="RMIT_ad" title="Enter the name for the new project" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
-        <div>
-          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
-          <input type="url" id="np-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" title="Default exit/landing page URL for all canvases" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
-        </div>
-        <div>
-          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:flex; justify-content:space-between; margin-bottom:6px;">
-            <span>Canvases</span>
-            <span id="np-canvas-toggle" style="cursor:pointer; color:var(--accent-light); text-transform:none; letter-spacing:0;" title="Select or deselect all preset canvas sizes">Toggle all</span>
-          </label>
-          <div style="border:1px solid #272c3a; border-radius:6px; padding:4px;">${presetRows}</div>
-        </div>
-        <div style="display:flex; gap:14px;">
-          <div style="flex:1;">
-            <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
-            <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+
+        <div id="np-custom-config-container" style="display:flex; flex-direction:column; gap:16px; transition: opacity 0.2s;">
+          <div>
+            <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
+            <input type="url" id="np-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" title="Default exit/landing page URL for all canvases" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
           </div>
-          <div style="flex:1;">
-            <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Default background</label>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <input type="color" id="np-bg" value="${(state.defaultBg || '#0f172a')}" title="Choose default canvas background color" style="width:36px; height:32px; padding:0; border:1px solid #272c3a; border-radius:4px; background:none; cursor:pointer;" />
-              <input type="text" id="np-bg-hex" value="${(state.defaultBg || '#0f172a').replace(/^#/, '').toUpperCase()}" maxlength="6" title="Hex color code for canvas background" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; text-transform:uppercase;" />
+          <div>
+            <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:flex; justify-content:space-between; margin-bottom:6px;">
+              <span>Canvases</span>
+              <span id="np-canvas-toggle" style="cursor:pointer; color:var(--accent-light); text-transform:none; letter-spacing:0;" title="Select or deselect all preset canvas sizes">Toggle all</span>
+            </label>
+            <div style="border:1px solid #272c3a; border-radius:6px; padding:4px;">${presetRows}</div>
+          </div>
+          <div style="display:flex; gap:14px;">
+            <div style="flex:1;">
+              <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
+              <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Default background</label>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <input type="color" id="np-bg" value="${(state.defaultBg || '#0f172a')}" title="Choose default canvas background color" style="width:36px; height:32px; padding:0; border:1px solid #272c3a; border-radius:4px; background:none; cursor:pointer;" />
+                <input type="text" id="np-bg-hex" value="${(state.defaultBg || '#0f172a').replace(/^#/, '').toUpperCase()}" maxlength="6" title="Hex color code for canvas background" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; text-transform:uppercase;" />
+              </div>
             </div>
           </div>
         </div>
@@ -12716,6 +12731,24 @@ function openNewProjectDialog() {
   bg.querySelector('#np-cancel').onclick = closeFn;
   bg.onclick = (e) => { if (e.target === bg) closeFn(); };
 
+  // Startup template checkbox change logic
+  const chkUseStartup = bg.querySelector('#np-use-startup-template');
+  const customConfigContainer = bg.querySelector('#np-custom-config-container');
+
+  const updateFieldsVisibility = () => {
+    const useStartup = chkUseStartup.checked;
+    if (useStartup) {
+      customConfigContainer.style.opacity = '0.4';
+      customConfigContainer.style.pointerEvents = 'none';
+    } else {
+      customConfigContainer.style.opacity = '1';
+      customConfigContainer.style.pointerEvents = 'auto';
+    }
+  };
+
+  chkUseStartup.onchange = updateFieldsVisibility;
+  updateFieldsVisibility();
+
   // Keep the color swatch and hex field in sync.
   const colorInp = bg.querySelector('#np-bg');
   const hexInp = bg.querySelector('#np-bg-hex');
@@ -12732,11 +12765,22 @@ function openNewProjectDialog() {
   };
 
   bg.querySelector('#np-create').onclick = async () => {
+    const useStartup = chkUseStartup.checked;
+    const name = bg.querySelector('#np-name').value;
+    if (useStartup) {
+      const ok = await loadStartupTemplate(name);
+      if (ok) {
+        closeFn();
+        showCanvasNotification('Loaded startup template.', { type: 'success' });
+      }
+      return;
+    }
+
     const presetIndices = [...bg.querySelectorAll('.np-canvas:checked')].map(b => +b.dataset.idx);
     if (presetIndices.length === 0) { alert('Pick at least one canvas size.'); return; }
     const hex = '#' + (hexInp.value.replace(/[^0-9a-fA-F]/g, '').padEnd(6, '0').slice(0, 6) || '0f172a');
     await createNewProject({
-      name: bg.querySelector('#np-name').value,
+      name,
       presetIndices,
       sizeLimitKb: bg.querySelector('#np-size-limit').value,
       bgColor: hex,
@@ -14124,6 +14168,7 @@ function openSettings() {
   // Store initial settings configuration for rollback
   const initialSettings = {
     theme: state.theme || 'default',
+    startupMode: localStorage.getItem('adflow-startup-mode') || 'fresh',
     showRulers: state.showRulers !== false,
     cropToCanvas: !!state.cropToCanvas,
     tempTopDuringDrag: !!state.tempTopDuringDrag,
@@ -14219,6 +14264,13 @@ function openSettings() {
                     <span style="flex:1;">Default Canvas Background:</span>
                     <input type="color" id="set-default-bg" value="${tempSettings.defaultBg}" style="width:65px; height:24px; padding:0; border:1px solid var(--border-light); background:none; border-radius:4px; cursor:pointer;" />
                     <span id="default-bg-preview" style="color:var(--text-muted); font-size:11px; font-family:monospace; width:60px;">${tempSettings.defaultBg}</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text-main);">
+                    <span style="flex:1;">Startup Template preference:</span>
+                    <select id="set-startup-mode" style="width:240px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 8px; font-family:inherit; font-size:12px; outline:none; cursor:pointer;">
+                      <option value="fresh" ${tempSettings.startupMode === 'fresh' ? 'selected' : ''}>Start fresh as normal</option>
+                      <option value="startup" ${tempSettings.startupMode === 'startup' ? 'selected' : ''}>Use startup template (Adflow_startup.flow)</option>
+                    </select>
                   </div>
                 </section>
 
@@ -14518,6 +14570,13 @@ function openSettings() {
     applyPreview();
   });
 
+  const selectStartupMode = bg.querySelector('#set-startup-mode');
+  if (selectStartupMode) {
+    selectStartupMode.addEventListener('change', (e) => {
+      tempSettings.startupMode = e.target.value;
+    });
+  }
+
   bg.querySelectorAll('.settings-theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       tempSettings.theme = btn.dataset.theme;
@@ -14550,6 +14609,9 @@ function openSettings() {
 
     if (!state.validationSettings) state.validationSettings = {};
     Object.assign(state.validationSettings, tempSettings.validationSettings);
+
+    // Persist Startup Mode Preference
+    localStorage.setItem('adflow-startup-mode', tempSettings.startupMode);
 
     // Apply theme change on body
     document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
@@ -16743,10 +16805,35 @@ const appSplash = (() => {
 })();
 
 
+async function loadStartupTemplate(customProjectName) {
+  try {
+    const response = await fetch('Startup/Adflow_startup.flow');
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const blob = await response.blob();
+    await loadProjectFromBlob(blob, customProjectName);
+    if (typeof writeAutosave === 'function') {
+      await writeAutosave();
+    }
+    return true;
+  } catch (e) {
+    console.error('Failed to load startup template:', e);
+    showCanvasNotification('Failed to load startup template. Starting fresh instead.', { type: 'warning' });
+    return false;
+  }
+}
+
+
 (async function initApp() {
   appSplash.setPhase(1);
   let restored = false;
   try { restored = await restoreAutosave(); } catch (e) { console.warn(e); }
+  if (!restored && localStorage.getItem('adflow-startup-mode') === 'startup') {
+    try {
+      restored = await loadStartupTemplate();
+    } catch (e) {
+      console.warn('Startup template load failed, starting fresh:', e);
+    }
+  }
   appSplash.setPhase(2);
   await syncRmitAssets();
   appSplash.setPhase(3);
