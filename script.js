@@ -645,6 +645,58 @@ function areStylesAndNamesEqual(el1, el2) {
   return baseLayerLabel(el1) === baseLayerLabel(el2);
 }
 
+function getDefaultSync(el) {
+  const cat = getElementCategory(el);
+  const defaultSync = {};
+  if (!cat) return defaultSync;
+
+  const isRoleAssigned = el.role && el.role !== 'misc';
+
+  if (cat === 'text') {
+    defaultSync.text = true;
+    defaultSync.font = !isRoleAssigned;      // Unchecked by default for role-assigned (syncs justification/textAlign)
+    defaultSync.fontSize = !isRoleAssigned;  // Unchecked by default for role-assigned
+    defaultSync.color = true;
+    defaultSync.background = true;
+    defaultSync.opacity = true;
+    defaultSync.inAnim = true;
+    defaultSync.effect = true;
+  } else if (cat === 'button') {
+    defaultSync.text = true;
+    defaultSync.textColor = true;
+    defaultSync.font = !isRoleAssigned;      // Unchecked by default for role-assigned (syncs fontSize, textAlign, wrapText)
+    defaultSync.fill = true;
+    defaultSync.stroke = true;
+    defaultSync.radius = true;
+    defaultSync.transform = !isRoleAssigned; // Unchecked by default for role-assigned (syncs width, height)
+    defaultSync.opacity = true;
+    defaultSync.inAnim = true;
+    defaultSync.effect = true;
+  } else if (cat === 'image') {
+    defaultSync.image = true;
+    defaultSync.transform = !isRoleAssigned; // Unchecked by default for role-assigned
+    defaultSync.opacity = true;
+    defaultSync.rotation = true;
+    defaultSync.inAnim = true;
+    defaultSync.effect = true;
+  } else if (cat === 'shape') {
+    defaultSync.fill = true;
+    defaultSync.stroke = true;
+    defaultSync.radius = true;
+    defaultSync.transform = !isRoleAssigned;
+    defaultSync.opacity = true;
+    defaultSync.inAnim = true;
+    defaultSync.effect = true;
+  } else if (cat === 'line') {
+    defaultSync.color = true;
+    defaultSync.thickness = true;
+    defaultSync.opacity = true;
+    defaultSync.inAnim = true;
+    defaultSync.effect = true;
+  }
+  return defaultSync;
+}
+
 function autoLinkElements(forceSelectedOnly = false) {
   const chkSelectedOnly = document.getElementById('lnk-opt-selected-only');
   const selectedOnly = forceSelectedOnly || (chkSelectedOnly ? chkSelectedOnly.checked : false);
@@ -658,41 +710,42 @@ function autoLinkElements(forceSelectedOnly = false) {
     }
     allowedTargets = state.layerSelection.map(id => {
       const el = selectedCanvas.elements.find(x => x.id === id);
-      return el ? { type: el.type, name: baseLayerLabel(el) } : null;
+      return el;
     }).filter(Boolean);
   }
 
   const allElements = [];
-  state.canvases.forEach(c => {
-    c.elements.forEach(el => {
+  state.canvases.forEach(canvas => {
+    canvas.elements.forEach(el => {
       if (allowedTargets) {
-        const matchesAllowed = allowedTargets.some(t => t.type === el.type && t.name === baseLayerLabel(el));
-        if (!matchesAllowed) return;
+        const matchesAllowed = allowedTargets.some(target => areStylesAndNamesEqual(el, target));
+        if (matchesAllowed) {
+          allElements.push(el);
+        }
+      } else {
+        allElements.push(el);
       }
-      allElements.push(el);
     });
   });
 
+  const processedElementIds = new Set();
   let countLinked = 0;
   let countGroupsCreated = 0;
-  const processed = new Set();
 
   for (let i = 0; i < allElements.length; i++) {
     const el1 = allElements[i];
-    if (processed.has(el1)) continue;
+    if (processedElementIds.has(el1.id)) continue;
 
-    const matches = [];
-    for (let j = 0; j < allElements.length; j++) {
-      if (i === j) continue;
+    const set = [el1];
+    for (let j = i + 1; j < allElements.length; j++) {
       const el2 = allElements[j];
       if (areStylesAndNamesEqual(el1, el2)) {
-        matches.push(el2);
+        set.push(el2);
       }
     }
 
-    if (matches.length > 0) {
-      const set = [el1, ...matches];
-      set.forEach(el => processed.add(el));
+    if (set.length > 1) {
+      set.forEach(el => processedElementIds.add(el.id));
 
       let existingGid = null;
       for (let el of set) {
@@ -709,47 +762,7 @@ function autoLinkElements(forceSelectedOnly = false) {
         const cat = getElementCategory(el1);
         gid = 'lg_' + uid();
 
-        const defaultSync = {};
-        if (cat === 'text') {
-          defaultSync.text = true;
-          defaultSync.font = true;
-          defaultSync.color = true;
-          defaultSync.background = true;
-          defaultSync.opacity = true;
-          defaultSync.inAnim = true;
-          defaultSync.effect = true;
-        } else if (cat === 'button') {
-          defaultSync.text = true;
-          defaultSync.textColor = true;
-          defaultSync.fill = true;
-          defaultSync.stroke = true;
-          defaultSync.radius = true;
-          defaultSync.transform = true;
-          defaultSync.opacity = true;
-          defaultSync.inAnim = true;
-          defaultSync.effect = true;
-        } else if (cat === 'image') {
-          defaultSync.image = true;
-          defaultSync.transform = true;
-          defaultSync.opacity = true;
-          defaultSync.rotation = true;
-          defaultSync.inAnim = true;
-          defaultSync.effect = true;
-        } else if (cat === 'shape') {
-          defaultSync.fill = true;
-          defaultSync.stroke = true;
-          defaultSync.radius = true;
-          defaultSync.transform = true;
-          defaultSync.opacity = true;
-          defaultSync.inAnim = true;
-          defaultSync.effect = true;
-        } else if (cat === 'line') {
-          defaultSync.color = true;
-          defaultSync.thickness = true;
-          defaultSync.opacity = true;
-          defaultSync.inAnim = true;
-          defaultSync.effect = true;
-        }
+        const defaultSync = getDefaultSync(el1);
 
         if (!state.linkGroups) state.linkGroups = {};
         state.linkGroups[gid] = {
@@ -813,7 +826,11 @@ function applyLinkSync(sourceEl, targetEl, group) {
       // Font family/weight/spacing/alignment — NOT fontSize (handled separately so a
       // group can sync typeface but keep per-canvas sizes, as auto-resize needs).
       const fontProps = ['fontFamily', 'weight', 'lineHeight', 'lineSpacing', 'leading', 'tracking', 'textAlign', 'verticalAlign'];
+      const isBrand = (targetEl.role === 'rmit-logo' || targetEl.role === 'rfwn' || targetEl.role === 'cricos');
       fontProps.forEach(p => {
+        if (isBrand && (p === 'textAlign' || p === 'verticalAlign')) {
+          return;
+        }
         if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
         else delete targetEl[p];
       });
@@ -992,47 +1009,7 @@ function createAndLinkGroup(name) {
   if (!cat) return;
 
   const gid = 'lg_' + uid();
-  const defaultSync = {};
-  if (cat === 'text') {
-    defaultSync.text = true;
-    defaultSync.font = true;
-    defaultSync.color = true;
-    defaultSync.background = true;
-    defaultSync.opacity = true;
-    defaultSync.inAnim = true;
-    defaultSync.effect = true;
-  } else if (cat === 'button') {
-    defaultSync.text = true;
-    defaultSync.textColor = true;
-    defaultSync.fill = true;
-    defaultSync.stroke = true;
-    defaultSync.radius = true;
-    defaultSync.transform = true;
-    defaultSync.opacity = true;
-    defaultSync.inAnim = true;
-    defaultSync.effect = true;
-  } else if (cat === 'image') {
-    defaultSync.image = true;
-    defaultSync.transform = true;
-    defaultSync.opacity = true;
-    defaultSync.rotation = true;
-    defaultSync.inAnim = true;
-    defaultSync.effect = true;
-  } else if (cat === 'shape') {
-    defaultSync.fill = true;
-    defaultSync.stroke = true;
-    defaultSync.radius = true;
-    defaultSync.transform = true;
-    defaultSync.opacity = true;
-    defaultSync.inAnim = true;
-    defaultSync.effect = true;
-  } else if (cat === 'line') {
-    defaultSync.color = true;
-    defaultSync.thickness = true;
-    defaultSync.opacity = true;
-    defaultSync.inAnim = true;
-    defaultSync.effect = true;
-  }
+  const defaultSync = getDefaultSync(activeEl);
 
   if (!state.linkGroups) state.linkGroups = {};
   state.linkGroups[gid] = {
@@ -1112,47 +1089,7 @@ function autoAddAndLink(srcEl, skipNotify = false) {
     gid = 'lg_' + uid();
     isNewGroup = true;
     
-    const defaultSync = {};
-    if (cat === 'text') {
-      defaultSync.text = true;
-      defaultSync.font = true;
-      defaultSync.color = true;
-      defaultSync.background = true;
-      defaultSync.opacity = true;
-      defaultSync.inAnim = true;
-      defaultSync.effect = true;
-    } else if (cat === 'button') {
-      defaultSync.text = true;
-      defaultSync.textColor = true;
-      defaultSync.fill = true;
-      defaultSync.stroke = true;
-      defaultSync.radius = true;
-      defaultSync.transform = true;
-      defaultSync.opacity = true;
-      defaultSync.inAnim = true;
-      defaultSync.effect = true;
-    } else if (cat === 'image') {
-      defaultSync.image = true;
-      defaultSync.transform = true;
-      defaultSync.opacity = true;
-      defaultSync.rotation = true;
-      defaultSync.inAnim = true;
-      defaultSync.effect = true;
-    } else if (cat === 'shape') {
-      defaultSync.fill = true;
-      defaultSync.stroke = true;
-      defaultSync.radius = true;
-      defaultSync.transform = true;
-      defaultSync.opacity = true;
-      defaultSync.inAnim = true;
-      defaultSync.effect = true;
-    } else if (cat === 'line') {
-      defaultSync.color = true;
-      defaultSync.thickness = true;
-      defaultSync.opacity = true;
-      defaultSync.inAnim = true;
-      defaultSync.effect = true;
-    }
+    const defaultSync = getDefaultSync(srcEl);
 
     if (!state.linkGroups) state.linkGroups = {};
     state.linkGroups[gid] = {
@@ -13009,6 +12946,34 @@ function solveBrandElements(canvas, present, config) {
     p.pref = getPreferredQuadrant(p.el);
   });
 
+  const getQuadrantOfElement = (el) => {
+    const centerX = el.x + el.width / 2;
+    const centerY = el.y + el.height / 2;
+    const isTop = centerY < canvas.height / 2;
+    const isLeft = centerX < canvas.width / 2;
+    if (isTop && isLeft) return 'TL';
+    if (isTop && !isLeft) return 'TR';
+    if (!isTop && isLeft) return 'BL';
+    return 'BR';
+  };
+
+  const occupiedQuadrants = {};
+  const logoOnCanvas = canvas.elements.find(el => el.role === 'rmit-logo' && !el.hidden);
+  const taglineOnCanvas = canvas.elements.find(el => el.role === 'rfwn' && !el.hidden);
+  const cricosOnCanvas = canvas.elements.find(el => el.role === 'cricos' && !el.hidden);
+
+  const isRoleSelected = (role) => present.some(item => item.role === role);
+
+  if (logoOnCanvas && !isRoleSelected('logo')) {
+    occupiedQuadrants['logo'] = getQuadrantOfElement(logoOnCanvas);
+  }
+  if (taglineOnCanvas && !isRoleSelected('tagline')) {
+    occupiedQuadrants['tagline'] = getQuadrantOfElement(taglineOnCanvas);
+  }
+  if (cricosOnCanvas && !isRoleSelected('cricos')) {
+    occupiedQuadrants['cricos'] = getQuadrantOfElement(cricosOnCanvas);
+  }
+
   const quadrants = ['TL', 'TR', 'BL', 'BR'];
 
   // Generate all permutations of size len from quadrants
@@ -13035,32 +13000,69 @@ function solveBrandElements(canvas, present, config) {
       assignment[item.role] = p[idx];
     });
 
-    // Validate cross-quadrant constraint: Logo and Tagline must be on the same horizontal half (both top, or both bottom).
-    // If Logo or Tagline is not selected but present on canvas, the selected one follows the existing one's half.
+    // Prevent overlap with unselected brand elements occupying quadrants
+    let hasCollision = false;
+    present.forEach(item => {
+      const q = assignment[item.role];
+      if (Object.values(occupiedQuadrants).includes(q)) {
+        hasCollision = true;
+      }
+    });
+    if (hasCollision) return;
+
+    // Validate cross-quadrant constraint:
+    // For 970x250: Logo and Tagline must be on the same vertical half (both left, or both right).
+    // For other sizes: Logo and Tagline must be on the same horizontal half (both top, or both bottom).
     const logoOnCanvas = canvas.elements.find(el => el.role === 'rmit-logo');
     const taglineOnCanvas = canvas.elements.find(el => el.role === 'rfwn');
 
-    let resolvedLogoIsTop = null;
-    if (assignment.logo) {
-      const qLogo = assignment.logo;
-      resolvedLogoIsTop = (qLogo === 'TL' || qLogo === 'TR');
-    } else if (logoOnCanvas) {
-      const centerY = logoOnCanvas.y + logoOnCanvas.height / 2;
-      resolvedLogoIsTop = centerY < canvas.height / 2;
-    }
+    if (canvas.width === 970 && canvas.height === 250) {
+      let resolvedLogoIsLeft = null;
+      if (assignment.logo) {
+        const qLogo = assignment.logo;
+        resolvedLogoIsLeft = (qLogo === 'TL' || qLogo === 'BL');
+      } else if (logoOnCanvas) {
+        const centerX = logoOnCanvas.x + logoOnCanvas.width / 2;
+        resolvedLogoIsLeft = centerX < canvas.width / 2;
+      }
 
-    let resolvedTaglineIsTop = null;
-    if (assignment.tagline) {
-      const qTagline = assignment.tagline;
-      resolvedTaglineIsTop = (qTagline === 'TL' || qTagline === 'TR');
-    } else if (taglineOnCanvas) {
-      const centerY = taglineOnCanvas.y + taglineOnCanvas.height / 2;
-      resolvedTaglineIsTop = centerY < canvas.height / 2;
-    }
+      let resolvedTaglineIsLeft = null;
+      if (assignment.tagline) {
+        const qTagline = assignment.tagline;
+        resolvedTaglineIsLeft = (qTagline === 'TL' || qTagline === 'BL');
+      } else if (taglineOnCanvas) {
+        const centerX = taglineOnCanvas.x + taglineOnCanvas.width / 2;
+        resolvedTaglineIsLeft = centerX < canvas.width / 2;
+      }
 
-    if (resolvedLogoIsTop !== null && resolvedTaglineIsTop !== null) {
-      if (resolvedLogoIsTop !== resolvedTaglineIsTop) {
-        return; // Invalid assignment
+      if (resolvedLogoIsLeft !== null && resolvedTaglineIsLeft !== null) {
+        if (resolvedLogoIsLeft !== resolvedTaglineIsLeft) {
+          return; // Invalid assignment
+        }
+      }
+    } else {
+      let resolvedLogoIsTop = null;
+      if (assignment.logo) {
+        const qLogo = assignment.logo;
+        resolvedLogoIsTop = (qLogo === 'TL' || qLogo === 'TR');
+      } else if (logoOnCanvas) {
+        const centerY = logoOnCanvas.y + logoOnCanvas.height / 2;
+        resolvedLogoIsTop = centerY < canvas.height / 2;
+      }
+
+      let resolvedTaglineIsTop = null;
+      if (assignment.tagline) {
+        const qTagline = assignment.tagline;
+        resolvedTaglineIsTop = (qTagline === 'TL' || qTagline === 'TR');
+      } else if (taglineOnCanvas) {
+        const centerY = taglineOnCanvas.y + taglineOnCanvas.height / 2;
+        resolvedTaglineIsTop = centerY < canvas.height / 2;
+      }
+
+      if (resolvedLogoIsTop !== null && resolvedTaglineIsTop !== null) {
+        if (resolvedLogoIsTop !== resolvedTaglineIsTop) {
+          return; // Invalid assignment
+        }
       }
     }
 
@@ -13107,10 +13109,19 @@ function solveBrandElements(canvas, present, config) {
       } else if (item.role === 'tagline' && config.tagline) {
         el.fontSize = config.tagline.fontSize;
         el.autoSize = false;
-        el.textAlign = config.tagline.textAlign || 'left';
+        if (canvas.width === 970 && canvas.height === 250) {
+          el.textAlign = assignedQuad.endsWith('R') ? 'right' : 'left';
+        } else {
+          el.textAlign = config.tagline.textAlign || (assignedQuad.endsWith('L') ? 'left' : 'right');
+        }
       }
 
-      if (el.locked) delete el.locked;
+      const settings = (typeof getAutoResizeSettings === 'function') ? getAutoResizeSettings() : { behaviour: {} };
+      if (settings.behaviour?.lockBrandElements !== false) {
+        el.locked = true;
+      } else {
+        if (el.locked) delete el.locked;
+      }
       el.autoArranged = true;
     });
     return true;
@@ -13352,8 +13363,15 @@ function runAutoArrange(canvasId, selectedIds) {
     }
 
     if (buttonEl && isSelected(buttonEl)) {
-      buttonEl.x = config.safezone.minX;
-      buttonEl.width = config.safezone.maxX - config.safezone.minX;
+      if (buttonEl.x < config.safezone.minX) {
+        buttonEl.x = config.safezone.minX;
+      }
+      if (buttonEl.x + buttonEl.width > config.safezone.maxX) {
+        buttonEl.width = config.safezone.maxX - buttonEl.x;
+        if (buttonEl.width < 0) {
+          buttonEl.width = 0;
+        }
+      }
 
       // Resolve overlap with text boxes: push down if touching/overlapping, otherwise preserve current Y
       let minYLimit = config.safezone.minY;
@@ -13556,6 +13574,33 @@ function runAutoArrange(canvasId, selectedIds) {
     const logoEl = canvas.elements.find(el => el.role === 'rmit-logo');
     const taglineEl = canvas.elements.find(el => el.role === 'rfwn');
     const cricosEl = canvas.elements.find(el => el.role === 'cricos');
+    const buttonEl = canvas.elements.find(el => el.role === 'cta-button');
+    const headingEl = canvas.elements.find(el => el.role === 'heading');
+    const subheadingEl = canvas.elements.find(el => el.role === 'subheading');
+
+    if (headingEl && isSelected(headingEl)) {
+      headingEl.x = 39;
+      headingEl.y = 17;
+      headingEl.width = 368;
+      headingEl.height = 33;
+      headingEl.autoSize = true;
+      headingEl.maxFontSize = 28;
+      headingEl.textAlign = 'left';
+      headingEl.autoArranged = true;
+      changed = true;
+    }
+
+    if (subheadingEl && isSelected(subheadingEl)) {
+      subheadingEl.x = 39;
+      subheadingEl.y = 53;
+      subheadingEl.width = 346;
+      subheadingEl.height = 21;
+      subheadingEl.autoSize = true;
+      subheadingEl.maxFontSize = 23;
+      subheadingEl.textAlign = 'left';
+      subheadingEl.autoArranged = true;
+      changed = true;
+    }
 
     if (logoEl && isSelected(logoEl)) {
       logoEl.x = 607;
@@ -13576,13 +13621,248 @@ function runAutoArrange(canvasId, selectedIds) {
       changed = true;
     }
 
+    if (buttonEl && isSelected(buttonEl)) {
+      buttonEl.x = 429;
+      buttonEl.y = 22;
+      buttonEl.width = 144;
+      buttonEl.height = 33;
+      buttonEl.autoSize = true;
+      buttonEl.wrapText = true;
+      buttonEl.maxFontSize = 20;
+      buttonEl.textAlign = 'center';
+      buttonEl.autoArranged = true;
+      changed = true;
+    }
+
     if (cricosEl && isSelected(cricosEl)) {
-      cricosEl.x = 3;
-      cricosEl.y = 77;
-      cricosEl.width = 106;
-      cricosEl.height = 10;
-      cricosEl.fontSize = 7;
+      if (buttonEl) {
+        cricosEl.x = buttonEl.x;
+        cricosEl.y = buttonEl.y + buttonEl.height + 5;
+        cricosEl.width = buttonEl.width;
+        cricosEl.height = 10;
+        cricosEl.fontSize = 7;
+        cricosEl.textAlign = 'center';
+      } else {
+        cricosEl.x = 0;
+        cricosEl.y = 77;
+        cricosEl.width = 106;
+        cricosEl.height = 10;
+        cricosEl.fontSize = 7;
+        cricosEl.textAlign = 'left';
+      }
       cricosEl.autoArranged = true;
+      changed = true;
+    }
+  } else if (canvas.width === 320 && canvas.height === 50) {
+    const config = AUTO_ARRANGE_CONFIG["320x50"];
+    const minX = config.safezone.minX;
+    const maxX = config.safezone.maxX;
+    const minY = config.safezone.minY;
+    const maxY = config.safezone.maxY;
+
+    const logoEl = canvas.elements.find(el => el.role === 'rmit-logo');
+    const taglineEl = canvas.elements.find(el => el.role === 'rfwn');
+    const cricosEl = canvas.elements.find(el => el.role === 'cricos');
+    const buttonEl = canvas.elements.find(el => el.role === 'cta-button');
+    const headingEl = canvas.elements.find(el => el.role === 'heading');
+    const subheadingEl = canvas.elements.find(el => el.role === 'subheading');
+
+    if (logoEl && isSelected(logoEl)) {
+      logoEl.x = 265;
+      logoEl.y = 5;
+      logoEl.width = 50;
+      logoEl.height = 18;
+      logoEl.autoArranged = true;
+      changed = true;
+    }
+
+    if (taglineEl && isSelected(taglineEl)) {
+      taglineEl.x = 280;
+      taglineEl.y = 32;
+      taglineEl.width = 35;
+      taglineEl.height = 12;
+      taglineEl.fontSize = 5;
+      taglineEl.textAlign = 'right';
+      taglineEl.autoArranged = true;
+      changed = true;
+    }
+
+    if (buttonEl && isSelected(buttonEl)) {
+      buttonEl.x = 143;
+      buttonEl.y = 9;
+      buttonEl.width = 99;
+      buttonEl.height = 25;
+      buttonEl.autoSize = true;
+      buttonEl.wrapText = true;
+      buttonEl.maxFontSize = 20;
+      // text just. stays as is (do not override textAlign)
+      buttonEl.autoArranged = true;
+      changed = true;
+    }
+
+    if (cricosEl && isSelected(cricosEl)) {
+      cricosEl.x = 149;
+      cricosEl.y = 36;
+      cricosEl.width = 88;
+      cricosEl.height = 10;
+      cricosEl.fontSize = 6;
+      cricosEl.textAlign = 'center';
+      cricosEl.autoArranged = true;
+      changed = true;
+    }
+
+    if (headingEl && isSelected(headingEl)) {
+      headingEl.height = 31;
+      headingEl.verticalAlign = 'middle';
+      headingEl.textAlign = 'left';
+      headingEl.autoSize = true;
+      headingEl.maxFontSize = 30;
+
+      // Vertically center the heading box within the canvas
+      headingEl.y = (canvas.height - headingEl.height) / 2;
+
+      // Clamp when box out of safezone (for any edge)
+      if (headingEl.x < minX) {
+        headingEl.x = minX;
+      }
+      if (headingEl.x + headingEl.width > maxX) {
+        headingEl.width = Math.max(10, maxX - headingEl.x);
+      }
+      if (headingEl.y < minY) {
+        headingEl.y = minY;
+      }
+      if (headingEl.y + headingEl.height > maxY) {
+        headingEl.y = Math.max(minY, maxY - headingEl.height);
+      }
+
+      headingEl.autoArranged = true;
+      changed = true;
+    }
+
+    if (subheadingEl && isSelected(subheadingEl)) {
+      // Center it before hiding
+      subheadingEl.textAlign = 'center';
+      subheadingEl.x = (320 - subheadingEl.width) / 2;
+      subheadingEl.hidden = true;
+      subheadingEl.autoArranged = true;
+      changed = true;
+    }
+  } else if (canvas.width === 970 && canvas.height === 250) {
+    const config = AUTO_ARRANGE_CONFIG["970x250"];
+
+    const logoEl = canvas.elements.find(el => el.role === 'rmit-logo');
+    const taglineEl = canvas.elements.find(el => el.role === 'rfwn');
+    const cricosEl = canvas.elements.find(el => el.role === 'cricos');
+    const headingEl = canvas.elements.find(el => el.role === 'heading');
+    const subheadingEl = canvas.elements.find(el => el.role === 'subheading');
+    const buttonEl = canvas.elements.find(el => el.role === 'cta-button');
+
+    let maxRight = config.safezone.maxX;
+    const rightSideElements = [logoEl, taglineEl, cricosEl].filter(el => {
+      if (!el) return false;
+      const cx = el.x + el.width / 2;
+      return cx > 485;
+    });
+    if (rightSideElements.length > 0) {
+      const minX = Math.min(...rightSideElements.map(el => el.x));
+      maxRight = Math.min(maxRight, minX - 8);
+    }
+    if (buttonEl && buttonEl.x >= 73) {
+      maxRight = Math.min(maxRight, buttonEl.x - 8);
+    }
+    const targetW = Math.max(50, maxRight - 73);
+
+    if (headingEl) {
+      if (isSelected(headingEl)) {
+        headingEl.x = 73;
+        headingEl.width = targetW;
+
+        // Vertical clamping to safezone
+        const minY = config.safezone.minY;
+        const maxY = config.safezone.maxY;
+        if (headingEl.y < minY) {
+          headingEl.y = minY;
+        }
+        if (headingEl.y + headingEl.height > maxY) {
+          headingEl.y = maxY - headingEl.height;
+          if (headingEl.y < minY) {
+            headingEl.y = minY;
+            headingEl.height = maxY - minY;
+          }
+        }
+
+        headingEl.autoSize = true;
+        headingEl.maxFontSize = config.heading.maxFontSize;
+        headingEl.verticalAlign = 'bottom';
+        headingEl.textAlign = 'left';
+        headingEl.autoArranged = true;
+        changed = true;
+      }
+
+      if (subheadingEl && isSelected(subheadingEl)) {
+        subheadingEl.x = 73;
+        subheadingEl.width = targetW;
+
+        // Stack right under heading's box if head is present
+        subheadingEl.y = headingEl.y + headingEl.height + config.subheading.gapBelowHeading;
+
+        // Fit entirely within vertical safezone
+        const minY = config.safezone.minY;
+        const maxY = config.safezone.maxY;
+        if (subheadingEl.y < minY) {
+          subheadingEl.y = minY;
+        }
+        if (subheadingEl.y + subheadingEl.height > maxY) {
+          subheadingEl.height = maxY - subheadingEl.y;
+          if (subheadingEl.height < 0) {
+            subheadingEl.height = 0;
+          }
+        }
+
+        subheadingEl.autoSize = true;
+        subheadingEl.maxFontSize = config.subheading.maxFontSize;
+        subheadingEl.textAlign = 'left';
+        subheadingEl.autoArranged = true;
+        changed = true;
+      }
+
+      if (buttonEl && isSelected(buttonEl)) {
+        buttonEl.width = 203;
+        buttonEl.x = 636;
+        if (buttonEl.x + buttonEl.width > config.safezone.maxX) {
+          buttonEl.width = Math.max(10, config.safezone.maxX - buttonEl.x);
+        }
+
+        // Vertically middle align the button box within the canvas
+        buttonEl.y = (canvas.height - buttonEl.height) / 2;
+
+        // Fit entirely within vertical safezone
+        const minY = config.safezone.minY;
+        const maxY = config.safezone.maxY;
+        if (buttonEl.y < minY) {
+          buttonEl.y = minY;
+        }
+        if (buttonEl.y + buttonEl.height > maxY) {
+          buttonEl.height = maxY - buttonEl.y;
+          if (buttonEl.height < 0) {
+            buttonEl.height = 0;
+          }
+        }
+
+        // Auto font size and wrapText on
+        buttonEl.autoSize = true;
+        buttonEl.wrapText = true;
+        buttonEl.autoArranged = true;
+        changed = true;
+      }
+    }
+
+    const present = [];
+    if (logoEl && isSelected(logoEl)) present.push({ el: logoEl, role: 'logo', priority: 1, costWeight: 100 });
+    if (taglineEl && isSelected(taglineEl) && config.tagline) present.push({ el: taglineEl, role: 'tagline', priority: 2, costWeight: 10 });
+    if (cricosEl && isSelected(cricosEl) && config.cricos) present.push({ el: cricosEl, role: 'cricos', priority: 3, costWeight: 1 });
+
+    if (solveBrandElements(canvas, present, config)) {
       changed = true;
     }
   }
@@ -15289,6 +15569,9 @@ document.addEventListener('contextmenu', (e) => {
 
       html += `<div class="ctx-divider"></div>`;
       if (hasLink) {
+        const firstGroup = state.linkGroups[groupIds[0]];
+        const isLive = firstGroup?.liveLink === true;
+        html += `<div class="ctx-item" id="ctx-link-toggle-live">${isLive ? '✓ Live Linking' : 'Live Linking'}</div>`;
         html += `<div class="ctx-item" id="ctx-link-push" style="color:var(--accent-light); white-space:nowrap;">Push Changes to Group</div>`;
       }
       html += `<div class="ctx-item has-submenu">Link Group
@@ -15565,6 +15848,24 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-link-remove', () => {
     removeSelectionFromGroup();
   });
+  bind('ctx-link-toggle-live', () => {
+    const c = getActiveCanvas();
+    if (c && state.layerSelection?.length > 0) {
+      const linkedEl = c.elements.filter(x => state.layerSelection.includes(x.id));
+      const groupIds = [...new Set(linkedEl.map(x => x.linkGroupId).filter(Boolean))];
+      if (groupIds.length > 0) {
+        const targetState = !state.linkGroups[groupIds[0]]?.liveLink;
+        groupIds.forEach(gid => {
+          if (state.linkGroups[gid]) {
+            state.linkGroups[gid].liveLink = targetState;
+          }
+        });
+        pushHistory();
+        render();
+        showCanvasNotification(targetState ? 'Live syncing enabled for group(s)' : 'Live syncing disabled for group(s)', { type: 'success' });
+      }
+    }
+  });
   bind('ctx-link-push', () => {
     pushGroupChanges();
   });
@@ -15641,27 +15942,8 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-canvas-export-html', () => { const c = getActiveCanvas(); if (c) exportCanvasAsZip(c); });
   bind('ctx-canvas-export-png', () => { const c = getActiveCanvas(); if (c) exportCanvasAsPng(c); });
   bind('ctx-canvas-auto-resize', () => {
-    // Context-menu Auto-Resize is now the instant path — resize from the
-    // active canvas (the one whose menu was just opened) into every other
-    // canvas, no popup. The bottom-left workspace button is the entry
-    // point for the popup-first flow.
-    const src = getActiveCanvas();
-    if (!src) {
-      showCanvasNotification('Select a source canvas first (click its header).', { type: 'warning' });
-      return;
-    }
-    const targetIds = state.canvases.filter(c => c.id !== src.id).map(c => c.id);
-    if (targetIds.length === 0) {
-      showCanvasNotification('No other canvases to resize into.', { type: 'warning' });
-      return;
-    }
-    const settings = (typeof getAutoResizeSettings === 'function') ? getAutoResizeSettings() : { behaviour: {} };
-    if (typeof runRuleBasedAutoResize === 'function') {
-      runRuleBasedAutoResize({
-        sourceId: src.id,
-        targetIds,
-        includeUnassigned: settings.behaviour?.includeUnassigned === true
-      });
+    if (typeof openAutoResizeModal === 'function') {
+      openAutoResizeModal();
     }
   });
   bind('ctx-canvas-auto-arrange', () => {

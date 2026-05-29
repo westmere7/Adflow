@@ -158,7 +158,19 @@
 //           satisfy this (main-image's slot starts at max(heading.r,
 //           subhead.r) etc.) but the pass enforces it defensively
 //           against future rule changes / misc-role intrusion.
-const ENGINE_VERSION = 'v2.16';
+const ENGINE_VERSION = 'v2.17'; // Bumped for layout harmonization with auto-arrange
+
+function getQuadrantOfElement(el, canvas) {
+  if (!el || !canvas) return 'TL';
+  const centerX = el.x + el.width / 2;
+  const centerY = el.y + el.height / 2;
+  const isTop = centerY < canvas.height / 2;
+  const isLeft = centerX < canvas.width / 2;
+  if (isTop && isLeft) return 'TL';
+  if (isTop && !isLeft) return 'TR';
+  if (!isTop && isLeft) return 'BL';
+  return 'BR';
+}
 
 
 // ----- Role taxonomy data tables ------------------------------------------
@@ -469,13 +481,40 @@ function openAutoResizeModal() {
           </div>
         </div>
 
-        <div style="margin-bottom:14px;">
+        <div style="margin-bottom:14px; display:flex; flex-direction:column; gap:12px;">
           <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
             <input type="checkbox" id="ar-include-unassigned" ${persistedSettings.behaviour.includeUnassigned ? 'checked' : ''} />
             <span>
               <span style="color:var(--text-main); font-weight:500;">Place unassigned elements in the centre of each target canvas</span>
               <br>
-              <span style="color:var(--text-muted); font-size:10.5px;">Off (default): unassigned elements are skipped on target canvases. On: they're copied and centred (no rule-based placement). Saved as your default after Run.</span>
+              <span style="color:var(--text-muted); font-size:10.5px;">Off (default): unassigned elements are skipped on target canvases. On: they're copied and centred.</span>
+            </span>
+          </label>
+
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
+            <input type="checkbox" id="ar-hide-subheading-320" ${persistedSettings.behaviour.hideSubheading320x50 !== false ? 'checked' : ''} />
+            <span>
+              <span style="color:var(--text-main); font-weight:500;">Hide Subheading in 320×50 mobile leaderboard</span>
+              <br>
+              <span style="color:var(--text-muted); font-size:10.5px;">On (default): hide subheading due to limited height. Off: place subheading visible below heading.</span>
+            </span>
+          </label>
+
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
+            <input type="checkbox" id="ar-lock-brand" ${persistedSettings.behaviour.lockBrandElements !== false ? 'checked' : ''} />
+            <span>
+              <span style="color:var(--text-main); font-weight:500;">Lock brand elements (Logo, Tagline, CRICOS) after layout</span>
+              <br>
+              <span style="color:var(--text-muted); font-size:10.5px;">On (default): automatically lock Logo, Tagline, and CRICOS layers so they cannot be accidentally moved.</span>
+            </span>
+          </label>
+
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
+            <input type="checkbox" id="ar-live-link" ${persistedSettings.behaviour.liveLink.enabled !== false ? 'checked' : ''} />
+            <span>
+              <span style="color:var(--text-main); font-weight:500;">Enable live-linking for auto-resized elements</span>
+              <br>
+              <span style="color:var(--text-muted); font-size:10.5px;">On (default): linked elements sync content/color/style changes from source in real-time (except brand elements which are always independent).</span>
             </span>
           </label>
         </div>
@@ -519,9 +558,15 @@ function openAutoResizeModal() {
       return;
     }
     const includeUnassigned = bg.querySelector('#ar-include-unassigned').checked;
-    // Persist the user's last choice so the bypass path (when canvas-
-    // selection dialogue is turned off in settings) has a remembered value.
+    const hideSubheading320x50 = bg.querySelector('#ar-hide-subheading-320').checked;
+    const lockBrandElements = bg.querySelector('#ar-lock-brand').checked;
+    const liveLinkEnabled = bg.querySelector('#ar-live-link').checked;
+
     persistedSettings.behaviour.includeUnassigned = includeUnassigned;
+    persistedSettings.behaviour.hideSubheading320x50 = hideSubheading320x50;
+    persistedSettings.behaviour.lockBrandElements = lockBrandElements;
+    persistedSettings.behaviour.liveLink.enabled = liveLinkEnabled;
+
     close();
     runRuleBasedAutoResize({
       sourceId: src.id,
@@ -592,265 +637,530 @@ function placeBackgroundImage(srcEl, target, ctx) {
 }
 
 function placeRmitLogo(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const isTallFormat = h > w;  // portrait + skyscraper
-
-  // Height: banner branch vs standard branch.
-  let logoH = (h <= 100)
-    ? clampNum(Math.round(h * 0.2 + 8), 15, 30)
-    : clampNum(Math.round(Math.sqrt(w * h) * 0.075), 15, 40);
-
-  // Tall formats (300×600, 160×600) have RFWN top-left and logo top-right
-  // sharing the same row at the top of safezone. Shrink the logo so the
-  // pair has breathing room across the limited horizontal real estate.
-  if (isTallFormat) {
-    logoH = Math.max(15, Math.round(logoH * 0.75));
+  const config = AUTO_ARRANGE_CONFIG[target.width + "x" + target.height];
+  if (!config || !config.logoCoords) {
+    const sz = ctx.safezone;
+    const w = target.width, h = target.height;
+    const ratio = h / w;
+    const isTallFormat = ratio >= 1.0;
+    let logoH = (h <= 100)
+      ? clampNum(Math.round(h * 0.2 + 8), 15, 30)
+      : clampNum(Math.round(Math.sqrt(w * h) * 0.075), 15, 40);
+    if (isTallFormat) {
+      logoH = Math.max(15, Math.round(logoH * 0.75));
+    }
+    const srcAspect = (srcEl.width && srcEl.height) ? (srcEl.width / srcEl.height) : 2.85;
+    const logoW = Math.round(logoH * srcAspect);
+    const offX = clampNum(Math.round(sz.inset * 0.15), 0, 3);
+    const offY = clampNum(Math.round(sz.inset * 0.2), 1, 3);
+    return {
+      x: sz.right - offX - logoW,
+      y: sz.y + offY,
+      width: logoW,
+      height: logoH
+    };
   }
 
-  // Width derived from source aspect (default ~2.85 for RMIT lockup)
-  const srcAspect = (srcEl.width && srcEl.height) ? (srcEl.width / srcEl.height) : 2.85;
-  const logoW = Math.round(logoH * srcAspect);
+  const quad = getQuadrantOfElement(srcEl, ctx.sourceCanvas);
+  const coords = config.logoCoords;
+  const coord = coords[quad] || coords.TL || Object.values(coords)[0];
 
-  // Top-right of safezone, always. The previous bot-left fallback for
-  // ultra-narrow skyscrapers (aspect < 0.4) created a cramped bottom strip
-  // with RFWN + CTA all competing for ~30 px of vertical space. Top-right
-  // is consistent across formats and pairs naturally with RFWN top-left
-  // (via the R1 relation), splitting the brand corners across opposite
-  // sides of the same row.
-  const offX = clampNum(Math.round(sz.inset * 0.15), 0, 3);
-  const offY = clampNum(Math.round(sz.inset * 0.2), 1, 3);
   return {
-    x: sz.right - offX - logoW,
-    y: sz.y + offY,
-    width: logoW,
-    height: logoH
+    x: coord.x,
+    y: coord.y,
+    width: coord.w,
+    height: coord.h
   };
 }
 
 function placeCtaButton(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const aspect = w / h;
-  const sqArea = Math.sqrt(w * h);
-
-  const btnH = clampNum(Math.round(sqArea * 0.11), 14, 53);
-
-  if (aspect <= 2.0) {
-    // Tall mode: bot-center of safezone
-    const btnW = clampNum(Math.round(btnH * 3.7), 70, Math.min(200, sz.w));
-    const offY = clampNum(Math.round(h * 0.04), 15, 30);
+  const config = AUTO_ARRANGE_CONFIG[target.width + "x" + target.height];
+  if (!config) {
+    const sz = ctx.safezone;
+    const w = target.width, h = target.height;
+    const aspect = w / h;
+    const sqArea = Math.sqrt(w * h);
+    const btnH = clampNum(Math.round(sqArea * 0.11), 14, 53);
+    if (aspect <= 2.0) {
+      const btnW = clampNum(Math.round(btnH * 3.7), 70, Math.min(200, sz.w));
+      const offY = clampNum(Math.round(h * 0.04), 15, 30);
+      return {
+        x: sz.x + Math.round((sz.w - btnW) / 2),
+        y: sz.bottom - offY - btnH,
+        width: btnW,
+        height: btnH
+      };
+    }
+    const btnW = clampNum(Math.round(btnH * 4.2), 70, 200);
+    const btnRight = Math.round(w * 0.84);
     return {
-      x: sz.x + Math.round((sz.w - btnW) / 2),
-      y: sz.bottom - offY - btnH,
+      x: btnRight - btnW,
+      y: Math.round((h - btnH) / 2),
       width: btnW,
       height: btnH
     };
   }
-  // Wide mode: button-right at canvas.w × 0.84, vertically centred
-  const btnW = clampNum(Math.round(btnH * 4.2), 70, 200);
-  const btnRight = Math.round(w * 0.84);
+
+  const sz = config.safezone;
+  const w = target.width, h = target.height;
+  const heading = ctx.placedElements['heading'];
+  const subheading = ctx.placedElements['subheading'];
+  const gap = config.button ? (config.button.gapBelowText || 8) : 8;
+
+  // Detect alignment from source element
+  const srcCenter = srcEl.x + srcEl.width / 2;
+  const srcCanvasCenter = ctx.sourceCanvas.width / 2;
+  const tolerance = 15; // px
+
+  let alignment = 'center';
+  if (srcCenter < srcCanvasCenter - tolerance) {
+    alignment = 'left';
+  } else if (srcCenter > srcCanvasCenter + tolerance) {
+    alignment = 'right';
+  }
+
+  let x, y, width, height, textAlign = 'center';
+
+  if (w === 970 && h === 250) {
+    x = 636;
+    width = 203;
+    height = 45;
+    y = (h - height) / 2;
+  } else if (w === 728 && h === 90) {
+    x = 429;
+    y = 22;
+    width = 144;
+    height = 33;
+  } else if (w === 320 && h === 50) {
+    x = 143;
+    y = 9;
+    width = 99;
+    height = 25;
+  } else if (w === 300 && h === 600) {
+    width = 180;
+    if (alignment === 'left') {
+      x = sz.minX;
+    } else if (alignment === 'right') {
+      x = sz.maxX - width;
+    } else {
+      x = sz.minX + Math.round((sz.maxX - sz.minX - width) / 2);
+    }
+    y = subheading
+      ? (subheading.y + subheading.height + gap)
+      : (heading ? heading.y + heading.height + gap : 340);
+    height = 45;
+  } else if (w === 160 && h === 600) {
+    width = 120;
+    if (alignment === 'left') {
+      x = sz.minX;
+    } else if (alignment === 'right') {
+      x = sz.maxX - width;
+    } else {
+      x = sz.minX + Math.round((sz.maxX - sz.minX - width) / 2);
+    }
+    y = subheading
+      ? (subheading.y + subheading.height + gap)
+      : (heading ? heading.y + heading.height + gap : 360);
+    height = 40;
+  } else if (w === 300 && h === 250) {
+    width = 150;
+    const isLeft = heading ? (heading.textAlign === 'left') : true;
+    x = isLeft ? sz.minX : sz.maxX - width;
+    y = subheading
+      ? (subheading.y + subheading.height + gap)
+      : (heading ? heading.y + heading.height + gap : 190);
+    height = 38;
+  } else {
+    width = 120;
+    if (alignment === 'left') {
+      x = sz.minX;
+    } else if (alignment === 'right') {
+      x = sz.maxX - width;
+    } else {
+      x = sz.minX + Math.round((sz.maxX - sz.minX - width) / 2);
+    }
+    y = subheading
+      ? (subheading.y + subheading.height + gap)
+      : (heading ? heading.y + heading.height + gap : sz.bottom - 50);
+    height = 35;
+  }
+
   return {
-    x: btnRight - btnW,
-    y: Math.round((h - btnH) / 2),
-    width: btnW,
-    height: btnH
+    x,
+    y,
+    width,
+    height,
+    textAlign
   };
 }
 
 function placeHeading(srcEl, target, ctx) {
-  const sz = ctx.safezone;
+  const config = AUTO_ARRANGE_CONFIG[target.width + "x" + target.height];
+  if (!config) {
+    const sz = ctx.safezone;
+    const w = target.width, h = target.height;
+    const aspect = w / h;
+    const offX = clampNum(Math.round(w * 0.03), 2, 80);
+    const offY = (h < 100) ? 2 : clampNum(Math.round(h * 0.15), 20, 100);
+    let width;
+    const stackMode = h >= 300;
+    if (stackMode) {
+      width = sz.w;
+    } else if (aspect > 2) {
+      width = (h <= 100)
+        ? clampNum(Math.round(w * 0.42), 80, 400)
+        : clampNum(Math.round(w * 0.40), 80, 400);
+    } else {
+      width = clampNum(Math.round(sz.w * 0.55), 120, 270);
+    }
+    const cta  = ctx.placedElements['cta-button'];
+    const logo = ctx.placedElements['rmit-logo'];
+    const headingX = sz.x + offX;
+    const ctaIsWideMode = aspect > 2.0;
+    let maxRight = sz.right;
+    if (cta && ctaIsWideMode && cta.x >= headingX) {
+      maxRight = Math.min(maxRight, cta.x - 8);
+    }
+    if (logo && !stackMode && logo.x >= headingX) {
+      maxRight = Math.min(maxRight, logo.x - 8);
+    }
+    width = Math.max(40, Math.min(width, maxRight - headingX));
+    let fontSize;
+    if (h <= 100) {
+      fontSize = clampNum(Math.round(h * 0.22), 9, 22);
+    } else if (h < 300) {
+      fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.07), 16, 35);
+    } else {
+      fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.08), 22, 46);
+    }
+    let wrapLines;
+    if (h <= 100) wrapLines = 2;
+    else if (h < 300) wrapLines = 2;
+    else if (w < 200) wrapLines = 4;
+    else wrapLines = 3;
+    const idealH = Math.round(fontSize * 1.32 * wrapLines);
+    const remainH = h - sz.inset * 2 - 4;
+    const height = Math.max(Math.round(fontSize * 1.32), Math.min(idealH, remainH));
+    let y;
+    if (h <= 100 && aspect > 2.0) {
+      y = Math.max(sz.y, Math.round((h - height) / 2));
+    } else {
+      y = sz.y + offY;
+    }
+    return {
+      x: headingX,
+      y,
+      width,
+      height,
+      fontSize,
+      maxFontSize: fontSize,
+      textAlign: 'left'
+    };
+  }
+
+  const sz = config.safezone;
   const w = target.width, h = target.height;
-  const aspect = w / h;
+  const maxFontSize = config.heading ? (config.heading.maxFontSize || 40) : 40;
+  const isLeft = (srcEl.textAlign === 'left' || srcEl.x < (ctx.sourceCanvas.width - srcEl.width) / 2);
 
-  const offX = clampNum(Math.round(w * 0.03), 2, 80);
-  const offY = (h < 100) ? 2 : clampNum(Math.round(h * 0.15), 20, 100);
+  let x, y, width, height, verticalAlign, textAlign;
 
-  let width;
-  const stackMode = h >= 300;
-  if (stackMode) {
-    width = sz.w;
-  } else if (aspect > 2) {
-    // Wide banner — heading column gets a generous share of canvas width so
-    // 2-line wrapping of "It's not too late to study in 2026." fits cleanly.
-    width = (h <= 100)
-      ? clampNum(Math.round(w * 0.42), 80, 400)
-      : clampNum(Math.round(w * 0.40), 80, 400);
+  if (w === 970 && h === 250) {
+    x = 73;
+    let maxRight = sz.maxX;
+    const logo = ctx.placedElements['rmit-logo'];
+    const tagline = ctx.placedElements['rfwn'];
+    const cricos = ctx.placedElements['cricos'];
+    const cta = ctx.placedElements['cta-button'];
+
+    const rightSideElements = [logo, tagline, cricos].filter(el => {
+      if (!el) return false;
+      const cx = el.x + el.width / 2;
+      return cx > 485;
+    });
+    if (rightSideElements.length > 0) {
+      const minX = Math.min(...rightSideElements.map(el => el.x));
+      maxRight = Math.min(maxRight, minX - 8);
+    }
+    if (cta && cta.x >= 73) {
+      maxRight = Math.min(maxRight, cta.x - 8);
+    }
+    width = Math.max(50, maxRight - x);
+
+    y = Math.max(sz.minY, Math.round((h - 80) / 2));
+    height = 80;
+    verticalAlign = 'bottom';
+    textAlign = 'left';
+  } else if (w === 728 && h === 90) {
+    x = 39;
+    y = 17;
+    width = 368;
+    height = 33;
+    verticalAlign = 'top';
+    textAlign = 'left';
+  } else if (w === 320 && h === 50) {
+    x = sz.minX;
+    height = 31;
+    width = sz.maxX - x;
+    y = (h - height) / 2;
+    verticalAlign = 'middle';
+    textAlign = 'left';
+  } else if (w === 300 && h === 600) {
+    x = sz.minX;
+    width = sz.maxX - x;
+    y = 140;
+    height = 110;
+    verticalAlign = 'top';
+    textAlign = 'center';
+  } else if (w === 160 && h === 600) {
+    x = sz.minX;
+    width = sz.maxX - x;
+    y = 120;
+    height = 140;
+    verticalAlign = 'top';
+    textAlign = 'center';
+  } else if (w === 300 && h === 250) {
+    x = sz.minX;
+    width = sz.maxX - x;
+    y = 80;
+    height = 60;
+    verticalAlign = 'top';
+    textAlign = isLeft ? 'left' : 'right';
   } else {
-    width = clampNum(Math.round(sz.w * 0.55), 120, 270);
+    x = sz.minX;
+    width = sz.maxX - x;
+    y = sz.minY + 20;
+    height = Math.round(h * 0.25);
+    verticalAlign = 'top';
+    textAlign = 'left';
   }
 
-  // Constrain width by already-placed CTA / logo only when they're in the
-  // same horizontal band as the heading.
-  //   - CTA only sits "to the right" in wide-banner mode (aspect > 2); in
-  //     tall/stack layouts CTA is below heading and doesn't conflict.
-  //   - Logo is always top-right. In stack mode (h ≥ 300) heading starts
-  //     well below the top (offY ~90), so logo is above heading — no
-  //     horizontal conflict. Skip the logo constraint in stack mode so
-  //     heading can use the full safezone width.
-  const cta  = ctx.placedElements['cta-button'];
-  const logo = ctx.placedElements['rmit-logo'];
-  const headingX = sz.x + offX;
-  const ctaIsWideMode = aspect > 2.0;
-  let maxRight = sz.right;
-  if (cta && ctaIsWideMode && cta.x >= headingX) {
-    maxRight = Math.min(maxRight, cta.x - 8);
-  }
-  if (logo && !stackMode && logo.x >= headingX) {
-    maxRight = Math.min(maxRight, logo.x - 8);
-  }
-  width = Math.max(40, Math.min(width, maxRight - headingX));
-
-  // Font size: scaled to canvas. Tight banners cap at 22.
   let fontSize;
   if (h <= 100) {
-    fontSize = clampNum(Math.round(h * 0.22), 9, 22);
+    fontSize = clampNum(Math.round(h * 0.22), 9, maxFontSize);
   } else if (h < 300) {
-    fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.07), 16, 35);
+    fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.07), 16, maxFontSize);
   } else {
-    fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.08), 22, 46);
+    fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.08), 22, maxFontSize);
   }
 
-  // Wrap budget — sized to match the EXPECTED wrap count for the source
-  // headline, so heading.height tracks the actual rendered text without
-  // a tall pile of trailing padding below the last line.
-  let wrapLines;
-  if (h <= 100) wrapLines = 2;
-  else if (h < 300) wrapLines = 2;
-  else if (w < 200) wrapLines = 4;   // narrow skyscraper (160×600 → 4 lines)
-  else wrapLines = 3;                 // standard stack (300×600 → 3 lines)
-  const idealH = Math.round(fontSize * 1.32 * wrapLines);
-  const remainH = h - sz.inset * 2 - 4;
-  const height = Math.max(Math.round(fontSize * 1.32), Math.min(idealH, remainH));
-
-  // Y placement. Wide banners (h ≤ 100, aspect > 2) host the heading +
-  // side-by-side subhead pair, which reads best when vertically centred
-  // in the canvas rather than hugging the top. All other layouts use the
-  // safezone-top-anchored offY.
-  let y;
-  if (h <= 100 && aspect > 2.0) {
-    y = Math.max(sz.y, Math.round((h - height) / 2));
-  } else {
-    y = sz.y + offY;
-  }
-
-  return {
-    x: headingX,
+  const result = {
+    x,
     y,
     width,
     height,
     fontSize,
-    maxFontSize: fontSize  // cap auto-fit so source's 68pt max can't blow up
+    maxFontSize,
+    textAlign
   };
+  if (verticalAlign) result.verticalAlign = verticalAlign;
+  return result;
 }
 
 function placeSubheading(srcEl, target, ctx) {
-  const heading = ctx.placedElements['heading'];
-  const h = target.height, w = target.width;
-  const sz = ctx.safezone;
-  const cta = ctx.placedElements['cta-button'];
+  const config = AUTO_ARRANGE_CONFIG[target.width + "x" + target.height];
+  if (!config) {
+    const heading = ctx.placedElements['heading'];
+    const h = target.height, w = target.width;
+    const sz = ctx.safezone;
+    const cta = ctx.placedElements['cta-button'];
+    let fontSize;
+    if (h <= 60) {
+      fontSize = clampNum(Math.round(h * 0.18), 8, 11);
+    } else if (h <= 100) {
+      fontSize = clampNum(Math.round(h * 0.18), 14, 18);
+    } else {
+      fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.06), 14, 28);
+    }
+    const subH = Math.round(fontSize * 1.35);
+    if (!heading) {
+      return {
+        x: sz.x + 4,
+        y: sz.y + 4,
+        width: sz.w - 8,
+        height: subH,
+        fontSize,
+        maxFontSize: fontSize
+      };
+    }
+    if (h <= 100) {
+      const gapX = 8;
+      const x = heading.x + heading.width + gapX;
+      let maxRight = sz.right;
+      if (cta && cta.x >= x) maxRight = Math.min(maxRight, cta.x - 8);
+      const width = Math.max(30, maxRight - x);
+      return {
+        x,
+        y: heading.y + Math.round((heading.height - subH) / 2),
+        width,
+        height: subH,
+        fontSize,
+        maxFontSize: fontSize
+      };
+    }
+    return {
+      x: heading.x,
+      y: heading.y + heading.height + 4,
+      width: heading.width,
+      height: subH,
+      fontSize,
+      maxFontSize: fontSize
+    };
+  }
 
-  // Font: scaled to canvas dimensions. Updated multipliers for tall
-  // canvases so subhead reads larger relative to heading.
-  //   320×50  →  9   (banner formula)
-  //   728×90  → 16   (banner formula)
-  //   300×250 → 16   (sqrt × 0.06 = 16.4)
-  //   970×250 → 28   (capped from 29.6 → cap 28)
-  //   300×600 → 25   (was 21, bumped via 0.06 multiplier)
-  //   160×600 → 19   (was 16)
+  const sz = config.safezone;
+  const w = target.width, h = target.height;
+  const maxFontSize = config.subheading ? (config.subheading.maxFontSize || 30) : 30;
+  const gap = config.subheading ? (config.subheading.gapBelowHeading || 4) : 4;
+  const heading = ctx.placedElements['heading'];
+
+  let x, y, width, height, textAlign, hidden = false;
+  const isLeft = heading ? (heading.textAlign === 'left') : true;
+
+  if (w === 970 && h === 250) {
+    x = 73;
+    let maxRight = sz.maxX;
+    const logo = ctx.placedElements['rmit-logo'];
+    const tagline = ctx.placedElements['rfwn'];
+    const cricos = ctx.placedElements['cricos'];
+    const cta = ctx.placedElements['cta-button'];
+
+    const rightSideElements = [logo, tagline, cricos].filter(el => {
+      if (!el) return false;
+      const cx = el.x + el.width / 2;
+      return cx > 485;
+    });
+    if (rightSideElements.length > 0) {
+      const minX = Math.min(...rightSideElements.map(el => el.x));
+      maxRight = Math.min(maxRight, minX - 8);
+    }
+    if (cta && cta.x >= 73) {
+      maxRight = Math.min(maxRight, cta.x - 8);
+    }
+    width = Math.max(50, maxRight - x);
+
+    y = heading ? (heading.y + heading.height + gap) : sz.minY;
+    height = 40;
+    textAlign = 'left';
+  } else if (w === 728 && h === 90) {
+    x = 39;
+    y = 53;
+    width = 346;
+    height = 21;
+    textAlign = 'left';
+  } else if (w === 320 && h === 50) {
+    const settings = getAutoResizeSettings();
+    const hideSub = settings.behaviour?.hideSubheading320x50 !== false;
+    x = (320 - (srcEl.width || 100)) / 2;
+    y = 30;
+    width = srcEl.width || 100;
+    height = 15;
+    textAlign = 'center';
+    hidden = hideSub;
+  } else if (w === 300 && h === 600) {
+    x = sz.minX;
+    width = sz.maxX - x;
+    y = heading ? (heading.y + heading.height + gap) : 260;
+    height = 70;
+    textAlign = 'center';
+  } else if (w === 160 && h === 600) {
+    x = sz.minX;
+    width = sz.maxX - x;
+    y = heading ? (heading.y + heading.height + gap) : 270;
+    height = 80;
+    textAlign = 'center';
+  } else if (w === 300 && h === 250) {
+    x = sz.minX;
+    width = sz.maxX - x;
+    y = heading ? (heading.y + heading.height + gap) : 150;
+    height = 40;
+    textAlign = isLeft ? 'left' : 'right';
+  } else {
+    x = sz.minX;
+    width = sz.maxX - x;
+    y = heading ? (heading.y + heading.height + gap) : sz.minY + 60;
+    height = Math.round(h * 0.15);
+    textAlign = 'left';
+  }
+
   let fontSize;
   if (h <= 60) {
-    fontSize = clampNum(Math.round(h * 0.18), 8, 11);
+    fontSize = clampNum(Math.round(h * 0.18), 8, maxFontSize);
   } else if (h <= 100) {
-    fontSize = clampNum(Math.round(h * 0.18), 14, 18);
+    fontSize = clampNum(Math.round(h * 0.18), 14, maxFontSize);
   } else {
-    fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.06), 14, 28);
-  }
-  const subH = Math.round(fontSize * 1.35);
-
-  // No-drop fallback: if heading didn't place (rare — heading rule never
-  // returns null), park subheading at safezone top-left so it's still
-  // visible on the target canvas.
-  if (!heading) {
-    return {
-      x: sz.x + 4,
-      y: sz.y + 4,
-      width: sz.w - 8,
-      height: subH,
-      fontSize,
-      maxFontSize: fontSize
-    };
+    fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.06), 14, maxFontSize);
   }
 
-  // Tight horizontal banners (h ≤ 100): subheading sits to the RIGHT of
-  // heading instead of below.
-  if (h <= 100) {
-    const gapX = 8;
-    const x = heading.x + heading.width + gapX;
-    let maxRight = sz.right;
-    if (cta && cta.x >= x) maxRight = Math.min(maxRight, cta.x - 8);
-    const width = Math.max(30, maxRight - x);
-    return {
-      x,
-      y: heading.y + Math.round((heading.height - subH) / 2),
-      width,
-      height: subH,
-      fontSize,
-      maxFontSize: fontSize
-    };
-  }
-
-  // Default: below heading with a small visual gap. Heading wrap budget
-  // is now sized to expected text length (3 lines stack, 4 lines
-  // skyscraper, 2 elsewhere) so the heading box ends close to its text;
-  // a 4 px gap reads as "stacked" without an aggressive negative offset.
-  return {
-    x: heading.x,
-    y: heading.y + heading.height + 4,
-    width: heading.width,
-    height: subH,
-    fontSize,
-    maxFontSize: fontSize
-  };
-}
-
-function placeCricos(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const minDim = Math.min(w, h);
-
-  // Font: take the larger of three candidates so neither wide banners nor
-  // tall skyscrapers end up with a floor-of-4 cricos when there's plenty
-  // of real estate in the OTHER axis.
-  //   minDim × 0.023 — original formula, drives portrait / square sizes
-  //   width  × 0.008 — kicks in for wide canvases (970×250, 728×90)
-  //   height × 0.012 — kicks in for tall thin canvases (160×600)
-  // All capped at 7.
-  //   300×250 → max(6, 4, 4) = 6
-  //   300×600 → max(7, 4, 7) = 7
-  //   160×600 → max(4, 4, 7) = 7   (was 4 — too small on tall skyscraper)
-  //   728×90  → max(4, 6, 4) = 6
-  //   970×250 → max(6, 7, 4) = 7
-  //   320×50  → max(4, 4, 4) = 4
-  const fontFromMin    = clampNum(Math.round(minDim * 0.023), 4, 7);
-  const fontFromWidth  = clampNum(Math.round(w * 0.008),       4, 7);
-  const fontFromHeight = clampNum(Math.round(h * 0.012),       4, 7);
-  const fontSize = Math.max(fontFromMin, fontFromWidth, fontFromHeight);
-  const srcFs = srcEl.fontSize || 7;
-  const scale = fontSize / srcFs;
-  const widthRaw = Math.round((srcEl.width || 100) * scale);
-  const width = clampNum(widthRaw, 40, w - 8);
-  const height = Math.max(8, Math.round((srcEl.height || 12) * scale));
-
-  const offX = Math.max(sz.inset, 8);
-  const offY = Math.max(Math.round(fontSize * 0.5), 4);
-  return {
-    x: offX,
-    y: h - offY - height,
+  const result = {
+    x,
+    y,
     width,
     height,
     fontSize,
-    maxFontSize: fontSize
+    maxFontSize,
+    textAlign
+  };
+  if (hidden) result.hidden = true;
+  return result;
+}
+
+function placeCricos(srcEl, target, ctx) {
+  const config = AUTO_ARRANGE_CONFIG[target.width + "x" + target.height];
+  if (!config || !config.cricos) {
+    const sz = ctx.safezone;
+    const w = target.width, h = target.height;
+    const minDim = Math.min(w, h);
+    const fontFromMin    = clampNum(Math.round(minDim * 0.023), 4, 7);
+    const fontFromWidth  = clampNum(Math.round(w * 0.008),       4, 7);
+    const fontFromHeight = clampNum(Math.round(h * 0.012),       4, 7);
+    const fontSize = Math.max(fontFromMin, fontFromWidth, fontFromHeight);
+    const srcFs = srcEl.fontSize || 7;
+    const scale = fontSize / srcFs;
+    const widthRaw = Math.round((srcEl.width || 100) * scale);
+    const width = clampNum(widthRaw, 40, w - 8);
+    const height = Math.max(8, Math.round((srcEl.height || 12) * scale));
+    const offX = Math.max(sz.inset, 8);
+    const offY = Math.max(Math.round(fontSize * 0.5), 4);
+    return {
+      x: offX,
+      y: h - offY - height,
+      width,
+      height,
+      fontSize,
+      maxFontSize: fontSize
+    };
+  }
+
+  if (target.width === 728 && target.height === 90) {
+    const cta = ctx.placedElements['cta-button'];
+    if (cta) {
+      return {
+        x: cta.x,
+        y: cta.y + cta.height + 5,
+        width: cta.width,
+        height: 10,
+        fontSize: 7,
+        maxFontSize: 7,
+        textAlign: 'center'
+      };
+    }
+  }
+
+  const quad = getQuadrantOfElement(srcEl, ctx.sourceCanvas);
+  const coords = config.cricos.coords;
+  const coord = coords[quad] || coords.TL || Object.values(coords)[0];
+  const fontSize = config.cricos.fontSize || 6;
+  const textAlign = config.cricos.textAlign || 'center';
+
+  return {
+    x: coord.x,
+    y: coord.y,
+    width: coord.w,
+    height: coord.h,
+    fontSize,
+    maxFontSize: fontSize,
+    textAlign
   };
 }
 
@@ -1030,47 +1340,54 @@ function placeMainImage(srcEl, target, ctx) {
 }
 
 function placeRfwn(srcEl, target, ctx) {
-  const sz = ctx.safezone;
-  const w = target.width, h = target.height;
-  const aspect = w / h;
-  const isTallFormat = h > w;
-
-  let fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.032), 5, 17);
-  // Tall formats share the top row with the logo. Shrink to keep them
-  // visually separated — pairs with the logo-shrink in placeRmitLogo.
-  if (isTallFormat) {
-    fontSize = Math.max(5, Math.round(fontSize * 0.8));
+  const config = AUTO_ARRANGE_CONFIG[target.width + "x" + target.height];
+  if (!config || !config.tagline) {
+    const sz = ctx.safezone;
+    const w = target.width, h = target.height;
+    const aspect = w / h;
+    let fontSize = clampNum(Math.round(Math.sqrt(w * h) * 0.032), 5, 17);
+    if (h > w) {
+      fontSize = Math.max(5, Math.round(fontSize * 0.8));
+    }
+    const width  = clampNum(Math.round(fontSize * 6.8), 35, 100);
+    const height = Math.max(10, Math.round(fontSize * 2.4));
+    let x, y, textAlign;
+    if (aspect <= 2.0) {
+      const offX = Math.max(2, Math.round(sz.inset * 0.2));
+      x = sz.x + offX;
+      y = sz.y;
+      textAlign = 'left';
+    } else {
+      const offX = clampNum(Math.round(sz.inset * 0.4), 0, 5);
+      const offY = clampNum(Math.round(sz.inset * 0.4), 0, 5);
+      x = sz.right - offX - width;
+      y = sz.bottom - offY - height;
+      textAlign = 'right';
+    }
+    return { x, y, width, height, fontSize, maxFontSize: fontSize, textAlign };
   }
-  // Width hugs the wrapped text. "what's next" (11 chars) is the longer
-  // of the two natural lines and must fit on a single row, otherwise RFWN
-  // wraps to 3 lines. font × 6.8 with cap 100 leaves the box snug to the
-  // text right edge while still keeping the 2-line wrap intact.
-  const width  = clampNum(Math.round(fontSize * 6.8), 35, 100);
-  // RFWN wraps to ~2 lines at chosen font; leading ~1.2.
-  const height = Math.max(10, Math.round(fontSize * 2.4));
 
-  // Two modes:
-  //   - aspect ≤ 2.0 → top-left  (square, portrait, AND skyscraper — the
-  //     latter previously went bot-right, which packed it against the logo
-  //     in the bottom strip; top-left now mirrors the portrait pattern).
-  //   - aspect > 2.0 → bot-right (wide banner — logo is top-right, RFWN
-  //     mirrors below it).
-  // Text always justifies toward the closest canvas edge (left for left
-  // anchors, right for right anchors). Never centered.
-  let x, y, textAlign;
-  if (aspect <= 2.0) {
-    const offX = Math.max(2, Math.round(sz.inset * 0.2));
-    x = sz.x + offX;
-    y = sz.y;
-    textAlign = 'left';
+  const quad = getQuadrantOfElement(srcEl, ctx.sourceCanvas);
+  const coords = config.tagline.coords;
+  const coord = coords[quad] || coords.TL || Object.values(coords)[0];
+  const fontSize = config.tagline.fontSize || 8;
+  
+  let textAlign;
+  if (target.width === 970 && target.height === 250) {
+    textAlign = quad.endsWith('R') ? 'right' : 'left';
   } else {
-    const offX = clampNum(Math.round(sz.inset * 0.4), 0, 5);
-    const offY = clampNum(Math.round(sz.inset * 0.4), 0, 5);
-    x = sz.right - offX - width;
-    y = sz.bottom - offY - height;
-    textAlign = 'right';
+    textAlign = config.tagline.textAlign || (quad.endsWith('L') ? 'left' : 'right');
   }
-  return { x, y, width, height, fontSize, maxFontSize: fontSize, textAlign };
+
+  return {
+    x: coord.x,
+    y: coord.y,
+    width: coord.w,
+    height: coord.h,
+    fontSize,
+    maxFontSize: fontSize,
+    textAlign
+  };
 }
 
 function placeExtraInfo(srcEl, target, ctx) {
@@ -1293,13 +1610,93 @@ function applyRelationR1(ctx) {
   const logo = ctx.placedElements['rmit-logo'];
   const rfwn = ctx.placedElements['rfwn'];
   if (!logo || !rfwn) return;
-  const w = ctx.target.width, h = ctx.target.height;
-  const aspect = w / h;
 
-  if (aspect <= 2.0) {
-    rfwn.y = logo.y;
-  } else {
-    rfwn.x = logo.x + logo.width - rfwn.width;
+  const w = ctx.target.width, h = ctx.target.height;
+  const config = AUTO_ARRANGE_CONFIG[w + "x" + h];
+  if (!config) {
+    const aspect = w / h;
+    if (aspect <= 2.0) {
+      rfwn.y = logo.y;
+    } else {
+      rfwn.x = logo.x + logo.width - rfwn.width;
+    }
+    return;
+  }
+
+  // We determine the current quadrant of the placed logo on target
+  const qLogo = getQuadrantOfElement(logo, ctx.target);
+
+  if (w === 970 && h === 250) {
+    // Logo and Tagline must stay on the same vertical side (Left or Right) on two different shorter corners
+    let targetQuad;
+    if (qLogo === 'TL') targetQuad = 'BL';
+    else if (qLogo === 'BL') targetQuad = 'TL';
+    else if (qLogo === 'TR') targetQuad = 'BR';
+    else if (qLogo === 'BR') targetQuad = 'TR';
+
+    if (targetQuad && config.tagline && config.tagline.coords[targetQuad]) {
+      const coord = config.tagline.coords[targetQuad];
+      rfwn.x = coord.x;
+      rfwn.y = coord.y;
+      rfwn.width = coord.w;
+      rfwn.height = coord.h;
+      rfwn.fontSize = config.tagline.fontSize || 8;
+      rfwn.maxFontSize = config.tagline.fontSize || 8;
+      rfwn.textAlign = targetQuad.endsWith('R') ? 'right' : 'left';
+    }
+  } else if (config.logoCoords && config.tagline && config.tagline.coords) {
+    // For other quadrant sizes (e.g. 300x250, 300x600, 160x600):
+    // Logo and Tagline must reside on the same horizontal half (both top, or both bottom)
+    let targetQuad;
+    if (qLogo === 'TL') targetQuad = 'TR';
+    else if (qLogo === 'TR') targetQuad = 'TL';
+    else if (qLogo === 'BL') targetQuad = 'BR';
+    else if (qLogo === 'BR') targetQuad = 'BL';
+
+    if (targetQuad && config.tagline.coords[targetQuad]) {
+      const coord = config.tagline.coords[targetQuad];
+      rfwn.x = coord.x;
+      rfwn.y = coord.y;
+      rfwn.width = coord.w;
+      rfwn.height = coord.h;
+      rfwn.fontSize = config.tagline.fontSize || 8;
+      rfwn.maxFontSize = config.tagline.fontSize || 8;
+      rfwn.textAlign = config.tagline.textAlign || (targetQuad.endsWith('L') ? 'left' : 'right');
+    }
+  }
+}
+
+function adjustCricosRelation(ctx) {
+  const logo = ctx.placedElements['rmit-logo'];
+  const rfwn = ctx.placedElements['rfwn'];
+  const cricos = ctx.placedElements['cricos'];
+  if (!cricos) return;
+
+  const w = ctx.target.width, h = ctx.target.height;
+  const config = AUTO_ARRANGE_CONFIG[w + "x" + h];
+  if (!config || !config.cricos || !config.cricos.coords) return;
+
+  // Occupied quadrants by logo and tagline
+  const occupied = [];
+  if (logo) occupied.push(getQuadrantOfElement(logo, ctx.target));
+  if (rfwn) occupied.push(getQuadrantOfElement(rfwn, ctx.target));
+
+  const qCricos = getQuadrantOfElement(cricos, ctx.target);
+  if (occupied.includes(qCricos)) {
+    // Find a free quadrant
+    const candidates = ['TL', 'TR', 'BL', 'BR'].filter(q => !occupied.includes(q));
+    // Prefer matching top/bottom if possible, or just the first free one
+    const targetQuad = candidates.find(q => q.charAt(0) === qCricos.charAt(0)) || candidates[0];
+    if (targetQuad && config.cricos.coords[targetQuad]) {
+      const coord = config.cricos.coords[targetQuad];
+      cricos.x = coord.x;
+      cricos.y = coord.y;
+      cricos.width = coord.w;
+      cricos.height = coord.h;
+      cricos.fontSize = config.cricos.fontSize || 6;
+      cricos.maxFontSize = config.cricos.fontSize || 6;
+      cricos.textAlign = config.cricos.textAlign || 'center';
+    }
   }
 }
 
@@ -1423,6 +1820,13 @@ function runRuleBasedAutoResize(settings) {
 
       if (clone.groupId) clone.groupId = remapGroup(clone.groupId);
       wireLinkGroup(srcEl, clone, role, cat);
+
+      if (role === 'rmit-logo' || role === 'rfwn' || role === 'cricos') {
+        if (engineSettings.behaviour?.lockBrandElements !== false) {
+          clone.locked = true;
+        }
+      }
+
       clonesBySrcId.set(srcEl.id, clone);
       ctx.placedElements[role] = clone;
       sourceToTargetId[srcEl.id] = clone.id;
@@ -1436,7 +1840,10 @@ function runRuleBasedAutoResize(settings) {
       .filter(Boolean);
 
     // Cross-role pass — R1 only for now, gated by settings.
-    if (relationsOn.r1 !== false) applyRelationR1(ctx);
+    if (relationsOn.r1 !== false) {
+      applyRelationR1(ctx);
+      adjustCricosRelation(ctx);
+    }
 
     // Mask post-pass (v2.14): preserve the mask shape's RELATIVE
     // geometry within its image, rather than blindly making the mask
@@ -1550,14 +1957,9 @@ function wireLinkGroup(srcEl, target, role, cat) {
   const settings = getAutoResizeSettings();
   const ll = settings.behaviour.liveLink;
 
-  if (!ll || ll.enabled === false) {
-    // Live linking off — target gets no linkGroupId and stays an
-    // independent copy. (Existing link groups on the source aren't
-    // touched.)
-    return;
-  }
-
   const syncProps = buildSyncFromLiveLink(ll, cat);
+  const isBrand = (role === 'rmit-logo' || role === 'rfwn' || role === 'cricos');
+  const isLiveLinkActive = (ll && ll.enabled !== false && !isBrand);
 
   let gid = srcEl.linkGroupId;
   if (!gid || !state.linkGroups[gid]) {
@@ -1567,12 +1969,12 @@ function wireLinkGroup(srcEl, target, role, cat) {
       name:           baseLayerLabel(srcEl),
       category:       cat,
       syncProperties: syncProps,
-      liveLink:       true   // real-time propagation enabled by default
+      liveLink:       isLiveLinkActive
     };
     srcEl.linkGroupId = gid;
   } else {
     state.linkGroups[gid].syncProperties = syncProps;
-    state.linkGroups[gid].liveLink       = true;
+    state.linkGroups[gid].liveLink       = isLiveLinkActive;
   }
   target.linkGroupId = gid;
   applyLinkSync(srcEl, target, state.linkGroups[gid]);
@@ -1648,15 +2050,11 @@ const AUTO_RESIZE_DEFAULT_SETTINGS = {
     r1: true   // rmit-logo ↔ rfwn edge alignment
   },
   behaviour: {
-    allowCoverFallback:   true,   // main-image: contain → cover at <60% fill
+    hideSubheading320x50: true,   // hide subheading on 320x50 mobile canvas
+    lockBrandElements:    true,   // lock logo, tagline, cricos after layout/arrange
     includeUnassigned:    false,  // remembered value for the misc-elements toggle
-    // Live linking config for auto-resized elements. When enabled, each
-    // placed target joins the source's link group with group.liveLink =
-    // true (real-time propagation), and syncProperties are built from the
-    // 5 toggles below — position/size + font size are ALWAYS independent
-    // per-canvas regardless of toggle state.
     liveLink: {
-      enabled:      true,
+      enabled:      false,
       syncText:     true,
       syncFont:     true,
       syncColor:    true,
@@ -1675,21 +2073,18 @@ function getAutoResizeSettings() {
   if (!s.relations)    s.relations    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.relations };
   if (!s.behaviour)    s.behaviour    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour };
   // Backfill any behaviour keys missing on projects saved before this version.
-  if (typeof s.behaviour.allowCoverFallback  !== 'boolean') s.behaviour.allowCoverFallback  = true;
+  if (typeof s.behaviour.hideSubheading320x50 !== 'boolean') s.behaviour.hideSubheading320x50 = true;
+  if (typeof s.behaviour.lockBrandElements    !== 'boolean') s.behaviour.lockBrandElements    = true;
   if (typeof s.behaviour.includeUnassigned   !== 'boolean') s.behaviour.includeUnassigned   = false;
   if (!s.behaviour.liveLink) s.behaviour.liveLink = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour.liveLink };
   const ll = s.behaviour.liveLink;
-  if (typeof ll.enabled        !== 'boolean') ll.enabled        = true;
+  if (typeof ll.enabled        !== 'boolean') ll.enabled        = false;
   if (typeof ll.syncText       !== 'boolean') ll.syncText       = true;
   if (typeof ll.syncFont       !== 'boolean') ll.syncFont       = true;
   if (typeof ll.syncColor      !== 'boolean') ll.syncColor      = true;
   if (typeof ll.syncOpacity    !== 'boolean') ll.syncOpacity    = true;
   if (typeof ll.syncAnimations !== 'boolean') ll.syncAnimations = true;
-  // Legacy fields stripped from older autosave blobs:
-  //  - `showProgress` — the fake "AI" pipeline overlay, removed in v0.16.16.
-  //  - `showCanvasSelection` — split into two hardcoded entry points in
-  //    v0.16.19 (the workspace button always opens the modal; the canvas
-  //    right-click menu always runs instantly from the active canvas).
+  if ('allowCoverFallback'  in s.behaviour) delete s.behaviour.allowCoverFallback;
   if ('showProgress'        in s)           delete s.showProgress;
   if ('showProgress'        in s.behaviour) delete s.behaviour.showProgress;
   if ('showCanvasSelection' in s.behaviour) delete s.behaviour.showCanvasSelection;
@@ -1764,21 +2159,28 @@ function openAutoResizeSettingsModal() {
 
         <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin:14px 0 6px 0;">Behaviour</div>
         <div style="font-size:10.5px; color:var(--text-muted); line-height:1.45; margin:0 0 8px 0;">
-          The workspace <strong>Auto-Resize</strong> button always opens the picker dialogue. The canvas right-click <strong>Auto-Resize</strong> entry always resizes instantly from the active canvas into every other canvas.
+          General engine configurations. These preferences are also directly accessible from the Auto-Resize execution dialogue.
         </div>
         <div style="display:flex; flex-direction:column; gap:2px;">
           <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
             <input type="checkbox" id="ars-include-unassigned" ${s.behaviour.includeUnassigned ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
             <div style="flex:1; min-width:0;">
               <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Include unassigned elements by default</div>
-              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Used by the bypass path; pre-fills the dialogue's checkbox otherwise. Default off.</div>
+              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Copy unassigned elements to the target canvas's centre.</div>
             </div>
           </label>
           <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
-            <input type="checkbox" id="ars-cover" ${s.behaviour.allowCoverFallback !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
+            <input type="checkbox" id="ars-hide-subheading-320" ${s.behaviour.hideSubheading320x50 !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
             <div style="flex:1; min-width:0;">
-              <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Allow cover fallback for main image</div>
-              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Switch from contain to cover when fill &lt; 60% of slot. Off: always contain even if visually small.</div>
+              <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Hide Subheading in 320×50 mobile leaderboard</div>
+              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Hide subheading due to height constraints. Off: place subheading visible below heading.</div>
+            </div>
+          </label>
+          <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
+            <input type="checkbox" id="ars-lock-brand" ${s.behaviour.lockBrandElements !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Lock brand elements (Logo, Tagline, CRICOS) after layout</div>
+              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Automatically lock Logo, Tagline, and CRICOS layers after auto-resize or auto-arrange.</div>
             </div>
           </label>
         </div>
@@ -1885,8 +2287,9 @@ function openAutoResizeSettingsModal() {
     bg.querySelectorAll('.ars-rel').forEach(cb => {
       next.relations[cb.dataset.rel] = cb.checked;
     });
-    next.behaviour.includeUnassigned   = bg.querySelector('#ars-include-unassigned').checked;
-    next.behaviour.allowCoverFallback  = bg.querySelector('#ars-cover').checked;
+    next.behaviour.includeUnassigned     = bg.querySelector('#ars-include-unassigned').checked;
+    next.behaviour.hideSubheading320x50  = bg.querySelector('#ars-hide-subheading-320').checked;
+    next.behaviour.lockBrandElements     = bg.querySelector('#ars-lock-brand').checked;
     next.behaviour.liveLink = {
       enabled:        bg.querySelector('#ars-ll-enabled').checked,
       syncText:       bg.querySelector('#ars-ll-text').checked,

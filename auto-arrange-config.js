@@ -193,10 +193,101 @@ const AUTO_ARRANGE_CONFIG = {
         TL: { x: 630, y: 72, w: 90, h: 10 }
       }
     },
+    heading: {
+      maxFontSize: 28,
+      coords: {
+        TL: { x: 39, y: 17, w: 368, h: 33 }
+      }
+    },
+    subheading: {
+      maxFontSize: 23,
+      coords: {
+        TL: { x: 39, y: 53, w: 346, h: 21 }
+      }
+    },
+    button: {
+      maxFontSize: 20,
+      coords: {
+        TL: { x: 429, y: 22, w: 144, h: 33 }
+      }
+    },
     cricos: {
       fontSize: 7,
       coords: {
         TL: { x: 3, y: 77, w: 106, h: 10 }
+      }
+    }
+  },
+  "320x50": {
+    safezone: {
+      minX: 10,
+      maxX: 310,
+      minY: 5,
+      maxY: 45,
+    },
+    logoCoords: {
+      TL: { x: 265, y: 5, w: 50, h: 18 }
+    },
+    tagline: {
+      fontSize: 5,
+      coords: {
+        TL: { x: 280, y: 32, w: 35, h: 12 }
+      }
+    },
+    button: {
+      maxFontSize: 20,
+      coords: {
+        TL: { x: 143, y: 9, w: 99, h: 25 }
+      }
+    },
+    cricos: {
+      fontSize: 6,
+      coords: {
+        TL: { x: 149, y: 36, w: 88, h: 10 }
+      }
+    }
+  },
+  "970x250": {
+    safezone: {
+      minX: 20,
+      maxX: 950,
+      minY: 20,
+      maxY: 230,
+    },
+    heading: {
+      maxFontSize: 60,
+    },
+    subheading: {
+      maxFontSize: 40,
+      gapBelowHeading: 8,
+    },
+    button: {
+      width: 203,
+      gapBelowText: 12,
+    },
+    logoCoords: {
+      TL: { x: 13,   y: 13,  w: 158, h: 57 },
+      TR: { x: 797,  y: 13,  w: 158, h: 57 },
+      BL: { x: 13,   y: 180, w: 158, h: 57 },
+      BR: { x: 797,  y: 180, w: 158, h: 57 }
+    },
+    cricos: {
+      fontSize: 8,
+      coords: {
+        TL: { x: 13,  y: 5,   w: 120, h: 10 },
+        TR: { x: 837, y: 5,   w: 120, h: 10 },
+        BL: { x: 13,  y: 235, w: 120, h: 10 },
+        BR: { x: 837, y: 235, w: 120, h: 10 }
+      }
+    },
+    tagline: {
+      fontSize: 16,
+      textAlign: 'left',
+      coords: {
+        TL: { x: 13,  y: 10,  w: 90, h: 40 },
+        TR: { x: 865, y: 10,  w: 90, h: 40 },
+        BL: { x: 13,  y: 199, w: 90, h: 40 },
+        BR: { x: 865, y: 202, w: 90, h: 40 }
       }
     }
   }
