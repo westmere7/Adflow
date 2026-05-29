@@ -16531,6 +16531,40 @@ function initCollapsiblePanels() {
           collapseIcon.parentNode.insertBefore(fsBtn, collapseIcon);
         }
         
+        if (parentSection.id === 'panel-section-layers' && !header.querySelector('.panel-sync-layers-btn')) {
+          const syncBtn = document.createElement('button');
+          syncBtn.className = 'panel-sync-layers-btn';
+          syncBtn.title = 'Sync Layer Order';
+          syncBtn.style.cursor = 'pointer';
+          syncBtn.style.display = 'inline-flex';
+          syncBtn.style.alignItems = 'center';
+          syncBtn.style.justifyContent = 'center';
+          syncBtn.style.background = 'none';
+          syncBtn.style.border = 'none';
+          syncBtn.style.padding = '0';
+          syncBtn.style.outline = 'none';
+          syncBtn.style.color = 'var(--text-muted)';
+          syncBtn.style.transition = 'color 0.15s';
+          syncBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
+          
+          syncBtn.addEventListener('mouseenter', () => syncBtn.style.color = 'var(--text-bright)');
+          syncBtn.addEventListener('mouseleave', () => syncBtn.style.color = 'var(--text-muted)');
+          
+          if (collapseIcon.parentNode === header) {
+            header.insertBefore(syncBtn, fsBtn);
+          } else {
+            collapseIcon.parentNode.insertBefore(syncBtn, fsBtn);
+          }
+          
+          fsBtn.style.marginLeft = '6px';
+          
+          syncBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            showSyncLayersMenu(syncBtn);
+          });
+        }
+        
         fsBtn.addEventListener('click', (ev) => {
           ev.stopPropagation();
           ev.preventDefault();
@@ -16837,4 +16871,245 @@ function showCanvasNotification(message, options = {}) {
   window.canvasNotificationTimeout = setTimeout(() => {
     toast.classList.remove('show');
   }, duration);
+}
+
+function showSyncLayersMenu(anchorEl) {
+  const existing = document.getElementById('sync-layers-menu');
+  if (existing) {
+    existing.remove();
+    return;
+  }
+
+  const menu = document.createElement('div');
+  menu.id = 'sync-layers-menu';
+  menu.style.position = 'fixed';
+  menu.style.background = 'var(--bg-panel)';
+  menu.style.border = '1px solid var(--border-light)';
+  menu.style.borderRadius = '6px';
+  menu.style.boxShadow = '0 8px 30px var(--shadow-heavy)';
+  menu.style.padding = '12px';
+  menu.style.width = '240px';
+  menu.style.zIndex = '999999';
+  menu.style.display = 'flex';
+  menu.style.flexDirection = 'column';
+  menu.style.gap = '10px';
+  menu.style.color = 'var(--text-main)';
+  menu.style.fontSize = '12px';
+  menu.style.fontFamily = 'inherit';
+
+  const rect = anchorEl.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = rect.left - 210;
+  if (left < 10) left = 10;
+  if (top + 350 > window.innerHeight) {
+    top = rect.top - 350;
+  }
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+
+  const syncOrder = localStorage.getItem('sync-layers-order') !== 'false';
+  const syncVisibility = localStorage.getItem('sync-layers-visibility') !== 'false';
+  const syncLock = localStorage.getItem('sync-layers-lock') !== 'false';
+  const syncPersistent = localStorage.getItem('sync-layers-persistent') !== 'false';
+  const syncAllCanvases = localStorage.getItem('sync-layers-all-canvases') !== 'false';
+
+  const otherCanvases = state.canvases.filter(c => c.id !== state.activeCanvasId);
+  const esc = (s) => String(s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+
+  let canvasesListHtml = '';
+  if (otherCanvases.length > 0) {
+    canvasesListHtml = `
+      <div id="sync-canvases-selection-container" style="display: ${syncAllCanvases ? 'none' : 'flex'}; flex-direction: column; gap: 4px; max-height: 100px; overflow-y: auto; padding: 4px 6px; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 4px; margin-top: 4px;">
+        ${otherCanvases.map(c => `
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+            <input type="checkbox" class="sync-target-canvas-chk" data-id="${c.id}" checked style="margin:0;" />
+            <span>${esc(c.name || `${c.width}x${c.height}`)}</span>
+          </label>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    canvasesListHtml = `<div style="font-size:11px; color:var(--text-muted); font-style:italic;">No other canvases</div>`;
+  }
+
+  menu.innerHTML = `
+    <div style="font-weight: 700; font-size: 10.5px; color: var(--accent-light); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-light); padding-bottom: 6px; margin-bottom: 2px;">Sync Layer Order</div>
+    
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <div style="font-size: 9.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Sync Options</div>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;">
+        <input type="checkbox" id="chk-sync-order" ${syncOrder ? 'checked' : ''} style="margin:0;" />
+        <span>Stacking Order</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;">
+        <input type="checkbox" id="chk-sync-visibility" ${syncVisibility ? 'checked' : ''} style="margin:0;" />
+        <span>Visibility State</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;">
+        <input type="checkbox" id="chk-sync-lock" ${syncLock ? 'checked' : ''} style="margin:0;" />
+        <span>Lock State</span>
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;">
+        <input type="checkbox" id="chk-sync-persistent" ${syncPersistent ? 'checked' : ''} style="margin:0;" />
+        <span>Persistent Tiers (Top/Bot)</span>
+      </label>
+    </div>
+
+    <div style="height:1px; background:var(--border-light); margin: 4px 0;"></div>
+
+    <div style="display:flex; flex-direction:column; gap:4px;">
+      <div style="font-size: 9.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Target Canvases</div>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;">
+        <input type="checkbox" id="chk-sync-all-canvases" ${syncAllCanvases ? 'checked' : ''} style="margin:0;" />
+        <span>All other canvases</span>
+      </label>
+      ${canvasesListHtml}
+    </div>
+
+    <div style="display:flex; gap:8px; margin-top: 6px; justify-content: flex-end;">
+      <button class="btn" id="btn-sync-layers-cancel" style="padding:4px 10px; font-size:11px; background:transparent; border:1px solid var(--border-light); color:var(--text-main); cursor:pointer;">Cancel</button>
+      <button class="btn primary" id="btn-sync-layers-apply" style="padding:4px 12px; font-size:11px; font-weight:600; background:var(--accent-base); color:var(--text-on-accent, #fff); border:none; border-radius:4px; cursor:pointer;">Sync</button>
+    </div>
+  `;
+
+  document.body.appendChild(menu);
+
+  const chkAllCanvases = menu.querySelector('#chk-sync-all-canvases');
+  const containerSelection = menu.querySelector('#sync-canvases-selection-container');
+  if (chkAllCanvases && containerSelection) {
+    chkAllCanvases.onchange = () => {
+      containerSelection.style.display = chkAllCanvases.checked ? 'none' : 'flex';
+      localStorage.setItem('sync-layers-all-canvases', chkAllCanvases.checked ? 'true' : 'false');
+    };
+  }
+
+  menu.querySelector('#chk-sync-order').onchange = (e) => localStorage.setItem('sync-layers-order', e.target.checked ? 'true' : 'false');
+  menu.querySelector('#chk-sync-visibility').onchange = (e) => localStorage.setItem('sync-layers-visibility', e.target.checked ? 'true' : 'false');
+  menu.querySelector('#chk-sync-lock').onchange = (e) => localStorage.setItem('sync-layers-lock', e.target.checked ? 'true' : 'false');
+  menu.querySelector('#chk-sync-persistent').onchange = (e) => localStorage.setItem('sync-layers-persistent', e.target.checked ? 'true' : 'false');
+
+  menu.querySelector('#btn-sync-layers-cancel').onclick = () => {
+    menu.remove();
+  };
+
+  menu.querySelector('#btn-sync-layers-apply').onclick = () => {
+    const sourceC = getActiveCanvas();
+    if (!sourceC) {
+      menu.remove();
+      return;
+    }
+
+    const settings = {
+      syncOrder: menu.querySelector('#chk-sync-order').checked,
+      syncVisibility: menu.querySelector('#chk-sync-visibility').checked,
+      syncLock: menu.querySelector('#chk-sync-lock').checked,
+      syncPersistent: menu.querySelector('#chk-sync-persistent').checked,
+    };
+
+    const isAll = chkAllCanvases ? chkAllCanvases.checked : true;
+    let targets = [];
+    if (isAll) {
+      targets = state.canvases.filter(c => c.id !== sourceC.id);
+    } else {
+      const selectedIds = Array.from(menu.querySelectorAll('.sync-target-canvas-chk:checked')).map(chk => chk.dataset.id);
+      targets = state.canvases.filter(c => selectedIds.includes(c.id));
+    }
+
+    if (targets.length === 0) {
+      showCanvasNotification('No target canvases selected.', { type: 'warning' });
+      menu.remove();
+      return;
+    }
+
+    executeLayersSync(sourceC, targets, settings);
+    menu.remove();
+    showCanvasNotification(`Synchronized layers to ${targets.length} canvas${targets.length > 1 ? 'es' : ''}.`, { type: 'success' });
+  };
+
+  const outsideClickListener = (e) => {
+    if (!menu.contains(e.target) && !anchorEl.contains(e.target)) {
+      menu.remove();
+      document.removeEventListener('click', outsideClickListener, true);
+    }
+  };
+  document.addEventListener('click', outsideClickListener, true);
+}
+
+function executeLayersSync(sourceC, targets, settings) {
+  let changed = false;
+
+  const sourceLinkedMap = {};
+  sourceC.elements.forEach((el, index) => {
+    if (el.linkGroupId) {
+      sourceLinkedMap[el.linkGroupId] = { el, index };
+    }
+  });
+
+  targets.forEach(targetC => {
+    const targetLinked = [];
+    const targetCanvasSpecific = [];
+
+    targetC.elements.forEach(el => {
+      if (el.linkGroupId && sourceLinkedMap[el.linkGroupId]) {
+        targetLinked.push(el);
+      } else {
+        targetCanvasSpecific.push(el);
+      }
+    });
+
+    if (targetLinked.length === 0) return;
+
+    changed = true;
+
+    targetLinked.forEach(tEl => {
+      const sEl = sourceLinkedMap[tEl.linkGroupId].el;
+
+      if (settings.syncVisibility) {
+        tEl.hidden = sEl.hidden;
+      }
+      if (settings.syncLock) {
+        tEl.locked = sEl.locked;
+      }
+      if (settings.syncPersistent) {
+        tEl.persistent = sEl.persistent;
+        if (sEl.persistent === false) {
+          tEl.frameId = sEl.frameId;
+        }
+      }
+    });
+
+    if (settings.syncOrder) {
+      targetLinked.sort((a, b) => {
+        return sourceLinkedMap[a.linkGroupId].index - sourceLinkedMap[b.linkGroupId].index;
+      });
+
+      const bottomLinked = targetLinked.filter(el => el.persistent === 'bottom');
+      const bottomSpecific = targetCanvasSpecific.filter(el => el.persistent === 'bottom');
+
+      const midLinked = targetLinked.filter(el => el.persistent === false);
+      const midSpecific = targetCanvasSpecific.filter(el => el.persistent === false);
+
+      const topLinked = targetLinked.filter(el => el.persistent === 'top');
+      const topSpecific = targetCanvasSpecific.filter(el => el.persistent === 'top');
+
+      targetC.elements = [
+        ...bottomLinked,
+        ...bottomSpecific,
+        ...midLinked,
+        ...midSpecific,
+        ...topLinked,
+        ...topSpecific
+      ];
+    } else {
+      const bottomEls = targetC.elements.filter(el => el.persistent === 'bottom');
+      const midEls = targetC.elements.filter(el => el.persistent === false);
+      const topEls = targetC.elements.filter(el => el.persistent === 'top');
+      targetC.elements = [...bottomEls, ...midEls, ...topEls];
+    }
+  });
+
+  if (changed) {
+    pushHistory();
+    render();
+  }
 }
