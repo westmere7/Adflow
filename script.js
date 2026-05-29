@@ -1179,6 +1179,21 @@ function autoAddAndLink(srcEl, skipNotify = false) {
       }
       clone.linkGroupId = gid;
       
+      // Check Canvas Sync options to decide what settings to maintain on duplication
+      const syncVisibility = localStorage.getItem('sync-layers-visibility') !== 'false';
+      const syncLock = localStorage.getItem('sync-layers-lock') !== 'false';
+      const syncPersistent = localStorage.getItem('sync-layers-persistent') !== 'false';
+      
+      if (!syncLock) {
+        clone.locked = false;
+      }
+      if (!syncVisibility) {
+        clone.hidden = false;
+      }
+      if (!syncPersistent) {
+        delete clone.role;
+      }
+      
       // Center the element no matter where the original element is
       const cloneW = clone.width || 0;
       const cloneH = clone.height || 0;
@@ -7725,7 +7740,6 @@ function renderLayers() {
               const item = c.elements.find(x => x.id === id);
               if (item) item.locked = newLocked;
             });
-            showCanvasNotification('Hold Shift to toggle for all canvases', { type: 'info', duration: 3000 });
           }
           pushHistory();
           render();
@@ -7751,7 +7765,6 @@ function renderLayers() {
               const item = c.elements.find(x => x.id === id);
               if (item) item.hidden = newHidden;
             });
-            showCanvasNotification('Hold Shift to toggle for all canvases', { type: 'info', duration: 3000 });
           }
           pushHistory();
           render();
@@ -16846,7 +16859,6 @@ function showCanvasNotification(message, options = {}) {
     <span>${message}</span>
     ${buttonHtml}
   `;
-
   // Wire each button's click — dismisses the toast on any choice.
   buttonList.forEach((b, i) => {
     const el = toast.querySelector(`.toast-btn[data-btn-i="${i}"]`);
@@ -16874,44 +16886,30 @@ function showCanvasNotification(message, options = {}) {
 }
 
 function showSyncLayersMenu(anchorEl) {
-  const existing = document.getElementById('sync-layers-menu');
+  const existing = document.getElementById('sync-layers-modal-bg');
   if (existing) {
     existing.remove();
     return;
   }
 
-  const menu = document.createElement('div');
-  menu.id = 'sync-layers-menu';
-  menu.style.position = 'fixed';
-  menu.style.background = 'var(--bg-panel)';
-  menu.style.border = '1px solid var(--border-light)';
-  menu.style.borderRadius = '6px';
-  menu.style.boxShadow = '0 8px 30px var(--shadow-heavy)';
-  menu.style.padding = '12px';
-  menu.style.width = '240px';
-  menu.style.zIndex = '999999';
-  menu.style.display = 'flex';
-  menu.style.flexDirection = 'column';
-  menu.style.gap = '10px';
-  menu.style.color = 'var(--text-main)';
-  menu.style.fontSize = '12px';
-  menu.style.fontFamily = 'inherit';
+  const originalActiveFrameId = state.activeFrameId;
 
-  const rect = anchorEl.getBoundingClientRect();
-  let top = rect.bottom + 6;
-  let left = rect.left - 210;
-  if (left < 10) left = 10;
-  if (top + 350 > window.innerHeight) {
-    top = rect.top - 350;
-  }
-  menu.style.top = top + 'px';
-  menu.style.left = left + 'px';
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.id = 'sync-layers-modal-bg';
+  bg.style.zIndex = '999999';
 
   const syncOrder = localStorage.getItem('sync-layers-order') !== 'false';
   const syncVisibility = localStorage.getItem('sync-layers-visibility') !== 'false';
   const syncLock = localStorage.getItem('sync-layers-lock') !== 'false';
   const syncPersistent = localStorage.getItem('sync-layers-persistent') !== 'false';
   const syncAllCanvases = localStorage.getItem('sync-layers-all-canvases') !== 'false';
+
+  const syncFramesOrder = localStorage.getItem('sync-frames-order') !== 'false';
+  const syncFramesVisibility = localStorage.getItem('sync-frames-visibility') !== 'false';
+  const syncFramesLock = localStorage.getItem('sync-frames-lock') !== 'false';
+  const syncFramesPersistent = localStorage.getItem('sync-frames-persistent') !== 'false';
+  const syncAllFrames = localStorage.getItem('sync-layers-all-frames') !== 'false';
 
   const otherCanvases = state.canvases.filter(c => c.id !== state.activeCanvasId);
   const esc = (s) => String(s || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -16921,7 +16919,7 @@ function showSyncLayersMenu(anchorEl) {
     canvasesListHtml = `
       <div id="sync-canvases-selection-container" style="display: ${syncAllCanvases ? 'none' : 'flex'}; flex-direction: column; gap: 4px; max-height: 100px; overflow-y: auto; padding: 4px 6px; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 4px; margin-top: 4px;">
         ${otherCanvases.map(c => `
-          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;">
+          <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;" title="Toggle canvas target ${esc(c.name || `${c.width}x${c.height}`)}">
             <input type="checkbox" class="sync-target-canvas-chk" data-id="${c.id}" checked style="margin:0;" />
             <span>${esc(c.name || `${c.width}x${c.height}`)}</span>
           </label>
@@ -16932,53 +16930,213 @@ function showSyncLayersMenu(anchorEl) {
     canvasesListHtml = `<div style="font-size:11px; color:var(--text-muted); font-style:italic;">No other canvases</div>`;
   }
 
-  menu.innerHTML = `
-    <div style="font-weight: 700; font-size: 10.5px; color: var(--accent-light); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-light); padding-bottom: 6px; margin-bottom: 4px;">Sync Layer Order</div>
-    <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 8px;">
-      Match the layer order, visibility, and lock settings of the current canvas across your other canvases.
-    </div>
-    
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <div style="font-size: 9.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Sync Options</div>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;" title="Reorders linked layers in target canvases to match the active canvas stack order. Local unlinked layers remain safe on top.">
-        <input type="checkbox" id="chk-sync-order" ${syncOrder ? 'checked' : ''} style="margin:0;" />
-        <span>Stacking Order</span>
-      </label>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;" title="Synchronizes layer visibility state (hidden/visible) with the active canvas elements.">
-        <input type="checkbox" id="chk-sync-visibility" ${syncVisibility ? 'checked' : ''} style="margin:0;" />
-        <span>Visibility State</span>
-      </label>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;" title="Synchronizes layers locking status (editable/locked) to match the active canvas state.">
-        <input type="checkbox" id="chk-sync-lock" ${syncLock ? 'checked' : ''} style="margin:0;" />
-        <span>Lock State</span>
-      </label>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;" title="Synchronizes tier assignments (Always Top, Always Bottom, or Standard) and parent frames.">
-        <input type="checkbox" id="chk-sync-persistent" ${syncPersistent ? 'checked' : ''} style="margin:0;" />
-        <span>Persistent Tiers (Top/Bot)</span>
-      </label>
-    </div>
+  bg.innerHTML = `
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-head">
+        <h2>Synchronize Layers</h2>
+        <button class="btn" id="sync-layers-close" title="Close dialog">Close</button>
+      </div>
 
-    <div style="height:1px; background:var(--border-light); margin: 4px 0;"></div>
+      <!-- Tab navigation -->
+      <div style="display: flex; gap: 0; border-bottom: 1px solid var(--border-light); background: var(--bg-body); padding: 0 12px; flex-shrink: 0;">
+        <button id="btn-tab-canvas-sync" style="flex: 1; padding: 12px 0; font-size: 12px; font-weight: 600; border: none; border-bottom: 2px solid var(--accent-base); background: none; color: var(--text-main); cursor: pointer; text-align: center; outline: none; transition: all 0.15s;">Canvas Sync</button>
+        <button id="btn-tab-frame-sync" style="flex: 1; padding: 12px 0; font-size: 12px; font-weight: 500; border: none; border-bottom: 2px solid transparent; background: none; color: var(--text-muted); cursor: pointer; text-align: center; outline: none; transition: all 0.15s;">Frame Sync</button>
+      </div>
 
-    <div style="display:flex; flex-direction:column; gap:4px;">
-      <div style="font-size: 9.5px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Target Canvases</div>
-      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight: 500;" title="Apply the sync configuration to all other canvases in the document.">
-        <input type="checkbox" id="chk-sync-all-canvases" ${syncAllCanvases ? 'checked' : ''} style="margin:0;" />
-        <span>All other canvases</span>
-      </label>
-      ${canvasesListHtml}
-    </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px; overflow-y:auto;">
+        <!-- Canvas Sync Container -->
+        <div id="container-canvas-sync" style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+            Match the layer order, visibility, and lock settings of the current canvas across your other canvases.
+          </div>
+          
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Sync Options</div>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Reorders linked layers in target canvases to match the active canvas stack order. Local unlinked layers remain safe on top.">
+              <input type="checkbox" id="chk-sync-order" ${syncOrder ? 'checked' : ''} style="margin:0;" />
+              <span>Stacking Order</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Synchronizes layer visibility state (hidden/visible) with the active canvas elements.">
+              <input type="checkbox" id="chk-sync-visibility" ${syncVisibility ? 'checked' : ''} style="margin:0;" />
+              <span>Visibility State</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Synchronizes layers locking status (editable/locked) to match the active canvas state.">
+              <input type="checkbox" id="chk-sync-lock" ${syncLock ? 'checked' : ''} style="margin:0;" />
+              <span>Lock State</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Synchronizes tier assignments (Always Top, Always Bottom, or Standard) and parent frames.">
+              <input type="checkbox" id="chk-sync-persistent" ${syncPersistent ? 'checked' : ''} style="margin:0;" />
+              <span>Persistent Tiers & Roles</span>
+            </label>
+          </div>
 
-    <div style="display:flex; gap:8px; margin-top: 6px; justify-content: flex-end;">
-      <button class="btn" id="btn-sync-layers-cancel" style="padding:4px 10px; font-size:11px; background:transparent; border:1px solid var(--border-light); color:var(--text-main); cursor:pointer;">Cancel</button>
-      <button class="btn primary" id="btn-sync-layers-apply" style="padding:4px 12px; font-size:11px; font-weight:600; background:var(--accent-base); color:var(--text-on-accent, #fff); border:none; border-radius:4px; cursor:pointer;" title="Execute layers sync configuration immediately">Sync</button>
+          <div style="height:1px; background:var(--border-light); margin: 4px 0;"></div>
+
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Target Canvases</div>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Apply the sync configuration to all other canvases in the document.">
+              <input type="checkbox" id="chk-sync-all-canvases" ${syncAllCanvases ? 'checked' : ''} style="margin:0;" />
+              <span>All other canvases</span>
+            </label>
+            ${canvasesListHtml}
+          </div>
+        </div>
+
+        <!-- Frame Sync Container -->
+        <div id="container-frame-sync" style="display: none; flex-direction: column; gap: 14px;">
+          <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5;">
+            Copy the layer stack of a selected frame to other target frames on this canvas.
+          </div>
+
+          <!-- Source Frame Selector Dropdown -->
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Source Frame</div>
+            <select id="select-sync-source-frame" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:6px 8px; font-size:12px; outline:none; cursor:pointer;" title="Choose the source frame to copy layer stack from. Updates active frame on canvas in real-time.">
+              ${state.frames.map((f, i) => `
+                <option value="${f.id}" ${f.id === state.activeFrameId ? 'selected' : ''}>Frame ${i + 1}</option>
+              `).join('')}
+            </select>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Sync Options</div>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Copy stacking order from the active frame.">
+              <input type="checkbox" id="chk-sync-frames-order" ${syncFramesOrder ? 'checked' : ''} style="margin:0;" />
+              <span>Stacking Order</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Copy layer visibility state.">
+              <input type="checkbox" id="chk-sync-frames-visibility" ${syncFramesVisibility ? 'checked' : ''} style="margin:0;" />
+              <span>Visibility State</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Copy lock state.">
+              <input type="checkbox" id="chk-sync-frames-lock" ${syncFramesLock ? 'checked' : ''} style="margin:0;" />
+              <span>Lock State</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Copy persistent tiers and roles.">
+              <input type="checkbox" id="chk-sync-frames-persistent" ${syncFramesPersistent ? 'checked' : ''} style="margin:0;" />
+              <span>Persistent Tiers & Roles</span>
+            </label>
+          </div>
+
+          <div style="height:1px; background:var(--border-light); margin: 4px 0;"></div>
+
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Target Frames</div>
+            <div id="sync-frames-targets-wrapper">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal footer -->
+      <div class="modal-foot">
+        <button class="btn btn-sync-layers-cancel" style="padding: 6px 12px; font-size: 12px; cursor: pointer;">Cancel</button>
+        <button class="btn primary" id="btn-sync-layers-execute" style="padding: 6px 16px; font-size: 12px; font-weight: 600; background: var(--accent-base); color: var(--text-on-accent, #fff); border: none; border-radius: 4px; cursor: pointer;">Sync Canvases</button>
+      </div>
     </div>
   `;
 
-  document.body.appendChild(menu);
+  document.body.appendChild(bg);
 
-  const chkAllCanvases = menu.querySelector('#chk-sync-all-canvases');
-  const containerSelection = menu.querySelector('#sync-canvases-selection-container');
+  // Tab buttons and containers
+  const tabCanvas = bg.querySelector('#btn-tab-canvas-sync');
+  const tabFrame = bg.querySelector('#btn-tab-frame-sync');
+  const containerCanvas = bg.querySelector('#container-canvas-sync');
+  const containerFrame = bg.querySelector('#container-frame-sync');
+  const executeBtn = bg.querySelector('#btn-sync-layers-execute');
+
+  let activeTab = 'canvas';
+
+  tabCanvas.onclick = () => {
+    activeTab = 'canvas';
+    tabCanvas.style.borderBottomColor = 'var(--accent-base)';
+    tabCanvas.style.color = 'var(--text-main)';
+    tabCanvas.style.fontWeight = '600';
+
+    tabFrame.style.borderBottomColor = 'transparent';
+    tabFrame.style.color = 'var(--text-muted)';
+    tabFrame.style.fontWeight = '500';
+
+    containerCanvas.style.display = 'flex';
+    containerFrame.style.display = 'none';
+    executeBtn.innerText = 'Sync Canvases';
+  };
+
+  tabFrame.onclick = () => {
+    activeTab = 'frame';
+    tabCanvas.style.borderBottomColor = 'transparent';
+    tabCanvas.style.color = 'var(--text-muted)';
+    tabCanvas.style.fontWeight = '500';
+
+    tabFrame.style.borderBottomColor = 'var(--accent-base)';
+    tabFrame.style.color = 'var(--text-main)';
+    tabFrame.style.fontWeight = '600';
+
+    containerCanvas.style.display = 'none';
+    containerFrame.style.display = 'flex';
+    executeBtn.innerText = 'Sync Frames';
+  };
+
+  // Helper to update target frames selection dynamically
+  const updateTargetFramesList = (selectedSourceId) => {
+    const otherFrames = state.frames.filter(f => f.id !== selectedSourceId);
+    const syncAllFrames = localStorage.getItem('sync-layers-all-frames') !== 'false';
+    const wrapper = bg.querySelector('#sync-frames-targets-wrapper');
+    if (!wrapper) return;
+
+    if (otherFrames.length === 0) {
+      wrapper.innerHTML = `<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding: 4px 0;">No other frames available to sync</div>`;
+      return;
+    }
+
+    const checkboxRows = otherFrames.map(f => {
+      const frameIndex = state.frames.findIndex(x => x.id === f.id);
+      return `
+        <label style="display:flex; align-items:center; gap:6px; font-size:11px; cursor:pointer;" title="Toggle frame target Frame ${frameIndex + 1}">
+          <input type="checkbox" class="sync-target-frame-chk" data-id="${f.id}" checked style="margin:0;" />
+          <span>Frame ${frameIndex + 1}</span>
+        </label>
+      `;
+    }).join('');
+
+    wrapper.innerHTML = `
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Apply the frame sync to all other frames.">
+        <input type="checkbox" id="chk-sync-all-frames" ${syncAllFrames ? 'checked' : ''} style="margin:0;" />
+        <span>All other frames</span>
+      </label>
+      <div id="sync-frames-selection-container" style="display: ${syncAllFrames ? 'none' : 'flex'}; flex-direction: column; gap: 4px; max-height: 100px; overflow-y: auto; padding: 4px 6px; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 4px; margin-top: 4px;">
+        ${checkboxRows}
+      </div>
+    `;
+
+    const chkAllFrames = wrapper.querySelector('#chk-sync-all-frames');
+    const containerFramesSelection = wrapper.querySelector('#sync-frames-selection-container');
+    if (chkAllFrames && containerFramesSelection) {
+      chkAllFrames.onchange = () => {
+        containerFramesSelection.style.display = chkAllFrames.checked ? 'none' : 'flex';
+        localStorage.setItem('sync-layers-all-frames', chkAllFrames.checked ? 'true' : 'false');
+      };
+    }
+  };
+
+  // Populate target frames list initially
+  updateTargetFramesList(state.activeFrameId);
+
+  // Source Frame Selector dynamic preview
+  const selectSourceFrame = bg.querySelector('#select-sync-source-frame');
+  if (selectSourceFrame) {
+    selectSourceFrame.onchange = (e) => {
+      const selectedId = parseInt(e.target.value, 10);
+      state.activeFrameId = selectedId;
+      render();
+      updateTargetFramesList(selectedId);
+    };
+  }
+
+  // Canvas Options Change listeners
+  const chkAllCanvases = bg.querySelector('#chk-sync-all-canvases');
+  const containerSelection = bg.querySelector('#sync-canvases-selection-container');
   if (chkAllCanvases && containerSelection) {
     chkAllCanvases.onchange = () => {
       containerSelection.style.display = chkAllCanvases.checked ? 'none' : 'flex';
@@ -16986,52 +17144,107 @@ function showSyncLayersMenu(anchorEl) {
     };
   }
 
-  menu.querySelector('#chk-sync-order').onchange = (e) => localStorage.setItem('sync-layers-order', e.target.checked ? 'true' : 'false');
-  menu.querySelector('#chk-sync-visibility').onchange = (e) => localStorage.setItem('sync-layers-visibility', e.target.checked ? 'true' : 'false');
-  menu.querySelector('#chk-sync-lock').onchange = (e) => localStorage.setItem('sync-layers-lock', e.target.checked ? 'true' : 'false');
-  menu.querySelector('#chk-sync-persistent').onchange = (e) => localStorage.setItem('sync-layers-persistent', e.target.checked ? 'true' : 'false');
+  bg.querySelector('#chk-sync-order').onchange = (e) => localStorage.setItem('sync-layers-order', e.target.checked ? 'true' : 'false');
+  bg.querySelector('#chk-sync-visibility').onchange = (e) => localStorage.setItem('sync-layers-visibility', e.target.checked ? 'true' : 'false');
+  bg.querySelector('#chk-sync-lock').onchange = (e) => localStorage.setItem('sync-layers-lock', e.target.checked ? 'true' : 'false');
+  bg.querySelector('#chk-sync-persistent').onchange = (e) => localStorage.setItem('sync-layers-persistent', e.target.checked ? 'true' : 'false');
 
-  menu.querySelector('#btn-sync-layers-cancel').onclick = () => {
-    menu.remove();
+  bg.querySelector('#chk-sync-frames-order').onchange = (e) => localStorage.setItem('sync-frames-order', e.target.checked ? 'true' : 'false');
+  bg.querySelector('#chk-sync-frames-visibility').onchange = (e) => localStorage.setItem('sync-frames-visibility', e.target.checked ? 'true' : 'false');
+  bg.querySelector('#chk-sync-frames-lock').onchange = (e) => localStorage.setItem('sync-frames-lock', e.target.checked ? 'true' : 'false');
+  bg.querySelector('#chk-sync-frames-persistent').onchange = (e) => {
+    localStorage.setItem('sync-frames-persistent', e.target.checked ? 'true' : 'false');
+    localStorage.setItem('sync-layers-maintain-settings', e.target.checked ? 'true' : 'false');
   };
 
-  menu.querySelector('#btn-sync-layers-apply').onclick = () => {
+  // Close and Cancel triggers
+  const closeModal = (restore = true) => {
+    if (restore && state.activeFrameId !== originalActiveFrameId) {
+      state.activeFrameId = originalActiveFrameId;
+      render();
+    }
+    bg.remove();
+  };
+
+  bg.querySelector('#sync-layers-close').onclick = () => closeModal(true);
+  bg.querySelectorAll('.btn-sync-layers-cancel').forEach(btn => {
+    btn.onclick = () => closeModal(true);
+  });
+
+  bg.onclick = (e) => {
+    if (e.target === bg) closeModal(true);
+  };
+
+  // Execute Action
+  executeBtn.onclick = () => {
     const sourceC = getActiveCanvas();
     if (!sourceC) {
-      menu.remove();
+      closeModal(true);
       return;
     }
 
-    const settings = {
-      syncOrder: menu.querySelector('#chk-sync-order').checked,
-      syncVisibility: menu.querySelector('#chk-sync-visibility').checked,
-      syncLock: menu.querySelector('#chk-sync-lock').checked,
-      syncPersistent: menu.querySelector('#chk-sync-persistent').checked,
-    };
+    if (activeTab === 'canvas') {
+      const settings = {
+        syncOrder: bg.querySelector('#chk-sync-order').checked,
+        syncVisibility: bg.querySelector('#chk-sync-visibility').checked,
+        syncLock: bg.querySelector('#chk-sync-lock').checked,
+        syncPersistent: bg.querySelector('#chk-sync-persistent').checked,
+      };
 
-    const isAll = chkAllCanvases ? chkAllCanvases.checked : true;
-    let targets = [];
-    if (isAll) {
-      targets = state.canvases.filter(c => c.id !== sourceC.id);
+      const isAll = chkAllCanvases ? chkAllCanvases.checked : true;
+      let targets = [];
+      if (isAll) {
+        targets = state.canvases.filter(c => c.id !== sourceC.id);
+      } else {
+        const selectedIds = Array.from(bg.querySelectorAll('.sync-target-canvas-chk:checked')).map(chk => chk.dataset.id);
+        targets = state.canvases.filter(c => selectedIds.includes(c.id));
+      }
+
+      if (targets.length === 0) {
+        showCanvasNotification('No target canvases selected.', { type: 'warning' });
+        closeModal(true);
+        return;
+      }
+
+      executeLayersSync(sourceC, targets, settings);
+      closeModal(false);
+      showCanvasNotification(`Synchronized layers to ${targets.length} canvas${targets.length > 1 ? 'es' : ''}.`, { type: 'success' });
     } else {
-      const selectedIds = Array.from(menu.querySelectorAll('.sync-target-canvas-chk:checked')).map(chk => chk.dataset.id);
-      targets = state.canvases.filter(c => selectedIds.includes(c.id));
-    }
+      const chkAllFrames = bg.querySelector('#chk-sync-all-frames');
+      const isAll = chkAllFrames ? chkAllFrames.checked : true;
 
-    if (targets.length === 0) {
-      showCanvasNotification('No target canvases selected.', { type: 'warning' });
-      menu.remove();
-      return;
-    }
+      const currentSourceId = state.activeFrameId;
+      const otherFrames = state.frames.filter(f => f.id !== currentSourceId);
 
-    executeLayersSync(sourceC, targets, settings);
-    menu.remove();
-    showCanvasNotification(`Synchronized layers to ${targets.length} canvas${targets.length > 1 ? 'es' : ''}.`, { type: 'success' });
+      let targetFrameIds = [];
+      if (isAll) {
+        targetFrameIds = otherFrames.map(f => f.id);
+      } else {
+        targetFrameIds = Array.from(bg.querySelectorAll('.sync-target-frame-chk:checked')).map(chk => parseInt(chk.dataset.id, 10));
+      }
+
+      if (targetFrameIds.length === 0) {
+        showCanvasNotification('No target frames selected.', { type: 'warning' });
+        closeModal(true);
+        return;
+      }
+
+      const settings = {
+        syncOrder: bg.querySelector('#chk-sync-frames-order').checked,
+        syncVisibility: bg.querySelector('#chk-sync-frames-visibility').checked,
+        syncLock: bg.querySelector('#chk-sync-frames-lock').checked,
+        syncPersistent: bg.querySelector('#chk-sync-frames-persistent').checked,
+      };
+
+      executeFrameSync(sourceC, targetFrameIds, settings);
+      closeModal(false);
+      showCanvasNotification(`Copied frame layer stack to ${targetFrameIds.length} frame${targetFrameIds.length > 1 ? 's' : ''}.`, { type: 'success' });
+    }
   };
 
   const outsideClickListener = (e) => {
-    if (!menu.contains(e.target) && !anchorEl.contains(e.target)) {
-      menu.remove();
+    if (!bg.contains(e.target) && !anchorEl.contains(e.target)) {
+      closeModal(true);
       document.removeEventListener('click', outsideClickListener, true);
     }
   };
@@ -17115,4 +17328,57 @@ function executeLayersSync(sourceC, targets, settings) {
     pushHistory();
     render();
   }
+}
+
+function executeFrameSync(canvas, targetFrameIds, settings) {
+  if (!canvas || !targetFrameIds || targetFrameIds.length === 0) return;
+
+  const activeFrameId = state.activeFrameId;
+
+  // 1. Get elements to clone: el.persistent === false && el.frameId === activeFrameId
+  const sourceElements = canvas.elements.filter(el => el.persistent === false && el.frameId === activeFrameId);
+
+  // 2. Clear target frame elements, and add cloned elements
+  let newElements = canvas.elements.filter(el => {
+    if (el.persistent !== false) return true;
+    if (!targetFrameIds.includes(el.frameId)) return true;
+    return false;
+  });
+
+  targetFrameIds.forEach(targetFrameId => {
+    const clones = sourceElements.map(srcEl => {
+      const clone = JSON.parse(JSON.stringify(srcEl));
+      clone.id = uid();
+      clone.frameId = targetFrameId;
+      
+      // If syncLock is false, clear locked state
+      if (!settings.syncLock) {
+        clone.locked = false;
+      }
+      // If syncVisibility is false, clear hidden state
+      if (!settings.syncVisibility) {
+        clone.hidden = false;
+      }
+      // If syncPersistent is false, clear role
+      if (!settings.syncPersistent) {
+        delete clone.role;
+      }
+      return clone;
+    });
+
+    const bottomEls = newElements.filter(el => el.persistent === 'bottom');
+    const midEls = newElements.filter(el => el.persistent === false);
+    const topEls = newElements.filter(el => el.persistent === 'top');
+
+    newElements = [
+      ...bottomEls,
+      ...midEls,
+      ...clones,
+      ...topEls
+    ];
+  });
+
+  canvas.elements = newElements;
+  pushHistory();
+  render();
 }
