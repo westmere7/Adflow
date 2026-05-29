@@ -13925,7 +13925,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.63';
+  const currentVersion = 'v0.16.64';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {

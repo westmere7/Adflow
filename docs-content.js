@@ -650,6 +650,19 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.64',
+    date: 'May 2026 — Engine v2.17',
+    items: [
+      'Implemented dynamic right-side boundary clamping (maxRight) for Heading and Subheading elements on 970x250 canvases (Billboard) in both Auto-Arrange and Auto-Resize to prevent overlaps with right-half elements and CTA buttons.',
+      'Revamped the Auto-Resize execution dialogue and Settings modals, removing obsolete properties (e.g. main image cover fallback).',
+      'Added behavior settings and checkboxes to toggle subheading visibility on 320x50 canvases (hideSubheading320x50) and automatically lock brand elements (lockBrandElements, covering Logo, Tagline, and CRICOS layers) after Auto-Resize and Auto-Arrange.',
+      'Updated the canvas right-click "Auto-Resize" menu action to always display the execution dialogue instead of executing instantly.',
+      'Always add target elements to their respective link groups during Auto-Resize, but set the group\'s liveLink property to false (disabled) by default unless live-linking is enabled in the settings.',
+      'Added a "Live Linking" toggle to the right-click selection context menu for grouped elements to enable/disable real-time style propagation on the fly.',
+      'Updated placeCtaButton to detect and respect the horizontal alignment of the CTA button on the source canvas (Left, Center, Right) when placing it in vertically stacked layouts (300x600, 160x600, and default fallbacks).'
+    ]
+  },
+  {
     version: 'v0.16.63',
     date: 'May 2026 — Engine v2.16',
     items: [
