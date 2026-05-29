@@ -258,6 +258,7 @@ state.activeCanvasId = state.canvases[0].id;
 const history = [];
 let historyIndex = -1;
 var sizeUpdateTimeout = null;
+let startupTemplates = [];
 
 function measureButtonWidth(el) {
   const canvas = measureButtonWidth.canvas || (measureButtonWidth.canvas = document.createElement('canvas'));
@@ -12675,12 +12676,15 @@ function openNewProjectDialog() {
         <button class="btn" id="np-close" title="Close dialog">Close</button>
       </div>
       <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
-        <!-- Startup Template mode checkbox -->
-        <div style="border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 4px;">
+        <!-- Startup Template mode checkbox and selection -->
+        <div style="border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 4px; display:flex; flex-direction:column; gap:8px;">
           <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:600; color:var(--text-bright); user-select:none;" title="If checked, initializes the project with the preset Startup template.">
-            <input type="checkbox" id="np-use-startup-template" ${localStorage.getItem('adflow-startup-mode') === 'startup' ? 'checked' : ''} style="margin:0;" />
-            <span>Use pre-defined startup template (Adflow_startup.flow)</span>
+            <input type="checkbox" id="np-use-startup-template" ${localStorage.getItem('adflow-startup-mode') !== 'fresh' ? 'checked' : ''} style="margin:0;" />
+            <span>Use pre-defined startup template</span>
           </label>
+          <select id="np-startup-template-select" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
+            <!-- populated dynamically -->
+          </select>
         </div>
 
         <div>
@@ -12733,14 +12737,29 @@ function openNewProjectDialog() {
 
   // Startup template checkbox change logic
   const chkUseStartup = bg.querySelector('#np-use-startup-template');
+  const selectTemplate = bg.querySelector('#np-startup-template-select');
   const customConfigContainer = bg.querySelector('#np-custom-config-container');
+
+  const currentPref = localStorage.getItem('adflow-startup-mode') || 'fresh';
+  const activeTemplate = currentPref !== 'fresh' ? currentPref : 'Adflow_startup.flow';
+
+  if (Array.isArray(startupTemplates) && startupTemplates.length > 0) {
+    selectTemplate.innerHTML = startupTemplates.map(t => {
+      const selected = t.fileName === activeTemplate || (activeTemplate === 'startup' && t.fileName === 'Adflow_startup.flow');
+      return `<option value="${t.fileName}" ${selected ? 'selected' : ''}>${t.projectName} (${t.fileName})</option>`;
+    }).join('');
+  } else {
+    selectTemplate.innerHTML = `<option value="Adflow_startup.flow" selected>RMIT_ad (Adflow_startup.flow)</option>`;
+  }
 
   const updateFieldsVisibility = () => {
     const useStartup = chkUseStartup.checked;
     if (useStartup) {
+      selectTemplate.style.display = 'block';
       customConfigContainer.style.opacity = '0.4';
       customConfigContainer.style.pointerEvents = 'none';
     } else {
+      selectTemplate.style.display = 'none';
       customConfigContainer.style.opacity = '1';
       customConfigContainer.style.pointerEvents = 'auto';
     }
@@ -12768,7 +12787,8 @@ function openNewProjectDialog() {
     const useStartup = chkUseStartup.checked;
     const name = bg.querySelector('#np-name').value;
     if (useStartup) {
-      const ok = await loadStartupTemplate(name);
+      const chosenTemplate = selectTemplate.value;
+      const ok = await loadStartupTemplate(chosenTemplate, name);
       if (ok) {
         closeFn();
         showCanvasNotification('Loaded startup template.', { type: 'success' });
@@ -14165,10 +14185,13 @@ function openSettings() {
   const existing = document.getElementById('settings-panel-bg');
   if (existing) { existing.remove(); return; }
 
+  let mode = localStorage.getItem('adflow-startup-mode') || 'fresh';
+  if (mode === 'startup') mode = 'Adflow_startup.flow';
+
   // Store initial settings configuration for rollback
   const initialSettings = {
     theme: state.theme || 'default',
-    startupMode: localStorage.getItem('adflow-startup-mode') || 'fresh',
+    startupMode: mode,
     showRulers: state.showRulers !== false,
     cropToCanvas: !!state.cropToCanvas,
     tempTopDuringDrag: !!state.tempTopDuringDrag,
@@ -14210,6 +14233,23 @@ function openSettings() {
 
   const darkThemeBtns = buildThemeGrid(t => !lightThemeIds.has(t.id));
   const lightThemeBtns = buildThemeGrid(t => lightThemeIds.has(t.id));
+
+  const buildStartupOptions = () => {
+    const opts = [];
+    opts.push(`<option value="fresh" ${tempSettings.startupMode === 'fresh' ? 'selected' : ''}>Start fresh as normal</option>`);
+    if (Array.isArray(startupTemplates) && startupTemplates.length > 0) {
+      opts.push('<optgroup label="Startup Templates">');
+      startupTemplates.forEach(t => {
+        const isSelected = tempSettings.startupMode === t.fileName;
+        opts.push(`<option value="${t.fileName}" ${isSelected ? 'selected' : ''}>${t.projectName} (${t.fileName})</option>`);
+      });
+      opts.push('</optgroup>');
+    } else {
+      const isSelected = tempSettings.startupMode === 'Adflow_startup.flow';
+      opts.push(`<option value="Adflow_startup.flow" ${isSelected ? 'selected' : ''}>RMIT_ad (Adflow_startup.flow)</option>`);
+    }
+    return opts.join('');
+  };
 
   const row = (id, label, checked, hint = '') => `
         <label class="settings-row" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; border-radius:6px; cursor:pointer;">
@@ -14268,8 +14308,7 @@ function openSettings() {
                   <div style="display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text-main);">
                     <span style="flex:1;">Startup Template preference:</span>
                     <select id="set-startup-mode" style="width:240px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 8px; font-family:inherit; font-size:12px; outline:none; cursor:pointer;">
-                      <option value="fresh" ${tempSettings.startupMode === 'fresh' ? 'selected' : ''}>Start fresh as normal</option>
-                      <option value="startup" ${tempSettings.startupMode === 'startup' ? 'selected' : ''}>Use startup template (Adflow_startup.flow)</option>
+                      ${buildStartupOptions()}
                     </select>
                   </div>
                 </section>
@@ -16805,9 +16844,10 @@ const appSplash = (() => {
 })();
 
 
-async function loadStartupTemplate(customProjectName) {
+async function loadStartupTemplate(fileName, customProjectName) {
   try {
-    const response = await fetch('Startup/Adflow_startup.flow');
+    const fileToFetch = fileName || 'Adflow_startup.flow';
+    const response = await fetch(`Startup/${fileToFetch}`);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const blob = await response.blob();
     await loadProjectFromBlob(blob, customProjectName);
@@ -16824,14 +16864,28 @@ async function loadStartupTemplate(customProjectName) {
 
 
 (async function initApp() {
+  appSplash.setPhase(0.5);
+  try {
+    const res = await fetch('Startup/registry.json');
+    if (res.ok) {
+      startupTemplates = await res.json();
+    }
+  } catch (e) {
+    console.warn('Could not load startup templates registry:', e);
+  }
+
   appSplash.setPhase(1);
   let restored = false;
   try { restored = await restoreAutosave(); } catch (e) { console.warn(e); }
-  if (!restored && localStorage.getItem('adflow-startup-mode') === 'startup') {
-    try {
-      restored = await loadStartupTemplate();
-    } catch (e) {
-      console.warn('Startup template load failed, starting fresh:', e);
+  if (!restored) {
+    let mode = localStorage.getItem('adflow-startup-mode') || 'fresh';
+    if (mode === 'startup') mode = 'Adflow_startup.flow';
+    if (mode !== 'fresh') {
+      try {
+        restored = await loadStartupTemplate(mode);
+      } catch (e) {
+        console.warn('Startup template load failed, starting fresh:', e);
+      }
     }
   }
   appSplash.setPhase(2);
