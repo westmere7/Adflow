@@ -16534,7 +16534,7 @@ function initCollapsiblePanels() {
         if (parentSection.id === 'panel-section-layers' && !header.querySelector('.panel-sync-layers-btn')) {
           const syncBtn = document.createElement('button');
           syncBtn.className = 'panel-sync-layers-btn';
-          syncBtn.title = 'Sync Layer Order';
+          syncBtn.title = 'Sync layer order & settings to other canvases';
           syncBtn.style.cursor = 'pointer';
           syncBtn.style.display = 'inline-flex';
           syncBtn.style.alignItems = 'center';
@@ -16545,7 +16545,7 @@ function initCollapsiblePanels() {
           syncBtn.style.outline = 'none';
           syncBtn.style.color = 'var(--text-muted)';
           syncBtn.style.transition = 'color 0.15s';
-          syncBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><title>Sync Layer Order</title><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
+          syncBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><title>Sync layer order & settings to other canvases</title><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
           
           syncBtn.addEventListener('mouseenter', () => syncBtn.style.color = 'var(--text-bright)');
           syncBtn.addEventListener('mouseleave', () => syncBtn.style.color = 'var(--text-muted)');
@@ -16935,7 +16935,7 @@ function showSyncLayersMenu(anchorEl) {
   menu.innerHTML = `
     <div style="font-weight: 700; font-size: 10.5px; color: var(--accent-light); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-light); padding-bottom: 6px; margin-bottom: 4px;">Sync Layer Order</div>
     <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 8px;">
-      Propagate stacking order and state updates across canvases for all linked layers sharing a group ID.
+      Match the layer order, visibility, and lock settings of the current canvas across your other canvases.
     </div>
     
     <div style="display:flex; flex-direction:column; gap:6px;">
