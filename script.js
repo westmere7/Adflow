@@ -14873,8 +14873,8 @@ function openWebpCompressionModal(el) {
             </div>
           </div>
 
-          <div style="display:flex; flex-direction:column; gap:6px; background:rgba(255,255,255,0.02); padding:8px 12px; border-radius:6px; border:1px solid var(--border-light);">
-            <div style="font-size:11.5px; font-weight:600; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(el.name)}</div>
+          <div style="display:flex; flex-direction:column; gap:6px; background:var(--table-zebra-1); padding:8px 12px; border-radius:6px; border:1px solid var(--border-light);">
+            <div style="font-size:11.5px; font-weight:600; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(el.name || el.customName || 'Unnamed Image')}</div>
             <div style="font-size:10px; color:var(--text-muted); display:grid; grid-template-columns:auto 1fr auto 1fr; gap:4px 16px; align-items:center;">
               <span>Original size:</span><span id="webp-original-size" style="font-weight:600; color:var(--text-bright);">Calculating...</span>
               <span>Compressed size:</span><span id="webp-compressed-size" style="font-weight:600; color:var(--accent-light);">Calculating...</span>
@@ -14886,7 +14886,7 @@ function openWebpCompressionModal(el) {
           <div style="display:flex; flex-direction:column; gap:6px;">
             <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Output Format</label>
             <div style="display:flex; background:var(--bg-input); padding:2px; border-radius:6px; border:1px solid var(--border-light);">
-              <button class="btn format-opt active" data-format="image/webp" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:var(--accent-base); color:var(--text-bright); transition:all 0.15s ease;">WebP</button>
+              <button class="btn format-opt active" data-format="image/webp" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); transition:all 0.15s ease;">WebP</button>
               <button class="btn format-opt" data-format="image/jpeg" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:var(--text-muted); transition:all 0.15s ease;">JPEG</button>
               <button class="btn format-opt" data-format="image/png" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:var(--text-muted); transition:all 0.15s ease;">PNG</button>
             </div>
@@ -14976,7 +14976,7 @@ function openWebpCompressionModal(el) {
       
       btn.classList.add('active');
       btn.style.background = 'var(--accent-base)';
-      btn.style.color = 'var(--text-bright)';
+      btn.style.color = 'var(--text-on-accent, var(--text-bright))';
       
       selectedFormat = btn.dataset.format;
       
@@ -15017,7 +15017,7 @@ function openWebpCompressionModal(el) {
       var(--accent-hover) 10px,
       var(--accent-hover) 20px
     )`;
-    slider.style.backgroundImage = `linear-gradient(to right, transparent ${pct}%, #13141b ${pct}%), ${zebra}`;
+    slider.style.backgroundImage = `linear-gradient(to right, transparent ${pct}%, var(--border-light) ${pct}%), ${zebra}`;
   };
 
   const renderBreakdown = (compSize) => {
