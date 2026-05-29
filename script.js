@@ -7527,7 +7527,7 @@ function renderLayers() {
             ? `Auto-resize role: ${roleLabel} (click to change)`
             : `Auto-resize role: ${roleLabel} (auto-detected — click to change)`)
         : `Auto-resize role: Unassigned (click to assign)`;
-      const roleIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v4"></path><path d="M9 21H5a2 2 0 0 1-2-2v-4"></path><line x1="20" y1="4" x2="14" y2="10"></line><line x1="4" y1="20" x2="10" y2="14"></line></svg>`;
+      const roleIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`;
 
       div.innerHTML = `
         ${iconHtml}

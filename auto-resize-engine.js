@@ -1237,108 +1237,188 @@ function placeMainImage(srcEl, target, ctx) {
     };
   }
 
-  // v2.16: crop-preservation branch.
-  //
-  // When the source element extends past the source canvas edge AND the
-  // target is "small" (any target dim smaller than source's), we abandon
-  // the slot's contain-fit and instead size the element by source-vs-
-  // canvas area ratio, positioned at the source's normalized centre.
-  // The element ends up roughly the same visual fraction of the canvas
-  // as on source, and the per-side crop carries over.
-  //
-  // "Big" targets (both dims ≥ source's) ignore source cropping and
-  // fall through to the contain-fit path below, so the element appears
-  // fully inside the canvas with no edge clipping. This matches the
-  // intent that 970×250 and 300×600 (when source is 300×250) get the
-  // element shown in full, not cropped like 160×600 / 728×90 / 320×50.
-  //
-  // Roles:
-  //   - main-image (Fixed shape): aspect-locked. Uniform scale by
-  //     sqrt(area ratio), centred on source's normalized centre.
-  //   - background-image: not handled here — placeBackgroundImage's
-  //     existing proportional rule already preserves cropping for free-
-  //     aspect bgs (W and H scale independently with canvas dims).
-  if (src) {
-    const srcCropL = Math.max(0, -srcEl.x);
-    const srcCropR = Math.max(0, (srcEl.x + srcEl.width)  - src.width);
-    const srcCropT = Math.max(0, -srcEl.y);
-    const srcCropB = Math.max(0, (srcEl.y + srcEl.height) - src.height);
-    const srcIsCropped = (srcCropL + srcCropR + srcCropT + srcCropB) > 0;
-    const targetIsBig = (w >= src.width) && (h >= src.height);
-
-    if (srcIsCropped && !targetIsBig) {
-      const areaScale = Math.sqrt((w * h) / (src.width * src.height));
-      const cropW = Math.max(1, Math.round(srcEl.width  * areaScale));
-      const cropH = Math.max(1, Math.round(srcEl.height * areaScale));
-
-      // Source centre as a fraction of source canvas — extends beyond
-      // [0,1] when the element overflows the source edge.
-      const cxNorm = (srcEl.x + srcEl.width  / 2) / src.width;
-      const cyNorm = (srcEl.y + srcEl.height / 2) / src.height;
-
-      let cropX = Math.round(cxNorm * w - cropW / 2);
-      let cropY = Math.round(cyNorm * h - cropH / 2);
-
-      // Clamp the side of the element that abuts a text/CTA neighbour
-      // in the slot, so the bigger area-scaled image doesn't dip into
-      // copy / button territory. Other sides can freely overshoot the
-      // canvas edge — that's the cropping we want preserved.
-      if (stack) {
-        // Slot is below the text stack, above the CTA.
-        if (heading || subheading) cropY = Math.max(cropY, slot.y);
-        if (cta) cropY = Math.min(cropY, slot.y + slot.h - cropH);
-      } else {
-        // Slot is to the right of the text, optionally left of the CTA
-        // (only in wide-banner mode where CTA sits at right).
-        if (heading || subheading) cropX = Math.max(cropX, slot.x);
-        if (cta && ctaWideMode) cropX = Math.min(cropX, slot.x + slot.w - cropW);
-      }
-
-      return { x: cropX, y: cropY, width: cropW, height: cropH };
-    }
-  }
-
   const srcAspect = (srcEl.width && srcEl.height) ? (srcEl.width / srcEl.height) : 1;
-  const slotAspect = slot.w / slot.h;
 
+  // 1. Calculate relative area size compared to source canvas, keeping aspect ratio
   let imgW, imgH;
-  if (srcAspect >= slotAspect) {
-    imgW = slot.w;
-    imgH = Math.round(imgW / srcAspect);
+  const FLOOR_MIN = 24;
+
+  if (src) {
+    const srcAreaFraction = (srcEl.width * srcEl.height) / (src.width * src.height || 1);
+    const targetArea = srcAreaFraction * w * h;
+    imgW = Math.sqrt(targetArea * srcAspect);
+    imgH = imgW / srcAspect;
   } else {
-    imgH = slot.h;
-    imgW = Math.round(imgH * srcAspect);
+    imgW = srcEl.width || 100;
+    imgH = srcEl.height || 100;
   }
 
-  // v2.15: cover-fallback REMOVED entirely. The "main image" role was
-  // renamed to "fixed shape" in v0.16.42 and is now defined as a
-  // strictly-aspect-preserved element — under no circumstance does
-  // auto-resize change its proportions. Cover-fallback previously gave
-  // the element bigger bounds (which technically still preserved its
-  // ratio, since both dims scaled by the same srcAspect), but it
-  // forced overflow into the canvas margins and that overflow
-  // visually-stretched the mask shape on top via the post-pass.
-  // Removing cover entirely means the fixed shape always fits its
-  // slot in contain mode; it might come out smaller on extreme
-  // aspects, but the proportions are guaranteed exact.
-
-  // No-drop floor: keep the smaller dimension ≥ 24px so the element
-  // stays visible. Scale UNIFORMLY (multiply both dims by the same
-  // factor) so the aspect ratio is preserved — pre-v2.15 this bumped
-  // imgW and imgH independently with Math.max, which broke aspect
-  // for non-square sources whenever the floor kicked in.
-  const FLOOR_MIN = 24;
+  // Enforce minimum floor size
   if (Math.min(imgW, imgH) < FLOOR_MIN) {
     const upScale = FLOOR_MIN / Math.min(imgW, imgH);
     imgW = Math.max(1, Math.round(imgW * upScale));
     imgH = Math.max(1, Math.round(imgH * upScale));
+  } else {
+    imgW = Math.max(1, Math.round(imgW));
+    imgH = Math.max(1, Math.round(imgH));
+  }
+
+  // 2. Calculate source crop percentages
+  let leftCropPct = 0;
+  let rightCropPct = 0;
+  let topCropPct = 0;
+  let bottomCropPct = 0;
+  let cxNorm = 0.5;
+  let cyNorm = 0.5;
+
+  if (src) {
+    leftCropPct = Math.max(0, -srcEl.x) / srcEl.width;
+    rightCropPct = Math.max(0, (srcEl.x + srcEl.width) - src.width) / srcEl.width;
+    topCropPct = Math.max(0, -srcEl.y) / srcEl.height;
+    bottomCropPct = Math.max(0, (srcEl.y + srcEl.height) - src.height) / srcEl.height;
+    cxNorm = (srcEl.x + srcEl.width / 2) / src.width;
+    cyNorm = (srcEl.y + srcEl.height / 2) / src.height;
+  }
+
+  // Compute initial coordinates (with thin/wide banner middle section slot centering override)
+  let x = 0;
+  let y = 0;
+
+  if (w / h >= 3.0) {
+    const slotCenterX = slot.x + slot.w / 2;
+    x = Math.round(slotCenterX - imgW / 2);
+    y = Math.round((h - imgH) / 2);
+  } else {
+    if (leftCropPct > 0 && rightCropPct === 0) {
+      x = Math.round(-leftCropPct * imgW);
+    } else if (rightCropPct > 0 && leftCropPct === 0) {
+      x = Math.round(w - imgW + rightCropPct * imgW);
+    } else {
+      x = Math.round(cxNorm * w - imgW / 2);
+    }
+
+    if (topCropPct > 0 && bottomCropPct === 0) {
+      y = Math.round(-topCropPct * imgH);
+    } else if (bottomCropPct > 0 && topCropPct === 0) {
+      y = Math.round(h - imgH + bottomCropPct * imgH);
+    } else {
+      y = Math.round(cyNorm * h - imgH / 2);
+    }
+  }
+
+  // 3. Collision avoidance & overlap handling
+  const obstacles = [];
+  ['heading', 'subheading', 'cta-button', 'rmit-logo'].forEach(role => {
+    const obstacle = ctx.placedElements[role];
+    if (obstacle) {
+      obstacles.push(obstacle);
+    }
+  });
+
+  const overlapsAny = (bx, by, bw, bh) => {
+    const box = { x: bx, y: by, width: bw, height: bh };
+    return obstacles.some(obs => _rectsOverlap(box, obs));
+  };
+
+  let currentW = imgW;
+  let currentH = imgH;
+  let currentX = x;
+  let currentY = y;
+  const clearanceGap = 6; // gap in px
+
+  let solved = !overlapsAny(currentX, currentY, currentW, currentH);
+
+  if (!solved && obstacles.length > 0) {
+    const testW = imgW;
+    const testH = imgH;
+    const testX = x;
+    const testY = y;
+
+    // Try nudging away from overlapping obstacles in 4 directions at 100% scale
+    const candidates = [];
+    for (const obstacle of obstacles) {
+      if (_rectsOverlap({ x: testX, y: testY, width: testW, height: testH }, obstacle)) {
+        const shiftL = obstacle.x - testW - clearanceGap - testX;
+        const shiftR = obstacle.x + obstacle.width + clearanceGap - testX;
+        const shiftU = obstacle.y - testH - clearanceGap - testY;
+        const shiftD = obstacle.y + obstacle.height + clearanceGap - testY;
+
+        const shifts = [
+          { sx: shiftL, sy: 0 },
+          { sx: shiftR, sy: 0 },
+          { sx: 0, sy: shiftU },
+          { sx: 0, sy: shiftD }
+        ];
+
+        for (const s of shifts) {
+          const nx = testX + s.sx;
+          const ny = testY + s.sy;
+
+          if (!overlapsAny(nx, ny, testW, testH)) {
+            // Ensure we don't push it too far off-canvas relative to original crop bounds
+            const testL = Math.max(0, -nx);
+            const testR = Math.max(0, (nx + testW) - w);
+            const testT = Math.max(0, -ny);
+            const testB = Math.max(0, (ny + testH) - h);
+
+            const maxExtraCrop = Math.max(w, h) * 0.25; // allow 25% extra wiggle crop
+            const cropOK = (testL <= Math.round(leftCropPct * testW) + maxExtraCrop) &&
+                           (testR <= Math.round(rightCropPct * testW) + maxExtraCrop) &&
+                           (testT <= Math.round(topCropPct * testH) + maxExtraCrop) &&
+                           (testB <= Math.round(bottomCropPct * testH) + maxExtraCrop);
+
+            if (cropOK) {
+              candidates.push({ x: nx, y: ny });
+            }
+          }
+        }
+      }
+    }
+
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => {
+        const distA = Math.pow(a.x - testX, 2) + Math.pow(a.y - testY, 2);
+        const distB = Math.pow(b.x - testX, 2) + Math.pow(b.y - testY, 2);
+        return distA - distB;
+      });
+      currentX = candidates[0].x;
+      currentY = candidates[0].y;
+      solved = true;
+    } else {
+      // If nudging cannot resolve the overlap without excessive cropping,
+      // allow the overlap to happen. Keep original size and crop coordinates.
+      currentX = x;
+      currentY = y;
+      solved = true;
+    }
+  }
+
+  if (solved) {
+    return { x: currentX, y: currentY, width: currentW, height: currentH };
+  }
+
+  // Fallback: standard contain slot-fit
+  const slotAspect = slot.w / slot.h;
+  let fallbackW, fallbackH;
+  if (srcAspect >= slotAspect) {
+    fallbackW = slot.w;
+    fallbackH = Math.round(fallbackW / srcAspect);
+  } else {
+    fallbackH = slot.h;
+    fallbackW = Math.round(fallbackH * srcAspect);
+  }
+
+  if (Math.min(fallbackW, fallbackH) < FLOOR_MIN) {
+    const upScale = FLOOR_MIN / Math.min(fallbackW, fallbackH);
+    fallbackW = Math.max(1, Math.round(fallbackW * upScale));
+    fallbackH = Math.max(1, Math.round(fallbackH * upScale));
   }
 
   return {
-    x: slot.x + Math.round((slot.w - imgW) / 2),
-    y: slot.y + Math.round((slot.h - imgH) / 2),
-    width: imgW,
-    height: imgH
+    x: slot.x + Math.round((slot.w - fallbackW) / 2),
+    y: slot.y + Math.round((slot.h - fallbackH) / 2),
+    width: fallbackW,
+    height: fallbackH
   };
 }
 
@@ -1569,9 +1649,7 @@ function enforceHeadingSubheadAdjacency(ctx) {
   };
 
   Object.entries(ctx.placedElements).forEach(([role, el]) => {
-    if (role === 'heading' || role === 'subheading') return;
-    // main-image and background-image are allowed to overflow the
-    // canvas, but not the text pair. Still shrink them out.
+    if (role === 'heading' || role === 'subheading' || role === 'main-image' || role === 'background-image') return;
     _shrinkToClear(el, zone, 4);
   });
 }
