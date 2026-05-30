@@ -405,6 +405,8 @@ const DOCS_SECTIONS = [
             ['Space + Drag','Pan workspace'],
             ['Delete / Backspace','Delete selected'],
             ['Tab','Toggle Fullscreen'],
+            ['V','Select Tool (standard arrow cursor)'],
+            ['Z','Zoom Tool (magnifying glass cursor)'],
             ['Arrow keys','Nudge 1px'],
             ['Shift + Arrows','Nudge 10px'],
             ['Shift + Drag corner','Lock aspect ratio'],
@@ -419,7 +421,7 @@ const DOCS_SECTIONS = [
         </table>
       `},
       { id: 'changelog-link', title: 'Changelog', body: `
-        <p>Click the version label in the top bar (e.g. <b>v0.11.0</b>) to open the full changelog modal.</p>
+        <p>Click the version label in the bottom-right footer (e.g. <b>v0.16.66</b>) to open the full changelog modal.</p>
       `},
     ]
   },
@@ -657,6 +659,16 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.16.66',
+    date: 'May 2026',
+    items: [
+      'Added dynamic Canvas Zoom & Select Tool controls inside the main canvas footer.',
+      'Tied workspace keyboard shortcut keys (V for Select tool, Z for Zoom tool) for intuitive editing mode switches.',
+      'Added mouse panning support and Alt key toggle options to invert standard zooming directions when magnifying.',
+      'Enforced strict fullscreen preview mode safeguards to prevent tool switching and disable click-to-zoom actions.'
+    ]
+  },
   {
     version: 'v0.16.65',
     date: 'May 2026 — Engine v2.18',
