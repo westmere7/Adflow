@@ -3117,17 +3117,15 @@ body.theme-rmit-navy {
 
 
 
-    .ctx-item:hover {
-
-      background: var(--accent-base);
-
-      color: var(--text-bright);
-
-    }
-
     .ctx-item.highlight {
       color: var(--accent-base);
       font-weight: 500;
+    }
+
+    .ctx-item:hover,
+    .ctx-item.highlight:hover {
+      background: var(--accent-base);
+      color: var(--text-bright);
     }
 
     .ctx-item.has-submenu {
@@ -3171,6 +3169,26 @@ body.theme-rmit-navy {
       background: var(--border-light);
 
       margin: 4px 0;
+
+    }
+
+
+
+    /* ---------- zoom tool cursor override ---------- */
+
+    .tool-zoom-active,
+
+    .tool-zoom-active * {
+
+      cursor: zoom-in !important;
+
+    }
+
+    .tool-zoom-active.zoom-out,
+
+    .tool-zoom-active.zoom-out * {
+
+      cursor: zoom-out !important;
 
     }
 

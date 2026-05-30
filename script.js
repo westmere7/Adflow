@@ -192,6 +192,7 @@ const state = {
   layerSelection: [],
   assetSelection: [],
   zoom: 1.0,
+  activeTool: 'select',
   editingElementId: null,      // inline-edit (text) mode
   isolatedGroupId: null,
   assets: {
@@ -2396,6 +2397,7 @@ function canvasFrameNode(c) {
     header.appendChild(autoAlignBtn);
   }
   header.addEventListener('mousedown', (e) => {
+    if (state.activeTool === 'zoom') return;
     if (e.target.closest('.canvas-auto-align-btn')) return;
     onCanvasHeaderDrag(e, c);
   });
@@ -2537,6 +2539,7 @@ function canvasFrameNode(c) {
 
     // click empty canvas: make this canvas active, deselect element or start marquee selection
     canvas.addEventListener('mousedown', (e) => {
+      if (state.activeTool === 'zoom') return;
       if (isSpaceDown || e.button === 1) return;
       if (e.target === canvas || e.target === canvasInner) {
         if (state.isolatedGroupId) {
@@ -4315,6 +4318,7 @@ function onLineThicknessMouseDown(e, el) {
 // Element drag / resize
 // ============================================================================
 function onElementMouseDown(e, el, canvasCtx) {
+  if (state.activeTool === 'zoom') return;
   if (isSpaceDown || e.button === 1) {
     isPanning = true;
     panStartX = e.clientX;
@@ -4983,6 +4987,81 @@ canvasArea.addEventListener('mousedown', (e) => {
     e.preventDefault();
     return;
   }
+
+  // Zoom tool behavior
+  if (state.activeTool === 'zoom' && e.button === 0 && !document.body.classList.contains('fullscreen-mode')) {
+    const rect = canvasArea.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // Avoid scrollbar clicks
+    if (mouseX > canvasArea.clientWidth || mouseY > canvasArea.clientHeight) {
+      return;
+    }
+    // Avoid ruler and guide clicks
+    if (e.target.closest('#ruler-h, #ruler-v, #ruler-corner, .guide-h, .guide-v, .canvas-auto-align-btn')) {
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startZoom = state.zoom || 0.6;
+
+    // Determine target focus coordinates relative to canvasArea bounds
+    const focusX = (canvasArea.scrollLeft + mouseX) / startZoom;
+    const focusY = (canvasArea.scrollTop + mouseY) / startZoom;
+
+    let dragDistanceX = 0;
+    let dragDistanceY = 0;
+    let hasDragged = false;
+
+    const onMove = (ev) => {
+      dragDistanceX = ev.clientX - startX;
+      dragDistanceY = ev.clientY - startY;
+
+      if (Math.abs(dragDistanceX) > 4 || Math.abs(dragDistanceY) > 4) {
+        hasDragged = true;
+      }
+
+      if (hasDragged) {
+        const dx = dragDistanceX;
+        let targetZoom = startZoom * Math.pow(2, dx / 150);
+        targetZoom = Math.max(0.6, Math.min(targetZoom, 5.0));
+
+        state.zoom = targetZoom;
+        render();
+
+        canvasArea.scrollLeft = focusX * targetZoom - mouseX;
+        canvasArea.scrollTop = focusY * targetZoom - mouseY;
+      }
+    };
+
+    const onUp = (ev) => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+
+      if (!hasDragged) {
+        const isZoomOut = ev.altKey;
+        const targetZoom = isZoomOut
+          ? Math.max(0.6, startZoom / 1.5)
+          : Math.min(5.0, startZoom * 1.5);
+
+        state.zoom = targetZoom;
+        render();
+
+        canvasArea.scrollLeft = focusX * targetZoom - mouseX;
+        canvasArea.scrollTop = focusY * targetZoom - mouseY;
+      }
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return;
+  }
+
   if (e.target !== canvasArea && e.target !== workspaceEl) return;
   if (e.button !== 0) return;
 
@@ -11282,6 +11361,10 @@ canvasArea.addEventListener('drop', async (e) => {
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Alt') {
     e.preventDefault();
+    if (state.activeTool === 'zoom') {
+      const area = document.getElementById('canvas-area');
+      if (area) area.style.cursor = 'zoom-out';
+    }
   }
   // never intercept while typing in an input/textarea
   const t = e.target;
@@ -11292,9 +11375,23 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  if (!document.body.classList.contains('fullscreen-mode')) {
+    if (e.key.toLowerCase() === 'v') {
+      setActiveTool('select');
+      return;
+    }
+    if (e.key.toLowerCase() === 'z') {
+      setActiveTool('zoom');
+      return;
+    }
+  }
+
   if (e.key === 'Tab') {
     e.preventDefault();
-    document.body.classList.toggle('fullscreen-mode');
+    const isNowFullscreen = document.body.classList.toggle('fullscreen-mode');
+    if (isNowFullscreen) {
+      setActiveTool('select');
+    }
     return;
   }
 
@@ -11710,11 +11807,18 @@ window.addEventListener('paste', (e) => {
 document.addEventListener('keyup', (e) => {
   if (e.key === 'Alt') {
     e.preventDefault();
+    if (state.activeTool === 'zoom') {
+      const area = document.getElementById('canvas-area');
+      if (area) area.style.cursor = 'zoom-in';
+    }
   }
   if (e.code === 'Space') {
     isSpaceDown = false;
     isPanning = false;
-    document.getElementById('canvas-area').style.cursor = '';
+    const area = document.getElementById('canvas-area');
+    if (area) {
+      area.style.cursor = state.activeTool === 'zoom' ? 'zoom-in' : '';
+    }
     document.querySelectorAll('.preview-iframe').forEach(ifr => ifr.style.pointerEvents = 'auto');
   }
 });
@@ -11801,6 +11905,33 @@ function clearOtherCanvasesContents() {
   pushHistory();
   render();
 }
+
+function setActiveTool(tool) {
+  state.activeTool = tool;
+  const toolSelect = document.getElementById('tool-select');
+  const toolZoom = document.getElementById('tool-zoom');
+  const canvasArea = document.getElementById('canvas-area');
+
+  if (toolSelect && toolZoom) {
+    if (tool === 'select') {
+      toolSelect.classList.add('active');
+      toolZoom.classList.remove('active');
+      if (canvasArea) canvasArea.style.cursor = '';
+    } else if (tool === 'zoom') {
+      toolSelect.classList.remove('active');
+      toolZoom.classList.add('active');
+      if (canvasArea) canvasArea.style.cursor = 'zoom-in';
+    }
+  }
+}
+
+document.getElementById('tool-select')?.addEventListener('click', () => {
+  setActiveTool('select');
+});
+
+document.getElementById('tool-zoom')?.addEventListener('click', () => {
+  setActiveTool('zoom');
+});
 
 document.getElementById('btn-preview').addEventListener('click', () => {
   const c = getActiveCanvas(); if (!c) return;
@@ -17088,6 +17219,7 @@ async function loadStartupTemplate(fileName, customProjectName) {
   }
 
   render();
+  setActiveTool(state.activeTool || 'select');
   initCollapsiblePanels();
   appSplash.setPhase(4);
   checkVersionUpdate();
