@@ -16626,8 +16626,27 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-canvas-export-html', () => { const c = getActiveCanvas(); if (c) exportCanvasAsZip(c); });
   bind('ctx-canvas-export-png', () => { const c = getActiveCanvas(); if (c) exportCanvasAsPng(c); });
   bind('ctx-canvas-auto-resize', () => {
-    if (typeof openAutoResizeModal === 'function') {
-      openAutoResizeModal();
+    const s = (typeof getAutoResizeSettings === 'function') ? getAutoResizeSettings() : null;
+    const showModal = s ? s.behaviour.showModalInCtxMenu !== false : true;
+    if (showModal) {
+      if (typeof openAutoResizeModal === 'function') {
+        openAutoResizeModal();
+      }
+    } else {
+      const src = getActiveCanvas();
+      if (!src) return;
+      const targets = state.canvases.filter(c => c.id !== src.id);
+      if (targets.length === 0) {
+        showCanvasNotification('Add at least one more canvas to resize into.', { type: 'warning' });
+        return;
+      }
+      if (typeof runRuleBasedAutoResize === 'function') {
+        runRuleBasedAutoResize({
+          sourceId: src.id,
+          targetIds: targets.map(c => c.id),
+          includeUnassigned: s ? s.behaviour.includeUnassigned : false
+        });
+      }
     }
   });
   bind('ctx-canvas-auto-arrange', () => {

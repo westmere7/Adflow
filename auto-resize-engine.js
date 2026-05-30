@@ -517,6 +517,15 @@ function openAutoResizeModal() {
               <span style="color:var(--text-muted); font-size:10.5px;">On (default): linked elements sync content/color/style changes from source in real-time (except brand elements which are always independent).</span>
             </span>
           </label>
+
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
+            <input type="checkbox" id="ar-show-ctx-modal" ${persistedSettings.behaviour.showModalInCtxMenu !== false ? 'checked' : ''} />
+            <span>
+              <span style="color:var(--text-main); font-weight:500;">Show confirmation dialog in context menu</span>
+              <br>
+              <span style="color:var(--text-muted); font-size:10.5px;">On (default): right-clicking a canvas and selecting Auto-Resize opens this dialog. Off: runs Auto-Resize instantly to all targets.</span>
+            </span>
+          </label>
         </div>
 
         <div style="padding:10px 12px; background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); border-radius:4px; font-size:11.5px; color:#fca5a5; line-height:1.5;">
@@ -561,11 +570,13 @@ function openAutoResizeModal() {
     const hideSubheading320x50 = bg.querySelector('#ar-hide-subheading-320').checked;
     const lockBrandElements = bg.querySelector('#ar-lock-brand').checked;
     const liveLinkEnabled = bg.querySelector('#ar-live-link').checked;
+    const showModalInCtxMenu = bg.querySelector('#ar-show-ctx-modal').checked;
 
     persistedSettings.behaviour.includeUnassigned = includeUnassigned;
     persistedSettings.behaviour.hideSubheading320x50 = hideSubheading320x50;
     persistedSettings.behaviour.lockBrandElements = lockBrandElements;
     persistedSettings.behaviour.liveLink.enabled = liveLinkEnabled;
+    persistedSettings.behaviour.showModalInCtxMenu = showModalInCtxMenu;
 
     close();
     runRuleBasedAutoResize({
@@ -2023,6 +2034,7 @@ const AUTO_RESIZE_DEFAULT_SETTINGS = {
     hideSubheading320x50: true,   // hide subheading on 320x50 mobile canvas
     lockBrandElements:    true,   // lock logo, tagline, cricos after layout/arrange
     includeUnassigned:    false,  // remembered value for the misc-elements toggle
+    showModalInCtxMenu:   true,   // show confirmation modal when resizing from context menu
     liveLink: {
       enabled:      false,
       syncText:     true,
@@ -2046,6 +2058,7 @@ function getAutoResizeSettings() {
   if (typeof s.behaviour.hideSubheading320x50 !== 'boolean') s.behaviour.hideSubheading320x50 = true;
   if (typeof s.behaviour.lockBrandElements    !== 'boolean') s.behaviour.lockBrandElements    = true;
   if (typeof s.behaviour.includeUnassigned   !== 'boolean') s.behaviour.includeUnassigned   = false;
+  if (typeof s.behaviour.showModalInCtxMenu  !== 'boolean') s.behaviour.showModalInCtxMenu  = true;
   if (!s.behaviour.liveLink) s.behaviour.liveLink = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour.liveLink };
   const ll = s.behaviour.liveLink;
   if (typeof ll.enabled        !== 'boolean') ll.enabled        = false;
@@ -2151,6 +2164,13 @@ function openAutoResizeSettingsModal() {
             <div style="flex:1; min-width:0;">
               <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Lock brand elements (Logo, Tagline, CRICOS) after layout</div>
               <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Automatically lock Logo, Tagline, and CRICOS layers after auto-resize or auto-arrange.</div>
+            </div>
+          </label>
+          <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
+            <input type="checkbox" id="ars-show-ctx-modal" ${s.behaviour.showModalInCtxMenu !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Show confirmation dialog in context menu</div>
+              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">When on, right-clicking a canvas and selecting Auto-Resize opens the target selection dialog. Off: runs Auto-Resize instantly to all targets.</div>
             </div>
           </label>
         </div>
@@ -2260,6 +2280,7 @@ function openAutoResizeSettingsModal() {
     next.behaviour.includeUnassigned     = bg.querySelector('#ars-include-unassigned').checked;
     next.behaviour.hideSubheading320x50  = bg.querySelector('#ars-hide-subheading-320').checked;
     next.behaviour.lockBrandElements     = bg.querySelector('#ars-lock-brand').checked;
+    next.behaviour.showModalInCtxMenu    = bg.querySelector('#ars-show-ctx-modal').checked;
     next.behaviour.liveLink = {
       enabled:        bg.querySelector('#ars-ll-enabled').checked,
       syncText:       bg.querySelector('#ars-ll-text').checked,
