@@ -1968,30 +1968,65 @@ function centerWorkspace(behavior = 'smooth') {
   area.scrollTo({ left: Math.max(0, targetScrollLeft), top: Math.max(0, targetScrollTop), behavior });
 }
 
+function checkCanvasesInView() {
+  if (state.isPreviewMode || document.body.classList.contains('fullscreen-mode')) return;
+  if (!state.canvases || state.canvases.length === 0) return;
+
+  const area = document.getElementById('canvas-area');
+  if (!area || area.clientWidth === 0) return;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  state.canvases.forEach(c => {
+    if (c.workspaceX < minX) minX = c.workspaceX;
+    if (c.workspaceY < minY) minY = c.workspaceY;
+    if (c.workspaceX + c.width > maxX) maxX = c.workspaceX + c.width;
+    if (c.workspaceY + c.height > maxY) maxY = c.workspaceY + c.height;
+  });
+
+  const zoom = state.zoom || 0.6;
+  const viewportLeft = area.scrollLeft;
+  const viewportTop = area.scrollTop;
+  const viewportRight = viewportLeft + area.clientWidth;
+  const viewportBottom = viewportTop + area.clientHeight;
+
+  const canvasesLeft = minX * zoom;
+  const canvasesTop = minY * zoom;
+  const canvasesRight = maxX * zoom;
+  const canvasesBottom = maxY * zoom;
+
+  // Margin threshold of 50px: if less than 50px of the canvas area overlaps, user is considered lost
+  const margin = 50;
+  const isOutOfBounds = (canvasesRight - margin < viewportLeft) ||
+                        (canvasesLeft + margin > viewportRight) ||
+                        (canvasesBottom - margin < viewportTop) ||
+                        (canvasesTop + margin > viewportBottom);
+
+  if (isOutOfBounds) {
+    const now = Date.now();
+    if (state.lastOutOfBoundsToastTime && (now - state.lastOutOfBoundsToastTime < 5000)) {
+      return;
+    }
+    state.lastOutOfBoundsToastTime = now;
+
+    showCanvasNotification("Lost your canvases? Bring them back into view.", {
+      type: 'info',
+      duration: 10000,
+      button: {
+        text: 'Center & Zoom to 100%',
+        onClick: () => {
+          const centerX = (minX + maxX) / 2;
+          const centerY = (minY + maxY) / 2;
+          animateViewTo(1.0, centerX, centerY);
+        }
+      }
+    });
+  }
+}
+
 // Show a toast offering to jump back to the user's last saved scroll position.
 // Called on startup and on Open Project, after we've already centered the view.
 function offerResumeView(savedScrollLeft, savedScrollTop, savedZoom) {
-  if (savedScrollLeft === undefined || savedScrollTop === undefined) return;
-  if (typeof showCanvasNotification !== 'function') return;
-  showCanvasNotification('View centered.', {
-    type: 'info',
-    duration: 6000,
-    button: {
-      text: 'Resume previous view',
-      onClick: () => {
-        const area = document.getElementById('canvas-area');
-        if (area && area.scrollTo) {
-          if (savedZoom !== undefined) {
-            const centerX = (savedScrollLeft + area.clientWidth / 2) / savedZoom;
-            const centerY = (savedScrollTop + area.clientHeight / 2) / savedZoom;
-            animateViewTo(savedZoom, centerX, centerY);
-          } else {
-            area.scrollTo({ left: savedScrollLeft, top: savedScrollTop, behavior: 'smooth' });
-          }
-        }
-      }
-    }
-  });
+  // Toast removed
 }
 
 // Smooth view transition: animate zoom + scroll together with rAF, no intermediate
@@ -5270,6 +5305,7 @@ window.addEventListener('mouseup', () => {
   if (isPanning) {
     isPanning = false;
     canvasArea.style.cursor = isSpaceDown ? 'var(--cur-grab, grab)' : '';
+    checkCanvasesInView();
   }
 });
 
@@ -5299,6 +5335,12 @@ canvasArea.addEventListener('wheel', (e) => {
   canvasArea.scrollLeft = workspaceX * newZoom - mouseX;
   canvasArea.scrollTop = workspaceY * newZoom - mouseY;
 }, { passive: false });
+
+let outOfBoundsTimeout = null;
+canvasArea.addEventListener('scroll', () => {
+  if (outOfBoundsTimeout) clearTimeout(outOfBoundsTimeout);
+  outOfBoundsTimeout = setTimeout(checkCanvasesInView, 200);
+});
 
 // ============================================================================
 function openValidatorDetails(initialCanvas) {
@@ -11487,7 +11529,10 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (state.activeTool === 'zoom') {
       const area = document.getElementById('canvas-area');
-      if (area) area.style.cursor = 'zoom-out';
+      if (area) {
+        area.style.cursor = 'zoom-out';
+        area.classList.add('zoom-out-active');
+      }
     }
   }
   // never intercept while typing in an input/textarea
@@ -11628,6 +11673,7 @@ window.addEventListener('keydown', (e) => {
     if (!isSpaceDown) {
       isSpaceDown = true;
       if (!isPanning) canvasArea.style.cursor = 'var(--cur-grab, grab)';
+      canvasArea.classList.add('panning-active');
       document.querySelectorAll('.preview-iframe').forEach(ifr => ifr.style.pointerEvents = 'none');
     }
     return;
@@ -11933,7 +11979,10 @@ document.addEventListener('keyup', (e) => {
     e.preventDefault();
     if (state.activeTool === 'zoom') {
       const area = document.getElementById('canvas-area');
-      if (area) area.style.cursor = 'zoom-in';
+      if (area) {
+        area.style.cursor = 'zoom-in';
+        area.classList.remove('zoom-out-active');
+      }
     }
   }
   if (e.code === 'Space') {
@@ -11942,8 +11991,10 @@ document.addEventListener('keyup', (e) => {
     const area = document.getElementById('canvas-area');
     if (area) {
       area.style.cursor = state.activeTool === 'zoom' ? 'zoom-in' : '';
+      area.classList.remove('panning-active');
     }
     document.querySelectorAll('.preview-iframe').forEach(ifr => ifr.style.pointerEvents = 'auto');
+    checkCanvasesInView();
   }
 });
 
@@ -12040,11 +12091,18 @@ function setActiveTool(tool) {
     if (tool === 'select') {
       toolSelect.classList.add('active');
       toolZoom.classList.remove('active');
-      if (canvasArea) canvasArea.style.cursor = '';
+      if (canvasArea) {
+        canvasArea.style.cursor = '';
+        canvasArea.classList.remove('tool-zoom-active');
+        canvasArea.classList.remove('zoom-out-active');
+      }
     } else if (tool === 'zoom') {
       toolSelect.classList.remove('active');
       toolZoom.classList.add('active');
-      if (canvasArea) canvasArea.style.cursor = 'zoom-in';
+      if (canvasArea) {
+        canvasArea.style.cursor = 'zoom-in';
+        canvasArea.classList.add('tool-zoom-active');
+      }
     }
   }
 }

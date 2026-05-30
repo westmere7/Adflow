@@ -1625,7 +1625,7 @@ body.theme-rmit-navy {
       padding: 12px 0 6px 0;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid var(--border-light);
       margin-bottom: 6px;
       display: flex;
       align-items: center;
@@ -2233,6 +2233,15 @@ body.theme-rmit-navy {
 
       display: grid;
 
+    }
+
+    .canvas-area.tool-zoom-active:not(.panning-active),
+    .canvas-area.tool-zoom-active:not(.panning-active) * {
+      cursor: zoom-in !important;
+    }
+    .canvas-area.tool-zoom-active.zoom-out-active:not(.panning-active),
+    .canvas-area.tool-zoom-active.zoom-out-active:not(.panning-active) * {
+      cursor: zoom-out !important;
     }
 
 
