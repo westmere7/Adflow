@@ -15,7 +15,7 @@
 // boot IIFE references authState.enabled / .ready / .currentUser() at
 // load-time, and many function bodies in script.js reference these globals
 // at call-time. Conversely, this file references script.js globals (openModal,
-// state, render, buildFlowBlob, loadProjectFromBlob, setSaveStatus,
+// state, render, buildFlowBlob, loadProjectFromBlob, setCloudSaveStatus,
 // showCanvasNotification, pushHistory, appSplash, uid) only at call-time.
 //
 // Anonymous local use is unchanged when SUPABASE_URL / SUPABASE_ANON_KEY are
@@ -643,16 +643,16 @@ async function pushCurrentProjectToCloud(opts = {}) {
     }
   }
 
-  setSaveStatus('saving');
+  setCloudSaveStatus('saving');
   let built;
   try { built = await buildFlowBlob(); }
-  catch (e) { setSaveStatus('error'); throw e; }
+  catch (e) { setCloudSaveStatus('error'); throw e; }
   const { blob } = built;
   // Storage path uses state.projectId (a real UUID guaranteed above), so the
   // path is stable across pushes of the same project.
   const path = spaceId ? `spaces/${spaceId}/${state.projectId}.flow` : `${u.id}/${state.projectId}.flow`;
   const { error: upErr } = await sb.storage.from('projects').upload(path, blob, { upsert: true, contentType: 'application/octet-stream' });
-  if (upErr) { setSaveStatus('error'); throw upErr; }
+  if (upErr) { setCloudSaveStatus('error'); throw upErr; }
   // Upsert by id — the same UUID is used as both the row id and the storage
   // filename, so updates land on the same record on every push.
   const { data: existing } = await sb.from('projects').select('id').eq('id', state.projectId).maybeSingle();
@@ -666,7 +666,7 @@ async function pushCurrentProjectToCloud(opts = {}) {
       storage_path: path,
       updated_at: new Date().toISOString()
     }).eq('id', state.projectId);
-    if (upd) { setSaveStatus('error'); throw upd; }
+    if (upd) { setCloudSaveStatus('error'); throw upd; }
   } else {
     const { error: ins } = await sb.from('projects').insert({
       id: state.projectId,
@@ -678,9 +678,9 @@ async function pushCurrentProjectToCloud(opts = {}) {
       size_bytes: blob.size,
       storage_path: path
     });
-    if (ins) { setSaveStatus('error'); throw ins; }
+    if (ins) { setCloudSaveStatus('error'); throw ins; }
   }
-  setSaveStatus('saved');
+  setCloudSaveStatus('saved');
   return { isFirstSave };
 }
 

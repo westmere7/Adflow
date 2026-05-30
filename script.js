@@ -497,64 +497,166 @@ function buildStateSnapshot() {
   return snap;
 }
 
-let _saveStatus = 'saved';      // 'saved' | 'unsaved' | 'saving' | 'error'
+const _LOCAL_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const _isLocalUuid = (s) => typeof s === 'string' && _LOCAL_UUID_RE.test(s);
+
+let _localSaveStatus = 'saved'; // 'saved' | 'unsaved' | 'saving' | 'error'
+let _cloudSaveStatus = 'none';  // 'none' | 'saved' | 'saving' | 'error'
+let _lastLocalSaveTime = new Date();
+let _lastCloudSaveTime = null;
 let _autosaveTimer = null;
 let _autosaveSuspended = true;  // suppressed until the initial restore/render finishes
 
-function setSaveStatus(status) {
-  _saveStatus = status;
-  const el = document.getElementById('save-status');
-  if (!el) return;
+const localMap = {
+  saved: {
+    text: 'Saved',
+    title: 'Changes saved locally to browser storage',
+    class: 'status-saved',
+    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+             <path d="m9 13 2 2 4-4"></path>
+           </svg>`
+  },
+  unsaved: {
+    text: 'Unsaved',
+    title: 'You have unsaved changes',
+    class: 'status-unsaved',
+    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+             <circle cx="12" cy="13" r="1.5"></circle>
+           </svg>`
+  },
+  saving: {
+    text: 'Saving...',
+    title: 'Saving changes to local browser storage...',
+    class: 'status-saving',
+    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <line x1="12" y1="2" x2="12" y2="6"></line>
+             <line x1="12" y1="18" x2="12" y2="22"></line>
+             <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+             <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+             <line x1="2" y1="12" x2="6" y2="12"></line>
+             <line x1="18" y1="12" x2="22" y2="12"></line>
+             <line x1="6.83" y1="17.17" x2="4" y2="20"></line>
+             <line x1="20" y1="4" x2="17.17" y2="6.83"></line>
+           </svg>`
+  },
+  error: {
+    text: 'Save Error',
+    title: 'Failed to auto-save locally',
+    class: 'status-error',
+    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+             <line x1="12" y1="9" x2="12" y2="13"></line>
+             <line x1="12" y1="17" x2="12.01" y2="17"></line>
+           </svg>`
+  }
+};
 
-  const map = {
-    saved: {
-      tooltip: 'All changes saved to browser',
-      color: '#10b981',
-      boxShadow: '0 0 8px rgba(16, 185, 129, 0.4)',
-      animation: 'none',
-      text: 'Saved'
-    },
-    unsaved: {
-      tooltip: 'Unsaved changes',
-      color: '#f59e0b',
-      boxShadow: '0 0 8px rgba(245, 158, 11, 0.4)',
-      animation: 'none',
-      text: 'Unsaved'
-    },
-    saving: {
-      tooltip: 'Saving changes...',
-      color: '#38bdf8',
-      boxShadow: '0 0 8px rgba(56, 189, 248, 0.4)',
-      animation: 'save-dot-pulse 1s infinite alternate',
-      text: 'Saving...'
-    },
-    error: {
-      tooltip: 'Auto-save failed!',
-      color: '#ef4444',
-      boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)',
-      animation: 'save-dot-pulse 0.4s infinite alternate',
-      text: 'Error'
+const cloudMap = {
+  none: {
+    text: 'Local Only',
+    title: 'Project is local-only (not synced to cloud)',
+    class: 'status-none',
+    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+           </svg>`
+  },
+  saved: {
+    text: 'Synced',
+    title: 'Project backups are fully synced to cloud',
+    class: 'status-saved',
+    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+             <path d="m9 13 2 2 4-4"></path>
+           </svg>`
+  },
+  saving: {
+    text: 'Syncing...',
+    title: 'Syncing backup to cloud database...',
+    class: 'status-saving',
+    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M16 16l-4-4-4 4"></path>
+             <path d="M12 12v9"></path>
+             <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+           </svg>`
+  },
+  error: {
+    text: 'Sync Error',
+    title: 'Failed to back up to cloud database',
+    class: 'status-error',
+    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+             <line x1="12" y1="12" x2="12" y2="15"></line>
+             <line x1="12" y1="17" x2="12.01" y2="17"></line>
+           </svg>`
+  }
+};
+
+function _formatSaveTime(date) {
+  if (!date) return 'Never';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function updateSaveStatusUI() {
+  const localEl = document.getElementById('local-save-status');
+  const cloudEl = document.getElementById('cloud-save-status');
+  if (localEl) {
+    const localConf = localMap[_localSaveStatus] || localMap.saved;
+    localEl.setAttribute('class', `save-icon-status local ${localConf.class}`);
+    
+    const localTitle = `[Local Save Indicator]\n` +
+                       `• Status: ${localConf.text} (${localConf.title})\n` +
+                       `• Last Saved: ${_formatSaveTime(_lastLocalSaveTime)}`;
+    localEl.setAttribute('title', localTitle);
+  }
+  if (cloudEl) {
+    let currentCloudStatus = _cloudSaveStatus;
+    if (typeof authState !== 'undefined' && authState.enabled && !authState.currentUser()) {
+      currentCloudStatus = 'none';
     }
-  };
+    const cloudConf = cloudMap[currentCloudStatus] || cloudMap.none;
+    cloudEl.setAttribute('class', `save-icon-status cloud ${cloudConf.class}`);
+    
+    const cloudTitle = `[Cloud Sync Indicator]\n` +
+                       `• Status: ${cloudConf.text} (${cloudConf.title})\n` +
+                       `• Last Synced: ${_formatSaveTime(_lastCloudSaveTime)}`;
+    cloudEl.setAttribute('title', cloudTitle);
+  }
+}
 
-  const m = map[status] || map.saved;
-  el.style.backgroundColor = m.color;
-  el.style.boxShadow = m.boxShadow;
-  el.style.animation = m.animation;
-  el.title = m.tooltip;
+function setLocalSaveStatus(status) {
+  _localSaveStatus = status;
+  if (status === 'saved') {
+    _lastLocalSaveTime = new Date();
+  }
+  updateSaveStatusUI();
+}
 
-  const textEl = document.getElementById('save-status-text');
-  if (textEl) {
-    textEl.innerText = m.text;
-    textEl.style.color = status === 'error' ? '#f87171' : 'var(--text-muted)';
-    textEl.title = m.tooltip;
+function setCloudSaveStatus(status) {
+  _cloudSaveStatus = status;
+  if (status === 'saved') {
+    _lastCloudSaveTime = new Date();
+  }
+  updateSaveStatusUI();
+}
+
+function setSaveStatus(status) {
+  setLocalSaveStatus(status);
+}
+
+function initializeCloudSaveStatus() {
+  if (state.projectId && _isLocalUuid(state.projectId)) {
+    setCloudSaveStatus('saved');
+  } else {
+    setCloudSaveStatus('none');
   }
 }
 
 
 async function writeAutosave() {
   try {
-    setSaveStatus('saving');
+    setLocalSaveStatus('saving');
     const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50;
     const capped = getCappedHistory(limit);
     await _idbPut(AUTOSAVE_KEY, {
@@ -563,17 +665,17 @@ async function writeAutosave() {
       history: capped.history,
       historyIndex: capped.historyIndex
     });
-    setSaveStatus('saved');
+    setLocalSaveStatus('saved');
   } catch (e) {
     console.warn('Auto-save failed:', e);
-    setSaveStatus('error');
+    setLocalSaveStatus('error');
   }
 }
 
 // Debounced — called from every state-mutating path (pushHistory + render).
 function scheduleAutosave() {
   if (_autosaveSuspended) return;
-  if (_saveStatus !== 'saving') setSaveStatus('unsaved');
+  if (_localSaveStatus !== 'saving') setLocalSaveStatus('unsaved');
   if (_autosaveTimer) clearTimeout(_autosaveTimer);
   const intervalSecs = state.autosaveInterval !== undefined ? state.autosaveInterval : 10;
   _autosaveTimer = setTimeout(writeAutosave, intervalSecs * 1000);
@@ -12391,6 +12493,8 @@ async function loadProjectFromState(loadedState) {
   if (!state.projectId) state.projectId = uid('proj_');
 
   await syncRmitAssets();
+  setLocalSaveStatus('saved');
+  initializeCloudSaveStatus();
 
   if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
     history.length = 0;
@@ -12458,6 +12562,8 @@ async function loadProjectFromBlob(file, customProjectName) {
   state.assets = newAssets || {};
   if (!state.projectId) state.projectId = uid('proj_');
   await syncRmitAssets();
+  setLocalSaveStatus('saved');
+  initializeCloudSaveStatus();
 
   if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
     history.length = 0;
@@ -13166,6 +13272,13 @@ function openProjectSettingsDialog() {
   const bg = document.createElement('div');
   bg.className = 'modal-bg';
 
+  const localConf = localMap[_localSaveStatus] || localMap.saved;
+  let currentCloudStatus = _cloudSaveStatus;
+  if (typeof authState !== 'undefined' && authState.enabled && !authState.currentUser()) {
+    currentCloudStatus = 'none';
+  }
+  const cloudConf = cloudMap[currentCloudStatus] || cloudMap.none;
+
   bg.innerHTML = `
     <div class="modal" style="max-width:400px;">
       <div class="modal-head">
@@ -13184,6 +13297,36 @@ function openProjectSettingsDialog() {
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
           <input type="number" id="ps-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+        </div>
+        <div style="margin-top:4px;">
+          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Save &amp; Sync Status</label>
+          <div style="background:var(--bg-body, #0b0c0f); border:1px solid #272c3a; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:flex-start; gap:8px;">
+              <div style="margin-top:2px;">
+                <svg class="save-icon-status local ${localConf.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; flex-shrink:0;">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:11px; font-weight:600; color:var(--text-bright);">Local Autosave: ${localConf.text}</span>
+                <span style="font-size:10px; color:var(--text-muted);">${localConf.title}</span>
+                <span style="font-size:10px; color:var(--text-muted); font-style:italic;">Last Saved: ${_formatSaveTime(_lastLocalSaveTime)}</span>
+              </div>
+            </div>
+            <div style="height:1px; background:#272c3a; margin:4px 0;"></div>
+            <div style="display:flex; align-items:flex-start; gap:8px;">
+              <div style="margin-top:2px;">
+                <svg class="save-icon-status cloud ${cloudConf.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; flex-shrink:0;">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:11px; font-weight:600; color:var(--text-bright);">Cloud Backup: ${cloudConf.text}</span>
+                <span style="font-size:10px; color:var(--text-muted);">${cloudConf.title}</span>
+                <span style="font-size:10px; color:var(--text-muted); font-style:italic;">Last Synced: ${_formatSaveTime(_lastCloudSaveTime)}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
@@ -17413,7 +17556,8 @@ async function loadStartupTemplate(fileName, customProjectName) {
   // Enable autosave now that the initial state is settled, and persist the seed
   // project once if there was nothing to restore.
   _autosaveSuspended = false;
-  setSaveStatus('saved');
+  setLocalSaveStatus('saved');
+  initializeCloudSaveStatus();
   if (!restored) writeAutosave();
 
   // If auth is configured and no user is signed in, the splash sticks around
