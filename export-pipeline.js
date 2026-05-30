@@ -872,19 +872,53 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       // function — declared in script.js which loads after this file
       // but renderEl only runs at export time, long after page load).
       let maskCss = '';
+      let maskImgStyle = '';
       const maskAbove = findMaskAbove(c, el);
       if (maskAbove && typeof buildMaskClipPath === 'function') {
         const cp = buildMaskClipPath(maskAbove, el);
         maskCss = `clip-path:${cp};-webkit-clip-path:${cp};`;
+        
+        let animations = [];
+        
+        // 1. Entrance transition on the mask
         if (typeof generateMaskClipPathKeyframes === 'function' && !isImageExport) {
           const maskAnim = generateMaskClipPathKeyframes(maskAbove, el);
           if (maskAnim) {
             dynamicKeyframes += '\n' + maskAnim.keyframes;
-            maskCss += `animation:${maskAnim.animationCss};`;
+            animations.push(maskAnim.animationCss);
           }
         }
+        
+        // 2. Continuous FX on the mask
+        if (typeof getElementAnimationCSS === 'function' && !isImageExport) {
+          const maskEff = getElementAnimationCSS(maskAbove, isImageExport);
+          if (maskEff.effConfig) {
+            const animRule = maskEff.effConfig.replace('animation:', '').trim();
+            if (animRule) {
+              animations.push(animRule);
+            }
+            maskCss += maskEff.effVars;
+          }
+          
+          if (typeof getInverseElementAnimationCSS === 'function') {
+            const maskInverseEff = getInverseElementAnimationCSS(maskAbove, isImageExport, el);
+            if (maskInverseEff.effConfig) {
+              maskImgStyle = `${maskInverseEff.effConfig}${maskInverseEff.effVars}`;
+            }
+          }
+
+          // Apply transform-origin to both the parent mask wrapper and the child image
+          const maskCenterX = maskAbove.x + maskAbove.width / 2 - el.x;
+          const maskCenterY = maskAbove.y + maskAbove.height / 2 - el.y;
+          maskCss += `transform-origin:${maskCenterX}px ${maskCenterY}px;`;
+          maskImgStyle += `transform-origin:${maskCenterX}px ${maskCenterY}px;`;
+        }
+        
+        if (animations.length > 0) {
+          maskCss += `animation:${animations.join(', ')};`;
+        }
       }
-      return `    <div style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};" alt="${esc(el.altText || '')}" />${closeDivs}</div>`;
+      return `    <div style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};${maskImgStyle}" alt="${esc(el.altText || '')}" />${closeDivs}</div>`;
     }
     return '';
   };
@@ -1017,6 +1051,13 @@ ${dynamicKeyframes}
   @keyframes eff-heartbeat { 0% { transform: scale(1); } 14% { transform: scale(1.3); } 28% { transform: scale(1); } 42% { transform: scale(1.3); } 70% { transform: scale(1); } }
   @keyframes eff-pan { 0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); opacity: var(--pan-opacity-start, 1); } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
   @keyframes eff-zoom { 0% { scale: 1; } 100% { scale: var(--zoom-target, 1.5); } }
+  @keyframes eff-pulse-inverse { 0% { scale: 1; } 50% { scale: 0.9524; } 100% { scale: 1; } }
+  @keyframes eff-float-inverse { 0% { translate: 0 0; } 50% { translate: 0 10px; } 100% { translate: 0 0; } }
+  @keyframes eff-wiggle-inverse { 0%, 100% { rotate: 5deg; } 50% { rotate: -5deg; } }
+  @keyframes eff-spin-inverse { 100% { rotate: var(--spin-target-inverse, -360deg); } }
+  @keyframes eff-heartbeat-inverse { 0% { scale: 1; } 14% { scale: 0.7692; } 28% { scale: 1; } 42% { scale: 0.7692; } 70% { scale: 1; } }
+  @keyframes eff-pan-inverse { 0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); } 100% { translate: 0 0; rotate: 0deg; } }
+  @keyframes eff-zoom-inverse { 0% { scale: 1; } 100% { scale: var(--zoom-target-inverse, 0.6667); } }
 
   /* html/body intentionally transparent (no width/height/background).
      When the ad is served via an iframe (the normal display-ad case)

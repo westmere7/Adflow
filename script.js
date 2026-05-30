@@ -2918,6 +2918,65 @@ function getElementAnimationCSS(el, isImageExport) {
   return { entryConfig, entryVars, effConfig, effVars };
 }
 
+function getInverseElementAnimationCSS(el, isImageExport, imageEl) {
+  const effType = el.effectType || 'none';
+  let effAnims = [];
+  let effVars = '';
+  if (effType !== 'none' && !isImageExport) {
+    const effDur = el.effDuration !== undefined ? el.effDuration : 2;
+    const effDelay = el.effDelay !== undefined ? el.effDelay : 0;
+    if (effType === 'pan') {
+      let px = el.panFromX !== undefined ? el.panFromX : 0;
+      let py = el.panFromY !== undefined ? el.panFromY : 0;
+      if (el.panFromX === undefined && el.panFromY === undefined) {
+        const dist = el.panDist !== undefined ? el.panDist : 50;
+        if (el.panDir === 'L') px = dist;
+        else if (el.panDir === 'R') px = -dist;
+        else if (el.panDir === 'U') py = dist;
+        else if (el.panDir === 'D') py = -dist;
+        else px = dist;
+      }
+      let rx = -px;
+      let ry = -py;
+      if (imageEl) {
+        const imgRot = imageEl.rotation || 0;
+        const rad = imgRot * Math.PI / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        rx = -px * cos - py * sin;
+        ry = px * sin - py * cos;
+      }
+      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+      const fill = el.effOnce ? 'forwards' : 'infinite';
+      effAnims.push(`eff-pan-inverse ${effDur}s ${ease} ${effDelay}s ${fill}`);
+      const rot = el.panRotate !== undefined ? el.panRotate : 0;
+      effVars = `--pan-x:${rx}px; --pan-y:${ry}px; --pan-rotate:${-rot}deg;`;
+    } else if (effType === 'zoom') {
+      const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
+      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+      const fill = el.effOnce ? 'forwards' : 'infinite';
+      effAnims.push(`eff-zoom-inverse ${effDur}s ${ease} ${effDelay}s ${fill}`);
+      effVars = `--zoom-target-inverse:${1 / zt};`;
+    } else if (effType === 'spin') {
+      const spinT = el.spinTarget !== undefined ? el.spinTarget : 360;
+      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+      const repeat = el.spinRepeat !== undefined ? el.spinRepeat : 1;
+      const fill = Math.max(1, repeat);
+      effAnims.push(`eff-spin-inverse ${effDur}s ${ease} ${effDelay}s ${fill} both`);
+      effVars = `--spin-target-inverse:${-spinT}deg;`;
+    } else {
+      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+      const speed = Math.max(1, Number(speedStr));
+      const duration = 2 / (speed / 100);
+      effAnims.push(`eff-${effType}-inverse ${duration}s ease-in-out ${effDelay}s infinite`);
+    }
+  }
+  return {
+    effConfig: effAnims.length ? `animation: ${effAnims.join(', ')};` : '',
+    effVars
+  };
+}
+
 // SVG fill helper for elements rendered via inline SVG (pixel shapes).
 // SVG's `fill` attribute does NOT accept CSS linear-gradient strings — a
 // gradient value silently falls back to default black. To support
@@ -10580,6 +10639,58 @@ function checkButtonFontSizeWarning(el) {
           }
         };
 
+        const applyInverseEffAnim = (tNode, imgEl) => {
+          const effDur = nodeEl.effDuration !== undefined ? nodeEl.effDuration : 2;
+          if (val === 'pan') {
+            let px = nodeEl.panFromX !== undefined ? nodeEl.panFromX : 0;
+            let py = nodeEl.panFromY !== undefined ? nodeEl.panFromY : 0;
+            if (nodeEl.panFromX === undefined && nodeEl.panFromY === undefined) {
+              const dist = nodeEl.panDist !== undefined ? nodeEl.panDist : 50;
+              if (nodeEl.panDir === 'L') px = dist;
+              else if (nodeEl.panDir === 'R') px = -dist;
+              else if (nodeEl.panDir === 'U') py = dist;
+              else if (nodeEl.panDir === 'D') py = -dist;
+              else px = dist;
+            }
+            let rx = -px;
+            let ry = -py;
+            if (imgEl) {
+              const imgRot = imgEl.rotation || 0;
+              const rad = imgRot * Math.PI / 180;
+              const cos = Math.cos(rad);
+              const sin = Math.sin(rad);
+              rx = -px * cos - py * sin;
+              ry = px * sin - py * cos;
+            }
+            tNode.style.setProperty('--pan-x', rx + 'px');
+            tNode.style.setProperty('--pan-y', ry + 'px');
+            const rot = nodeEl.panRotate !== undefined ? nodeEl.panRotate : 0;
+            tNode.style.setProperty('--pan-rotate', (-rot) + 'deg');
+            tNode.style.setProperty('--pan-opacity-start', 1);
+            const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
+            const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
+            tNode.style.animation = `eff-pan-inverse ${effDur}s ${ease} 0s ${fill}`;
+          } else if (val === 'zoom') {
+            const zt = nodeEl.zoomTarget !== undefined ? nodeEl.zoomTarget / 100 : 1.5;
+            tNode.style.setProperty('--zoom-target-inverse', 1 / zt);
+            const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
+            const fill = nodeEl.effOnce ? 'forwards' : 'infinite';
+            tNode.style.animation = `eff-zoom-inverse ${effDur}s ${ease} 0s ${fill}`;
+          } else if (val === 'spin') {
+            const spinT = nodeEl.spinTarget !== undefined ? nodeEl.spinTarget : 360;
+            tNode.style.setProperty('--spin-target-inverse', (-spinT) + 'deg');
+            const ease = nodeEl.effEase !== false ? 'ease-in-out' : 'linear';
+            const repeat = nodeEl.spinRepeat !== undefined ? nodeEl.spinRepeat : 1;
+            const fill = Math.max(1, repeat);
+            tNode.style.animation = `eff-spin-inverse ${effDur}s ${ease} 0s ${fill} both`;
+          } else {
+            const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
+            const speed = Math.max(1, Number(speedStr));
+            const duration = 2 / (speed / 100);
+            tNode.style.animation = `eff-${val}-inverse ${duration}s ease-in-out 0s infinite`;
+          }
+        };
+
         applyEffAnim(targetNode);
 
         if (nodeEl.isMask) {
@@ -10587,9 +10698,16 @@ function checkButtonFontSizeWarning(el) {
             const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
             if (imgEl) {
               const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
-              const effG = imgDom ? imgDom.querySelector('mask g.mask-g-eff') : null;
-              if (effG) {
-                applyEffAnim(effG);
+              if (imgDom) {
+                const maskCenterX = nodeEl.x + nodeEl.width / 2 - imgEl.x;
+                const maskCenterY = nodeEl.y + nodeEl.height / 2 - imgEl.y;
+                imgDom.style.transformOrigin = `${maskCenterX}px ${maskCenterY}px`;
+                applyEffAnim(imgDom);
+                const innerImg = imgDom.querySelector('img');
+                if (innerImg) {
+                  innerImg.style.transformOrigin = `${maskCenterX}px ${maskCenterY}px`;
+                  applyInverseEffAnim(innerImg, imgEl);
+                }
               }
             }
           }
@@ -10613,10 +10731,11 @@ function checkButtonFontSizeWarning(el) {
           const innerImg = node.querySelector('img');
           if (innerImg) {
             innerImg.style.animation = '';
+            innerImg.style.transformOrigin = '';
             innerImg.style.removeProperty('--pan-x');
             innerImg.style.removeProperty('--pan-y');
-            innerImg.style.removeProperty('--zoom-target');
-            innerImg.style.removeProperty('--spin-target');
+            innerImg.style.removeProperty('--zoom-target-inverse');
+            innerImg.style.removeProperty('--spin-target-inverse');
           }
         }
 
@@ -10625,13 +10744,18 @@ function checkButtonFontSizeWarning(el) {
             const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
             if (imgEl) {
               const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
-              const effG = imgDom ? imgDom.querySelector('mask g.mask-g-eff') : null;
-              if (effG) {
-                effG.style.animation = '';
-                effG.style.removeProperty('--pan-x');
-                effG.style.removeProperty('--pan-y');
-                effG.style.removeProperty('--zoom-target');
-                effG.style.removeProperty('--spin-target');
+              if (imgDom) {
+                imgDom.style.animation = '';
+                imgDom.style.transformOrigin = '';
+                const innerImg = imgDom.querySelector('img');
+                if (innerImg) {
+                  innerImg.style.animation = '';
+                  innerImg.style.transformOrigin = '';
+                  innerImg.style.removeProperty('--pan-x');
+                  innerImg.style.removeProperty('--pan-y');
+                  innerImg.style.removeProperty('--zoom-target-inverse');
+                  innerImg.style.removeProperty('--spin-target-inverse');
+                }
               }
             }
           }

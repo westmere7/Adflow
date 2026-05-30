@@ -590,11 +590,41 @@ body.theme-rmit-navy {
 
 
     @keyframes eff-zoom {
-
       0% { scale: 1; }
-
       100% { scale: var(--zoom-target, 1.5); }
+    }
 
+    @keyframes eff-pulse-inverse {
+      0% { scale: 1; }
+      50% { scale: 0.9524; }
+      100% { scale: 1; }
+    }
+    @keyframes eff-float-inverse {
+      0% { translate: 0 0; }
+      50% { translate: 0 10px; }
+      100% { translate: 0 0; }
+    }
+    @keyframes eff-wiggle-inverse {
+      0%, 100% { rotate: 5deg; }
+      50% { rotate: -5deg; }
+    }
+    @keyframes eff-spin-inverse {
+      100% { rotate: var(--spin-target-inverse, -360deg); }
+    }
+    @keyframes eff-heartbeat-inverse {
+      0% { scale: 1; }
+      14% { scale: 0.7692; }
+      28% { scale: 1; }
+      42% { scale: 0.7692; }
+      70% { scale: 1; }
+    }
+    @keyframes eff-pan-inverse {
+      0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); }
+      100% { translate: 0 0; rotate: 0deg; }
+    }
+    @keyframes eff-zoom-inverse {
+      0% { scale: 1; }
+      100% { scale: var(--zoom-target-inverse, 0.6667); }
     }
 
 

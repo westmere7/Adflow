@@ -421,7 +421,7 @@ const DOCS_SECTIONS = [
         </table>
       `},
       { id: 'changelog-link', title: 'Changelog', body: `
-        <p>Click the version label in the bottom-right footer (e.g. <b>v0.16.66</b>) to open the full changelog modal.</p>
+        <p>Click the version label in the bottom-right footer (e.g. <b>v0.16.68</b>) to open the full changelog modal.</p>
       `},
     ]
   },
@@ -659,6 +659,25 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.16.68',
+    date: 'May 2026',
+    items: [
+      'Resolved image alignment drift and relative motion bugs under vector mask continuous animations.',
+      'Bound both the parent mask container and child image layer to a shared, dynamic transform-origin aligned to the mask\'s center coordinate.',
+      'Corrected child image translation offsets to compensate for base rotation layers, keeping the image stationary inside its moving mask.'
+    ]
+  },
+  {
+    version: 'v0.16.67',
+    date: 'May 2026',
+    items: [
+      'Fixed continuous FX animation rendering for vector masks under the CSS clip-path system.',
+      'Implemented mask container movement matching the chosen continuous effect (e.g. spin, wiggle, pulse).',
+      'Added automatic counter-animations on the masked image inside the wrapper to keep the background stationary while the mask moves.',
+      'Exported mask continuous effect parameters, variables, and inverted keyframes inside HTML and ZIP deliverables.'
+    ]
+  },
   {
     version: 'v0.16.66',
     date: 'May 2026',
