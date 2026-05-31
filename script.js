@@ -11646,13 +11646,15 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  if (e.key.toLowerCase() === 'v') {
-    setActiveTool('select');
-    return;
-  }
-  if (e.key.toLowerCase() === 'z') {
-    setActiveTool('zoom');
-    return;
+  if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (e.key.toLowerCase() === 'v') {
+      setActiveTool('select');
+      return;
+    }
+    if (e.key.toLowerCase() === 'z') {
+      setActiveTool('zoom');
+      return;
+    }
   }
 
   if (e.key === 'Tab') {
