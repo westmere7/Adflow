@@ -161,7 +161,7 @@ RMIT-Adflow/
     └── assets/                # Pre-loaded brand creative (scanned at startup)
 ```
 
-See `app_breakdown.md` §2 for the full file-routing table — which feature
+See `knowledge_base.md` §2 for the full file-routing table — which feature
 lives in which file, and the load-order rules for cross-file references.
 
 ### System Requirements
