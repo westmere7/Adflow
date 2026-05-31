@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.73 (Current) - May 2026 — Engine v2.18
+v0.16.74 (Current) - May 2026 — Engine v2.18
+- Fixed text tool inline editing click-outside behavior. Clicking outside an editing text element commits/confirms the change instead of creating a new text element.
+
+v0.16.73 - May 2026 — Engine v2.18
 - Removed the continuous pulsing animation on the save status indicators.
 - Transitioned indicator status changes to use a simple CSS color/background/border fade transition.
 
