@@ -660,6 +660,45 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.73',
+    date: 'May 2026 — Engine v2.18',
+    items: [
+      'Removed the continuous pulsing animation on the save status indicators.',
+      'Transitioned indicator status changes to use a simple CSS color/background/border fade transition.'
+    ]
+  },
+  {
+    version: 'v0.16.72',
+    date: 'May 2026 — Engine v2.18',
+    items: [
+      'Configured dynamic status colors for the topbar save badge mapping to user specs: "Save locally" (Accent), "Cloud synced" (Blue), "Saved & synced" (Green), and "Unsaved" (Amber).'
+    ]
+  },
+  {
+    version: 'v0.16.71',
+    date: 'May 2026 — Engine v2.18',
+    items: [
+      'Customized save status text strings according to user design specs ("Save locally", "Cloud synced", "Saved & synced", and "Unsaved").',
+      'Increased the fixed width of the save status container to 96px in CSS to ensure larger statuses fit cleanly.'
+    ]
+  },
+  {
+    version: 'v0.16.70',
+    date: 'May 2026 — Engine v2.18',
+    items: [
+      'Configured a fixed width of 90px on the save status container and centered text layout to prevent topbar content shifting.',
+      'Introduced the "Unsaved Local" amber-alert badge state, warning users when changes are synced in the cloud but not yet auto-saved locally.'
+    ]
+  },
+  {
+    version: 'v0.16.69',
+    date: 'May 2026 — Engine v2.18',
+    items: [
+      'Replaced the dual local/cloud save status checkmark icons in the top bar with a single dynamic, HSL-themed text badge ("Unsaved", "Saving...", "Saved", "Syncing...", "Saved + Cloud", "Save Error", "Sync Error").',
+      'Optimized layout width dynamics of the save status container and designed animated state transitions (pulses and shakes) for premium glassmorphic visual feedback.'
+    ]
+  },
+  {
     version: 'v0.16.68',
     date: 'May 2026',
     items: [

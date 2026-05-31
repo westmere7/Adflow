@@ -599,29 +599,69 @@ function _formatSaveTime(date) {
 }
 
 function updateSaveStatusUI() {
-  const localEl = document.getElementById('local-save-status');
-  const cloudEl = document.getElementById('cloud-save-status');
-  if (localEl) {
-    const localConf = localMap[_localSaveStatus] || localMap.saved;
-    localEl.setAttribute('class', `save-icon-status local ${localConf.class}`);
-    
-    const localTitle = `[Local Save Indicator]\n` +
-                       `• Status: ${localConf.text} (${localConf.title})\n` +
-                       `• Last Saved: ${_formatSaveTime(_lastLocalSaveTime)}`;
-    localEl.setAttribute('title', localTitle);
+  const textEl = document.getElementById('save-status-text');
+  const containerEl = document.getElementById('save-status-container');
+  if (!textEl) return;
+
+  let text = 'Saved';
+  let className = 'status-saved';
+
+  let currentCloudStatus = _cloudSaveStatus;
+  if (typeof authState !== 'undefined' && authState.enabled && !authState.currentUser()) {
+    currentCloudStatus = 'none';
   }
-  if (cloudEl) {
-    let currentCloudStatus = _cloudSaveStatus;
-    if (typeof authState !== 'undefined' && authState.enabled && !authState.currentUser()) {
-      currentCloudStatus = 'none';
+
+  if (_localSaveStatus === 'saving') {
+    text = 'Saving...';
+    className = 'status-saving';
+  } else if (_localSaveStatus === 'error') {
+    text = 'Save Error';
+    className = 'status-error';
+  } else if (_localSaveStatus === 'unsaved') {
+    if (currentCloudStatus === 'saving') {
+      text = 'Syncing...';
+      className = 'status-saving';
+    } else if (currentCloudStatus === 'error') {
+      text = 'Sync Error';
+      className = 'status-error';
+    } else if (currentCloudStatus === 'saved') {
+      text = 'Cloud synced';
+      className = 'status-cloud-only';
+    } else {
+      text = 'Unsaved';
+      className = 'status-unsaved';
     }
-    const cloudConf = cloudMap[currentCloudStatus] || cloudMap.none;
-    cloudEl.setAttribute('class', `save-icon-status cloud ${cloudConf.class}`);
-    
-    const cloudTitle = `[Cloud Sync Indicator]\n` +
-                       `• Status: ${cloudConf.text} (${cloudConf.title})\n` +
-                       `• Last Synced: ${_formatSaveTime(_lastCloudSaveTime)}`;
-    cloudEl.setAttribute('title', cloudTitle);
+  } else {
+    // Local is saved
+    if (currentCloudStatus === 'saving') {
+      text = 'Syncing...';
+      className = 'status-saving';
+    } else if (currentCloudStatus === 'error') {
+      text = 'Sync Error';
+      className = 'status-error';
+    } else if (currentCloudStatus === 'saved') {
+      text = 'Saved & synced';
+      className = 'status-fully-saved';
+    } else {
+      text = 'Save locally';
+      className = 'status-local-only';
+    }
+  }
+
+  textEl.textContent = text;
+  textEl.className = `save-line-text ${className}`;
+
+  const localTime = _formatSaveTime(_lastLocalSaveTime);
+  const cloudTime = _lastCloudSaveTime ? _formatSaveTime(_lastCloudSaveTime) : 'Never';
+  const localConfText = localMap[_localSaveStatus]?.text || 'Saved';
+  const cloudConfText = cloudMap[currentCloudStatus]?.text || 'Local Only';
+
+  const title = `[Save & Sync Status]\n` +
+                `• Local Save: ${localConfText} (Last: ${localTime})\n` +
+                `• Cloud Sync: ${cloudConfText} (Last: ${cloudTime})`;
+
+  if (containerEl) {
+    containerEl.setAttribute('title', title);
   }
 }
 
@@ -14745,7 +14785,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.65';
+  const currentVersion = 'v0.16.73';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14796,7 +14836,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.65';
+  const currentVersion = 'v0.16.73';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -14931,7 +14971,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.65</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.73</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

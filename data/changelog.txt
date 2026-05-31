@@ -1,6 +1,57 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.63 (Current) - May 2026 — Engine v2.16
+v0.16.73 (Current) - May 2026 — Engine v2.18
+- Removed the continuous pulsing animation on the save status indicators.
+- Transitioned indicator status changes to use a simple CSS color/background/border fade transition.
+
+v0.16.72 - May 2026 — Engine v2.18
+- Configured dynamic status colors for the topbar save badge mapping to user specs: "Save locally" (Accent), "Cloud synced" (Blue), "Saved & synced" (Green), and "Unsaved" (Amber).
+
+v0.16.71 - May 2026 — Engine v2.18
+- Customized save status text strings according to user design specs ("Save locally", "Cloud synced", "Saved & synced", and "Unsaved").
+- Increased the fixed width of the save status container to 96px in CSS to ensure larger statuses fit cleanly.
+
+v0.16.70 - May 2026 — Engine v2.18
+- Configured a fixed width of 90px on the save status container and centered text layout to prevent topbar content shifting.
+- Introduced the "Unsaved Local" amber-alert badge state, warning users when changes are synced in the cloud but not yet auto-saved locally.
+
+v0.16.69 - May 2026 — Engine v2.18
+- Replaced the dual local/cloud save status checkmark icons in the top bar with a single dynamic, HSL-themed text badge ("Unsaved", "Saving...", "Saved", "Syncing...", "Saved + Cloud", "Save Error", "Sync Error").
+- Optimized layout width dynamics of the save status container and designed animated state transitions (pulses and shakes) for premium glassmorphic visual feedback.
+
+v0.16.68 - May 2026 — Engine v2.18
+- Resolved image alignment drift and relative motion bugs under vector mask continuous animations.
+- Bound both the parent mask container and child image layer to a shared, dynamic transform-origin aligned to the mask's center coordinate.
+- Corrected child image translation offsets to compensate for base rotation layers, keeping the image stationary inside its moving mask.
+
+v0.16.67 - May 2026 — Engine v2.18
+- Fixed continuous FX animation rendering for vector masks under the CSS clip-path system.
+- Implemented mask container movement matching the chosen continuous effect (e.g. spin, wiggle, pulse).
+- Added automatic counter-animations on the masked image inside the wrapper to keep the background stationary while the mask moves.
+- Exported mask continuous effect parameters, variables, and inverted keyframes inside HTML and ZIP deliverables.
+
+v0.16.66 - May 2026 — Engine v2.18
+- Added dynamic Canvas Zoom & Select Tool controls inside the main canvas footer.
+- Tied workspace keyboard shortcut keys (V for Select tool, Z for Zoom tool) for intuitive editing mode switches.
+- Added mouse panning support and Alt key toggle options to invert standard zooming directions when magnifying.
+- Enforced strict fullscreen preview mode safeguards to prevent tool switching and disable click-to-zoom actions.
+
+v0.16.65 - May 2026 — Engine v2.18
+- Added dynamic scanning of the `Startup/` templates directory, automatically parsing flow archives to register pre-defined templates in a generated registry manifest.
+- Refactored the Settings panel and the New Project wizard to display dynamic template options instead of hardcoded startup preferences.
+- Preserved user-defined Project Names when spawning a new workspace from a custom startup template instead of overwriting state metadata.
+- Corrected layout version headers in settings modals and dialogs to match current release version (v0.16.65).
+
+v0.16.64 - May 2026 — Engine v2.17
+- Implemented dynamic right-side boundary clamping (maxRight) for Heading and Subheading elements on 970x250 canvases (Billboard) in both Auto-Arrange and Auto-Resize to prevent overlaps with right-half elements and CTA buttons.
+- Revamped the Auto-Resize execution dialogue and Settings modals, removing obsolete properties (e.g. main image cover fallback).
+- Added behavior settings and checkboxes to toggle subheading visibility on 320x50 canvases (hideSubheading320x50) and automatically lock brand elements (lockBrandElements, covering Logo, Tagline, and CRICOS layers) after Auto-Resize and Auto-Arrange.
+- Updated the canvas right-click "Auto-Resize" menu action to always display the execution dialogue instead of executing instantly.
+- Always add target elements to their respective link groups during Auto-Resize, but set the group's liveLink property to false (disabled) by default unless live-linking is enabled in the settings.
+- Added a "Live Linking" toggle to the right-click selection context menu for grouped elements to enable/disable real-time style propagation on the fly.
+- Updated placeCtaButton to detect and respect the horizontal alignment of the CTA button on the source canvas (Left, Center, Right) when placing it in vertically stacked layouts (300x600, 160x600, and default fallbacks).
+
+v0.16.63 - May 2026 — Engine v2.16
 - Renamed the validator specifications tab to "Ad Compliance" and updated its layout and status icons.
 - Refactored validation status badge indicators in the editor sidebar and modal list to support three states: green check (✓) only when all checks pass, orange warning (⚠️) when warnings exist but no blocker errors exist, and red warning (⚠️) if any critical Ad Compliance blockers are tripped.
 - Made the Accessibility and Branding audit engine evaluation synchronous and real-time, executing automatically inside the main render() loop on every canvas edit.

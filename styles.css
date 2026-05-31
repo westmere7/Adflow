@@ -4085,9 +4085,8 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 #save-status-container {
   display: flex;
   align-items: center;
-  gap: 6px;
   margin-left: 8px;
-  width: 36px;
+  width: 96px;
   flex-shrink: 0;
   user-select: none;
   cursor: pointer;
@@ -4112,7 +4111,6 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 .save-icon-status.status-saving {
   color: var(--accent-base, #7c5cff);
   filter: drop-shadow(0 0 3px var(--accent-base));
-  animation: save-pulse 1s ease-in-out infinite alternate;
 }
 
 .save-icon-status.status-saved {
@@ -4136,8 +4134,62 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 
 .save-line-text {
   font-size: 8.5px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.25s ease;
+  display: inline-block;
+  white-space: nowrap;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.save-line-text.status-saving {
+  color: var(--accent-base, #7c5cff);
+  background: color-mix(in srgb, var(--accent-base) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent-base) 20%, transparent);
+}
+
+.save-line-text.status-local-only {
+  color: var(--accent-light, #a78bfa);
+  background: color-mix(in srgb, var(--accent-base) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent-base) 15%, transparent);
+}
+
+.save-line-text.status-cloud-only {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.15);
+}
+
+.save-line-text.status-fully-saved {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.15);
+}
+
+.save-line-text.status-unsaved {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.15);
+}
+
+.save-line-text.status-error {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.15);
+  animation: save-shake 0.4s ease;
+}
+
+.save-line-text.status-none {
+  color: color-mix(in srgb, var(--text-muted) 50%, transparent);
+  background: transparent;
+  border-color: transparent;
 }
 
 #project-name-display {

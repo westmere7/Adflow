@@ -371,12 +371,7 @@
         <div id="project-meta-container" style="display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; border-radius:4px; padding:2px 6px; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.06)'" onmouseout="this.style.backgroundColor='transparent'" title="Click to open project settings / Double-click to rename">
           <span id="project-name-display" style="font-size:12px; font-weight:600; color:var(--text-bright); outline:none; white-space:nowrap;">RMIT_ad</span>
           <div id="save-status-container">
-            <svg id="local-save-status" class="save-icon-status local" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            <svg id="cloud-save-status" class="save-icon-status cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
+            <span id="save-status-text" class="save-line-text">Saved</span>
           </div>
         </div>
         <div style="height:20px; width:1px; background-color:#1f2330; margin: 0 12px; flex-shrink:0;"></div>
@@ -605,7 +600,7 @@
         </div>
         <div class="workspace-footer" id="workspace-footer">
           <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
-          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.16.68</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.16.73</button>
         </div>
       </div>
     </div>
