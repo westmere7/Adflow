@@ -660,13 +660,6 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
-    version: 'v0.16.74',
-    date: 'May 2026 — Engine v2.18',
-    items: [
-      'Fixed text tool inline editing click-outside behavior. Clicking outside an editing text element commits/confirms the change instead of creating a new text element.'
-    ]
-  },
-  {
     version: 'v0.16.73',
     date: 'May 2026 — Engine v2.18',
     items: [

@@ -2725,20 +2725,6 @@ function canvasFrameNode(c) {
       if (isSpaceDown || e.button === 1) return;
 
       if (state.activeTool === 'text') {
-        if (state.editingElementId !== null) {
-          const activeEd = document.querySelector(`.el[data-id="${state.editingElementId}"] .editable`) || document.querySelector('.editable');
-          if (activeEd) {
-            activeEd.blur();
-          }
-          state.editingElementId = null;
-          state.selectedElementId = null;
-          state.layerSelection = [];
-          state.activeCanvasId = c.id;
-          e.stopPropagation();
-          render();
-          return;
-        }
-
         e.stopPropagation();
         state.activeCanvasId = c.id;
         if (!e.shiftKey) {
@@ -14799,7 +14785,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.74';
+  const currentVersion = 'v0.16.73';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14850,7 +14836,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.74';
+  const currentVersion = 'v0.16.73';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -14985,7 +14971,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.74</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.73</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
