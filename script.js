@@ -1853,6 +1853,11 @@ function syncAdflowLogos() {
 }
 
 function render(skipProps = false) {
+  if (state.isPreviewMode || state.singlePreviewId) {
+    if (state.activeTool !== 'select') {
+      setActiveTool('select');
+    }
+  }
   if (state.canvases) {
     state.canvases.forEach(sanitizeMasks);
     state.canvases.forEach(runAuditChecks);
@@ -2678,6 +2683,112 @@ function canvasFrameNode(c) {
     canvas.addEventListener('mousedown', (e) => {
       if (state.activeTool === 'zoom') return;
       if (isSpaceDown || e.button === 1) return;
+
+      if (state.activeTool === 'text') {
+        e.stopPropagation();
+        state.activeCanvasId = c.id;
+        if (!e.shiftKey) {
+          state.selectedElementId = null;
+          state.editingElementId = null;
+          state.layerSelection = [];
+          if (state.isolatedGroupId) state.isolatedGroupId = null;
+        }
+        render();
+
+        const newCanvasInner = document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas-inner`);
+        if (!newCanvasInner) return;
+        const newCanvas = newCanvasInner.parentElement;
+        const rect = newCanvas.getBoundingClientRect();
+        const z = state.zoom || 1;
+        const startX = (e.clientX - rect.left) / z;
+        const startY = (e.clientY - rect.top) / z;
+
+        const selBox = document.createElement('div');
+        selBox.style.position = 'absolute';
+        selBox.style.border = '1px dashed var(--accent-base, #7c5cff)';
+        selBox.style.backgroundColor = 'rgba(124, 92, 255, 0.05)';
+        selBox.style.pointerEvents = 'none';
+        selBox.style.zIndex = '999999';
+        selBox.style.left = startX + 'px';
+        selBox.style.top = startY + 'px';
+        selBox.style.width = '0px';
+        selBox.style.height = '0px';
+        newCanvasInner.appendChild(selBox);
+
+        let isDraggingSelection = false;
+
+        const onMove = (ev) => {
+          isDraggingSelection = true;
+          const curX = (ev.clientX - rect.left) / z;
+          const curY = (ev.clientY - rect.top) / z;
+
+          const x = Math.min(startX, curX);
+          const y = Math.min(startY, curY);
+          const w = Math.abs(curX - startX);
+          const h = Math.abs(curY - startY);
+
+          selBox.style.left = x + 'px';
+          selBox.style.top = y + 'px';
+          selBox.style.width = w + 'px';
+          selBox.style.height = h + 'px';
+        };
+
+        const onUp = (ev) => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+          selBox.remove();
+
+          let rx = startX;
+          let ry = startY;
+          let rw = 220;
+          let rh = 32;
+
+          if (isDraggingSelection) {
+            const curX = (ev.clientX - rect.left) / z;
+            const curY = (ev.clientY - rect.top) / z;
+
+            rx = Math.min(startX, curX);
+            ry = Math.min(startY, curY);
+            const w = Math.abs(curX - startX);
+            const h = Math.abs(curY - startY);
+            if (w > 5 || h > 5) {
+              rw = w;
+              rh = h;
+            }
+          }
+
+          const el = makeElement('text');
+          el.x = rx;
+          el.y = ry;
+          el.width = rw;
+          el.height = rh;
+          c.elements.push(el);
+
+          state.selectedElementId = el.id;
+          state.layerSelection = [el.id];
+          state.editingElementId = el.id;
+          
+          pushHistory();
+          render();
+
+          setTimeout(() => {
+            const ed = workspaceEl.querySelector(`.el[data-id="${el.id}"] .editable`);
+            if (ed) {
+              ed.focus();
+              const range = document.createRange();
+              range.selectNodeContents(ed);
+              const sel = window.getSelection();
+              sel.removeAllRanges();
+              sel.addRange(range);
+            }
+          }, 0);
+        };
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        return;
+      }
+
       if (e.target === canvas || e.target === canvasInner) {
         if (state.isolatedGroupId) {
           const groupElements = c.elements.filter(el => el.groupId === state.isolatedGroupId);
@@ -4515,6 +4626,51 @@ function onLineThicknessMouseDown(e, el) {
 // ============================================================================
 function onElementMouseDown(e, el, canvasCtx) {
   if (state.activeTool === 'zoom') return;
+  if (state.activeTool === 'text') {
+    if ((el.type === 'text' || el.type === 'button') && !e.target.classList.contains('selection-edge')) {
+      e.stopPropagation();
+      if (state.dataMerge && state.dataMerge.locked && typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'text')) {
+        state.activeCanvasId = canvasCtx.id;
+        state.selectedElementId = el.id;
+        state.layerSelection = [el.id];
+        render(true);
+        showCanvasNotification('This element is a dynamic slot and editing is locked.', {
+          type: 'warning',
+          button: {
+            text: 'Unlock data edit',
+            onClick: () => {
+              state.dataMerge.locked = false;
+              pushHistory();
+              renderVersionSwitcher();
+              render();
+              showCanvasNotification('Data editing unlocked');
+            }
+          }
+        });
+        return;
+      }
+      state.activeCanvasId = canvasCtx.id;
+      state.selectedElementId = el.id;
+      state.layerSelection = [el.id];
+      state.editingElementId = el.id;
+      render();
+      setTimeout(() => {
+        const ed = workspaceEl.querySelector(`.el[data-id="${el.id}"] .editable`);
+        if (ed) {
+          ed.focus();
+          const r = document.createRange();
+          r.selectNodeContents(ed);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(r);
+        }
+      }, 0);
+      return;
+    } else {
+      // Non-text element clicked under Text Tool: bubble up to canvas mousedown listener to draw/place a text box
+      return;
+    }
+  }
   if (isSpaceDown || e.button === 1) {
     isPanning = true;
     panStartX = e.clientX;
@@ -11655,6 +11811,10 @@ window.addEventListener('keydown', (e) => {
       setActiveTool('zoom');
       return;
     }
+    if (e.key.toLowerCase() === 't') {
+      setActiveTool('text');
+      return;
+    }
   }
 
   if (e.key === 'Tab') {
@@ -12187,23 +12347,29 @@ function setActiveTool(tool) {
   state.activeTool = tool;
   const toolSelect = document.getElementById('tool-select');
   const toolZoom = document.getElementById('tool-zoom');
+  const toolText = document.getElementById('tool-text');
   const canvasArea = document.getElementById('canvas-area');
 
   if (toolSelect && toolZoom) {
-    if (tool === 'select') {
-      toolSelect.classList.add('active');
-      toolZoom.classList.remove('active');
-      if (canvasArea) {
+    toolSelect.classList.toggle('active', tool === 'select');
+    toolZoom.classList.toggle('active', tool === 'zoom');
+    if (toolText) toolText.classList.toggle('active', tool === 'text');
+
+    if (canvasArea) {
+      if (tool === 'select') {
         canvasArea.style.cursor = '';
         canvasArea.classList.remove('tool-zoom-active');
         canvasArea.classList.remove('zoom-out-active');
-      }
-    } else if (tool === 'zoom') {
-      toolSelect.classList.remove('active');
-      toolZoom.classList.add('active');
-      if (canvasArea) {
+        canvasArea.classList.remove('tool-text-active');
+      } else if (tool === 'zoom') {
         canvasArea.style.cursor = 'zoom-in';
         canvasArea.classList.add('tool-zoom-active');
+        canvasArea.classList.remove('tool-text-active');
+      } else if (tool === 'text') {
+        canvasArea.style.cursor = 'text';
+        canvasArea.classList.remove('tool-zoom-active');
+        canvasArea.classList.remove('zoom-out-active');
+        canvasArea.classList.add('tool-text-active');
       }
     }
   }
@@ -12215,6 +12381,10 @@ document.getElementById('tool-select')?.addEventListener('click', () => {
 
 document.getElementById('tool-zoom')?.addEventListener('click', () => {
   setActiveTool('zoom');
+});
+
+document.getElementById('tool-text')?.addEventListener('click', () => {
+  setActiveTool('text');
 });
 
 document.getElementById('btn-preview').addEventListener('click', () => {

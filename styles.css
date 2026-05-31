@@ -3233,6 +3233,32 @@ body.theme-rmit-navy {
 
 
 
+    /* ---------- text tool cursor and interaction override ---------- */
+
+    .canvas-area.tool-text-active .el:not(.text):not(.button) {
+
+      pointer-events: none !important;
+
+    }
+
+
+
+    .canvas-area.tool-text-active .el.text,
+
+    .canvas-area.tool-text-active .el.button,
+
+    .canvas-area.tool-text-active .el.text *,
+
+    .canvas-area.tool-text-active .el.button * {
+
+      cursor: text !important;
+
+      pointer-events: auto !important;
+
+    }
+
+
+
     /* ---------- rulers ---------- */
 
     #ruler-h {
