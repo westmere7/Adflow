@@ -5185,7 +5185,7 @@ canvasArea.addEventListener('mousedown', (e) => {
   }
 
   // Zoom tool behavior
-  if (state.activeTool === 'zoom' && e.button === 0 && !document.body.classList.contains('fullscreen-mode')) {
+  if (state.activeTool === 'zoom' && e.button === 0) {
     const rect = canvasArea.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
@@ -11646,15 +11646,13 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  if (!document.body.classList.contains('fullscreen-mode')) {
-    if (e.key.toLowerCase() === 'v') {
-      setActiveTool('select');
-      return;
-    }
-    if (e.key.toLowerCase() === 'z') {
-      setActiveTool('zoom');
-      return;
-    }
+  if (e.key.toLowerCase() === 'v') {
+    setActiveTool('select');
+    return;
+  }
+  if (e.key.toLowerCase() === 'z') {
+    setActiveTool('zoom');
+    return;
   }
 
   if (e.key === 'Tab') {
