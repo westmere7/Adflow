@@ -1,6 +1,15 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.73 (Current) - May 2026 — Engine v2.18
+v0.16.76 (Current) - May 2026 — Engine v2.18
+- Added a helpful toast notification ("Drag and draw a box to add text") when a user clicks on the canvas instead of dragging to draw a text box.
+
+v0.16.75 - May 2026 — Engine v2.18
+- Disabled click-to-add default size text boxes for the Text Tool, enforcing a drag gesture of at least 5px to spawn a text element.
+
+v0.16.74 - May 2026 — Engine v2.18
+- Fixed Text Tool double-creation bug: clicking on an empty canvas area or workspace while editing a text element now blurs and commits the active edit without spawning a new text element or starting a marquee selection.
+
+v0.16.73 - May 2026 — Engine v2.18
 - Removed the continuous pulsing animation on the save status indicators.
 - Transitioned indicator status changes to use a simple CSS color/background/border fade transition.
 

@@ -660,6 +660,27 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.76',
+    date: 'May 2026 — Engine v2.18',
+    items: [
+      'Added a helpful toast notification ("Drag and draw a box to add text") when a user clicks on the canvas instead of dragging to draw a text box.'
+    ]
+  },
+  {
+    version: 'v0.16.75',
+    date: 'May 2026 — Engine v2.18',
+    items: [
+      'Disabled click-to-add default size text boxes for the Text Tool, enforcing a drag gesture of at least 5px to spawn a text element.'
+    ]
+  },
+  {
+    version: 'v0.16.74',
+    date: 'May 2026 — Engine v2.18',
+    items: [
+      'Fixed Text Tool double-creation bug: clicking on an empty canvas area or workspace while editing a text element now blurs and commits the active edit without spawning a new text element or starting a marquee selection.'
+    ]
+  },
+  {
     version: 'v0.16.73',
     date: 'May 2026 — Engine v2.18',
     items: [

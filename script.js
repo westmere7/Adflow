@@ -2725,6 +2725,14 @@ function canvasFrameNode(c) {
       if (isSpaceDown || e.button === 1) return;
 
       if (state.activeTool === 'text') {
+        if (state.editingElementId) {
+          const ed = workspaceEl.querySelector(`.el[data-id="${state.editingElementId}"] .editable`);
+          if (ed) ed.blur();
+          e.stopPropagation();
+          e.preventDefault();
+          return;
+        }
+
         e.stopPropagation();
         state.activeCanvasId = c.id;
         if (!e.shiftKey) {
@@ -2772,29 +2780,27 @@ function canvasFrameNode(c) {
           selBox.style.width = w + 'px';
           selBox.style.height = h + 'px';
         };
-
         const onUp = (ev) => {
           window.removeEventListener('mousemove', onMove);
           window.removeEventListener('mouseup', onUp);
           selBox.remove();
 
-          let rx = startX;
-          let ry = startY;
-          let rw = 220;
-          let rh = 32;
+          if (!isDraggingSelection) {
+            showCanvasNotification('Drag and draw a box to add text', { type: 'info' });
+            return;
+          }
 
-          if (isDraggingSelection) {
-            const curX = (ev.clientX - rect.left) / z;
-            const curY = (ev.clientY - rect.top) / z;
+          const curX = (ev.clientX - rect.left) / z;
+          const curY = (ev.clientY - rect.top) / z;
 
-            rx = Math.min(startX, curX);
-            ry = Math.min(startY, curY);
-            const w = Math.abs(curX - startX);
-            const h = Math.abs(curY - startY);
-            if (w > 5 || h > 5) {
-              rw = w;
-              rh = h;
-            }
+          const rx = Math.min(startX, curX);
+          const ry = Math.min(startY, curY);
+          const rw = Math.abs(curX - startX);
+          const rh = Math.abs(curY - startY);
+
+          if (rw <= 5 || rh <= 5) {
+            showCanvasNotification('Drag and draw a box to add text', { type: 'info' });
+            return;
           }
 
           const el = makeElement('text');
@@ -5368,6 +5374,14 @@ function onCanvasHeaderDrag(e, c) {
 // elements on the currently active canvas, even when the drag starts well
 // outside that canvas's bounds.
 canvasArea.addEventListener('mousedown', (e) => {
+  if (state.activeTool === 'text' && state.editingElementId) {
+    const ed = workspaceEl.querySelector(`.el[data-id="${state.editingElementId}"] .editable`);
+    if (ed) ed.blur();
+    e.stopPropagation();
+    e.preventDefault();
+    return;
+  }
+
   if (isSpaceDown || e.button === 1) {
     isPanning = true;
     panStartX = e.clientX;
@@ -14785,7 +14799,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.73';
+  const currentVersion = 'v0.16.76';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14836,7 +14850,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.73';
+  const currentVersion = 'v0.16.76';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -14971,7 +14985,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.73</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.76</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
