@@ -14850,7 +14850,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.85';
+  const currentVersion = 'v0.16.87';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14901,7 +14901,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.85';
+  const currentVersion = 'v0.16.87';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15036,7 +15036,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.85</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.87</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -17976,6 +17976,7 @@ function showSyncLayersMenu(anchorEl) {
   const syncFramesVisibility = localStorage.getItem('sync-frames-visibility') !== 'false';
   const syncFramesLock = localStorage.getItem('sync-frames-lock') !== 'false';
   const syncFramesPersistent = localStorage.getItem('sync-frames-persistent') !== 'false';
+  const syncFramesBreakLink = localStorage.getItem('sync-frames-break-link') !== 'false';
   const syncAllFrames = localStorage.getItem('sync-layers-all-frames') !== 'false';
 
   const otherCanvases = state.canvases.filter(c => c.id !== state.activeCanvasId);
@@ -18082,6 +18083,16 @@ function showSyncLayersMenu(anchorEl) {
             <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Copy persistent tiers and roles.">
               <input type="checkbox" id="chk-sync-frames-persistent" ${syncFramesPersistent ? 'checked' : ''} style="margin:0;" />
               <span>Persistent Tiers & Roles</span>
+            </label>
+          </div>
+
+          <div style="height:1px; background:var(--border-light); margin: 2px 0;"></div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Link Sync Options</div>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size: 12px; font-weight: 500;" title="Remove link group association on cloned layers so they edit independently of source layers.">
+              <input type="checkbox" id="chk-sync-frames-break-link" ${syncFramesBreakLink ? 'checked' : ''} style="margin:0;" />
+              <span>Break Link Group</span>
             </label>
           </div>
 
@@ -18219,6 +18230,7 @@ function showSyncLayersMenu(anchorEl) {
   bg.querySelector('#chk-sync-frames-order').onchange = (e) => localStorage.setItem('sync-frames-order', e.target.checked ? 'true' : 'false');
   bg.querySelector('#chk-sync-frames-visibility').onchange = (e) => localStorage.setItem('sync-frames-visibility', e.target.checked ? 'true' : 'false');
   bg.querySelector('#chk-sync-frames-lock').onchange = (e) => localStorage.setItem('sync-frames-lock', e.target.checked ? 'true' : 'false');
+  bg.querySelector('#chk-sync-frames-break-link').onchange = (e) => localStorage.setItem('sync-frames-break-link', e.target.checked ? 'true' : 'false');
   bg.querySelector('#chk-sync-frames-persistent').onchange = (e) => {
     localStorage.setItem('sync-frames-persistent', e.target.checked ? 'true' : 'false');
     localStorage.setItem('sync-layers-maintain-settings', e.target.checked ? 'true' : 'false');
@@ -18301,6 +18313,7 @@ function showSyncLayersMenu(anchorEl) {
         syncVisibility: bg.querySelector('#chk-sync-frames-visibility').checked,
         syncLock: bg.querySelector('#chk-sync-frames-lock').checked,
         syncPersistent: bg.querySelector('#chk-sync-frames-persistent').checked,
+        breakLink: bg.querySelector('#chk-sync-frames-break-link').checked,
       };
 
       executeFrameSync(sourceC, targetFrameIds, settings);
@@ -18429,6 +18442,10 @@ function executeFrameSync(canvas, targetFrameIds, settings) {
       // If syncPersistent is false, clear role
       if (!settings.syncPersistent) {
         delete clone.role;
+      }
+      // If breakLink is true, clear linkGroupId
+      if (settings.breakLink) {
+        delete clone.linkGroupId;
       }
       return clone;
     });

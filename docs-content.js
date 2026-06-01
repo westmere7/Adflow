@@ -660,6 +660,20 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.87',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Isolated Link Sync Options in Frame Sync Dialog: Separated the "Break Link Group" checkbox from general styling "Sync Options" into its own dedicated "Link Sync Options" section with a horizontal divider, improving dialog usability and design clarity.'
+    ]
+  },
+  {
+    version: 'v0.16.86',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Frame Sync Break Link Group: Added a "Break Link Group" sync option checkbox to the Frame Sync tab in the Synchronize Layers dialog. When enabled, link group identifiers are removed from cloned layers so that duplicated contents across different frames edit independently.'
+    ]
+  },
+  {
     version: 'v0.16.85',
     date: 'June 2026 — Engine v2.18',
     items: [
