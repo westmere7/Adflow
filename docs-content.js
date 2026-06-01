@@ -660,6 +660,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.83',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Button Visual Polish: Removed decorative emoji/unicode icons (⚡ and 🔄) from "All Versions Validator" and "Re-run" buttons to align with RMIT\'s clean, minimalist UI design system.'
+    ]
+  },
+  {
     version: 'v0.16.82',
     date: 'June 2026 — Engine v2.18',
     items: [

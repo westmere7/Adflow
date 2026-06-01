@@ -1428,7 +1428,7 @@ function openExportModal() {
           align-items: center;
           gap: 5px;
         " title="Batch-validate compliance, accessibility, and branding across all versions">
-          ⚡ All Versions Validator
+          All Versions Validator
         </button>
         ` : ''}
       </div>
@@ -2397,7 +2397,7 @@ function showBatchValidatorResults(problems) {
           border-radius: 4px;
           flex-shrink: 0;
         " title="Re-run validation checks across all versions">
-          🔄 Re-run
+          Re-run
         </button>
       </div>
       

@@ -1,4 +1,4 @@
-# RMIT Adflow — Technical App Breakdown (Updated v0.16.82, Engine v2.16)
+# RMIT Adflow — Technical App Breakdown (Updated v0.16.83, Engine v2.16)
 
 This document is the official context dump for agents picking up the codebase. It covers the current architecture, state schemas, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), cloud backend, and workflow rules. **Read this in full before making non-trivial changes.**
 
@@ -220,13 +220,13 @@ Maps columns to dynamic element slots to batch generate banners.
 ### Changelog Workflow
 After making user-visible modifications, **bump the version and add a changelog entry in these 5 locations**:
 
-1. [data/version.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/version.txt) — Update the single-line string (e.g. `v0.16.82`).
+1. [data/version.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/version.txt) — Update the single-line string (e.g. `v0.16.83`).
 2. [data/changelog.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/changelog.txt) — Add description at the top of the file.
 3. [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/docs-content.js) — Insert the new entry details in the `CHANGELOG_DATA` array.
 4. [script.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/script.js) — Update `currentVersion` inside `checkVersionUpdate()`, and update the version strings in the About and Settings modal templates.
 5. [index.html](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/index.html) — Update the footer element `#app-version-display` text label.
 
 ### Severity Guide
-- **Patch (Z + 1)**: For bug fixes, UI polish, or algorithm tuning (e.g. `v0.16.81` -> `v0.16.82`).
+- **Patch (Z + 1)**: For bug fixes, UI polish, or algorithm tuning (e.g. `v0.16.82` -> `v0.16.83`).
 - **Minor (Y + 1)**: For new features, interface reorganizations, or major workflow changes.
 - **Major (X + 1)**: Reserved for breaking revisions.

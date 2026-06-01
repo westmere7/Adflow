@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.82 (Current) - June 2026 — Engine v2.18
+v0.16.83 (Current) - June 2026 — Engine v2.18
+- Button Visual Polish: Removed decorative emoji/unicode icons (⚡ and 🔄) from "All Versions Validator" and "Re-run" buttons to align with RMIT's clean, minimalist UI design system.
+
+v0.16.82 - June 2026 — Engine v2.18
 - Cached Batch Audit Results: opening the "All Versions Validator" when a previous batch run exists now displays the cached result instantly.
 - Added a "Re-run" action button to both the success screen and the issues listing screen of the Batch Validator results pop-up, allowing instant refresh when templates or elements change.
 
