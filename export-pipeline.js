@@ -1291,13 +1291,35 @@ function openExportModal() {
       if (dm) dm.activeVersion = savedActive;
     }
     const kb = (new Blob([html]).size / 1024).toFixed(1);
+    
+    const hasErrors = c._valErrors && c._valErrors.length > 0;
+    const hasA11y = c._valA11y && c._valA11y.length > 0;
+    const hasBrand = c._valBrand && c._valBrand.length > 0;
+
+    const specsIcon = hasErrors ? getWarningIcon('#ef4444', 13) : getCheckIcon('#10b981', 13);
+    const a11yIcon = hasA11y ? getWarningIcon('#f97316', 13) : getCheckIcon('#10b981', 13);
+    const brandIcon = hasBrand ? getWarningIcon('#f97316', 13) : getCheckIcon('#10b981', 13);
+
+    const specsTitle = hasErrors ? `${c._valErrors.length} compliance errors. Click to view.` : 'All compliance checks passed. Click to view.';
+    const a11yTitle = hasA11y ? `${c._valA11y.length} accessibility warnings. Click to view.` : 'All accessibility checks passed. Click to view.';
+    const brandTitle = hasBrand ? `${c._valBrand.length} branding warnings. Click to view.` : 'All branding checks passed. Click to view.';
+
     return `
       <tr data-cid="${c.id}">
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;"><input type="checkbox" class="export-chk" data-cid="${c.id}" checked title="Include this canvas size in the export" /></td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.name || (c.width + '×' + c.height)}</td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.width}×${c.height}</td>
         <td class="exp-weight" style="padding: 6px 0; border-bottom: 1px solid #1f2330; color:${kb > 150 ? '#ef4444' : '#c7ccdb'}">${kb} KB</td>
-        <td class="exp-clicktag" style="padding: 6px 0; border-bottom: 1px solid #1f2330; font-family:monospace; font-size:10.5px; color:var(--text-label); word-break:break-all; max-width:400px;">${ct}</td>
+        <td class="exp-clicktag" style="padding: 6px 0; border-bottom: 1px solid #1f2330; font-family:monospace; font-size:10.5px; color:var(--text-label); word-break:break-all; max-width:180px;">${ct}</td>
+        <td class="exp-td-specs" style="padding: 6px 0; border-bottom: 1px solid #1f2330; text-align:center;">
+          <span class="exp-val-badge" data-tab="specs" data-cid="${c.id}" style="cursor:pointer;" title="${specsTitle}">${specsIcon}</span>
+        </td>
+        <td class="exp-td-a11y" style="padding: 6px 0; border-bottom: 1px solid #1f2330; text-align:center;">
+          <span class="exp-val-badge" data-tab="a11y" data-cid="${c.id}" style="cursor:pointer;" title="${a11yTitle}">${a11yIcon}</span>
+        </td>
+        <td class="exp-td-brand" style="padding: 6px 0; border-bottom: 1px solid #1f2330; text-align:center;">
+          <span class="exp-val-badge" data-tab="brand" data-cid="${c.id}" style="cursor:pointer;" title="${brandTitle}">${brandIcon}</span>
+        </td>
       </tr>
     `;
   }).join('');
@@ -1362,16 +1384,35 @@ function openExportModal() {
       <thead>
         <tr>
           <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;width:40px;"><input type="checkbox" id="chk-all" checked title="Select/deselect all canvas sizes" /></th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:220px;">Name</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:100px;">Size</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:120px;">Est. Weight</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Click Tag</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:180px;">Name</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:80px;">Size</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:95px;">Est. Weight</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:180px;">Click Tag</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:100px;text-align:center;">Ad Compliance</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:100px;text-align:center;">Accessibility</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:100px;text-align:center;">Branding</th>
         </tr>
       </thead>
       <tbody>${tbody}</tbody>
     </table>
 
-    <div style="margin-top: 16px; display: flex; gap: 8px; align-items:center; justify-content:flex-end;">
+    <div style="margin-top: 16px; display: flex; gap: 8px; align-items:center; justify-content:space-between;">
+      <button class="btn" id="btn-export-open-validator" style="
+        background: linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(124, 92, 255, 0.05));
+        border: 1px solid rgba(124, 92, 255, 0.35);
+        color: var(--accent-light);
+        font-weight: 600;
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      " title="Open Ads Validator">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Ads Validator
+      </button>
       <button class="btn primary" id="btn-export-selected" title="Export the selected canvases in the chosen format using the filename above. Honors version export settings.">Export Selected</button>
     </div>
   `;
@@ -1381,14 +1422,33 @@ function openExportModal() {
   const modalBg = document.body.lastElementChild;
   const modal = modalBg.querySelector('.modal');
   if (modal) {
-    modal.style.width = '1050px';
-    modal.style.maxWidth = '92vw';
+    modal.style.width = '1200px';
+    modal.style.maxWidth = '95vw';
   }
 
   const chkAll = modalBg.querySelector('#chk-all');
   const chks = modalBg.querySelectorAll('.export-chk');
   chkAll.addEventListener('change', (e) => {
     chks.forEach(chk => chk.checked = e.target.checked);
+  });
+
+  const btnOpenValidator = modalBg.querySelector('#btn-export-open-validator');
+  if (btnOpenValidator) {
+    btnOpenValidator.addEventListener('click', () => {
+      openValidatorDetails(state.canvases.find(x => x.id === state.activeCanvasId) || state.canvases[0]);
+    });
+  }
+
+  modalBg.addEventListener('click', (e) => {
+    const badge = e.target.closest('.exp-val-badge');
+    if (badge) {
+      const cid = badge.dataset.cid;
+      const tab = badge.dataset.tab;
+      const canvas = state.canvases.find(x => x.id === cid);
+      if (canvas) {
+        openValidatorDetails(canvas, tab);
+      }
+    }
   });
 
   const updateExportTableDetails = () => {
@@ -1414,6 +1474,9 @@ function openExportModal() {
       
       const weightTd = tr.querySelector('.exp-weight');
       const clicktagTd = tr.querySelector('.exp-clicktag');
+      const specsTd = tr.querySelector('.exp-td-specs');
+      const a11yTd = tr.querySelector('.exp-td-a11y');
+      const brandTd = tr.querySelector('.exp-td-brand');
       
       if (hasVersions && mode === 'all') {
         if (weightTd) {
@@ -1423,6 +1486,9 @@ function openExportModal() {
         if (clicktagTd) {
           clicktagTd.textContent = '—';
         }
+        if (specsTd) { specsTd.innerHTML = '<span style="color:var(--text-muted)">—</span>'; }
+        if (a11yTd) { a11yTd.innerHTML = '<span style="color:var(--text-muted)">—</span>'; }
+        if (brandTd) { brandTd.innerHTML = '<span style="color:var(--text-muted)">—</span>'; }
       } else {
         let html = '';
         let ct = '';
@@ -1450,6 +1516,68 @@ function openExportModal() {
         }
         if (clicktagTd) {
           clicktagTd.textContent = ct;
+        }
+
+        // Compute updated compliance errors locally
+        const limitKb = state.adSizeLimit || 150;
+        let errors = [];
+        if (!ct || ct === 'No clickTag') {
+          errors.push('Missing clickTag URL');
+        } else if (ct !== '—') {
+          try {
+            const url = new URL(ct);
+            if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+              errors.push('clickTag URL must start with http:// or https://');
+            } else if (!url.hostname.includes('.') || url.hostname.split('.').pop().length < 2) {
+              errors.push('clickTag URL must be a valid website name with domain');
+            }
+          } catch (e) {
+            errors.push('clickTag URL format is invalid');
+          }
+        }
+        
+        let imageElements = c.elements.filter(el => el.type === 'image');
+        let hasMissing = false;
+        let hasExt = false;
+        imageElements.forEach(el => {
+          let src = state.assets[el.assetId] || el.assetId;
+          if (!src) {
+            hasMissing = true;
+          } else if (src.startsWith('http://') || src.startsWith('https://')) {
+            hasExt = true;
+          } else if (!state.assets[el.assetId] && !src.startsWith('data/Elements/')) {
+            hasMissing = true;
+          }
+        });
+        if (hasMissing) errors.push('Contains missing assets');
+        if (hasExt) errors.push('Contains external URLs');
+        if (parseFloat(kb) > limitKb) {
+          errors.push(`Filesize (${kb} KB) exceeds ${limitKb}KB limit`);
+        }
+        
+        c._valErrors = errors;
+        c._valKb = kb;
+
+        const hasErrors = errors.length > 0;
+        const hasA11y = c._valA11y && c._valA11y.length > 0;
+        const hasBrand = c._valBrand && c._valBrand.length > 0;
+
+        const specsIcon = hasErrors ? getWarningIcon('#ef4444', 13) : getCheckIcon('#10b981', 13);
+        const a11yIcon = hasA11y ? getWarningIcon('#f97316', 13) : getCheckIcon('#10b981', 13);
+        const brandIcon = hasBrand ? getWarningIcon('#f97316', 13) : getCheckIcon('#10b981', 13);
+
+        const specsTitle = hasErrors ? `${errors.length} compliance errors. Click to view.` : 'All compliance checks passed. Click to view.';
+        const a11yTitle = hasA11y ? `${c._valA11y.length} accessibility warnings. Click to view.` : 'All accessibility checks passed. Click to view.';
+        const brandTitle = hasBrand ? `${c._valBrand.length} branding warnings. Click to view.` : 'All branding checks passed. Click to view.';
+
+        if (specsTd) {
+          specsTd.innerHTML = `<span class="exp-val-badge" data-tab="specs" data-cid="${c.id}" style="cursor:pointer;" title="${specsTitle}">${specsIcon}</span>`;
+        }
+        if (a11yTd) {
+          a11yTd.innerHTML = `<span class="exp-val-badge" data-tab="a11y" data-cid="${c.id}" style="cursor:pointer;" title="${a11yTitle}">${a11yIcon}</span>`;
+        }
+        if (brandTd) {
+          brandTd.innerHTML = `<span class="exp-val-badge" data-tab="brand" data-cid="${c.id}" style="cursor:pointer;" title="${brandTitle}">${brandIcon}</span>`;
         }
       }
     });

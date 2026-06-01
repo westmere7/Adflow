@@ -1,6 +1,22 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.76 (Current) - May 2026 — Engine v2.18
+v0.16.80 (Current) - June 2026 — Engine v2.18
+- Persisted Export Dashboard: opening the Ads Validator modal via the export dashboard now keeps the export dashboard open underneath.
+- Top-most Modal Escape Support: updated the Escape key event handler to only close the active (topmost) dialog when multiple modals are stacked.
+- Narrowed the Click Tag column on the export dashboard table (width 180px) to maximize compliance status badge visibility.
+
+v0.16.79 - June 2026 — Engine v2.18
+- Expanded Export Dashboard: Added columns for "Ad Compliance", "Accessibility", and "Branding" validation status.
+- Added event handlers so clicking a validation status badge in the export dashboard closes the dashboard and opens the relevant tab in the Ads Validator modal.
+- Integrated an "Ads Validator" action button into the bottom left of the export dashboard.
+
+v0.16.78 - June 2026 — Engine v2.18
+- Finalized component renaming: updated the validator to be called "Ads Validator" instead of "Validation Dashboard".
+
+v0.16.77 - June 2026 — Engine v2.18
+- Renamed the "Ad Validator" / "validator dashboard" component to "Validation Dashboard" across all tooltips, sidebar controls, settings inputs, and documentation to reflect its expanded scope (compliance, branding, and accessibility).
+
+v0.16.76 - May 2026 — Engine v2.18
 - Added a helpful toast notification ("Drag and draw a box to add text") when a user clicks on the canvas instead of dragging to draw a text box.
 
 v0.16.75 - May 2026 — Engine v2.18

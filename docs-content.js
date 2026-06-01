@@ -660,6 +660,38 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.80',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Persisted Export Dashboard: opening the Ads Validator modal via the export dashboard now keeps the export dashboard open underneath.',
+      'Top-most Modal Escape Support: updated the Escape key event handler to only close the active (topmost) dialog when multiple modals are stacked.',
+      'Narrowed the Click Tag column on the export dashboard table (width 180px) to maximize compliance status badge visibility.'
+    ]
+  },
+  {
+    version: 'v0.16.79',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Expanded Export Dashboard: Added columns for "Ad Compliance", "Accessibility", and "Branding" validation status.',
+      'Added event handlers so clicking a validation status badge in the export dashboard closes the dashboard and opens the relevant tab in the Ads Validator modal.',
+      'Integrated an "Ads Validator" action button into the bottom left of the export dashboard.'
+    ]
+  },
+  {
+    version: 'v0.16.78',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Finalized component renaming: updated the validator to be called "Ads Validator" instead of "Validation Dashboard".'
+    ]
+  },
+  {
+    version: 'v0.16.77',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Renamed the "Ad Validator" / "validator dashboard" component to "Validation Dashboard" across all tooltips, sidebar controls, settings inputs, and documentation to reflect its expanded scope (compliance, branding, and accessibility).'
+    ]
+  },
+  {
     version: 'v0.16.76',
     date: 'May 2026 — Engine v2.18',
     items: [

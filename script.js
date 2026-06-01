@@ -5655,10 +5655,10 @@ canvasArea.addEventListener('scroll', () => {
 });
 
 // ============================================================================
-function openValidatorDetails(initialCanvas) {
+function openValidatorDetails(initialCanvas, initialTab = 'specs') {
   const modalId = `val-modal-${Date.now()}`;
   let activeDetailsId = initialCanvas.id;
-  let activeTab = 'specs'; // 'specs' | 'a11y' | 'brand'
+  let activeTab = initialTab; // 'specs' | 'a11y' | 'brand'
 
   const generateModalContent = (focusedCanvasId, currentTab) => {
     activeDetailsId = focusedCanvasId;
@@ -6188,7 +6188,7 @@ function openValidatorDetails(initialCanvas) {
     `;
   };
 
-  openModal(`Validation Dashboard`, generateModalContent(initialCanvas.id, activeTab), false);
+  openModal(`Ads Validator`, generateModalContent(initialCanvas.id, activeTab), false);
   
   const modalEl = document.querySelector('.modal-bg:last-child .modal');
   if (modalEl) {
@@ -6459,19 +6459,19 @@ function renderCanvasesList() {
         btnColor = '#ef4444';
         btnBgHover = 'rgba(239, 68, 68, 0.3)';
         btnText = getWarningIcon('#ef4444', 11);
-        btnTitle = 'Ad compliance errors found. Click to open validator dashboard.';
+        btnTitle = 'Ad compliance errors found. Click to open Ads Validator.';
       } else if (hasA11y || hasBrand) {
         btnBg = 'rgba(249, 115, 22, 0.15)';
         btnColor = '#f97316';
         btnBgHover = 'rgba(249, 115, 22, 0.3)';
         btnText = getWarningIcon('#f97316', 11);
-        btnTitle = 'Validation warnings found. Click to open validator dashboard.';
+        btnTitle = 'Validation warnings found. Click to open Ads Validator.';
       } else {
         btnBg = 'rgba(16, 185, 129, 0.15)';
         btnColor = '#10b981';
         btnBgHover = 'rgba(16, 185, 129, 0.3)';
         btnText = getCheckIcon('#10b981', 11);
-        btnTitle = 'All validation checks passed. Click to open validator dashboard.';
+        btnTitle = 'All validation checks passed. Click to open Ads Validator.';
       }
     }
 
@@ -13350,7 +13350,7 @@ function openNewProjectDialog() {
           <div style="display:flex; gap:14px;">
             <div style="flex:1;">
               <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
-              <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+              <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / Ads Validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
             </div>
             <div style="flex:1;">
               <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Default background</label>
@@ -13520,7 +13520,7 @@ function openProjectSettingsDialog() {
         </div>
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
-          <input type="number" id="ps-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="number" id="ps-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / Ads Validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div style="margin-top:4px;">
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Save &amp; Sync Status</label>
@@ -14799,7 +14799,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.76';
+  const currentVersion = 'v0.16.80';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14850,7 +14850,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.76';
+  const currentVersion = 'v0.16.80';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -14985,7 +14985,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.76</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.80</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -15421,7 +15421,14 @@ function openModal(title, body, isCode) {
     bg.remove();
     document.removeEventListener('keydown', escHandler);
   };
-  const escHandler = (e) => { if (e.key === 'Escape') closeFn(); };
+  const escHandler = (e) => {
+    if (e.key === 'Escape') {
+      const allBgs = document.querySelectorAll('.modal-bg');
+      if (allBgs.length > 0 && allBgs[allBgs.length - 1] === bg) {
+        closeFn();
+      }
+    }
+  };
   document.addEventListener('keydown', escHandler);
   bg.querySelector('#modal-close').onclick = closeFn;
   bg.onclick = (e) => { if (e.target === bg) closeFn(); };
