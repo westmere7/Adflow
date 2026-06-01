@@ -660,6 +660,20 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.89',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Repositioned Clear Recent Menu Item: Moved the "Clear Recent" menu item out of the sliding Open Recent submenu and placed it directly under "Open Recent" in the main File dropdown list, preventing unnecessary hover-scrolling for users.'
+    ]
+  },
+  {
+    version: 'v0.16.88',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Open Recent Visual Sort & Clear Action: Added a "Clear Recent" option in the slide-out Open Recent menu. Triggering this clears the recents list, keeping only the single latest file for both local and cloud categories. The Local and Cloud section groups are now ordered dynamically, ensuring that whichever category holds the most recently modified project appears on top.'
+    ]
+  },
+  {
     version: 'v0.16.87',
     date: 'June 2026 — Engine v2.18',
     items: [

@@ -12616,6 +12616,7 @@ async function addRecentProject(exportState) {
     filtered.unshift({
       name: projName,
       timestamp: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      updatedAtMs: Date.now(),
       stateSnapshot: JSON.parse(JSON.stringify(exportState))
     });
     const limited = filtered.slice(0, 10);
@@ -12624,6 +12625,58 @@ async function addRecentProject(exportState) {
   } catch (err) {
     console.error('Failed to add recent project:', err);
   }
+}
+
+// Populate the Open Recent submenu with two sections — local recents
+// (IndexedDB snapshots) and cloud projects (most-recent saves on
+// Supabase). The cloud section only appears when the user is signed in
+// and the Supabase client is available. Called after each save and on
+// hover of the "Open Recent" parent menu item so the cloud list stays
+// fresh as the user signs in/out.
+async function clearRecentProjects() {
+  if (!confirm('Clear recent list and keep only the latest project for each category? This will permanently delete older cloud projects from the database.')) return;
+  
+  // 1. Clear local
+  try {
+    const recents = (await _idbGet('recents')) || [];
+    if (recents.length > 1) {
+      await _idbPut('recents', [recents[0]]);
+    }
+  } catch (err) {
+    console.error('Failed to clear local recents:', err);
+  }
+
+  // 2. Clear cloud
+  const authReady = typeof authState !== 'undefined' && authState.enabled && typeof sb !== 'undefined' && sb;
+  const user = authReady ? authState.currentUser() : null;
+  if (authReady && user) {
+    try {
+      const { data, error: fetchErr } = await sb
+        .from('projects')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+      
+      if (!fetchErr && data && data.length > 1) {
+        const latestId = data[0].id;
+        const { error: delErr } = await sb
+          .from('projects')
+          .delete()
+          .eq('user_id', user.id)
+          .neq('id', latestId);
+        
+        if (delErr) {
+          console.error('Failed to delete older cloud projects:', delErr);
+          showCanvasNotification('Failed to clear some cloud projects.', { type: 'warning' });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to clear cloud recents:', err);
+    }
+  }
+
+  showCanvasNotification('Recent list cleared.', { type: 'success' });
+  updateRecentProjectsMenu();
 }
 
 // Populate the Open Recent submenu with two sections — local recents
@@ -12674,35 +12727,19 @@ async function updateRecentProjectsMenu() {
     container.appendChild(el);
   };
 
-  // --- Local recents (IndexedDB) -----------------------------------
+  // --- 1. Fetch Local Recents (IndexedDB) --------------------------
+  let localRecents = [];
   try {
-    const recents = (await _idbGet('recents')) || [];
-    appendSectionHeader('Local');
-    if (recents.length === 0) {
-      appendEmpty('(No recent local projects)');
-    } else {
-      recents.forEach(item => {
-        appendItem(item.name, item.timestamp, async () => {
-          if (confirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
-            await loadProjectFromState(item.stateSnapshot);
-          }
-        });
-      });
-    }
+    localRecents = (await _idbGet('recents')) || [];
   } catch (e) {
     console.error('Failed to load local recents:', e);
-    appendEmpty('(Failed to load local recents)');
   }
 
-  // --- Cloud projects (Supabase) -----------------------------------
-  // Only rendered when the user is signed in. The `sb` Supabase client,
-  // `authState`, and `pullCloudProject` are globals from auth-ui.js
-  // (which loads before script.js).
+  // --- 2. Fetch Cloud projects (Supabase) if user is signed in ------
+  let cloudData = null;
   const authReady = typeof authState !== 'undefined' && authState.enabled && typeof sb !== 'undefined' && sb;
   const user = authReady ? authState.currentUser() : null;
   if (authReady && user) {
-    appendDivider();
-    appendSectionHeader('Cloud');
     try {
       const { data, error } = await sb
         .from('projects')
@@ -12710,40 +12747,101 @@ async function updateRecentProjectsMenu() {
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false })
         .limit(10);
-      if (error) {
-        appendEmpty('(Failed to load cloud projects)');
-      } else if (!data || data.length === 0) {
-        appendEmpty('(No cloud projects yet)');
-      } else {
-        // Format an ISO timestamp into the same short "Mon DD, HH:MM"
-        // shape used by local recents — keeps both sections visually
-        // homogeneous. Prefer the global _formatRelativeTime helper
-        // (from auth-ui.js) when available, else fall back.
-        const fmt = (iso) => {
-          if (!iso) return '';
-          if (typeof _formatRelativeTime === 'function') {
-            try { return _formatRelativeTime(iso); } catch (_) { /* fall through */ }
-          }
-          try {
-            return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-          } catch (_) { return ''; }
-        };
-        data.forEach(row => {
-          appendItem(row.name || '(untitled)', fmt(row.updated_at), async () => {
-            if (!confirm(`Open cloud project "${row.name || 'untitled'}"? Any unsaved changes will be lost.`)) return;
-            if (typeof pullCloudProject !== 'function') {
-              showCanvasNotification('Cloud open not available.', { type: 'error' });
-              return;
-            }
-            try { await pullCloudProject(row); }
-            catch (err) { showCanvasNotification(`Open failed: ${err.message || err}`, { type: 'error' }); }
-          });
-        });
+      if (!error) {
+        cloudData = data;
       }
     } catch (e) {
       console.error('Failed to load cloud projects:', e);
-      appendEmpty('(Failed to load cloud projects)');
     }
+  }
+
+  // Helpers to retrieve timestamp values for ordering comparison
+  const getLocalTime = (item) => {
+    if (!item) return 0;
+    if (item.updatedAtMs) return item.updatedAtMs;
+    const parsed = Date.parse(item.timestamp);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  const getCloudTime = (row) => {
+    if (!row || !row.updated_at) return 0;
+    const parsed = Date.parse(row.updated_at);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  // Render logic for local section
+  const renderLocalSection = () => {
+    appendSectionHeader('Local');
+    if (localRecents.length === 0) {
+      appendEmpty('(No recent local projects)');
+    } else {
+      localRecents.forEach(item => {
+        appendItem(item.name, item.timestamp, async () => {
+          if (confirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
+            await loadProjectFromState(item.stateSnapshot);
+          }
+        });
+      });
+    }
+  };
+
+  // Render logic for cloud section
+  const renderCloudSection = () => {
+    appendSectionHeader('Cloud');
+    if (cloudData === null) {
+      appendEmpty('(Failed to load cloud projects)');
+    } else if (cloudData.length === 0) {
+      appendEmpty('(No cloud projects yet)');
+    } else {
+      const fmt = (iso) => {
+        if (!iso) return '';
+        if (typeof _formatRelativeTime === 'function') {
+          try { return _formatRelativeTime(iso); } catch (_) { /* fall through */ }
+        }
+        try {
+          return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        } catch (_) { return ''; }
+      };
+      cloudData.forEach(row => {
+        appendItem(row.name || '(untitled)', fmt(row.updated_at), async () => {
+          if (!confirm(`Open cloud project "${row.name || 'untitled'}"? Any unsaved changes will be lost.`)) return;
+          if (typeof pullCloudProject !== 'function') {
+            showCanvasNotification('Cloud open not available.', { type: 'error' });
+            return;
+          }
+          try { await pullCloudProject(row); }
+          catch (err) { showCanvasNotification(`Open failed: ${err.message || err}`, { type: 'error' }); }
+        });
+      });
+    }
+  };
+
+  // --- 3. Determine Ordering & Render -------------------------------
+  const latestLocalTime = localRecents.length > 0 ? getLocalTime(localRecents[0]) : 0;
+  const latestCloudTime = (cloudData && cloudData.length > 0) ? getCloudTime(cloudData[0]) : 0;
+
+  if (cloudData !== null) {
+    if (latestCloudTime > latestLocalTime) {
+      // Cloud is latest, render Cloud on top
+      renderCloudSection();
+      appendDivider();
+      renderLocalSection();
+    } else {
+      // Local is latest, render Local on top
+      renderLocalSection();
+      appendDivider();
+      renderCloudSection();
+    }
+  } else {
+    // Only local rendered (signed out)
+    renderLocalSection();
+  }
+
+  // --- 4. Toggle main menu "Clear Recent" visibility -----------------
+  const hasProjects = localRecents.length > 0 || (cloudData && cloudData.length > 0);
+  const clearBtnMain = document.getElementById('menu-file-clear-recent');
+  if (clearBtnMain) {
+    clearBtnMain.style.display = hasProjects ? 'block' : 'none';
   }
 }
 
@@ -12982,6 +13080,13 @@ document.getElementById('menu-file-save-browser').addEventListener('click', asyn
 document.getElementById('menu-file-save-file').addEventListener('click', saveProjectToZip);
 document.getElementById('menu-file-new').addEventListener('click', openNewProjectDialog);
 document.getElementById('menu-project-settings').addEventListener('click', openProjectSettingsDialog);
+
+const _clearRecentBtn = document.getElementById('menu-file-clear-recent');
+if (_clearRecentBtn) {
+  _clearRecentBtn.addEventListener('click', async () => {
+    await clearRecentProjects();
+  });
+}
 
 // Refresh the Open Recent submenu when the user hovers it. Keeps the
 // Cloud section in sync with the live auth state — signing in mid-session
@@ -14850,7 +14955,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.87';
+  const currentVersion = 'v0.16.89';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14901,7 +15006,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.87';
+  const currentVersion = 'v0.16.89';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15036,7 +15141,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.87</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.89</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

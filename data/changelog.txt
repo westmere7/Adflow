@@ -1,6 +1,12 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.87 (Current) - June 2026 — Engine v2.18
+v0.16.89 (Current) - June 2026 — Engine v2.18
+- Repositioned Clear Recent Menu Item: Moved the "Clear Recent" menu item out of the sliding Open Recent submenu and placed it directly under "Open Recent" in the main File dropdown list, preventing unnecessary hover-scrolling for users.
+
+v0.16.88 - June 2026 — Engine v2.18
+- Open Recent Visual Sort & Clear Action: Added a "Clear Recent" option in the slide-out Open Recent menu. Triggering this clears the recents list, keeping only the single latest file for both local and cloud categories. The Local and Cloud section groups are now ordered dynamically, ensuring that whichever category holds the most recently modified project appears on top.
+
+v0.16.87 - June 2026 — Engine v2.18
 - Isolated Link Sync Options in Frame Sync Dialog: Separated the "Break Link Group" checkbox from general styling "Sync Options" into its own dedicated "Link Sync Options" section with a horizontal divider, improving dialog usability and design clarity.
 
 v0.16.86 - June 2026 — Engine v2.18
