@@ -1397,22 +1397,41 @@ function openExportModal() {
     </table>
 
     <div style="margin-top: 16px; display: flex; gap: 8px; align-items:center; justify-content:space-between;">
-      <button class="btn" id="btn-export-open-validator" style="
-        background: linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(124, 92, 255, 0.05));
-        border: 1px solid rgba(124, 92, 255, 0.35);
-        color: var(--accent-light);
-        font-weight: 600;
-        padding: 6px 12px;
-        font-size: 12px;
-        cursor: pointer;
-        border-radius: 4px;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-      " title="Open Ads Validator">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        Ads Validator
-      </button>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn" id="btn-export-open-validator" style="
+          background: linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(124, 92, 255, 0.05));
+          border: 1px solid rgba(124, 92, 255, 0.35);
+          color: var(--accent-light);
+          font-weight: 600;
+          padding: 6px 12px;
+          font-size: 12px;
+          cursor: pointer;
+          border-radius: 4px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        " title="Open Ads Validator">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Ads Validator
+        </button>
+        ${hasVersions ? `
+        <button class="btn" id="btn-export-all-versions-validator" style="
+          background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05));
+          border: 1px solid rgba(20, 184, 166, 0.35);
+          color: #2dd4bf;
+          font-weight: 600;
+          padding: 6px 12px;
+          font-size: 12px;
+          cursor: pointer;
+          border-radius: 4px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        " title="Batch-validate compliance, accessibility, and branding across all versions">
+          ⚡ All Versions Validator
+        </button>
+        ` : ''}
+      </div>
       <button class="btn primary" id="btn-export-selected" title="Export the selected canvases in the chosen format using the filename above. Honors version export settings.">Export Selected</button>
     </div>
   `;
@@ -1429,13 +1448,20 @@ function openExportModal() {
   const chkAll = modalBg.querySelector('#chk-all');
   const chks = modalBg.querySelectorAll('.export-chk');
   chkAll.addEventListener('change', (e) => {
-    chks.forEach(chk => chk.checked = e.target.checked);
+    chks.forEach(chk => 	chk.checked = e.target.checked);
   });
 
   const btnOpenValidator = modalBg.querySelector('#btn-export-open-validator');
   if (btnOpenValidator) {
     btnOpenValidator.addEventListener('click', () => {
       openValidatorDetails(state.canvases.find(x => x.id === state.activeCanvasId) || state.canvases[0]);
+    });
+  }
+
+  const btnAllVersionsValidator = modalBg.querySelector('#btn-export-all-versions-validator');
+  if (btnAllVersionsValidator) {
+    btnAllVersionsValidator.addEventListener('click', () => {
+      runAllVersionsValidator();
     });
   }
 
@@ -2121,4 +2147,304 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
     // Leave modal showing success state briefly, then auto-close
     setTimeout(() => progressUI.close(), 1000);
   }
+}
+
+// ============================================================================
+// Batch Validator (All Versions Validator)
+// ============================================================================
+function runAllVersionsValidator() {
+  const dm = state.dataMerge;
+  if (!dm || !dm.enabled || !dm.rows || !dm.rows.length) {
+    alert('Data Merge is not enabled or contains no versions to validate.');
+    return;
+  }
+
+  // Open the Progress loading modal
+  const progressHtml = `
+    <div id="batch-val-progress-container" style="padding:20px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:var(--text-main); text-align:center; display:flex; flex-direction:column; gap:16px;">
+      <div style="font-size:16px; font-weight:600; color:var(--text-bright);">Batch Validating All Versions</div>
+      <div style="font-size:12px; color:var(--text-muted); line-height:1.5;">Please wait while we audit every version against ad compliance, accessibility, and branding rules. This can take a few moments.</div>
+      
+      <!-- Progress Bar -->
+      <div style="height:8px; background:var(--bg-input); border-radius:4px; overflow:hidden; margin-top:8px; position:relative; width:100%;">
+        <div id="batch-val-progress-bar" style="width:0%; height:100%; background:linear-gradient(135deg, #14b8a6, #0d9488); border-radius:4px; transition: width 0.15s ease;"></div>
+      </div>
+      
+      <div id="batch-val-status-text" style="font-size:13px; font-weight:500; color:var(--accent-light);">Starting audit...</div>
+      
+      <div style="margin-top:12px;">
+        <button class="btn" id="batch-val-cancel" style="padding:6px 16px; font-size:12px; cursor:pointer;">Cancel Audit</button>
+      </div>
+    </div>
+  `;
+
+  openModal('Validator Progress', progressHtml, false);
+  const modalBg = document.body.lastElementChild;
+  const modal = modalBg.querySelector('.modal');
+  if (modal) {
+    modal.style.width = '500px';
+    modal.style.maxWidth = '90vw';
+  }
+
+  let isCancelled = false;
+  const cancelBtn = modalBg.querySelector('#batch-val-cancel');
+  if (cancelBtn) {
+    cancelBtn.onclick = () => {
+      isCancelled = true;
+      modalBg.remove();
+    };
+  }
+
+  const totalRows = dm.rows.length;
+  const problems = [];
+  let currentIdx = 0;
+
+  const processNextRow = async () => {
+    if (isCancelled) return;
+    if (currentIdx >= totalRows) {
+      // Done processing! Close progress modal
+      modalBg.remove();
+      // Cache results
+      state._latestBatchProblems = problems;
+      // Render results modal
+      showBatchValidatorResults(problems);
+      return;
+    }
+
+    const progressPct = Math.round((currentIdx / totalRows) * 100);
+    const bar = modalBg.querySelector('#batch-val-progress-bar');
+    const txt = modalBg.querySelector('#batch-val-status-text');
+    const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
+    const row = dm.rows[currentIdx];
+    const rowName = row[keyCol] || `Version ${currentIdx + 1}`;
+
+    if (bar) bar.style.width = `${progressPct}%`;
+    if (txt) txt.textContent = `Auditing Row ${currentIdx + 1} of ${totalRows}: "${rowName}"...`;
+
+    // Bake row elements temporarily
+    const restore = dmBakeRow(currentIdx);
+    try {
+      for (const c of state.canvases) {
+        let html = generateExportHTML(c);
+        const ctCol = dm.mappings['clicktag::url'];
+        const ct = (ctCol && row[ctCol]) ? row[ctCol] : (state.clickTag || 'No clickTag');
+
+        // Compliance checks
+        const kb = (new Blob([html]).size / 1024).toFixed(1);
+        const limitKb = state.adSizeLimit || 150;
+        let errors = [];
+        if (!ct || ct === 'No clickTag') {
+          errors.push('Missing clickTag URL');
+        } else {
+          try {
+            const url = new URL(ct);
+            if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+              errors.push('clickTag URL must start with http:// or https://');
+            } else if (!url.hostname.includes('.') || url.hostname.split('.').pop().length < 2) {
+              errors.push('clickTag URL must be a valid website name with domain');
+            }
+          } catch (e) {
+            errors.push('clickTag URL format is invalid');
+          }
+        }
+
+        let imageElements = c.elements.filter(el => el.type === 'image');
+        let hasMissing = false;
+        let hasExt = false;
+        imageElements.forEach(el => {
+          let src = state.assets[el.assetId] || el.assetId;
+          if (!src) {
+            hasMissing = true;
+          } else if (src.startsWith('http://') || src.startsWith('https://')) {
+            hasExt = true;
+          } else if (!state.assets[el.assetId] && !src.startsWith('data/Elements/')) {
+            hasMissing = true;
+          }
+        });
+        if (hasMissing) errors.push('Contains missing assets');
+        if (hasExt) errors.push('Contains external URLs');
+        if (parseFloat(kb) > limitKb) {
+          errors.push(`Filesize (${kb} KB) exceeds ${limitKb}KB limit`);
+        }
+
+        // Run accessibility & branding compliance checks
+        runAuditChecks(c);
+
+        const a11y = c._valA11y || [];
+        const brand = c._valBrand || [];
+
+        if (errors.length > 0 || a11y.length > 0 || brand.length > 0) {
+          problems.push({
+            versionIndex: currentIdx,
+            versionName: rowName,
+            canvasId: c.id,
+            canvasSize: `${c.width}×${c.height}`,
+            errors: errors,
+            a11y: a11y.map(x => x.message),
+            brand: brand.map(x => x.message)
+          });
+        }
+      }
+    } finally {
+      restore();
+    }
+
+    currentIdx++;
+    setTimeout(processNextRow, 30);
+  };
+
+  setTimeout(processNextRow, 50);
+}
+
+function showBatchValidatorResults(problems) {
+  if (problems.length === 0) {
+    const successHtml = `
+      <div style="padding:30px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:var(--text-main); text-align:center; display:flex; flex-direction:column; gap:16px;">
+        <div style="font-size:48px; line-height:1;">🎉</div>
+        <div style="font-size:18px; font-weight:600; color:#10b981;">All Versions Passed!</div>
+        <div style="font-size:13px; color:var(--text-muted); max-width:400px; margin:0 auto; line-height:1.5;">Every version and canvas size conforms to Google Ad compliance rules, accessibility guidelines, and RMIT branding rules.</div>
+        <div style="margin-top:10px; display:flex; gap:8px; justify-content:center;">
+          <button class="btn primary" id="batch-val-success-ok" style="padding:6px 20px; cursor:pointer; font-size:12px;">Awesome</button>
+          <button class="btn" id="btn-batch-rerun" style="
+            background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05));
+            border: 1px solid rgba(20, 184, 166, 0.35);
+            color: #2dd4bf;
+            font-weight: 600;
+            padding: 6px 20px;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 4px;
+          ">Re-run</button>
+        </div>
+      </div>
+    `;
+    openModal('Batch Validation Results', successHtml, false);
+    const bg = document.body.lastElementChild;
+    const okBtn = bg.querySelector('#batch-val-success-ok');
+    if (okBtn) okBtn.onclick = () => bg.remove();
+    
+    const rerunBtn = bg.querySelector('#btn-batch-rerun');
+    if (rerunBtn) {
+      rerunBtn.onclick = () => {
+        bg.remove();
+        runAllVersionsValidator();
+      };
+    }
+    return;
+  }
+
+  // Render list of issues
+  let issuesHtml = '';
+  problems.forEach(p => {
+    issuesHtml += `
+      <div style="background:var(--bg-input); border:1px solid var(--border-light); border-radius:8px; padding:14px; display:flex; flex-direction:column; gap:10px; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
+          <span style="font-size:13px; font-weight:600; color:var(--text-bright);">Version "${p.versionName}" — ${p.canvasSize}</span>
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${p.errors.length > 0 ? `
+            <div style="font-size:11.5px; color:#ef4444; display:flex; gap:6px; align-items:start;">
+              <span style="font-weight:600; min-width:110px; flex-shrink:0;">🔴 Ad Compliance:</span>
+              <div style="display:flex; flex-direction:column; gap:2px; flex:1;">
+                ${p.errors.map(e => `<span>• ${e}</span>`).join('')}
+              </div>
+              <button class="btn btn-fix-issue" data-cid="${p.canvasId}" data-vidx="${p.versionIndex}" data-tab="specs" style="padding:2px 8px; font-size:10px; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.3); color:#ef4444; border-radius:4px; cursor:pointer; flex-shrink:0;">Fix</button>
+            </div>
+          ` : ''}
+          
+          ${p.a11y.length > 0 ? `
+            <div style="font-size:11.5px; color:#f97316; display:flex; gap:6px; align-items:start;">
+              <span style="font-weight:600; min-width:110px; flex-shrink:0;">🟠 Accessibility:</span>
+              <div style="display:flex; flex-direction:column; gap:2px; flex:1;">
+                ${p.a11y.map(w => `<span>• ${w}</span>`).join('')}
+              </div>
+              <button class="btn btn-fix-issue" data-cid="${p.canvasId}" data-vidx="${p.versionIndex}" data-tab="a11y" style="padding:2px 8px; font-size:10px; background:rgba(249, 115, 22, 0.15); border:1px solid rgba(249, 115, 22, 0.3); color:#f97316; border-radius:4px; cursor:pointer; flex-shrink:0;">Fix</button>
+            </div>
+          ` : ''}
+          
+          ${p.brand.length > 0 ? `
+            <div style="font-size:11.5px; color:#f97316; display:flex; gap:6px; align-items:start;">
+              <span style="font-weight:600; min-width:110px; flex-shrink:0;">🟡 Branding:</span>
+              <div style="display:flex; flex-direction:column; gap:2px; flex:1;">
+                ${p.brand.map(w => `<span>• ${w}</span>`).join('')}
+              </div>
+              <button class="btn btn-fix-issue" data-cid="${p.canvasId}" data-vidx="${p.versionIndex}" data-tab="brand" style="padding:2px 8px; font-size:10px; background:rgba(249, 115, 22, 0.15); border:1px solid rgba(249, 115, 22, 0.3); color:#f97316; border-radius:4px; cursor:pointer; flex-shrink:0;">Fix</button>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  });
+
+  const resultsHtml = `
+    <div style="display:flex; flex-direction:column; gap:16px; height:100%; max-height: 550px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-light); padding-bottom:12px;">
+        <div style="flex: 1; min-width: 0; padding-right: 12px;">
+          <h3 style="margin:0; font-size:15px; font-weight:600; color:#ef4444; display:flex; align-items:center; gap:6px;">
+            <span>⚠️</span> Issues Detected in ${problems.length} Canvas-Version Combinations
+          </h3>
+          <span style="font-size:11.5px; color:var(--text-muted); display:block; margin-top:4px;">The following combinations failed verification. Click the "Fix" button to automatically load that version/canvas in the editor and open the Ads Validator.</span>
+        </div>
+        <button class="btn" id="btn-batch-rerun" style="
+          background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05));
+          border: 1px solid rgba(20, 184, 166, 0.35);
+          color: #2dd4bf;
+          font-weight: 600;
+          padding: 6px 12px;
+          font-size: 12px;
+          cursor: pointer;
+          border-radius: 4px;
+          flex-shrink: 0;
+        " title="Re-run validation checks across all versions">
+          🔄 Re-run
+        </button>
+      </div>
+      
+      <div style="flex:1; overflow-y:auto; padding-right:4px;">
+        ${issuesHtml}
+      </div>
+    </div>
+  `;
+
+  openModal('Batch Validation Results', resultsHtml, false);
+  const bg = document.body.lastElementChild;
+  const modal = bg.querySelector('.modal');
+  if (modal) {
+    modal.style.width = '750px';
+    modal.style.maxWidth = '95vw';
+  }
+
+  bg.addEventListener('click', (e) => {
+    const rerunBtn = e.target.closest('#btn-batch-rerun');
+    if (rerunBtn) {
+      bg.remove();
+      runAllVersionsValidator();
+      return;
+    }
+
+    const btn = e.target.closest('.btn-fix-issue');
+    if (btn) {
+      const cid = btn.dataset.cid;
+      const vidx = parseInt(btn.dataset.vidx, 10);
+      const tab = btn.dataset.tab;
+      
+      const canvas = state.canvases.find(x => x.id === cid);
+      if (canvas) {
+        // Close all modals
+        document.querySelectorAll('.modal-bg').forEach(m => m.remove());
+        
+        // Select active version and canvas
+        state.dataMerge.activeVersion = vidx;
+        state.activeCanvasId = cid;
+        
+        if (typeof renderVersionSwitcher === 'function') renderVersionSwitcher();
+        if (typeof renderCanvasesList === 'function') renderCanvasesList();
+        if (typeof render === 'function') render();
+        
+        // Open Validator details modal on the tab
+        openValidatorDetails(canvas, tab);
+      }
+    }
+  });
 }

@@ -660,6 +660,23 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.82',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Cached Batch Audit Results: opening the "All Versions Validator" when a previous batch run exists now displays the cached result instantly.',
+      'Added a "Re-run" action button to both the success screen and the issues listing screen of the Batch Validator results pop-up, allowing instant refresh when templates or elements change.'
+    ]
+  },
+  {
+    version: 'v0.16.81',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Added an "All Versions Validator" button to the export dashboard when multiple spreadsheet data merge rows exist.',
+      'Implemented asynchronous batch auditing across all versions and canvases, displaying a progress overlay bar to prevent browser thread freeze.',
+      'Designed a premium batch audit results pop-up that lists all detected issues with click-to-fix shortcuts that load the faulty version/canvas directly into the editor and launch the validator.'
+    ]
+  },
+  {
     version: 'v0.16.80',
     date: 'June 2026 — Engine v2.18',
     items: [
