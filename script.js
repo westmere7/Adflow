@@ -6166,7 +6166,22 @@ function openValidatorDetails(initialCanvas, initialTab = 'specs') {
         </div>
         <div style="flex:1; display:flex; flex-direction:column; gap:12px; height:100%; overflow:hidden;">
           <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
-            <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright);">${focusedCanvas.width} × ${focusedCanvas.height} Details</h3>
+            <div style="display:flex; align-items:center; gap:12px; min-width:0; flex:1; padding-right:12px;">
+              <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${focusedCanvas.width} × ${focusedCanvas.height} Details</h3>
+              ${state.dataMerge && state.dataMerge.enabled && state.dataMerge.rows && state.dataMerge.rows.length ? `
+                <div style="display:flex; align-items:center; gap:6px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; padding:3px 8px; flex-shrink:0;">
+                  <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Version:</span>
+                  <select id="val-version-select" style="background:transparent; border:none; color:var(--text-bright); font-size:11.5px; font-weight:600; outline:none; cursor:pointer; font-family:inherit; max-width:180px;">
+                    ${state.dataMerge.rows.map((row, i) => {
+                      const keyCol = (state.dataMerge.keyColumn && state.dataMerge.columns.includes(state.dataMerge.keyColumn)) ? state.dataMerge.keyColumn : state.dataMerge.columns[0];
+                      const name = row[keyCol] || `Version ${i + 1}`;
+                      const selected = state.dataMerge.activeVersion === i ? 'selected' : '';
+                      return `<option value="${i}" ${selected} style="background:var(--bg-panel); color:var(--text-main);">${name}</option>`;
+                    }).join('')}
+                  </select>
+                </div>
+              ` : ''}
+            </div>
             <div style="display:flex; align-items:center; gap:12px;">
               ${sizeExceeded && imageElements.length > 0 ? `
                 <button id="val-auto-compress" class="btn primary" style="background:#10b981; color:#fff; border:none; padding:4px 10px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:4px; height:24px; line-height:1;" title="Automatically compress all images on this canvas to WebP to fit size limit">
@@ -6262,6 +6277,42 @@ function openValidatorDetails(initialCanvas, initialTab = 'specs') {
   const setupModalListeners = (modalEl, currentId, currentTab) => {
     activeDetailsId = currentId;
     activeTab = currentTab;
+
+    // Version switcher inside Validator details
+    const versionSelect = modalEl.querySelector('#val-version-select');
+    if (versionSelect) {
+      versionSelect.onchange = async (e) => {
+        const val = e.target.value;
+        const vidx = val === '' ? null : Number(val);
+        
+        if (typeof dmSetActiveVersion === 'function') {
+          dmSetActiveVersion(vidx);
+        } else {
+          state.dataMerge.activeVersion = vidx;
+          pushHistory();
+          render();
+        }
+
+        const currentCanvas = state.canvases.find(c => c.id === activeDetailsId);
+        if (currentCanvas) {
+          await updateCanvasSizeSync(currentCanvas);
+        }
+        
+        state.canvases.forEach(c => {
+          if (c.id !== activeDetailsId) {
+            updateCanvasSizeSync(c);
+          }
+        });
+
+        const modalContainer = document.getElementById(modalId);
+        if (modalContainer) {
+          const parent = modalContainer.parentElement;
+          parent.innerHTML = generateModalContent(activeDetailsId, activeTab);
+          const newContainer = parent.querySelector(`#${modalId}`);
+          setupModalListeners(newContainer, activeDetailsId, activeTab);
+        }
+      };
+    }
     
     // Canvas sidebar items selection
     const buttons = modalEl.querySelectorAll('.val-sidebar-item');
@@ -14799,7 +14850,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.83';
+  const currentVersion = 'v0.16.84';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14850,7 +14901,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.83';
+  const currentVersion = 'v0.16.84';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -14985,7 +15036,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.83</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.84</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -15707,7 +15758,7 @@ function compressImage(dataUrl, format, quality = 0.8) {
         reject(err);
       }
     };
-    img.onerror = (err) => reject(err);
+    img.onerror = () => reject(new Error('Failed to load image for WebP compression'));
     img.src = dataUrl;
   });
 }

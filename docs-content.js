@@ -660,6 +660,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.84',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Validator Version Switcher: Added a version selector dropdown to the Ads Validator details modal header (displayed when Data Merge spreadsheet rows exist), permitting live auditing of different dynamic versions directly from the validation report.',
+      'Fixed WebP Compression Error: Resolved the "Undefined" error during auto-compression by rejecting the loading promise with a proper Error object instead of a generic Event.'
+    ]
+  },
+  {
     version: 'v0.16.83',
     date: 'June 2026 — Engine v2.18',
     items: [

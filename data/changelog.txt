@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.83 (Current) - June 2026 — Engine v2.18
+v0.16.84 (Current) - June 2026 — Engine v2.18
+- Validator Version Switcher: Added a version selector dropdown to the Ads Validator details modal header (displayed when Data Merge spreadsheet rows exist), permitting live auditing of different dynamic versions directly from the validation report.
+- Fixed WebP Compression Error: Resolved the "Undefined" error during auto-compression by rejecting the loading promise with a proper Error object instead of a generic Event.
+
+v0.16.83 - June 2026 — Engine v2.18
 - Button Visual Polish: Removed decorative emoji/unicode icons (⚡ and 🔄) from "All Versions Validator" and "Re-run" buttons to align with RMIT's clean, minimalist UI design system.
 
 v0.16.82 - June 2026 — Engine v2.18
