@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.89 (Current) - June 2026 — Engine v2.18
+v0.16.90 (Current) - June 2026 — Engine v2.18
+- Client-Side Recent Cloud Filtering: Fixed Clear Recent behavior for cloud projects. Instead of deleting physical project database rows, clearing recent cloud projects now saves a client-side timestamp in localStorage (`cloud-recents-cleared-at`) and filters the visible menu items.
+
+v0.16.89 - June 2026 — Engine v2.18
 - Repositioned Clear Recent Menu Item: Moved the "Clear Recent" menu item out of the sliding Open Recent submenu and placed it directly under "Open Recent" in the main File dropdown list, preventing unnecessary hover-scrolling for users.
 
 v0.16.88 - June 2026 — Engine v2.18

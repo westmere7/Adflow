@@ -660,6 +660,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.90',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Client-Side Recent Cloud Filtering: Fixed Clear Recent behavior for cloud projects. Instead of deleting physical project database rows, clearing recent cloud projects now saves a client-side timestamp in localStorage (`cloud-recents-cleared-at`) and filters the visible menu items.'
+    ]
+  },
+  {
     version: 'v0.16.89',
     date: 'June 2026 — Engine v2.18',
     items: [

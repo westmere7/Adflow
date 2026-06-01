@@ -12634,7 +12634,7 @@ async function addRecentProject(exportState) {
 // hover of the "Open Recent" parent menu item so the cloud list stays
 // fresh as the user signs in/out.
 async function clearRecentProjects() {
-  if (!confirm('Clear recent list and keep only the latest project for each category? This will permanently delete older cloud projects from the database.')) return;
+  if (!confirm('Clear recent list and keep only the latest project for each category?')) return;
   
   // 1. Clear local
   try {
@@ -12646,34 +12646,8 @@ async function clearRecentProjects() {
     console.error('Failed to clear local recents:', err);
   }
 
-  // 2. Clear cloud
-  const authReady = typeof authState !== 'undefined' && authState.enabled && typeof sb !== 'undefined' && sb;
-  const user = authReady ? authState.currentUser() : null;
-  if (authReady && user) {
-    try {
-      const { data, error: fetchErr } = await sb
-        .from('projects')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
-      
-      if (!fetchErr && data && data.length > 1) {
-        const latestId = data[0].id;
-        const { error: delErr } = await sb
-          .from('projects')
-          .delete()
-          .eq('user_id', user.id)
-          .neq('id', latestId);
-        
-        if (delErr) {
-          console.error('Failed to delete older cloud projects:', delErr);
-          showCanvasNotification('Failed to clear some cloud projects.', { type: 'warning' });
-        }
-      }
-    } catch (err) {
-      console.error('Failed to clear cloud recents:', err);
-    }
-  }
+  // 2. Clear cloud (only store cleared-at timestamp in localStorage, no database deletions)
+  localStorage.setItem('cloud-recents-cleared-at', Date.now().toString());
 
   showCanvasNotification('Recent list cleared.', { type: 'success' });
   updateRecentProjectsMenu();
@@ -12748,7 +12722,20 @@ async function updateRecentProjectsMenu() {
         .order('updated_at', { ascending: false })
         .limit(10);
       if (!error) {
-        cloudData = data;
+        // Filter out cloud projects older than cloud-recents-cleared-at
+        // except the very latest one (which is data[0])
+        const clearedAt = parseInt(localStorage.getItem('cloud-recents-cleared-at') || '0', 10);
+        let filtered = [];
+        if (data && data.length > 0) {
+          filtered.push(data[0]);
+          for (let i = 1; i < data.length; i++) {
+            const projTime = Date.parse(data[i].updated_at);
+            if (isNaN(projTime) || projTime >= clearedAt) {
+              filtered.push(data[i]);
+            }
+          }
+        }
+        cloudData = filtered;
       }
     } catch (e) {
       console.error('Failed to load cloud projects:', e);
@@ -12838,7 +12825,7 @@ async function updateRecentProjectsMenu() {
   }
 
   // --- 4. Toggle main menu "Clear Recent" visibility -----------------
-  const hasProjects = localRecents.length > 0 || (cloudData && cloudData.length > 0);
+  const hasProjects = localRecents.length > 1 || (cloudData && cloudData.length > 1);
   const clearBtnMain = document.getElementById('menu-file-clear-recent');
   if (clearBtnMain) {
     clearBtnMain.style.display = hasProjects ? 'block' : 'none';
@@ -14955,7 +14942,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.89';
+  const currentVersion = 'v0.16.90';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -15006,7 +14993,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.89';
+  const currentVersion = 'v0.16.90';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15141,7 +15128,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.89</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.90</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
