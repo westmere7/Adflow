@@ -5825,7 +5825,7 @@ function openValidatorDetails(initialCanvas, initialTab = 'specs') {
             ${sizeExceeded && imageElements.length > 0 ? `
               <div style="margin-top: 8px;">
                 <button id="val-criteria-auto-compress" class="btn primary" style="background:#10b981; color:#fff; border:none; padding:5px 12px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; height:24px; line-height:1;" title="Automatically compress all images on this canvas to WebP to fit size limit">
-                  ⚡ Auto Compress Images to Fit Limit
+                  Auto Compress Images to Fit Limit
                 </button>
               </div>
             ` : ''}
@@ -6185,7 +6185,7 @@ function openValidatorDetails(initialCanvas, initialTab = 'specs') {
             <div style="display:flex; align-items:center; gap:12px;">
               ${sizeExceeded && imageElements.length > 0 ? `
                 <button id="val-auto-compress" class="btn primary" style="background:#10b981; color:#fff; border:none; padding:4px 10px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:4px; height:24px; line-height:1;" title="Automatically compress all images on this canvas to WebP to fit size limit">
-                  ⚡ Auto Compress (WebP)
+                  Auto Compress (WebP)
                 </button>
               ` : ''}
               <span style="font-size:12.5px; font-weight:bold; color:var(--text-label);">ZIP Size: <span style="color:${errors.some(e => e.includes('limit')) ? '#f97316' : '#10b981'}; font-size:14px;">${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'calc...'}</span></span>
@@ -14850,7 +14850,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.84';
+  const currentVersion = 'v0.16.85';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14901,7 +14901,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.84';
+  const currentVersion = 'v0.16.85';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15036,7 +15036,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.84</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.85</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

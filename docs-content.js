@@ -660,6 +660,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.85',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Button Visual Polish: Removed decorative bolt icon (⚡) from WebP Auto-Compression action buttons in the validator to match RMIT\'s clean, minimalist UI design system.'
+    ]
+  },
+  {
     version: 'v0.16.84',
     date: 'June 2026 — Engine v2.18',
     items: [
