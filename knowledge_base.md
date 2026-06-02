@@ -1,4 +1,4 @@
-# RMIT Adflow — Technical App Breakdown (Updated v0.16.90, Engine v2.16)
+# RMIT Adflow — Technical App Breakdown (Updated v0.16.91, Engine v2.16)
 
 This document is the official context dump for agents picking up the codebase. It covers the current architecture, state schemas, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), cloud backend, and workflow rules. **Read this in full before making non-trivial changes.**
 
@@ -10,14 +10,15 @@ Adflow is a vanilla-JS single-page application — no framework, no bundler, no 
 
 - **Structure**: `index.html` (~620 lines).
 - **Styling**: `styles.css` (~4100 lines, CSS variables drive 5 named themes).
-- **Logic**: Seven JS files loaded in sequential order via classic `<script>` tags sharing the global lexical scope (so declarations in earlier files are visible to later files at execution time):
+- **Logic**: Eight JS files loaded in sequential order via classic `<script>` tags sharing the global lexical scope (so declarations in earlier files are visible to later files at execution time):
   1. `auto-resize-engine.js` (~1750 lines) — rule-based placement engine
-  2. `docs-content.js`       (~1430 lines) — in-app docs + changelog data/UI
-  3. `auth-ui.js`            (~950 lines)  — Supabase auth + Cloud Projects + Spaces
-  4. `data-merge.js`         (~825 lines)  — Live Data / Versions (CSV → ads)
-  5. `export-pipeline.js`    (~890 lines)  — HTML5 ZIP / PNG / GIF export
-  6. `color-picker.js`       (~510 lines)  — iro.js wrapper, gradient editor
-  7. `script.js`             (~11,480 lines) — state, rendering loop, selection/layer panels, element transforms, history, and workspace interactions.
+  2. `auto-arrange-config.js` (~300 lines) — placement coordinates and specs per size
+  3. `docs-content.js`       (~1430 lines) — in-app docs + changelog data/UI
+  4. `auth-ui.js`            (~950 lines)  — Supabase auth + Cloud Projects + Spaces
+  5. `data-merge.js`         (~825 lines)  — Live Data / Versions (CSV → ads)
+  6. `export-pipeline.js`    (~890 lines)  — HTML5 ZIP / PNG / GIF export
+  7. `color-picker.js`       (~510 lines)  — iro.js wrapper, gradient editor
+  8. `script.js`             (~11,480 lines) — state, rendering loop, selection/layer panels, element transforms, history, and workspace interactions.
 - **Embedded Fonts**: [font_assets.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/font_assets.js) loaded inline at the top containing brand font base64 blobs.
 - **Persistence**: IndexedDB (`adflow-autosave` DB) for autosaves; `.flow` ZIP archives (JSZip) for project export/import.
 - **Cloud Backend**: Supabase for authentication, storage, and shared workspaces.
@@ -31,6 +32,7 @@ When looking for specific features or bugs, refer to this table:
 | Feature Area | File | Notable Globals / APIs |
 | :--- | :--- | :--- |
 | **Auto-resize engine** (rules, placement, settings, picker) | [auto-resize-engine.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auto-resize-engine.js) | `ENGINE_VERSION`, `ROLE_IDS`, `runRuleBasedAutoResize`, `autoAssignRole`, `openAutoResizeModal` |
+| **Auto-arrange configurations** (coordinates, safezones, font sizes per format) | [auto-arrange-config.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auto-arrange-config.js) | `AUTO_ARRANGE_CONFIG` |
 | **In-app documentation** (Help modal) | [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/docs-content.js) | `DOCS_SECTIONS`, `openDocumentation`, `renderDocsPanel` |
 | **Changelog data & modal** | [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/docs-content.js) | `CHANGELOG_DATA`, `openChangelogModal` |
 | **Supabase client & session** | [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auth-ui.js) | `sb`, `authState`, `spacesState` |
@@ -192,8 +194,9 @@ interface LinkGroup {
 
 ## 4. Subsystems Detail
 
-### Auto-Resize Engine (v2.16)
+### Auto-Resize Engine (v2.16) & Auto-Arrange Configurations
 Deterministic, rule-based layout generator. Takes a source canvas and targets, recalculates relative sizes, crops, and wrapping.
+- **Geometries & Parameters**: Canvas-specific placement specifications, safezones, maximum font-sizes, and brand element (Logo, Tagline, CRICOS) quadrant coordinates are managed in [auto-arrange-config.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auto-arrange-config.js).
 - **Roles**: Positions are determined by priority (`rmit-logo` -> `cta-button` -> `heading` etc.).
 - **Crop Preservation**: For the `main-image` ("Fixed shape") role, the engine calculates normalized source cropping offsets and applies them to small target canvases, while keeping its exact aspect ratio.
 - **R1 Alignments**: Pairs the logo and the "Ready for what's next" taglines dynamically.
@@ -220,7 +223,7 @@ Maps columns to dynamic element slots to batch generate banners.
 ### Changelog Workflow
 After making user-visible modifications, **bump the version and add a changelog entry in these 5 locations**:
 
-1. [data/version.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/version.txt) — Update the single-line string (e.g. `v0.16.90`).
+1. [data/version.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/version.txt) — Update the single-line string (e.g. `v0.16.91`).
 2. [data/changelog.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/changelog.txt) — Add description at the top of the file.
 3. [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/docs-content.js) — Insert the new entry details in the `CHANGELOG_DATA` array.
 4. [script.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/script.js) — Update `currentVersion` inside `checkVersionUpdate()`, and update the version strings in the About and Settings modal templates.
