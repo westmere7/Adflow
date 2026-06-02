@@ -12825,11 +12825,7 @@ async function updateRecentProjectsMenu() {
   }
 
   // --- 4. Toggle main menu "Clear Recent" visibility -----------------
-  const hasProjects = localRecents.length > 1 || (cloudData && cloudData.length > 1);
-  const clearBtnMain = document.getElementById('menu-file-clear-recent');
-  if (clearBtnMain) {
-    clearBtnMain.style.display = hasProjects ? 'block' : 'none';
-  }
+  // Configured to remain permanently visible per user request
 }
 
 async function loadProjectFromState(loadedState) {
@@ -14942,7 +14938,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.90';
+  const currentVersion = 'v0.16.91';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14993,7 +14989,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.90';
+  const currentVersion = 'v0.16.91';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15128,7 +15124,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.90</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.91</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

@@ -660,6 +660,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.91',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Static Clear Recent Button: Configured the "Clear Recent" File dropdown menu item to remain permanently visible instead of dynamically hiding/showing after project list loading delays.'
+    ]
+  },
+  {
     version: 'v0.16.90',
     date: 'June 2026 — Engine v2.18',
     items: [
