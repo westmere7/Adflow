@@ -1700,6 +1700,9 @@ function runRuleBasedAutoResize(settings) {
     const target = state.canvases.find(c => c.id === targetId);
     if (!target || target.id === src.id) return;
 
+    const preservedEls = (target.elements || []).filter(el =>
+      el.persistent === false && el.frameId !== state.activeFrameId
+    );
     target.elements = [];
 
     // v0.16.34: preserve exact source layer order on the target. We still
@@ -1905,6 +1908,8 @@ function runRuleBasedAutoResize(settings) {
     resolveNoTouchCollisions(ctx);
     enforceHeadingSubheadAdjacency(ctx);
     clampToCanvas(ctx);
+
+    target.elements = [...preservedEls, ...target.elements];
 
     canvasesUpdated++;
   });
