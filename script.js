@@ -9928,7 +9928,16 @@ function renderProps() {
     const imgDisabled = isFieldDisabled('image');
     const src = dAssetId ? ((state.assets && state.assets[dAssetId]) || dAssetId) : '';
     const isVector = (el.name && el.name.toLowerCase().endsWith('.svg')) || 
-                     (dAssetId && state.assets && state.assets[dAssetId] && state.assets[dAssetId].startsWith('data:image/svg+xml'));
+                     (dAssetId && typeof dAssetId === 'string' && dAssetId.toLowerCase().includes('.svg')) ||
+                     (dAssetId && state.assets && state.assets[dAssetId] && (
+                       state.assets[dAssetId].startsWith('data:image/svg+xml') || 
+                       state.assets[dAssetId].toLowerCase().includes('.svg')
+                     )) ||
+                     el.role === 'rmit-logo' || 
+                     (el.customName && (
+                       el.customName.toLowerCase().includes('logo') || 
+                       el.customName.toLowerCase().includes('pixel')
+                     ));
 
     // Output file input element (hidden if image already uploaded, so we can trigger it via custom UI)
     const fileInputHtml = `<input type="file" accept="image/*" id="img-upload" title="Upload an image file" style="${src ? 'display:none;' : ''}" ${imgDisabled ? 'disabled style="pointer-events:none;"' : ''} />`;
@@ -13930,6 +13939,45 @@ async function autoCompressCanvasImages(canvasId) {
   const canvas = state.canvases.find(c => c.id === canvasId);
   if (!canvas) return;
 
+  // Repair pass: if any RMIT logo / brand element was previously mistakenly compressed/rasterized,
+  // restore it to its original SVG asset.
+  canvas.elements.forEach(el => {
+    if (el.role === 'rmit-logo' || (el.customName && (
+      el.customName.toLowerCase().includes('logo') || 
+      el.customName.toLowerCase().includes('pixel')
+    ))) {
+      const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+      const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+      if (activeAssetId && typeof activeAssetId === 'string' && activeAssetId.startsWith('img_')) {
+        let restoredAssetId = 'data/Elements/RMIT_White.svg';
+        if (el.customName && el.customName.toLowerCase().includes('full color')) {
+          restoredAssetId = 'data/Elements/RMIT_full.svg';
+        } else if (el.customName && el.customName.toLowerCase().includes('red pixel')) {
+          restoredAssetId = 'data/Elements/RMIT_RedPixel.svg';
+        }
+        
+        const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
+        if (_imgDyn) {
+          const dm = state.dataMerge;
+          if (dm && dm.mappings) {
+            const col = dm.mappings[dmSlotKey(el) + '::image'];
+            if (col && dm.rows && dm.activeVersion != null) {
+              const row = dm.rows[dm.activeVersion];
+              if (row) {
+                row[col] = restoredAssetId;
+              }
+            }
+          }
+        } else {
+          el.assetId = restoredAssetId;
+        }
+        el.isCompressed = false;
+        delete el.webpQuality;
+        delete el.compressionFormat;
+      }
+    }
+  });
+
   const limitKb = state.adSizeLimit || 150;
   
   // Calculate up-to-date ZIP size dynamically
@@ -13943,6 +13991,15 @@ async function autoCompressCanvasImages(canvasId) {
   
   const imageElements = canvas.elements.filter(el => {
     if (el.type !== 'image') return false;
+
+    // Do not compress branding or logo elements (SVG or otherwise)
+    if (el.role === 'rmit-logo' || (el.customName && (
+      el.customName.toLowerCase().includes('logo') || 
+      el.customName.toLowerCase().includes('pixel')
+    ))) {
+      return false;
+    }
+
     const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
     const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
     if (!activeAssetId) return false;
@@ -15036,7 +15093,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.17.0';
+  const currentVersion = 'v0.17.2';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -15087,7 +15144,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.17.0';
+  const currentVersion = 'v0.17.2';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15222,7 +15279,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.17.0</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.17.2</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

@@ -1,6 +1,15 @@
 RMIT Adflow - Version & Changelog History
 
-v0.17.0 (Current) - June 2026 — Engine v2.18
+v0.17.2 (Current) - June 2026 — Engine v2.18
+- RMIT Logo Recovery: Implemented a self-healing repair pass that automatically restores any previously compressed/rasterized RMIT brand logo back to its original clean vector SVG format, and strengthened the SVG bypass logic during auto-compression to filter logo/brand elements based on name and role.
+
+v0.17.1 - June 2026 — Engine v2.18
+- Batch WebP Compression: Added a green "Batch WebP Compress" button in the Export modal to compress all oversized canvases and versions to WebP format concurrently, displaying a detailed progress loading bar and cancellation capability.
+- Dynamic Sizing Sync: Configured both the Ads Validator details modal and the Export modal table to dynamically recalculate exact ZIP sizes concurrently, ensuring sizing values are always up-to-date and consistent.
+- SVG Bypass Check: Bypassed SVG vector images during WebP auto-compression to preserve branding logos (such as the RMIT logo) from being rasterized or cropped.
+- Validator Header Cleanup: Removed the redundant, top-aligned green "Auto Compress (WebP)" button from the Ads Validator header.
+
+v0.17.0 - June 2026 — Engine v2.18
 - Paste in Place Shortcut (Ctrl+Shift+V / Cmd+Shift+V): Added paste-in-place keyboard functionality. Keeps element coordinates exact when pasting on the same canvas, and dynamically scales positioning proportionally when pasting onto target canvases of different dimensions using center-anchored coordinate scaling to preserve centered objects exactly.
 - Updated Keyboard Shortcuts Modal: Registered Shift + Ctrl/Cmd + V inside the Help -> Shortcuts dashboard for discoverability.
 

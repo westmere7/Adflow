@@ -660,6 +660,23 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.17.2',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'RMIT Logo Recovery: Implemented a self-healing repair pass that automatically restores any previously compressed/rasterized RMIT brand logo back to its original clean vector SVG format, and strengthened the SVG bypass logic during auto-compression to filter logo/brand elements based on name and role.'
+    ]
+  },
+  {
+    version: 'v0.17.1',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Batch WebP Compression: Added a green "Batch WebP Compress" button in the Export modal to compress all oversized canvases and versions to WebP format concurrently, displaying a detailed progress loading bar and cancellation capability.',
+      'Dynamic Sizing Sync: Configured both the Ads Validator details modal and the Export modal table to dynamically recalculate exact ZIP sizes concurrently, ensuring sizing values are always up-to-date and consistent.',
+      'SVG Bypass Check: Bypassed SVG vector images during WebP auto-compression to preserve branding logos (such as the RMIT logo) from being rasterized or cropped.',
+      'Validator Header Cleanup: Removed the redundant, top-aligned green "Auto Compress (WebP)" button from the Ads Validator header.'
+    ]
+  },
+  {
     version: 'v0.17.0',
     date: 'June 2026 — Engine v2.18',
     items: [
