@@ -660,6 +660,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.17.5',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Exclude Persistent Layers Option: Added a checkbox in the transition panel to exclude persistent layers from transitions, allowing them to remain static on top/bottom while other elements transition.'
+    ]
+  },
+  {
     version: 'v0.17.4',
     date: 'June 2026 — Engine v2.18',
     items: [

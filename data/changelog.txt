@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.17.4 (Current) - June 2026 — Engine v2.18
+v0.17.5 (Current) - June 2026 — Engine v2.18
+- Exclude Persistent Layers Option: Added a checkbox in the transition panel to exclude persistent layers from transitions, allowing them to remain static on top/bottom while other elements transition.
+
+v0.17.4 - June 2026 — Engine v2.18
 - Looping Frame Transitions: Allowed the first frame to have transition settings and preview animation when looping is enabled, mapping it correctly to the export pipeline.
 
 v0.17.3 - June 2026 — Engine v2.18

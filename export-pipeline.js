@@ -946,7 +946,17 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   let framesHTML = '';
   const frameData = [];
   activeFrames.forEach((f, i) => {
-    const frameEls = c.elements.filter(e => e.persistent === false && e.frameId === f.id).map(renderEl).join('\n');
+    const excludePers = !!f.excludePersistent;
+    const frameElsList = [];
+    if (!excludePers) {
+      c.elements.filter(e => e.persistent === 'bottom').forEach(e => frameElsList.push(renderEl(e)));
+    }
+    c.elements.filter(e => e.persistent === false && e.frameId === f.id).forEach(e => frameElsList.push(renderEl(e)));
+    if (!excludePers) {
+      c.elements.filter(e => e.persistent === 'top').forEach(e => frameElsList.push(renderEl(e)));
+    }
+    const frameEls = frameElsList.join('\n');
+
     const displayStyle = isImageExport
       ? (f.id === state.activeFrameId ? 'block' : 'none')
       : (i === 0 ? 'block' : 'none');
@@ -955,7 +965,14 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     const transitionVal = (i === 0)
       ? (state.loopAd ? (f.transition || 'none') : 'none')
       : (f.transition || 'fade');
-    frameData.push({ id: f.id, duration: f.duration || 2, transition: transitionVal, transitionDuration: f.transitionDuration || 0.5, transitionFade: f.transitionFade });
+    frameData.push({ 
+      id: f.id, 
+      duration: f.duration || 2, 
+      transition: transitionVal, 
+      transitionDuration: f.transitionDuration || 0.5, 
+      transitionFade: f.transitionFade,
+      excludePersistent: excludePers
+    });
   });
 
   let clickAreasHTML = '';
@@ -1003,6 +1020,9 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       }
     }
   });
+
+  const activeFrameIdx = activeFrames.findIndex(f => f.id === state.activeFrameId);
+  const initExclude = (activeFrameIdx >= 0) ? !!activeFrames[activeFrameIdx].excludePersistent : (activeFrames[0] ? !!activeFrames[0].excludePersistent : false);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1086,13 +1106,13 @@ ${dynamicKeyframes}
 </head>
 <body>
   <div id="ad">
-    <div id="layer-bot" style="position:absolute;inset:0;pointer-events:none;z-index:1;">
+    <div id="layer-bot" style="position:absolute;inset:0;pointer-events:none;z-index:1;display:${initExclude ? 'block' : 'none'};">
 ${elsBot}
     </div>
     <div id="layer-frames" style="position:absolute;inset:0;pointer-events:none;z-index:2;">
 ${framesHTML}
     </div>
-    <div id="layer-top" style="position:absolute;inset:0;pointer-events:none;z-index:3;">
+    <div id="layer-top" style="position:absolute;inset:0;pointer-events:none;z-index:3;display:${initExclude ? 'block' : 'none'};">
 ${elsTop}
     </div>
     ${clickAreasHTML}
@@ -1105,6 +1125,14 @@ ${elsTop}
     var frames = ${JSON.stringify(frameData)};
     var currentFrame = 0;
     var loopAd = ${state.loopAd === true};
+
+    function updatePersistentLayersVisibility(frameIdx) {
+      var exclude = !!frames[frameIdx].excludePersistent;
+      var botLayer = document.getElementById('layer-bot');
+      var topLayer = document.getElementById('layer-top');
+      if (botLayer) botLayer.style.display = exclude ? 'block' : 'none';
+      if (topLayer) topLayer.style.display = exclude ? 'block' : 'none';
+    }
     
     function nextFrame() {
       if (frames.length <= 1) return;
@@ -1112,6 +1140,7 @@ ${elsTop}
       var prevFrameEl = document.getElementById('frame-' + frames[prevFrameIdx].id);
       
       currentFrame = (currentFrame + 1) % frames.length;
+      updatePersistentLayersVisibility(currentFrame);
       var nextFrameEl = document.getElementById('frame-' + frames[currentFrame].id);
       
       prevFrameEl.style.zIndex = '1';
@@ -1235,6 +1264,7 @@ ${elsTop}
 
     window.addEventListener('load', function () {
       adjustAutoSizes();
+      updatePersistentLayersVisibility(0);
       if (frames.length > 1) {
         setTimeout(nextFrame, frames[0].duration * 1000);
       }

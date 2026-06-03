@@ -8532,6 +8532,8 @@ function startFrameTransitionPreview(type) {
     overlay.style.pointerEvents = 'none';
     overlay.style.overflow = 'hidden';
 
+    const excludePers = !!currentFrame.excludePersistent;
+
     const prevContainer = document.createElement('div');
     prevContainer.style.position = 'absolute';
     prevContainer.style.inset = '0';
@@ -8546,8 +8548,12 @@ function startFrameTransitionPreview(type) {
     prevContainer.appendChild(prevTop);
 
     c.elements.forEach(el => {
-      if (el.persistent === 'bottom') prevBot.appendChild(elementNode(el, c));
-      else if (el.persistent === 'top') prevTop.appendChild(elementNode(el, c));
+      if (el.persistent === 'bottom') {
+        if (!excludePers) prevBot.appendChild(elementNode(el, c));
+      }
+      else if (el.persistent === 'top') {
+        if (!excludePers) prevTop.appendChild(elementNode(el, c));
+      }
       else if (el.frameId === prevFrameId) prevMid.appendChild(elementNode(el, c));
     });
     overlay.appendChild(prevContainer);
@@ -8566,11 +8572,35 @@ function startFrameTransitionPreview(type) {
     nextContainer.appendChild(nextTop);
 
     c.elements.forEach(el => {
-      if (el.persistent === 'bottom') nextBot.appendChild(elementNode(el, c));
-      else if (el.persistent === 'top') nextTop.appendChild(elementNode(el, c));
+      if (el.persistent === 'bottom') {
+        if (!excludePers) nextBot.appendChild(elementNode(el, c));
+      }
+      else if (el.persistent === 'top') {
+        if (!excludePers) nextTop.appendChild(elementNode(el, c));
+      }
       else if (el.frameId === nextFrameId) nextMid.appendChild(elementNode(el, c));
     });
     overlay.appendChild(nextContainer);
+
+    if (excludePers) {
+      const staticBot = document.createElement('div');
+      staticBot.style.position = 'absolute';
+      staticBot.style.inset = '0';
+      staticBot.style.zIndex = '0';
+      c.elements.forEach(el => {
+        if (el.persistent === 'bottom') staticBot.appendChild(elementNode(el, c));
+      });
+      overlay.appendChild(staticBot);
+
+      const staticTop = document.createElement('div');
+      staticTop.style.position = 'absolute';
+      staticTop.style.inset = '0';
+      staticTop.style.zIndex = '3';
+      c.elements.forEach(el => {
+        if (el.persistent === 'top') staticTop.appendChild(elementNode(el, c));
+      });
+      overlay.appendChild(staticTop);
+    }
 
     canvasDom.appendChild(overlay);
     nextContainer.style.display = 'none';
@@ -8871,6 +8901,16 @@ function getFrameTransitionHtml(currentFrame) {
     </div>
   `;
 
+  const excludePersVal = !!currentFrame.excludePersistent;
+  const excludePersHtml = `
+    <div class="prop-row" style="margin-bottom:8px;">
+      <div class="checkbox-row" style="height:24px; align-items:center;">
+        <input type="checkbox" id="frame-trans-exclude-persistent" ${excludePersVal ? 'checked' : ''} />
+        <label for="frame-trans-exclude-persistent" style="cursor:pointer; font-size:11px;" title="Exclude persistent layers from frame transitions">Exclude persistent layers</label>
+      </div>
+    </div>
+  `;
+
   let conditionalControls = '';
   if (activePreset === 'slide' || activePreset === 'push' || activePreset === 'swipe') {
     const currentDir = currentFrame.transitionDirection || 'left';
@@ -8965,7 +9005,7 @@ function getFrameTransitionHtml(currentFrame) {
         ${presetButtons}
         ${favMessageHtml}
       </div>
-      ${activePreset !== 'none' ? standardProps + conditionalControls : ''}
+      ${activePreset !== 'none' ? standardProps + excludePersHtml + conditionalControls : ''}
     </div>
   `;
 }
@@ -9026,6 +9066,18 @@ function wireFrameTransitionEvents() {
     });
     fadeChk.addEventListener('change', (e) => {
       currentFrame.transitionFade = e.target.checked;
+      pushHistory();
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+  }
+
+  const exclPersChk = propsEl.querySelector('#frame-trans-exclude-persistent');
+  if (exclPersChk) {
+    exclPersChk.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    exclPersChk.addEventListener('change', (e) => {
+      currentFrame.excludePersistent = e.target.checked;
       pushHistory();
       startFrameTransitionPreview(currentFrame.transition || 'none');
     });
@@ -15096,7 +15148,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.17.4';
+  const currentVersion = 'v0.17.5';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -15147,7 +15199,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.17.4';
+  const currentVersion = 'v0.17.5';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15282,7 +15334,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.17.4</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.17.5</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
