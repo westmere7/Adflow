@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.94 (Current) - June 2026 — Engine v2.18
+v0.17.0 (Current) - June 2026 — Engine v2.18
+- Paste in Place Shortcut (Ctrl+Shift+V / Cmd+Shift+V): Added paste-in-place keyboard functionality. Keeps element coordinates exact when pasting on the same canvas, and dynamically scales positioning proportionally when pasting onto target canvases of different dimensions using center-anchored coordinate scaling to preserve centered objects exactly.
+- Updated Keyboard Shortcuts Modal: Registered Shift + Ctrl/Cmd + V inside the Help -> Shortcuts dashboard for discoverability.
+
+v0.16.94 - June 2026 — Engine v2.18
 - Frame Sync Dialog Renaming: Renamed the main Synchronize Layers dialog header to "Frame Sync" to align with its core context.
 
 v0.16.93 - June 2026 — Engine v2.18

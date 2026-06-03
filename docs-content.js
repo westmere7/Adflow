@@ -660,6 +660,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.17.0',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Paste in Place (Ctrl+Shift+V / Cmd+Shift+V): Added keyboard paste-in-place functionality. Pasting onto the same canvas places the duplicate exactly in place, and pasting onto a different canvas scales the coordinates proportionally using center-anchored positioning so that centered objects remain perfectly centered.'
+    ]
+  },
+  {
     version: 'v0.16.94',
     date: 'June 2026 — Engine v2.18',
     items: [

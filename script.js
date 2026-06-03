@@ -12030,9 +12030,23 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
-  const c = getActiveCanvas();
-
   // Copy, Cut, and Paste are handled by standard window events below
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
+    e.preventDefault();
+    if (state.clipboard) {
+      performPaste(state.clipboard, true);
+    } else if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(text => {
+        try {
+          const parsedData = JSON.parse(text);
+          performPaste(parsedData, true);
+        } catch (err) {
+          // ignore non-json text
+        }
+      }).catch(() => {});
+    }
+    return;
+  }
 
 
   if (e.code === 'Space') {
@@ -12177,6 +12191,68 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+function performPaste(parsedData, isPasteInPlace) {
+  const c = getActiveCanvas();
+  if (!c) return false;
+
+  let parsed = [];
+  let sourceCanvasId = null;
+  let sourceWidth = null;
+  let sourceHeight = null;
+  if (Array.isArray(parsedData)) {
+    parsed = parsedData;
+  } else if (parsedData && Array.isArray(parsedData.elements)) {
+    parsed = parsedData.elements;
+    sourceCanvasId = parsedData.sourceCanvasId;
+    sourceWidth = parsedData.sourceCanvasWidth;
+    sourceHeight = parsedData.sourceCanvasHeight;
+  }
+
+  if (parsed.length > 0) {
+    const groupMap = {};
+    const newIds = [];
+    const pasted = parsed.map(x => {
+      const copy = JSON.parse(JSON.stringify(x));
+      copy.id = uid();
+
+      if (isPasteInPlace) {
+        if (sourceCanvasId && sourceCanvasId === c.id) {
+          // Same canvas: keep exact original position
+        } else if (sourceWidth && sourceHeight) {
+          // Different canvas: calculate proportional position based on element center anchor
+          const w = x.width || 0;
+          const h = x.height || 0;
+          copy.x = Math.round(((x.x + w / 2) / sourceWidth) * c.width - w / 2);
+          copy.y = Math.round(((x.y + h / 2) / sourceHeight) * c.height - h / 2);
+        } else {
+          // Fallback (keep original coordinates)
+        }
+      } else {
+        // Normal paste: offset by 10
+        copy.x += 10;
+        copy.y += 10;
+      }
+
+      if (copy.persistent === false) {
+        copy.frameId = state.activeFrameId;
+      }
+      if (copy.groupId) {
+        if (!groupMap[copy.groupId]) groupMap[copy.groupId] = uid();
+        copy.groupId = groupMap[copy.groupId];
+      }
+      newIds.push(copy.id);
+      return copy;
+    });
+    pasted.forEach(p => insertAtGroupEnd(c.elements, p));
+    state.layerSelection = newIds;
+    state.selectedElementId = newIds.length === 1 ? newIds[0] : null;
+    pushHistory();
+    render();
+    return true;
+  }
+  return false;
+}
+
 window.addEventListener('copy', (e) => {
   const t = e.target;
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
@@ -12185,8 +12261,14 @@ window.addEventListener('copy', (e) => {
   const c = getActiveCanvas();
   if (c && state.layerSelection?.length > 0) {
     const selected = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
-    state.clipboard = selected;
-    e.clipboardData.setData('application/x-adflow-elements', JSON.stringify(selected));
+    const clipboardPayload = {
+      sourceCanvasId: c.id,
+      sourceCanvasWidth: c.width,
+      sourceCanvasHeight: c.height,
+      elements: selected
+    };
+    state.clipboard = clipboardPayload;
+    e.clipboardData.setData('application/x-adflow-elements', JSON.stringify(clipboardPayload));
     e.preventDefault();
   }
 });
@@ -12199,8 +12281,14 @@ window.addEventListener('cut', (e) => {
   const c = getActiveCanvas();
   if (c && state.layerSelection?.length > 0) {
     const selected = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
-    state.clipboard = selected;
-    e.clipboardData.setData('application/x-adflow-elements', JSON.stringify(selected));
+    const clipboardPayload = {
+      sourceCanvasId: c.id,
+      sourceCanvasWidth: c.width,
+      sourceCanvasHeight: c.height,
+      elements: selected
+    };
+    state.clipboard = clipboardPayload;
+    e.clipboardData.setData('application/x-adflow-elements', JSON.stringify(clipboardPayload));
     c.elements = c.elements.filter(x => !state.layerSelection.includes(x.id));
     state.layerSelection = [];
     state.selectedElementId = null;
@@ -12218,39 +12306,30 @@ window.addEventListener('paste', (e) => {
   const c = getActiveCanvas();
   if (!c) return;
 
+  const isPasteInPlace = !!window._isPasteInPlace;
+  window._isPasteInPlace = false;
+
   // 1. Try pasting Adflow elements
   const elementsData = e.clipboardData.getData('application/x-adflow-elements') || e.clipboardData.getData('application/x-adcooker-elements');
+  let parsedData = null;
   if (elementsData) {
-    e.preventDefault();
     try {
-      const parsed = JSON.parse(elementsData);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const groupMap = {};
-        const newIds = [];
-        const pasted = parsed.map(x => {
-          const copy = JSON.parse(JSON.stringify(x));
-          copy.id = uid();
-          copy.x += 10;
-          copy.y += 10;
-          if (copy.persistent === false) {
-            copy.frameId = state.activeFrameId;
-          }
-          if (copy.groupId) {
-            if (!groupMap[copy.groupId]) groupMap[copy.groupId] = uid();
-            copy.groupId = groupMap[copy.groupId];
-          }
-          newIds.push(copy.id);
-          return copy;
-        });
-        pasted.forEach(p => insertAtGroupEnd(c.elements, p));
-        state.layerSelection = newIds;
-        state.selectedElementId = newIds.length === 1 ? newIds[0] : null;
-        pushHistory();
-        render();
-        return;
-      }
+      parsedData = JSON.parse(elementsData);
     } catch (err) {
-      console.warn('Failed to parse pasted elements:', err);
+      console.warn('Failed to parse pasted elements from clipboardData:', err);
+    }
+  }
+
+  // Fallback to internal state if OS clipboard custom data is empty
+  if (!parsedData && state.clipboard) {
+    parsedData = state.clipboard;
+  }
+
+  if (parsedData) {
+    const success = performPaste(parsedData, isPasteInPlace);
+    if (success) {
+      e.preventDefault();
+      return;
     }
   }
 
@@ -14906,6 +14985,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
       <tr><td><b>Copy Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">C</span></td></tr>
       <tr><td><b>Cut Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">X</span></td></tr>
       <tr><td><b>Paste Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">V</span></td></tr>
+      <tr><td><b>Paste in Place</b></td><td style="text-align: right;"><span class="kbd">⇧ Shift</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">V</span></td></tr>
       <tr><td><b>Duplicate Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">D</span></td></tr>
       <tr><td><b>Group Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">G</span></td></tr>
       <tr><td><b>Ungroup Elements</b></td><td style="text-align: right;"><span class="kbd">⇧</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">G</span></td></tr>
@@ -14938,7 +15018,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.94';
+  const currentVersion = 'v0.17.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14989,7 +15069,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.94';
+  const currentVersion = 'v0.17.0';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15124,7 +15204,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.94</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.17.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -17270,13 +17350,25 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-copy', () => {
     const c = getActiveCanvas();
     if (c && state.layerSelection?.length > 0) {
-      state.clipboard = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
+      const selected = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
+      state.clipboard = {
+        sourceCanvasId: c.id,
+        sourceCanvasWidth: c.width,
+        sourceCanvasHeight: c.height,
+        elements: selected
+      };
     }
   });
   bind('ctx-cut', () => {
     const c = getActiveCanvas();
     if (c && state.layerSelection?.length > 0) {
-      state.clipboard = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
+      const selected = c.elements.filter(x => state.layerSelection.includes(x.id)).map(x => JSON.parse(JSON.stringify(x)));
+      state.clipboard = {
+        sourceCanvasId: c.id,
+        sourceCanvasWidth: c.width,
+        sourceCanvasHeight: c.height,
+        elements: selected
+      };
       c.elements = c.elements.filter(x => !state.layerSelection.includes(x.id));
       state.layerSelection = [];
       state.selectedElementId = null;
