@@ -274,17 +274,60 @@ function dmToggleLock() {
   render();
 }
 
+function dmRenderCustomSelect(container, options, activeVal, onSelect) {
+  if (!container) return;
+  const currentOpt = options.find(o => o.val === activeVal) || options[0] || { label: '— none —', val: '' };
+  
+  container.innerHTML = `
+    <button class="custom-select-trigger" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid #272c3a; color: var(--text-main); border-radius: 4px; padding: 4px 6px; font-size: 11px; height: 24px; text-align: left; cursor: pointer; outline: none;">
+      <span class="custom-select-label" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; padding-right: 4px;">${dmEsc(currentOpt.label)}</span>
+      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="opacity: 0.7; pointer-events: none; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </button>
+    <div class="custom-select-dropdown" style="display: none; position: absolute; top: 26px; left: 0; right: 0; background: #171a22; border: 1px solid #272c3a; border-radius: 4px; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-height: 440px; overflow-y: auto; padding: 4px 0;">
+      ${options.map(opt => `
+        <div class="custom-select-item" data-value="${opt.val}" style="padding: 5px 8px; font-size: 11px; color: var(--text-main); cursor: pointer; transition: background 0.1s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${dmEsc(opt.label)}">
+          ${dmEsc(opt.label)}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const trigger = container.querySelector('.custom-select-trigger');
+  const dropdown = container.querySelector('.custom-select-dropdown');
+
+  trigger.onclick = (e) => {
+    e.stopPropagation();
+    const isOpen = dropdown.style.display === 'block';
+    document.querySelectorAll('.custom-select-dropdown').forEach(d => {
+      if (d !== dropdown) d.style.display = 'none';
+    });
+    dropdown.style.display = isOpen ? 'none' : 'block';
+  };
+
+  dropdown.querySelectorAll('.custom-select-item').forEach(item => {
+    item.onclick = (e) => {
+      e.stopPropagation();
+      dropdown.style.display = 'none';
+      const val = item.dataset.value;
+      onSelect(val);
+    };
+  });
+}
+
 function renderVersionSwitcher() {
   const wrap = document.getElementById('version-switcher');
-  const sel = document.getElementById('version-select');
-  if (!wrap || !sel) return;
+  const container = document.getElementById('version-select-container');
+  if (!wrap || !container) return;
   const dm = state.dataMerge;
   if (!dm || !dm.enabled || !dm.rows.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
-  sel.innerHTML = '<option value="">No version</option>' +
-    dm.rows.map((r, i) => `<option value="${i}">${dmEsc(r[keyCol] || ('Row ' + (i + 1)))}</option>`).join('');
-  sel.value = dm.activeVersion == null ? '' : String(dm.activeVersion);
+  const options = [{ label: 'No version', val: '' }].concat(
+    dm.rows.map((r, i) => ({ label: r[keyCol] || ('Row ' + (i + 1)), val: String(i) }))
+  );
+  const activeVal = dm.activeVersion == null ? '' : String(dm.activeVersion);
+  dmRenderCustomSelect(container, options, activeVal, (val) => dmSetActiveVersion(val));
+
   const lockBtn = document.getElementById('btn-data-lock');
   if (lockBtn) {
     if (dm.locked) {
@@ -319,16 +362,17 @@ function renderPreviewVersionBar() {
     bar.id = 'preview-version-bar';
     bar.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1000000;display:flex;align-items:center;gap:8px;background:#15171f;border:1px solid #2a2f3e;border-radius:8px;padding:8px 12px;box-shadow:0 8px 24px rgba(0,0,0,.55);';
     bar.innerHTML = '<span style="font-size:11px;color:#9aa1b6;font-weight:600;">Version</span>' +
-      '<select id="preview-version-select" style="background:#0f131b;border:1px solid #272c3a;color:#fff;border-radius:4px;padding:5px 8px;font-size:12px;outline:none;font-family:inherit;max-width:240px;"></select>';
+      '<div id="preview-version-select-container" style="position:relative; width:200px; z-index:1000001;"></div>';
     document.body.appendChild(bar);
-    bar.querySelector('#preview-version-select').addEventListener('change', (e) => dmSetActiveVersion(e.target.value));
   }
   bar.style.display = 'flex';
-  const sel = bar.querySelector('#preview-version-select');
+  const container = bar.querySelector('#preview-version-select-container');
   const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
-  sel.innerHTML = '<option value="">No version</option>' +
-    dm.rows.map((r, i) => `<option value="${i}">${dmEsc(r[keyCol] || ('Row ' + (i + 1)))}</option>`).join('');
-  sel.value = dm.activeVersion == null ? '' : String(dm.activeVersion);
+  const options = [{ label: 'No version', val: '' }].concat(
+    dm.rows.map((r, i) => ({ label: r[keyCol] || ('Row ' + (i + 1)), val: String(i) }))
+  );
+  const activeVal = dm.activeVersion == null ? '' : String(dm.activeVersion);
+  dmRenderCustomSelect(container, options, activeVal, (val) => dmSetActiveVersion(val));
 }
 
 // Temporarily bake a row's values into elements (+clickTag) for export; returns a
@@ -855,7 +899,6 @@ function cycleVersion(dir) {
 
 document.getElementById('menu-file-data')?.addEventListener('click', openDataPanel);
 document.getElementById('btn-open-data')?.addEventListener('click', openDataPanel);
-document.getElementById('version-select')?.addEventListener('change', (e) => dmSetActiveVersion(e.target.value));
 document.getElementById('btn-version-prev')?.addEventListener('click', () => cycleVersion('prev'));
 document.getElementById('btn-version-next')?.addEventListener('click', () => cycleVersion('next'));
 document.getElementById('btn-data-lock')?.addEventListener('click', dmToggleLock);
