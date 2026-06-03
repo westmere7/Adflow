@@ -1431,6 +1431,26 @@ function openExportModal() {
           All Versions Validator
         </button>
         ` : ''}
+        <button class="btn" id="btn-export-batch-webp" style="
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
+          border: 1px solid rgba(16, 185, 129, 0.35);
+          color: #34d399;
+          font-weight: 600;
+          padding: 6px 12px;
+          font-size: 12px;
+          cursor: pointer;
+          border-radius: 4px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        " title="Compress image assets of oversized canvases to WebP format across selected canvases and versions">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+          Batch WebP Compress
+        </button>
       </div>
       <button class="btn primary" id="btn-export-selected" title="Export the selected canvases in the chosen format using the filename above. Honors version export settings.">Export Selected</button>
     </div>
@@ -1462,6 +1482,13 @@ function openExportModal() {
   if (btnAllVersionsValidator) {
     btnAllVersionsValidator.addEventListener('click', () => {
       runAllVersionsValidator();
+    });
+  }
+
+  const btnBatchWebp = modalBg.querySelector('#btn-export-batch-webp');
+  if (btnBatchWebp) {
+    btnBatchWebp.addEventListener('click', () => {
+      runBatchWebpCompression();
     });
   }
 
@@ -1607,6 +1634,209 @@ function openExportModal() {
         }
       }
     });
+  };
+
+  const runBatchWebpCompression = async () => {
+    const dm = state.dataMerge;
+    const hasVersions = !!(dm && dm.rows && dm.rows.length);
+    const limitKb = state.adSizeLimit || 150;
+
+    // 1. Get selected canvases
+    const selectedCids = Array.from(modalBg.querySelectorAll('.export-chk:checked')).map(chk => chk.dataset.cid);
+    if (selectedCids.length === 0) {
+      alert('Please select at least one canvas size to compress.');
+      return;
+    }
+    const selectedCanvases = selectedCids.map(id => state.canvases.find(x => x.id === id)).filter(Boolean);
+
+    // 2. Get selected version indices
+    let versionIndices = [];
+    if (hasVersions) {
+      const versionModeRadio = modalBg.querySelector('input[name="exp-version-mode"]:checked');
+      const mode = versionModeRadio ? versionModeRadio.value : 'single';
+      if (mode === 'all') {
+        dm.rows.forEach((row, idx) => {
+          if (row._selected !== false) {
+            versionIndices.push(idx);
+          }
+        });
+      } else {
+        const versionSelect = modalBg.querySelector('#exp-version');
+        const idx = versionSelect ? parseInt(versionSelect.value, 10) : 0;
+        if (!isNaN(idx) && dm.rows[idx]) {
+          versionIndices.push(idx);
+        }
+      }
+    } else {
+      versionIndices.push(null);
+    }
+
+    if (versionIndices.length === 0) {
+      alert('No versions selected for compression.');
+      return;
+    }
+
+    // 3. Open progress modal
+    const progressHtml = `
+      <div id="batch-compress-progress-container" style="padding:20px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:var(--text-main); text-align:center; display:flex; flex-direction:column; gap:16px;">
+        <div style="font-size:16px; font-weight:600; color:var(--text-bright); display:flex; align-items:center; justify-content:center; gap:8px;">
+          <svg class="batch-compress-spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="color:#10b981; animation: batch-compress-spin 1s linear infinite;">
+            <line x1="12" y1="2" x2="12" y2="6"></line>
+            <line x1="12" y1="18" x2="12" y2="22"></line>
+            <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+            <line x1="2" y1="12" x2="6" y2="12"></line>
+            <line x1="18" y1="12" x2="22" y2="12"></line>
+            <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+            <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+          </svg>
+          Batch WebP Compression
+        </div>
+        <div style="font-size:12px; color:var(--text-muted); line-height:1.5;">Automatically finding and compressing oversized canvases to WebP. Please keep this modal open.</div>
+        
+        <!-- Progress Bar -->
+        <div style="height:8px; background:var(--bg-input); border-radius:4px; overflow:hidden; margin-top:8px; position:relative; width:100%;">
+          <div id="batch-compress-progress-bar" style="width:0%; height:100%; background:linear-gradient(135deg, #10b981, #059669); border-radius:4px; transition: width 0.15s ease;"></div>
+        </div>
+        
+        <div id="batch-compress-status-text" style="font-size:13px; font-weight:500; color:#34d399;">Initializing scan...</div>
+        
+        <div style="margin-top:12px;">
+          <button class="btn" id="batch-compress-cancel" style="padding:6px 16px; font-size:12px; cursor:pointer;">Cancel</button>
+        </div>
+      </div>
+    `;
+
+    // Inject CSS keyframes if not exists
+    if (!document.getElementById('batch-compress-style')) {
+      const style = document.createElement('style');
+      style.id = 'batch-compress-style';
+      style.textContent = `
+        @keyframes batch-compress-spin {
+          100% { transform: rotate(360deg); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    openModal('Compression Progress', progressHtml, false);
+    const progressModalBg = document.body.lastElementChild;
+    const progressModal = progressModalBg.querySelector('.modal');
+    if (progressModal) {
+      progressModal.style.width = '450px';
+      progressModal.style.maxWidth = '95vw';
+    }
+
+    let isCancelled = false;
+    progressModalBg.querySelector('#batch-compress-cancel').onclick = () => {
+      isCancelled = true;
+      progressModalBg.remove();
+    };
+
+    const progressBar = progressModalBg.querySelector('#batch-compress-progress-bar');
+    const statusText = progressModalBg.querySelector('#batch-compress-status-text');
+
+    const updateProgress = (pct, text) => {
+      if (progressBar) progressBar.style.width = `${pct}%`;
+      if (statusText) statusText.textContent = text;
+    };
+
+    // Phase 1: Scan
+    const compressionQueue = [];
+    const totalCombinations = versionIndices.length * selectedCanvases.length;
+    let scannedCount = 0;
+
+    for (let vIdx of versionIndices) {
+      if (isCancelled) return;
+      
+      const savedActive = dm ? dm.activeVersion : null;
+      if (dm && vIdx != null) dm.activeVersion = vIdx;
+      const restore = (dm && dm.enabled && dm.activeVersion != null) ? dmBakeRow(vIdx) : null;
+      
+      try {
+        for (let canvas of selectedCanvases) {
+          if (isCancelled) return;
+          
+          scannedCount++;
+          const pct = Math.round((scannedCount / totalCombinations) * 30);
+          const verName = vIdx !== null ? `Version ${vIdx + 1}` : 'Template';
+          updateProgress(pct, `Scanning ${verName}: ${canvas.name || (canvas.width + 'x' + canvas.height)}...`);
+
+          const html = generateExportHTML(canvas);
+          const kb = parseFloat((new Blob([html]).size / 1024).toFixed(1));
+          if (kb > limitKb) {
+            const imageElements = canvas.elements.filter(el => el.type === 'image');
+            if (imageElements.length > 0) {
+              compressionQueue.push({
+                versionIdx: vIdx,
+                canvasId: canvas.id,
+                canvasName: canvas.name || `${canvas.width}x${canvas.height}`,
+                kb: kb
+              });
+            }
+          }
+        }
+      } finally {
+        if (restore) restore();
+        if (dm) dm.activeVersion = savedActive;
+      }
+    }
+
+    if (isCancelled) return;
+
+    if (compressionQueue.length === 0) {
+      updateProgress(100, 'Scan complete. No oversized canvases found.');
+      setTimeout(() => {
+        progressModalBg.remove();
+        alert('All selected versions and canvases are already under the size limit!');
+      }, 1200);
+      return;
+    }
+
+    // Phase 2: Compress
+    const totalCompressions = compressionQueue.length;
+    let compressedCount = 0;
+
+    const originalLockState = dm ? dm.locked : false;
+    if (dm && originalLockState) {
+      dm.locked = false;
+    }
+
+    try {
+      for (let task of compressionQueue) {
+        if (isCancelled) break;
+
+        compressedCount++;
+        const pct = 30 + Math.round((compressedCount / totalCompressions) * 70);
+        const verLabel = task.versionIdx !== null ? `Version ${task.versionIdx + 1}` : 'Template';
+        updateProgress(pct, `Compressing ${verLabel}: ${task.canvasName} (${task.kb.toFixed(1)} KB)...`);
+
+        await dmRunExport(task.versionIdx, async () => {
+          await autoCompressCanvasImages(task.canvasId);
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    } catch (error) {
+      console.error('Batch compression error:', error);
+      alert('An error occurred during compression: ' + error.message);
+    } finally {
+      if (dm) {
+        dm.locked = originalLockState;
+        if (typeof renderVersionSwitcher === 'function') renderVersionSwitcher();
+      }
+      if (typeof render === 'function') render();
+    }
+
+    if (isCancelled) return;
+
+    updateProgress(100, `Done! Compressed ${compressedCount} canvas/version combination(s).`);
+    setTimeout(() => {
+      progressModalBg.remove();
+      if (typeof updateExportTableDetails === 'function') {
+        updateExportTableDetails();
+      }
+    }, 1000);
   };
 
   if (hasVersions) {
