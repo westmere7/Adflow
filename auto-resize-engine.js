@@ -492,15 +492,6 @@ function openAutoResizeModal() {
           </label>
 
           <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
-            <input type="checkbox" id="ar-hide-subheading-320" ${persistedSettings.behaviour.hideSubheading320x50 !== false ? 'checked' : ''} />
-            <span>
-              <span style="color:var(--text-main); font-weight:500;">Hide Subheading in 320×50 mobile leaderboard</span>
-              <br>
-              <span style="color:var(--text-muted); font-size:10.5px;">On (default): hide subheading due to limited height. Off: place subheading visible below heading.</span>
-            </span>
-          </label>
-
-          <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
             <input type="checkbox" id="ar-lock-brand" ${persistedSettings.behaviour.lockBrandElements !== false ? 'checked' : ''} />
             <span>
               <span style="color:var(--text-main); font-weight:500;">Lock brand elements (Logo, Tagline, CRICOS) after layout</span>
@@ -567,13 +558,11 @@ function openAutoResizeModal() {
       return;
     }
     const includeUnassigned = bg.querySelector('#ar-include-unassigned').checked;
-    const hideSubheading320x50 = bg.querySelector('#ar-hide-subheading-320').checked;
     const lockBrandElements = bg.querySelector('#ar-lock-brand').checked;
     const liveLinkEnabled = bg.querySelector('#ar-live-link').checked;
     const showModalInCtxMenu = bg.querySelector('#ar-show-ctx-modal').checked;
 
     persistedSettings.behaviour.includeUnassigned = includeUnassigned;
-    persistedSettings.behaviour.hideSubheading320x50 = hideSubheading320x50;
     persistedSettings.behaviour.lockBrandElements = lockBrandElements;
     persistedSettings.behaviour.liveLink.enabled = liveLinkEnabled;
     persistedSettings.behaviour.showModalInCtxMenu = showModalInCtxMenu;
@@ -910,10 +899,12 @@ function placeHeading(srcEl, target, ctx) {
     verticalAlign = 'top';
     textAlign = 'left';
   } else if (w === 320 && h === 50) {
-    x = sz.minX;
-    height = 31;
-    width = sz.maxX - x;
-    y = (h - height) / 2;
+    x = 11;
+    height = Math.round((sz.maxY - sz.minY) * 2 / 3);
+    const cta = ctx.placedElements['cta-button'];
+    const limitX = cta ? cta.x : 143;
+    width = Math.max(50, limitX - x - 8);
+    y = sz.minY;
     verticalAlign = 'middle';
     textAlign = 'left';
   } else if (w === 300 && h === 600) {
@@ -1063,14 +1054,14 @@ function placeSubheading(srcEl, target, ctx) {
     height = 21;
     textAlign = 'left';
   } else if (w === 320 && h === 50) {
-    const settings = getAutoResizeSettings();
-    const hideSub = settings.behaviour?.hideSubheading320x50 !== false;
-    x = (320 - (srcEl.width || 100)) / 2;
-    y = 30;
-    width = srcEl.width || 100;
-    height = 15;
-    textAlign = 'center';
-    hidden = hideSub || srcEl.hidden || false;
+    x = 11;
+    const heading = ctx.placedElements['heading'];
+    y = heading ? (heading.y + heading.height) : (sz.minY + Math.round((sz.maxY - sz.minY) * 2 / 3));
+    height = Math.round((sz.maxY - sz.minY) * 1 / 3);
+    const cta = ctx.placedElements['cta-button'];
+    const limitX = cta ? cta.x : 143;
+    width = Math.max(50, limitX - x - 8);
+    textAlign = 'left';
   } else if (w === 300 && h === 600) {
     x = sz.minX;
     width = sz.maxX - x;
@@ -2031,7 +2022,6 @@ const AUTO_RESIZE_DEFAULT_SETTINGS = {
     r1: true   // rmit-logo ↔ rfwn edge alignment
   },
   behaviour: {
-    hideSubheading320x50: true,   // hide subheading on 320x50 mobile canvas
     lockBrandElements:    true,   // lock logo, tagline, cricos after layout/arrange
     includeUnassigned:    false,  // remembered value for the misc-elements toggle
     showModalInCtxMenu:   true,   // show confirmation modal when resizing from context menu
@@ -2055,7 +2045,6 @@ function getAutoResizeSettings() {
   if (!s.relations)    s.relations    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.relations };
   if (!s.behaviour)    s.behaviour    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour };
   // Backfill any behaviour keys missing on projects saved before this version.
-  if (typeof s.behaviour.hideSubheading320x50 !== 'boolean') s.behaviour.hideSubheading320x50 = true;
   if (typeof s.behaviour.lockBrandElements    !== 'boolean') s.behaviour.lockBrandElements    = true;
   if (typeof s.behaviour.includeUnassigned   !== 'boolean') s.behaviour.includeUnassigned   = false;
   if (typeof s.behaviour.showModalInCtxMenu  !== 'boolean') s.behaviour.showModalInCtxMenu  = true;
@@ -2150,13 +2139,6 @@ function openAutoResizeSettingsModal() {
             <div style="flex:1; min-width:0;">
               <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Include unassigned elements by default</div>
               <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Copy unassigned elements to the target canvas's centre.</div>
-            </div>
-          </label>
-          <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
-            <input type="checkbox" id="ars-hide-subheading-320" ${s.behaviour.hideSubheading320x50 !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
-            <div style="flex:1; min-width:0;">
-              <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Hide Subheading in 320×50 mobile leaderboard</div>
-              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Hide subheading due to height constraints. Off: place subheading visible below heading.</div>
             </div>
           </label>
           <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
@@ -2278,7 +2260,6 @@ function openAutoResizeSettingsModal() {
       next.relations[cb.dataset.rel] = cb.checked;
     });
     next.behaviour.includeUnassigned     = bg.querySelector('#ars-include-unassigned').checked;
-    next.behaviour.hideSubheading320x50  = bg.querySelector('#ars-hide-subheading-320').checked;
     next.behaviour.lockBrandElements     = bg.querySelector('#ars-lock-brand').checked;
     next.behaviour.showModalInCtxMenu    = bg.querySelector('#ars-show-ctx-modal').checked;
     next.behaviour.liveLink = {
