@@ -13941,9 +13941,24 @@ async function autoCompressCanvasImages(canvasId) {
   const tempBlob = await tempZip.generateAsync({ type: 'blob' });
   const currentAdSize = tempBlob.size / 1024;
   
-  const imageElements = canvas.elements.filter(el => el.type === 'image');
+  const imageElements = canvas.elements.filter(el => {
+    if (el.type !== 'image') return false;
+    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+    const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+    if (!activeAssetId) return false;
+
+    // Do not compress SVG vector images
+    if (typeof activeAssetId === 'string' && activeAssetId.toLowerCase().includes('.svg')) {
+      return false;
+    }
+    const originalDataUrl = (state.assets && state.assets[activeAssetId]) || activeAssetId;
+    if (typeof originalDataUrl === 'string' && (originalDataUrl.startsWith('data:image/svg+xml') || originalDataUrl.toLowerCase().includes('.svg'))) {
+      return false;
+    }
+    return true;
+  });
   if (imageElements.length === 0) {
-    showCanvasNotification('No image layers found to compress.', { type: 'warning' });
+    showCanvasNotification('No bitmap image layers found to compress.', { type: 'warning' });
     return;
   }
 
