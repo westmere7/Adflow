@@ -660,6 +660,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.17.4',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Looping Frame Transitions: Allowed the first frame to have transition settings and preview animation when looping is enabled, mapping it correctly to the export pipeline.'
+    ]
+  },
+  {
     version: 'v0.17.3',
     date: 'June 2026 — Engine v2.18',
     items: [

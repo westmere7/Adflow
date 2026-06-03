@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.17.3 (Current) - June 2026 — Engine v2.18
+v0.17.4 (Current) - June 2026 — Engine v2.18
+- Looping Frame Transitions: Allowed the first frame to have transition settings and preview animation when looping is enabled, mapping it correctly to the export pipeline.
+
+v0.17.3 - June 2026 — Engine v2.18
 - Button Renaming: Renamed "Batch WebP Compress" to "Batch WebP Compression" for UI consistency.
 - Deflate Zip Sizing: Configured size calculation functions to measure the exact DEFLATE-compressed ZIP size instead of raw UNCOMPRESSED (STORE) size. This resolves false-positive oversize flags and matches actual display ad network limits.
 

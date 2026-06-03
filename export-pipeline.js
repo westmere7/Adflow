@@ -952,7 +952,10 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       : (i === 0 ? 'block' : 'none');
     const frameBg = _frameBgOf(f.id);
     framesHTML += `<div class="frame" id="frame-${f.id}" style="display:${displayStyle};width:100%;height:100%;position:absolute;inset:0;background:${frameBg};">\n${frameEls}\n</div>\n`;
-    frameData.push({ id: f.id, duration: f.duration || 2, transition: i === 0 ? 'none' : (f.transition || 'fade'), transitionDuration: f.transitionDuration || 0.5, transitionFade: f.transitionFade });
+    const transitionVal = (i === 0)
+      ? (state.loopAd ? (f.transition || 'none') : 'none')
+      : (f.transition || 'fade');
+    frameData.push({ id: f.id, duration: f.duration || 2, transition: transitionVal, transitionDuration: f.transitionDuration || 0.5, transitionFade: f.transitionFade });
   });
 
   let clickAreasHTML = '';
@@ -993,7 +996,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   }
 
   activeFrames.forEach((f, i) => {
-    if (i > 0) {
+    if (i > 0 || (i === 0 && state.loopAd)) {
       const kf = getFrameTransitionKeyframes(f);
       if (kf) {
         dynamicKeyframes += '\n' + kf;

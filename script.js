@@ -8496,8 +8496,11 @@ function startFrameTransitionPreview(type) {
   if (!c) return;
 
   const activeIdx = state.frames.findIndex(f => f.id === state.activeFrameId);
-  if (activeIdx <= 0) return;
-  const prevFrameId = state.frames[activeIdx - 1].id;
+  if (activeIdx < 0) return;
+  if (activeIdx === 0 && !(state.loopAd && state.frames.length > 1)) return;
+  const prevFrameId = activeIdx === 0
+    ? state.frames[state.frames.length - 1].id
+    : state.frames[activeIdx - 1].id;
   const nextFrameId = state.activeFrameId;
 
   const canvasDom = document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas`);
@@ -9236,7 +9239,7 @@ function renderProps() {
     
     const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
     let frameTransitionSectionHtml = '';
-    if (state.frames.length > 1 && activeIdx > 0) {
+    if (state.frames.length > 1 && (activeIdx > 0 || state.loopAd)) {
       frameTransitionSectionHtml = `
         <div class="panel-section" id="panel-section-animation">
           <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none;">
@@ -10323,7 +10326,7 @@ function renderProps() {
     f.push(`</div>`); // Close effects-preview-area
 
     const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-    if (state.frames.length > 1 && activeIdx > 0) {
+    if (state.frames.length > 1 && (activeIdx > 0 || state.loopAd)) {
       f.push(getFrameTransitionHtml(state.frames[activeIdx]));
     }
 
@@ -11365,7 +11368,7 @@ function checkButtonFontSizeWarning(el) {
       const key = isFrame ? container.dataset.frameK : container.dataset.k;
       if (isFrame) {
         const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-        if (activeIdx > 0) {
+        if (activeIdx > 0 || (activeIdx === 0 && state.loopAd)) {
           startFrameTransitionPreview(state.frames[activeIdx].transition || 'none');
         }
       } else {
@@ -11391,7 +11394,7 @@ function checkButtonFontSizeWarning(el) {
 
       if (isFrame) {
         const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-        if (activeIdx > 0) {
+        if (activeIdx > 0 || (activeIdx === 0 && state.loopAd)) {
           const currentFrame = state.frames[activeIdx];
           if (key === 'direction') currentFrame.transitionDirection = val;
           else if (key === 'irisShape') currentFrame.transitionIrisShape = val;
@@ -11424,7 +11427,7 @@ function checkButtonFontSizeWarning(el) {
     item.onmouseenter = () => {
       if (isFrame) {
         const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-        if (activeIdx > 0) {
+        if (activeIdx > 0 || (activeIdx === 0 && state.loopAd)) {
           const currentFrame = state.frames[activeIdx];
           const origDirection = currentFrame.transitionDirection || 'left';
           const origShape = currentFrame.transitionIrisShape || 'circle';
@@ -15093,7 +15096,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.17.3';
+  const currentVersion = 'v0.17.4';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -15144,7 +15147,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.17.3';
+  const currentVersion = 'v0.17.4';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15279,7 +15282,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.17.3</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.17.4</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
