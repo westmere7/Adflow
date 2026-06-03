@@ -9005,7 +9005,7 @@ function getFrameTransitionHtml(currentFrame) {
         ${presetButtons}
         ${favMessageHtml}
       </div>
-      ${activePreset !== 'none' ? standardProps + excludePersHtml + conditionalControls : ''}
+      ${activePreset !== 'none' ? excludePersHtml + standardProps + conditionalControls : ''}
     </div>
   `;
 }
