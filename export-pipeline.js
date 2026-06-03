@@ -1273,24 +1273,14 @@ function openExportModal() {
   const selectedCount = dm && dm.rows ? dm.rows.filter(r => r._selected !== false).length : 0;
 
   const tbody = state.canvases.map((c) => {
-    let html = '';
     let ct = '';
-    const savedActive = dm ? dm.activeVersion : null;
-    if (dm && activeVersionIdx != null) dm.activeVersion = activeVersionIdx;
-    const restore = (dm && dm.enabled && dm.activeVersion != null) ? dmBakeRow(dm.activeVersion) : null;
-    try {
-      html = generateExportHTML(c);
-      const ctCol = dm ? dm.mappings['clicktag::url'] : null;
-      if (dm && ctCol && dm.rows[activeVersionIdx]) {
-        ct = dm.rows[activeVersionIdx][ctCol] || state.clickTag || 'No clickTag';
-      } else {
-        ct = state.clickTag || 'No clickTag';
-      }
-    } finally {
-      if (restore) restore();
-      if (dm) dm.activeVersion = savedActive;
+    const ctCol = dm ? dm.mappings['clicktag::url'] : null;
+    if (dm && ctCol && dm.rows[activeVersionIdx]) {
+      ct = dm.rows[activeVersionIdx][ctCol] || state.clickTag || 'No clickTag';
+    } else {
+      ct = state.clickTag || 'No clickTag';
     }
-    const kb = (new Blob([html]).size / 1024).toFixed(1);
+    const kb = c._valKb || 'calc...';
     
     const hasErrors = c._valErrors && c._valErrors.length > 0;
     const hasA11y = c._valA11y && c._valA11y.length > 0;
@@ -1309,7 +1299,7 @@ function openExportModal() {
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;"><input type="checkbox" class="export-chk" data-cid="${c.id}" checked title="Include this canvas size in the export" /></td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.name || (c.width + '×' + c.height)}</td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.width}×${c.height}</td>
-        <td class="exp-weight" style="padding: 6px 0; border-bottom: 1px solid #1f2330; color:${kb > 150 ? '#ef4444' : '#c7ccdb'}">${kb} KB</td>
+        <td class="exp-weight" style="padding: 6px 0; border-bottom: 1px solid #1f2330; color:${kb !== 'calc...' && parseFloat(kb) > 150 ? '#ef4444' : '#c7ccdb'}">${kb} ${kb === 'calc...' ? '' : 'KB'}</td>
         <td class="exp-clicktag" style="padding: 6px 0; border-bottom: 1px solid #1f2330; font-family:monospace; font-size:10.5px; color:var(--text-label); word-break:break-all; max-width:180px;">${ct}</td>
         <td class="exp-td-specs" style="padding: 6px 0; border-bottom: 1px solid #1f2330; text-align:center;">
           <span class="exp-val-badge" data-tab="specs" data-cid="${c.id}" style="cursor:pointer;" title="${specsTitle}">${specsIcon}</span>
@@ -1465,6 +1455,17 @@ function openExportModal() {
     modal.style.maxWidth = '95vw';
   }
 
+  const calculateCanvasZipSize = async (c, versionIdx) => {
+    if (typeof JSZip === 'undefined') return 0;
+    const zip = new JSZip();
+    await dmRunExport(versionIdx, async () => {
+      await addCanvasAssetsToZip(c, zip);
+      zip.file('index.html', generateExportHTML(c, zip));
+    });
+    const blob = await zip.generateAsync({ type: 'blob' });
+    return parseFloat((blob.size / 1024).toFixed(1));
+  };
+
   const chkAll = modalBg.querySelector('#chk-all');
   const chks = modalBg.querySelectorAll('.export-chk');
   chkAll.addEventListener('change', (e) => {
@@ -1504,7 +1505,7 @@ function openExportModal() {
     }
   });
 
-  const updateExportTableDetails = () => {
+  const updateExportTableDetails = async () => {
     const versionModeRadio = modalBg.querySelector('input[name="exp-version-mode"]:checked');
     const mode = versionModeRadio ? versionModeRadio.value : 'single';
     const versionSelect = modalBg.querySelector('#exp-version');
@@ -1520,10 +1521,22 @@ function openExportModal() {
       const idx = parseInt(versionChoice, 10);
       if (!isNaN(idx) && dm.rows[idx]) exportVersionIdx = idx;
     }
-    
+
     state.canvases.forEach(c => {
       const tr = modalBg.querySelector(`tr[data-cid="${c.id}"]`);
       if (!tr) return;
+      const weightTd = tr.querySelector('.exp-weight');
+      if (weightTd && !(hasVersions && mode === 'all')) {
+        weightTd.textContent = 'calc...';
+        weightTd.style.color = 'var(--text-muted)';
+      }
+    });
+    
+    const limitKb = state.adSizeLimit || 150;
+    
+    const sizePromises = state.canvases.map(async (c) => {
+      const tr = modalBg.querySelector(`tr[data-cid="${c.id}"]`);
+      if (!tr) return null;
       
       const weightTd = tr.querySelector('.exp-weight');
       const clicktagTd = tr.querySelector('.exp-clicktag');
@@ -1542,99 +1555,119 @@ function openExportModal() {
         if (specsTd) { specsTd.innerHTML = '<span style="color:var(--text-muted)">—</span>'; }
         if (a11yTd) { a11yTd.innerHTML = '<span style="color:var(--text-muted)">—</span>'; }
         if (brandTd) { brandTd.innerHTML = '<span style="color:var(--text-muted)">—</span>'; }
-      } else {
-        let html = '';
-        let ct = '';
-        
-        const savedActive = dm ? dm.activeVersion : null;
-        if (dm && exportVersionIdx != null) dm.activeVersion = exportVersionIdx;
-        const restore = (dm && dm.enabled && dm.activeVersion != null) ? dmBakeRow(dm.activeVersion) : null;
+        return null;
+      }
+
+      const kb = await calculateCanvasZipSize(c, exportVersionIdx);
+      
+      let ct = '';
+      const savedActive = dm ? dm.activeVersion : null;
+      if (dm && exportVersionIdx != null) dm.activeVersion = exportVersionIdx;
+      const restore = (dm && dm.enabled && dm.activeVersion != null) ? dmBakeRow(dm.activeVersion) : null;
+      try {
+        const ctCol = dm ? dm.mappings['clicktag::url'] : null;
+        if (dm && ctCol && dm.rows[exportVersionIdx]) {
+          ct = dm.rows[exportVersionIdx][ctCol] || state.clickTag || 'No clickTag';
+        } else {
+          ct = state.clickTag || 'No clickTag';
+        }
+      } finally {
+        if (restore) restore();
+        if (dm) dm.activeVersion = savedActive;
+      }
+      
+      let errors = [];
+      if (!ct || ct === 'No clickTag') {
+        errors.push('Missing clickTag URL');
+      } else if (ct !== '—') {
         try {
-          html = generateExportHTML(c);
-          const ctCol = dm ? dm.mappings['clicktag::url'] : null;
-          if (dm && ctCol && dm.rows[exportVersionIdx]) {
-            ct = dm.rows[exportVersionIdx][ctCol] || state.clickTag || 'No clickTag';
-          } else {
-            ct = state.clickTag || 'No clickTag';
+          const url = new URL(ct);
+          if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            errors.push('clickTag URL must start with http:// or https://');
+          } else if (!url.hostname.includes('.') || url.hostname.split('.').pop().length < 2) {
+            errors.push('clickTag URL must be a valid website name with domain');
           }
-        } finally {
-          if (restore) restore();
-          if (dm) dm.activeVersion = savedActive;
+        } catch (e) {
+          errors.push('clickTag URL format is invalid');
         }
-        
-        const kb = (new Blob([html]).size / 1024).toFixed(1);
-        if (weightTd) {
-          weightTd.textContent = `${kb} KB`;
-          weightTd.style.color = kb > 150 ? '#ef4444' : '#c7ccdb';
+      }
+      
+      let imageElements = c.elements.filter(el => el.type === 'image');
+      let hasMissing = false;
+      let hasExt = false;
+      imageElements.forEach(el => {
+        let src = state.assets[el.assetId] || el.assetId;
+        if (!src) {
+          hasMissing = true;
+        } else if (src.startsWith('http://') || src.startsWith('https://')) {
+          hasExt = true;
+        } else if (!state.assets[el.assetId] && !src.startsWith('data/Elements/')) {
+          hasMissing = true;
         }
-        if (clicktagTd) {
-          clicktagTd.textContent = ct;
-        }
+      });
+      if (hasMissing) errors.push('Contains missing assets');
+      if (hasExt) errors.push('Contains external URLs');
+      if (kb > limitKb) {
+        errors.push(`Filesize (${kb.toFixed(1)} KB) exceeds ${limitKb}KB limit`);
+      }
+      
+      c._valErrors = errors;
+      c._valKb = kb.toFixed(1);
 
-        // Compute updated compliance errors locally
-        const limitKb = state.adSizeLimit || 150;
-        let errors = [];
-        if (!ct || ct === 'No clickTag') {
-          errors.push('Missing clickTag URL');
-        } else if (ct !== '—') {
-          try {
-            const url = new URL(ct);
-            if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-              errors.push('clickTag URL must start with http:// or https://');
-            } else if (!url.hostname.includes('.') || url.hostname.split('.').pop().length < 2) {
-              errors.push('clickTag URL must be a valid website name with domain');
-            }
-          } catch (e) {
-            errors.push('clickTag URL format is invalid');
-          }
-        }
-        
-        let imageElements = c.elements.filter(el => el.type === 'image');
-        let hasMissing = false;
-        let hasExt = false;
-        imageElements.forEach(el => {
-          let src = state.assets[el.assetId] || el.assetId;
-          if (!src) {
-            hasMissing = true;
-          } else if (src.startsWith('http://') || src.startsWith('https://')) {
-            hasExt = true;
-          } else if (!state.assets[el.assetId] && !src.startsWith('data/Elements/')) {
-            hasMissing = true;
-          }
-        });
-        if (hasMissing) errors.push('Contains missing assets');
-        if (hasExt) errors.push('Contains external URLs');
-        if (parseFloat(kb) > limitKb) {
-          errors.push(`Filesize (${kb} KB) exceeds ${limitKb}KB limit`);
-        }
-        
-        c._valErrors = errors;
-        c._valKb = kb;
+      const hasErrors = errors.length > 0;
+      const hasA11y = c._valA11y && c._valA11y.length > 0;
+      const hasBrand = c._valBrand && c._valBrand.length > 0;
 
-        const hasErrors = errors.length > 0;
-        const hasA11y = c._valA11y && c._valA11y.length > 0;
-        const hasBrand = c._valBrand && c._valBrand.length > 0;
+      const specsIcon = hasErrors ? getWarningIcon('#ef4444', 13) : getCheckIcon('#10b981', 13);
+      const a11yIcon = hasA11y ? getWarningIcon('#f97316', 13) : getCheckIcon('#10b981', 13);
+      const brandIcon = hasBrand ? getWarningIcon('#f97316', 13) : getCheckIcon('#10b981', 13);
 
-        const specsIcon = hasErrors ? getWarningIcon('#ef4444', 13) : getCheckIcon('#10b981', 13);
-        const a11yIcon = hasA11y ? getWarningIcon('#f97316', 13) : getCheckIcon('#10b981', 13);
-        const brandIcon = hasBrand ? getWarningIcon('#f97316', 13) : getCheckIcon('#10b981', 13);
+      const specsTitle = hasErrors ? `${errors.length} compliance errors. Click to view.` : 'All compliance checks passed. Click to view.';
+      const a11yTitle = hasA11y ? `${c._valA11y.length} accessibility warnings. Click to view.` : 'All accessibility checks passed. Click to view.';
+      const brandTitle = hasBrand ? `${c._valBrand.length} branding warnings. Click to view.` : 'All branding checks passed. Click to view.';
 
-        const specsTitle = hasErrors ? `${errors.length} compliance errors. Click to view.` : 'All compliance checks passed. Click to view.';
-        const a11yTitle = hasA11y ? `${c._valA11y.length} accessibility warnings. Click to view.` : 'All accessibility checks passed. Click to view.';
-        const brandTitle = hasBrand ? `${c._valBrand.length} branding warnings. Click to view.` : 'All branding checks passed. Click to view.';
+      return {
+        cid: c.id,
+        weightTd,
+        clicktagTd,
+        specsTd,
+        a11yTd,
+        brandTd,
+        kb,
+        ct,
+        specsIcon,
+        a11yIcon,
+        brandIcon,
+        specsTitle,
+        a11yTitle,
+        brandTitle
+      };
+    });
 
-        if (specsTd) {
-          specsTd.innerHTML = `<span class="exp-val-badge" data-tab="specs" data-cid="${c.id}" style="cursor:pointer;" title="${specsTitle}">${specsIcon}</span>`;
-        }
-        if (a11yTd) {
-          a11yTd.innerHTML = `<span class="exp-val-badge" data-tab="a11y" data-cid="${c.id}" style="cursor:pointer;" title="${a11yTitle}">${a11yIcon}</span>`;
-        }
-        if (brandTd) {
-          brandTd.innerHTML = `<span class="exp-val-badge" data-tab="brand" data-cid="${c.id}" style="cursor:pointer;" title="${brandTitle}">${brandIcon}</span>`;
-        }
+    const results = await Promise.all(sizePromises);
+    results.forEach(res => {
+      if (!res) return;
+      if (res.weightTd) {
+        res.weightTd.textContent = `${res.kb.toFixed(1)} KB`;
+        res.weightTd.style.color = res.kb > limitKb ? '#ef4444' : '#c7ccdb';
+      }
+      if (res.clicktagTd) {
+        res.clicktagTd.textContent = res.ct;
+      }
+      if (res.specsTd) {
+        res.specsTd.innerHTML = `<span class="exp-val-badge" data-tab="specs" data-cid="${res.cid}" style="cursor:pointer;" title="${res.specsTitle}">${res.specsIcon}</span>`;
+      }
+      if (res.a11yTd) {
+        res.a11yTd.innerHTML = `<span class="exp-val-badge" data-tab="a11y" data-cid="${res.cid}" style="cursor:pointer;" title="${res.a11yTitle}">${res.a11yIcon}</span>`;
+      }
+      if (res.brandTd) {
+        res.brandTd.innerHTML = `<span class="exp-val-badge" data-tab="brand" data-cid="${res.cid}" style="cursor:pointer;" title="${res.brandTitle}">${res.brandIcon}</span>`;
       }
     });
   };
+
+  // Trigger async table update to calculate and show exact ZIP sizes
+  updateExportTableDetails();
 
   const runBatchWebpCompression = async () => {
     const dm = state.dataMerge;
@@ -1762,8 +1795,7 @@ function openExportModal() {
           const verName = vIdx !== null ? `Version ${vIdx + 1}` : 'Template';
           updateProgress(pct, `Scanning ${verName}: ${canvas.name || (canvas.width + 'x' + canvas.height)}...`);
 
-          const html = generateExportHTML(canvas);
-          const kb = parseFloat((new Blob([html]).size / 1024).toFixed(1));
+          const kb = await calculateCanvasZipSize(canvas, vIdx);
           if (kb > limitKb) {
             const imageElements = canvas.elements.filter(el => el.type === 'image');
             if (imageElements.length > 0) {
