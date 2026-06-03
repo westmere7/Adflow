@@ -2268,7 +2268,7 @@ function createCanvasActions(c) {
       await addCanvasAssetsToZip(c, zip);
       zip.file('index.html', generateExportHTML(c, zip));
     });
-    const content = await zip.generateAsync({ type: 'blob' });
+    const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(content);
     a.download = `${safeName}_${c.width}x${c.height}.zip`;
@@ -13860,7 +13860,7 @@ function queueSizeUpdate() {
         await addCanvasAssetsToZip(c, zip);
         zip.file('index.html', generateExportHTML(c, zip));
       });
-      const blob = await zip.generateAsync({ type: 'blob' });
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
       const kb = (blob.size / 1024).toFixed(1);
 
       const limitKb = state.adSizeLimit || 150;
@@ -13920,7 +13920,7 @@ async function updateCanvasSizeSync(c) {
     await addCanvasAssetsToZip(c, zip);
     zip.file('index.html', generateExportHTML(c, zip));
   });
-  const blob = await zip.generateAsync({ type: 'blob' });
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const kb = (blob.size / 1024).toFixed(1);
 
   const limitKb = state.adSizeLimit || 150;
@@ -13986,7 +13986,7 @@ async function autoCompressCanvasImages(canvasId) {
     await addCanvasAssetsToZip(canvas, tempZip);
     tempZip.file('index.html', generateExportHTML(canvas, tempZip));
   });
-  const tempBlob = await tempZip.generateAsync({ type: 'blob' });
+  const tempBlob = await tempZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const currentAdSize = tempBlob.size / 1024;
   
   const imageElements = canvas.elements.filter(el => {
@@ -15093,7 +15093,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.17.2';
+  const currentVersion = 'v0.17.3';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -15144,7 +15144,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.17.2';
+  const currentVersion = 'v0.17.3';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15279,7 +15279,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.17.2</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.17.3</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

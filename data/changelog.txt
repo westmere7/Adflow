@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.17.2 (Current) - June 2026 — Engine v2.18
+v0.17.3 (Current) - June 2026 — Engine v2.18
+- Button Renaming: Renamed "Batch WebP Compress" to "Batch WebP Compression" for UI consistency.
+- Deflate Zip Sizing: Configured size calculation functions to measure the exact DEFLATE-compressed ZIP size instead of raw UNCOMPRESSED (STORE) size. This resolves false-positive oversize flags and matches actual display ad network limits.
+
+v0.17.2 - June 2026 — Engine v2.18
 - RMIT Logo Recovery: Implemented a self-healing repair pass that automatically restores any previously compressed/rasterized RMIT brand logo back to its original clean vector SVG format, and strengthened the SVG bypass logic during auto-compression to filter logo/brand elements based on name and role.
 
 v0.17.1 - June 2026 — Engine v2.18

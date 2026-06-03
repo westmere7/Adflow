@@ -462,7 +462,7 @@ async function exportCanvasAsZip(c, options = {}) {
   } finally {
     state._exportIncludeSkippedFrames = prevIncludeSkipped;
   }
-  const content = await zip.generateAsync({ type: 'blob' });
+  const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(content);
   a.download = `${prefix}_${c.width}x${c.height}.zip`;
@@ -1439,7 +1439,7 @@ function openExportModal() {
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
             <line x1="12" y1="22.08" x2="12" y2="12"></line>
           </svg>
-          Batch WebP Compress
+          Batch WebP Compression
         </button>
       </div>
       <button class="btn primary" id="btn-export-selected" title="Export the selected canvases in the chosen format using the filename above. Honors version export settings.">Export Selected</button>
@@ -1462,7 +1462,7 @@ function openExportModal() {
       await addCanvasAssetsToZip(c, zip);
       zip.file('index.html', generateExportHTML(c, zip));
     });
-    const blob = await zip.generateAsync({ type: 'blob' });
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     return parseFloat((blob.size / 1024).toFixed(1));
   };
 
@@ -1933,7 +1933,7 @@ function openExportModal() {
           await addCanvasAssetsToZip(c, adZip);
           const html = generateExportHTML(c, adZip);
           adZip.file('index.html', html);
-          const adContent = await adZip.generateAsync({ type: 'blob' });
+          const adContent = await adZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
           zip.file(`${safePrefix}_${c.width}x${c.height}.zip`, adContent);
         }
       });

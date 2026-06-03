@@ -660,6 +660,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.17.3',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Button Renaming: Renamed "Batch WebP Compress" to "Batch WebP Compression" for UI consistency.',
+      'Deflate Zip Sizing: Configured size calculation functions to measure the exact DEFLATE-compressed ZIP size instead of raw UNCOMPRESSED (STORE) size. This resolves false-positive oversize flags and matches actual display ad network limits.'
+    ]
+  },
+  {
     version: 'v0.17.2',
     date: 'June 2026 — Engine v2.18',
     items: [
