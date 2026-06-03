@@ -251,7 +251,8 @@ const state = {
     keyColumn: null,     // column used to name exported zips
     activeVersion: null, // index into rows, or null = template defaults
     locked: false,       // when true, dynamic slots are read-only in the editor
-    mappings: {}         // 'slotKey::field' -> columnName  (slotKey = 'g:'+gid | 'el:'+id | 'clicktag')
+    mappings: {},        // 'slotKey::field' -> columnName  (slotKey = 'g:'+gid | 'el:'+id | 'clicktag')
+    skipHeaders: false   // if true, CSV imports skip the first row as headers and generate auto-headers
   }
 };
 state.activeCanvasId = state.canvases[0].id;
@@ -13497,7 +13498,8 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
     keyColumn: null,
     activeVersion: null,
     locked: false,
-    mappings: {}
+    mappings: {},
+    skipHeaders: false
   };
   state.zoom = 1.0;
 

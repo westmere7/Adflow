@@ -223,11 +223,37 @@ function dmToCSV() {
 }
 
 function dmImportCSV(text) {
+  const skipHeaders = !!document.getElementById('dm-skip-headers')?.checked;
   const matrix = dmParseCSV(text);
   if (!matrix.length) { alert('No rows found in the file.'); return false; }
-  const headers = matrix[0].map(h => h.trim()).filter(h => h !== '');
-  if (!headers.length) { alert('No column headers found in the first row.'); return false; }
-  const rows = matrix.slice(1).map(r => { const o = { _selected: true }; headers.forEach((h, idx) => o[h] = r[idx] != null ? r[idx] : ''); return o; });
+
+  let headers;
+  let rows;
+  if (skipHeaders) {
+    const maxCols = Math.max(...matrix.map(r => r.length));
+    headers = [];
+    for (let c = 1; c <= maxCols; c++) {
+      headers.push('Column ' + c);
+    }
+    rows = matrix.map(r => {
+      const o = { _selected: true };
+      headers.forEach((h, idx) => {
+        o[h] = r[idx] != null ? r[idx] : '';
+      });
+      return o;
+    });
+  } else {
+    headers = matrix[0].map(h => h.trim()).filter(h => h !== '');
+    if (!headers.length) { alert('No column headers found in the first row.'); return false; }
+    rows = matrix.slice(1).map(r => {
+      const o = { _selected: true };
+      headers.forEach((h, idx) => {
+        o[h] = r[idx] != null ? r[idx] : '';
+      });
+      return o;
+    });
+  }
+
   const dm = state.dataMerge;
   dm.columns = headers;
   dm.rows = rows;
@@ -654,6 +680,10 @@ function dmRenderPanel(bg) {
           <button class="btn" id="dm-import" style="flex:1;">Import CSV…</button>
           <button class="btn" id="dm-export" ${dm.columns.length ? '' : 'disabled'} style="flex:1;">Export CSV</button>
         </div>
+        <label class="checkbox-row" style="display:flex; align-items:center; gap:7px; font-size:11px; padding:6px 10px; background:var(--bg-input); border-radius:5px; cursor:pointer;" title="If checked, CSV has no header row. Column names will be generated automatically.">
+          <input type="checkbox" id="dm-skip-headers" ${dm.skipHeaders ? 'checked' : ''} style="margin:0;"/>
+          Skip headers on import
+        </label>
         <div style="display:flex; gap:6px;">
           <button class="btn" id="dm-addcol" style="flex:1;">+ Column</button>
           <button class="btn" id="dm-addrow" ${dm.columns.length ? '' : 'disabled'} style="flex:1;">+ Row</button>
@@ -702,6 +732,12 @@ function dmWirePanel(bg) {
   const dms = _dmState(bg);
 
   if (q('#dm-import')) q('#dm-import').onclick = () => dmImportFile(() => reRender());
+  if (q('#dm-skip-headers')) {
+    q('#dm-skip-headers').onchange = (e) => {
+      state.dataMerge.skipHeaders = e.target.checked;
+      pushHistory();
+    };
+  }
   if (q('#dm-export')) q('#dm-export').onclick = () => dmExportCSV();
   if (q('#dm-addcol')) q('#dm-addcol').onclick = () => { const n = prompt('New column name:'); if (n) { dmAddColumn(n); pushHistory(); reRender(); } };
   if (q('#dm-addrow')) q('#dm-addrow').onclick = () => { dmAddRow(); pushHistory(); reRender(); };
