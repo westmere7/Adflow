@@ -5656,7 +5656,10 @@ canvasArea.addEventListener('scroll', () => {
 });
 
 // ============================================================================
-function openValidatorDetails(initialCanvas, initialTab = 'specs') {
+async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
+  // Re-calculate size of the selected canvas dynamically before rendering
+  await updateCanvasSizeSync(initialCanvas);
+
   const modalId = `val-modal-${Date.now()}`;
   let activeDetailsId = initialCanvas.id;
   let activeTab = initialTab; // 'specs' | 'a11y' | 'brand'
@@ -6184,11 +6187,6 @@ function openValidatorDetails(initialCanvas, initialTab = 'specs') {
               ` : ''}
             </div>
             <div style="display:flex; align-items:center; gap:12px;">
-              ${sizeExceeded && imageElements.length > 0 ? `
-                <button id="val-auto-compress" class="btn primary" style="background:#10b981; color:#fff; border:none; padding:4px 10px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:4px; height:24px; line-height:1;" title="Automatically compress all images on this canvas to WebP to fit size limit">
-                  Auto Compress (WebP)
-                </button>
-              ` : ''}
               <span style="font-size:12.5px; font-weight:bold; color:var(--text-label);">ZIP Size: <span style="color:${errors.some(e => e.includes('limit')) ? '#f97316' : '#10b981'}; font-size:14px;">${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'calc...'}</span></span>
             </div>
           </div>
@@ -6322,10 +6320,14 @@ function openValidatorDetails(initialCanvas, initialTab = 'specs') {
       if (canvasId === currentId) {
         btn.classList.add('active');
       }
-      btn.onclick = () => {
+      btn.onclick = async () => {
         const modalContainer = document.getElementById(modalId);
         if (modalContainer) {
           const parent = modalContainer.parentElement;
+          const canvas = state.canvases.find(c => c.id === canvasId);
+          if (canvas) {
+            await updateCanvasSizeSync(canvas);
+          }
           parent.innerHTML = generateModalContent(canvasId, activeTab);
           const newContainer = parent.querySelector(`#${modalId}`);
           setupModalListeners(newContainer, canvasId, activeTab);
@@ -6388,11 +6390,6 @@ function openValidatorDetails(initialCanvas, initialTab = 'specs') {
         btn.style.cursor = 'pointer';
       }
     };
-
-    const headerCompressBtn = modalEl.querySelector('#val-auto-compress');
-    if (headerCompressBtn) {
-      headerCompressBtn.onclick = () => triggerAutoCompress(headerCompressBtn);
-    }
 
     const criteriaCompressBtn = modalEl.querySelector('#val-criteria-auto-compress');
     if (criteriaCompressBtn) {
@@ -13810,10 +13807,6 @@ function queueSizeUpdate() {
   if (sizeUpdateTimeout) clearTimeout(sizeUpdateTimeout);
   sizeUpdateTimeout = setTimeout(async () => {
     for (const c of state.canvases) {
-      const sizeSpan = document.getElementById(`val-size-${c.id}`);
-      const warnSpan = document.getElementById(`val-warn-${c.id}`);
-      if (!sizeSpan || !warnSpan) continue;
-
       let errors = [];
       if (!state.clickTag || state.clickTag.trim() === '') {
         errors.push('Missing clickTag URL');
@@ -13938,7 +13931,15 @@ async function autoCompressCanvasImages(canvasId) {
   if (!canvas) return;
 
   const limitKb = state.adSizeLimit || 150;
-  const currentAdSize = canvas._valKb ? parseFloat(canvas._valKb) : 0;
+  
+  // Calculate up-to-date ZIP size dynamically
+  const tempZip = new JSZip();
+  await dmRunExport(dmActiveRowForOutput(), async () => {
+    await addCanvasAssetsToZip(canvas, tempZip);
+    tempZip.file('index.html', generateExportHTML(canvas, tempZip));
+  });
+  const tempBlob = await tempZip.generateAsync({ type: 'blob' });
+  const currentAdSize = tempBlob.size / 1024;
   
   const imageElements = canvas.elements.filter(el => el.type === 'image');
   if (imageElements.length === 0) {
