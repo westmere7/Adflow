@@ -1,6 +1,16 @@
 RMIT Adflow - Version & Changelog History
 
-v0.16.91 (Current) - June 2026 — Engine v2.18
+v0.16.94 (Current) - June 2026 — Engine v2.18
+- Frame Sync Dialog Renaming: Renamed the main Synchronize Layers dialog header to "Frame Sync" to align with its core context.
+
+v0.16.93 - June 2026 — Engine v2.18
+- Nested Frame Sync Submenu: Moved the canvas and frame layer sync action triggers into a clean, nested "Frame Sync" right-click context submenu, keeping the main canvas viewport menu clean.
+
+v0.16.92 - June 2026 — Engine v2.18
+- Synchronize Layers Context Actions: Added direct "Sync Across Canvases..." and "Sync Across Frames..." options to the canvas right-click context menu, pre-selecting the respective tab on open.
+- Refactored Sync Tab Labels: Renamed "Canvas Sync" to "Sync Across Canvases" and "Frame Sync" to "Sync Across Frames" to clearly describe their functionality.
+
+v0.16.91 - June 2026 — Engine v2.18
 - Static Clear Recent Button: Configured the "Clear Recent" File dropdown menu item to remain permanently visible instead of dynamically hiding/showing after project list loading delays.
 
 v0.16.90 - June 2026 — Engine v2.18

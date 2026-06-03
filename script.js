@@ -14938,7 +14938,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.16.91';
+  const currentVersion = 'v0.16.94';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -14989,7 +14989,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.16.91';
+  const currentVersion = 'v0.16.94';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15124,7 +15124,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.16.91</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.16.94</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -17147,6 +17147,15 @@ document.addEventListener('contextmenu', (e) => {
     const autoResizeSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3H13M21 3V11M21 3L11 13M3 21H11M3 21V13M3 21L13 11"/></svg>`;
     html += `<div class="ctx-item highlight" id="ctx-canvas-auto-resize" style="display:flex; align-items:center; gap:8px;">${autoResizeSvg}Auto-Resize</div>`;
     html += `<div class="ctx-divider"></div>`;
+    const syncSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
+    html += `<div class="ctx-item has-submenu">
+      ${svgWrap(syncSvg, 'Frame Sync')}
+      <div class="ctx-submenu">
+        <div class="ctx-item" id="ctx-canvas-sync" style="white-space:nowrap;">Sync Across Canvases...</div>
+        <div class="ctx-item" id="ctx-frame-sync" style="white-space:nowrap;">Sync Across Frames...</div>
+      </div>
+    </div>`;
+    html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-canvas-clone">Clone Canvas</div>`;
     if (state.canvases.length > 1) {
       html += `<div class="ctx-item" id="ctx-canvas-delete" style="color:#ef4444;">Delete Canvas</div>`;
@@ -17451,6 +17460,14 @@ document.addEventListener('contextmenu', (e) => {
   });
   bind('ctx-canvas-export-html', () => { const c = getActiveCanvas(); if (c) exportCanvasAsZip(c); });
   bind('ctx-canvas-export-png', () => { const c = getActiveCanvas(); if (c) exportCanvasAsPng(c); });
+  bind('ctx-canvas-sync', (e) => {
+    e.stopPropagation();
+    showSyncLayersMenu(e.target, 'canvas');
+  });
+  bind('ctx-frame-sync', (e) => {
+    e.stopPropagation();
+    showSyncLayersMenu(e.target, 'frame');
+  });
   bind('ctx-canvas-auto-resize', () => {
     const s = (typeof getAutoResizeSettings === 'function') ? getAutoResizeSettings() : null;
     const showModal = s ? s.behaviour.showModalInCtxMenu !== false : true;
@@ -18040,7 +18057,7 @@ function showCanvasNotification(message, options = {}) {
   }, duration);
 }
 
-function showSyncLayersMenu(anchorEl) {
+function showSyncLayersMenu(anchorEl, initialTab = 'canvas') {
   const existing = document.getElementById('sync-layers-modal-bg');
   if (existing) {
     existing.remove();
@@ -18089,14 +18106,14 @@ function showSyncLayersMenu(anchorEl) {
   bg.innerHTML = `
     <div class="modal" style="max-width:440px;">
       <div class="modal-head">
-        <h2>Synchronize Layers</h2>
+        <h2>Frame Sync</h2>
         <button class="btn" id="sync-layers-close" title="Close dialog">Close</button>
       </div>
 
       <!-- Tab navigation -->
       <div style="display: flex; gap: 0; border-bottom: 1px solid var(--border-light); background: var(--bg-body); padding: 0 12px; flex-shrink: 0;">
-        <button id="btn-tab-canvas-sync" style="flex: 1; padding: 12px 0; font-size: 12px; font-weight: 600; border: none; border-bottom: 2px solid var(--accent-base); background: none; color: var(--text-main); cursor: pointer; text-align: center; outline: none; transition: all 0.15s;">Canvas Sync</button>
-        <button id="btn-tab-frame-sync" style="flex: 1; padding: 12px 0; font-size: 12px; font-weight: 500; border: none; border-bottom: 2px solid transparent; background: none; color: var(--text-muted); cursor: pointer; text-align: center; outline: none; transition: all 0.15s;">Frame Sync</button>
+        <button id="btn-tab-canvas-sync" style="flex: 1; padding: 12px 0; font-size: 12px; font-weight: 600; border: none; border-bottom: 2px solid var(--accent-base); background: none; color: var(--text-main); cursor: pointer; text-align: center; outline: none; transition: all 0.15s;">Sync Across Canvases</button>
+        <button id="btn-tab-frame-sync" style="flex: 1; padding: 12px 0; font-size: 12px; font-weight: 500; border: none; border-bottom: 2px solid transparent; background: none; color: var(--text-muted); cursor: pointer; text-align: center; outline: none; transition: all 0.15s;">Sync Across Frames</button>
       </div>
 
       <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px; overflow-y:auto;">
@@ -18198,7 +18215,7 @@ function showSyncLayersMenu(anchorEl) {
       <!-- Modal footer -->
       <div class="modal-foot">
         <button class="btn btn-sync-layers-cancel" style="padding: 6px 12px; font-size: 12px; cursor: pointer;">Cancel</button>
-        <button class="btn primary" id="btn-sync-layers-execute" style="padding: 6px 16px; font-size: 12px; font-weight: 600; background: var(--accent-base); color: var(--text-on-accent, #fff); border: none; border-radius: 4px; cursor: pointer;">Sync Canvases</button>
+        <button class="btn primary" id="btn-sync-layers-execute" style="padding: 6px 16px; font-size: 12px; font-weight: 600; background: var(--accent-base); color: var(--text-on-accent, #fff); border: none; border-radius: 4px; cursor: pointer;">Sync Across Canvases</button>
       </div>
     </div>
   `;
@@ -18226,7 +18243,7 @@ function showSyncLayersMenu(anchorEl) {
 
     containerCanvas.style.display = 'flex';
     containerFrame.style.display = 'none';
-    executeBtn.innerText = 'Sync Canvases';
+    executeBtn.innerText = 'Sync Across Canvases';
   };
 
   tabFrame.onclick = () => {
@@ -18241,7 +18258,7 @@ function showSyncLayersMenu(anchorEl) {
 
     containerCanvas.style.display = 'none';
     containerFrame.style.display = 'flex';
-    executeBtn.innerText = 'Sync Frames';
+    executeBtn.innerText = 'Sync Across Frames';
   };
 
   // Helper to update target frames selection dynamically
@@ -18288,6 +18305,13 @@ function showSyncLayersMenu(anchorEl) {
 
   // Populate target frames list initially
   updateTargetFramesList(state.activeFrameId);
+
+  // Set initial active tab state
+  if (initialTab === 'frame') {
+    tabFrame.onclick();
+  } else {
+    tabCanvas.onclick();
+  }
 
   // Source Frame Selector dynamic preview
   const selectSourceFrame = bg.querySelector('#select-sync-source-frame');

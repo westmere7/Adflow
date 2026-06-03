@@ -660,6 +660,28 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.16.94',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Frame Sync Dialog Renaming: Renamed the main Synchronize Layers dialog header to "Frame Sync" to align with its core context.'
+    ]
+  },
+  {
+    version: 'v0.16.93',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Nested Frame Sync Submenu: Moved the canvas and frame layer sync action triggers into a clean, nested "Frame Sync" right-click context submenu, keeping the main canvas viewport menu clean.'
+    ]
+  },
+  {
+    version: 'v0.16.92',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Synchronize Layers Context Actions: Added direct "Sync Across Canvases..." and "Sync Across Frames..." options to the canvas right-click context menu, pre-selecting the respective tab on open.',
+      'Refactored Sync Tab Labels: Renamed "Canvas Sync" to "Sync Across Canvases" and "Frame Sync" to "Sync Across Frames" to clearly describe their functionality.'
+    ]
+  },
+  {
     version: 'v0.16.91',
     date: 'June 2026 — Engine v2.18',
     items: [
