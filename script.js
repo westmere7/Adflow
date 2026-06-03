@@ -9567,7 +9567,7 @@ function renderProps() {
       syncColorPickerWithSelection(null, c);
     }
     const canvasActiveIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-    if (state.frames.length > 1 && canvasActiveIdx > 0) {
+    if (state.frames.length > 1 && (canvasActiveIdx > 0 || state.loopAd)) {
       wireFrameTransitionEvents();
     }
     initCollapsiblePanels();
@@ -11344,7 +11344,7 @@ function checkButtonFontSizeWarning(el) {
     syncColorPickerWithSelection(el, null);
   }
   const canvasActiveIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-  if (state.frames.length > 1 && canvasActiveIdx > 0) {
+  if (state.frames.length > 1 && (canvasActiveIdx > 0 || state.loopAd)) {
     wireFrameTransitionEvents();
   }
   initCollapsiblePanels();
