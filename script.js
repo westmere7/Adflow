@@ -14122,32 +14122,35 @@ async function autoCompressCanvasImages(canvasId) {
       el.customName.toLowerCase().includes('logo') || 
       el.customName.toLowerCase().includes('pixel')
     ))) {
-      let restoredAssetId = 'data/Elements/RMIT_White.svg';
-      if (el.customName && el.customName.toLowerCase().includes('full color')) {
-        restoredAssetId = 'data/Elements/RMIT_full.svg';
-      } else if (el.customName && el.customName.toLowerCase().includes('red pixel')) {
-        restoredAssetId = 'data/Elements/RMIT_RedPixel.svg';
-      }
-
-      const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
-      if (_imgDyn) {
-        const dm = state.dataMerge;
-        if (dm && dm.mappings) {
-          const col = dm.mappings[dmSlotKey(el) + '::image'];
-          if (col && dm.rows) {
-            dm.rows.forEach(row => {
-              if (row[col] && typeof row[col] === 'string' && row[col].startsWith('img_')) {
+      const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+      const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+      if (activeAssetId && typeof activeAssetId === 'string' && activeAssetId.startsWith('img_')) {
+        let restoredAssetId = 'data/Elements/RMIT_White.svg';
+        if (el.customName && el.customName.toLowerCase().includes('full color')) {
+          restoredAssetId = 'data/Elements/RMIT_full.svg';
+        } else if (el.customName && el.customName.toLowerCase().includes('red pixel')) {
+          restoredAssetId = 'data/Elements/RMIT_RedPixel.svg';
+        }
+        
+        const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
+        if (_imgDyn) {
+          const dm = state.dataMerge;
+          if (dm && dm.mappings) {
+            const col = dm.mappings[dmSlotKey(el) + '::image'];
+            if (col && dm.rows && dm.activeVersion != null) {
+              const row = dm.rows[dm.activeVersion];
+              if (row) {
                 row[col] = restoredAssetId;
               }
-            });
+            }
           }
+        } else {
+          el.assetId = restoredAssetId;
         }
-      } else {
-        el.assetId = restoredAssetId;
+        el.isCompressed = false;
+        delete el.webpQuality;
+        delete el.compressionFormat;
       }
-      el.isCompressed = false;
-      delete el.webpQuality;
-      delete el.compressionFormat;
     }
   });
 
@@ -14161,71 +14164,60 @@ async function autoCompressCanvasImages(canvasId) {
   });
   const tempBlob = await tempZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const currentAdSize = tempBlob.size / 1024;
-
-  // Helper to identify if an asset is a compressable bitmap image
-  function isBitmapAsset(assetId) {
-    if (!assetId) return false;
-    if (typeof assetId === 'string' && (
-      assetId.toLowerCase().includes('.svg') || 
-      assetId.startsWith('data:image/svg+xml')
-    )) {
-      return false;
-    }
-    return true;
-  }
-
-  const assetsToCompress = new Map(); // assetId -> { originalDataUrl, originalSizeKB, element }
   
-  for (const el of canvas.elements) {
-    if (el.type !== 'image') continue;
+  const imageElements = canvas.elements.filter(el => {
+    if (el.type !== 'image') return false;
 
-    // Skip brand logos
+    // Do not compress branding or logo elements (SVG or otherwise)
     if (el.role === 'rmit-logo' || (el.customName && (
       el.customName.toLowerCase().includes('logo') || 
       el.customName.toLowerCase().includes('pixel')
     ))) {
-      continue;
+      return false;
     }
 
-    const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
-    if (_imgDyn && state.dataMerge && state.dataMerge.mappings) {
-      const col = state.dataMerge.mappings[dmSlotKey(el) + '::image'];
-      if (col && state.dataMerge.rows) {
-        for (const row of state.dataMerge.rows) {
-          const assetId = row[col];
-          if (isBitmapAsset(assetId) && !assetsToCompress.has(assetId)) {
-            const originalDataUrl = (state.assets && state.assets[assetId]) || assetId;
-            if (originalDataUrl) {
-              const sizeStr = await getImageSizeKB(originalDataUrl);
-              const sizeKB = parseFloat(sizeStr) || 0;
-              assetsToCompress.set(assetId, { originalDataUrl, originalSizeKB: sizeKB, element: el });
-            }
-          }
-        }
-      }
-    }
-    
-    // Also check default assetId
-    const assetId = el.assetId;
-    if (isBitmapAsset(assetId) && !assetsToCompress.has(assetId)) {
-      const originalDataUrl = (state.assets && state.assets[assetId]) || assetId;
-      if (originalDataUrl) {
-        const sizeStr = await getImageSizeKB(originalDataUrl);
-        const sizeKB = parseFloat(sizeStr) || 0;
-        assetsToCompress.set(assetId, { originalDataUrl, originalSizeKB: sizeKB, element: el });
-      }
-    }
-  }
+    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+    const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+    if (!activeAssetId) return false;
 
-  if (assetsToCompress.size === 0) {
+    // Do not compress SVG vector images
+    if (typeof activeAssetId === 'string' && activeAssetId.toLowerCase().includes('.svg')) {
+      return false;
+    }
+    const originalDataUrl = (state.assets && state.assets[activeAssetId]) || activeAssetId;
+    if (typeof originalDataUrl === 'string' && (originalDataUrl.startsWith('data:image/svg+xml') || originalDataUrl.toLowerCase().includes('.svg'))) {
+      return false;
+    }
+    return true;
+  });
+  if (imageElements.length === 0) {
     showCanvasNotification('No bitmap image layers found to compress.', { type: 'warning' });
     return;
   }
 
+  const imageTasks = [];
   let totalOriginalImagesSizeKB = 0;
-  assetsToCompress.forEach(task => {
-    totalOriginalImagesSizeKB += task.originalSizeKB;
-  });
+  for (const el of imageElements) {
+    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+    const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+    const originalDataUrl = (activeAssetId && state.assets && state.assets[activeAssetId]) || activeAssetId;
+    if (originalDataUrl) {
+      const sizeStr = await getImageSizeKB(originalDataUrl);
+      const sizeKB = parseFloat(sizeStr) || 0;
+      totalOriginalImagesSizeKB += sizeKB;
+      imageTasks.push({
+        el,
+        activeAssetId,
+        originalDataUrl,
+        originalSizeKB: sizeKB
+      });
+    }
+  }
+
+  if (imageTasks.length === 0) {
+    showCanvasNotification('No valid image data found to compress.', { type: 'warning' });
+    return;
+  }
 
   const qualities = [90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10];
   let optimalQuality = 10;
@@ -14233,7 +14225,7 @@ async function autoCompressCanvasImages(canvasId) {
   const scanPromises = qualities.map(async (q) => {
     try {
       let compSumKB = 0;
-      for (const [assetId, task] of assetsToCompress) {
+      for (const task of imageTasks) {
         const compressed = await compressImage(task.originalDataUrl, 'image/webp', q / 100);
         const compSizeStr = await getImageSizeKB(compressed);
         const compSizeKB = parseFloat(compSizeStr) || 0;
@@ -14252,8 +14244,7 @@ async function autoCompressCanvasImages(canvasId) {
   const match = scanResults.find(r => r.estAdSize <= limitKb);
   optimalQuality = match ? match.q : 10;
 
-  let compressedCount = 0;
-  for (const [oldAssetId, task] of assetsToCompress) {
+  for (const task of imageTasks) {
     const finalCompressed = await compressImage(task.originalDataUrl, 'image/webp', optimalQuality / 100);
     const newId = 'img_' + uid();
     
@@ -14261,36 +14252,21 @@ async function autoCompressCanvasImages(canvasId) {
     state.assets[newId] = finalCompressed;
 
     if (!state.assetNames) state.assetNames = {};
-    const origName = state.assetNames && state.assetNames[oldAssetId] ? state.assetNames[oldAssetId] : (task.element.name || 'image');
+    const origName = state.assetNames && state.assetNames[task.activeAssetId] ? state.assetNames[task.activeAssetId] : (task.el.name || 'image');
     state.assetNames[newId] = origName.replace(/\.[a-z0-9]+$/i, '') + '.webp';
 
-    // Replace oldAssetId with newId in all canvas elements
-    state.canvases.forEach(c => {
-      c.elements.forEach(el => {
-        if (el.assetId === oldAssetId) {
-          el.assetId = newId;
-          el.isCompressed = true;
-          el.webpQuality = optimalQuality;
-          el.compressionFormat = 'image/webp';
-        }
-      });
-    });
-
-    // Replace oldAssetId with newId in the spreadsheet rows
-    if (state.dataMerge && state.dataMerge.rows) {
-      state.dataMerge.rows.forEach(row => {
-        for (const k in row) {
-          if (row[k] === oldAssetId) {
-            row[k] = newId;
-          }
-        }
-      });
+    const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(task.el, 'image');
+    if (_imgDyn) {
+      if (!state.dataMerge.locked) dmWriteCell(task.el, 'image', newId);
+    } else {
+      task.el.assetId = newId;
     }
-    
-    compressedCount++;
+    task.el.isCompressed = true;
+    task.el.webpQuality = optimalQuality;
+    task.el.compressionFormat = 'image/webp';
   }
 
-  showCanvasNotification(`Compressed ${compressedCount} images to WebP at ${optimalQuality}% quality across all versions.`, { type: 'success' });
+  showCanvasNotification(`Compressed ${imageTasks.length} images to WebP at ${optimalQuality}% quality.`, { type: 'success' });
   await updateCanvasSizeSync(canvas);
 }
 
@@ -16162,17 +16138,6 @@ function compressImage(dataUrl, format, quality = 0.8) {
       return;
     }
     const img = new Image();
-    let loadUrl = dataUrl;
-    if (dataUrl && !dataUrl.startsWith('data:') && !dataUrl.startsWith('blob:')) {
-      img.crossOrigin = 'anonymous';
-      try {
-        const url = new URL(dataUrl, window.location.href);
-        url.searchParams.set('_cb', uid());
-        loadUrl = url.toString();
-      } catch (e) {
-        loadUrl = dataUrl + (dataUrl.includes('?') ? '&' : '?') + '_cb=' + uid();
-      }
-    }
     img.onload = () => {
       const canvas = document.createElement('canvas');
       canvas.width = img.naturalWidth;
@@ -16213,7 +16178,7 @@ function compressImage(dataUrl, format, quality = 0.8) {
       }
     };
     img.onerror = () => reject(new Error('Failed to load image for WebP compression'));
-    img.src = loadUrl;
+    img.src = dataUrl;
   });
 }
 
