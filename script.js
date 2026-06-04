@@ -17269,7 +17269,16 @@ document.addEventListener('contextmenu', (e) => {
   }
 
   const menu = document.getElementById('ctx-menu');
-  const elNode = e.target.closest('.el');
+  let elNode = e.target.closest('.el');
+  if (!elNode) {
+    const selectionOutline = e.target.closest('.selection-outline');
+    if (selectionOutline) {
+      const targetId = state.selectedElementId || (state.layerSelection && state.layerSelection[0]);
+      if (targetId) {
+        elNode = document.querySelector(`.canvas-frame[data-canvas-id="${state.activeCanvasId}"] .canvas-inner .el[data-id="${targetId}"]`);
+      }
+    }
+  }
   let canvasNode = e.target.closest('.canvas');
   const canvasItemNode = e.target.closest('.canvas-item');
   // Right-clicking the canvas-header (the "300 × 250" dimensions label
