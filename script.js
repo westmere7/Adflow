@@ -18170,15 +18170,50 @@ const appSplash = (() => {
   const MIN_DISPLAY_MS = 1500;
   const TOTAL_PHASES = 5;
 
-  // Add version dynamically to splash screen
+  // Add version next to the logo, style it as a badge, and scale up splash elements
   if (root) {
     const inner = root.querySelector('.app-splash-inner');
-    if (inner && !inner.querySelector('.app-splash-version')) {
-      const verEl = document.createElement('div');
-      verEl.className = 'app-splash-version';
-      verEl.style.cssText = 'font-size: 11px; color: var(--text-muted, #8b8f9c); margin-top: 16px; opacity: 0.6; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
-      verEl.textContent = 'v0.17.5';
-      inner.appendChild(verEl);
+    if (inner) {
+      inner.style.gap = '32px';
+    }
+
+    if (statusEl) {
+      statusEl.style.fontSize = '13px';
+      statusEl.style.letterSpacing = '0.12em';
+    }
+
+    const bar = root.querySelector('.app-splash-bar');
+    if (bar) {
+      bar.style.width = '300px';
+      bar.style.height = '4px';
+      bar.style.borderRadius = '4px';
+    }
+
+    const logoEl = root.querySelector('.app-splash-logo');
+    if (logoEl) {
+      // Stop logo from pulsing
+      logoEl.style.animation = 'none';
+
+      // Position logo and version side by side
+      logoEl.style.display = 'flex';
+      logoEl.style.alignItems = 'center';
+      logoEl.style.justifyContent = 'center';
+      logoEl.style.gap = '14px';
+
+      // Set logo image size to look larger and clean
+      const img = logoEl.querySelector('img');
+      if (img) {
+        img.style.width = 'auto';
+        img.style.height = '44px';
+      }
+
+      if (!logoEl.querySelector('.app-splash-version')) {
+        const verEl = document.createElement('span');
+        verEl.className = 'app-splash-version';
+        verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
+        verEl.textContent = 'v0.17.5';
+        logoEl.appendChild(verEl);
+      }
     }
   }
 
