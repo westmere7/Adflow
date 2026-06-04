@@ -2668,9 +2668,32 @@ function canvasFrameNode(c) {
 
     // elements
     c.elements.forEach(el => {
-      if (el.persistent === 'bottom') layerBot.appendChild(elementNode(el, c));
-      else if (el.persistent === 'top') layerTop.appendChild(elementNode(el, c));
-      else if (el.frameId === state.activeFrameId) layerMid.appendChild(elementNode(el, c));
+      const node = elementNode(el, c);
+      let targetLayer = null;
+      if (el.persistent === 'bottom') targetLayer = layerBot;
+      else if (el.persistent === 'top') targetLayer = layerTop;
+      else if (el.frameId === state.activeFrameId) targetLayer = layerMid;
+      
+      if (targetLayer) {
+        targetLayer.appendChild(node);
+
+        // Sibling highlight overlay for clipped elements (masked images)
+        if (el.linkGroupId && el.linkGroupId === _highlightGid && !(state.layerSelection && state.layerSelection.includes(el.id))) {
+          const lg = state.linkGroups && state.linkGroups[el.linkGroupId];
+          const overlay = document.createElement('div');
+          overlay.className = 'link-group-highlight-overlay el ' + (lg && lg.liveLink ? 'link-highlight-live' : 'link-highlight');
+          overlay.style.position = 'absolute';
+          overlay.style.left = node.style.left;
+          overlay.style.top = node.style.top;
+          overlay.style.width = node.style.width;
+          overlay.style.height = node.style.height;
+          overlay.style.transform = node.style.transform;
+          overlay.style.transformOrigin = node.style.transformOrigin;
+          overlay.style.pointerEvents = 'none';
+          overlay.style.zIndex = '9999';
+          targetLayer.appendChild(overlay);
+        }
+      }
     });
     // If cropping mode is off, draw a black boundary line overlay
     if (!state.cropToCanvas) {
@@ -7052,16 +7075,38 @@ function renderLinkControl() {
     row.addEventListener('mouseenter', () => {
       const gid = row.dataset.groupId;
       const lg = state.linkGroups && state.linkGroups[gid];
-      document.querySelectorAll(`.el[data-link-group="${gid}"]`).forEach(el => {
-        el.classList.add('link-highlight-hover');
+      
+      // Clean up any remaining overlays first
+      document.querySelectorAll('.link-group-highlight-overlay').forEach(n => n.remove());
+
+      document.querySelectorAll(`.el[data-link-group="${gid}"]`).forEach(elNode => {
+        elNode.classList.add('link-highlight-hover');
         if (lg && lg.liveLink) {
-          el.classList.add('link-highlight-hover-live');
+          elNode.classList.add('link-highlight-hover-live');
+        }
+
+        // Add a non-clipped sibling overlay to render the dashed outline cleanly (especially for masked elements)
+        const overlay = document.createElement('div');
+        overlay.className = 'link-group-highlight-overlay el ' + (lg && lg.liveLink ? 'link-highlight-hover-live' : 'link-highlight-hover');
+        overlay.style.position = 'absolute';
+        overlay.style.left = elNode.style.left;
+        overlay.style.top = elNode.style.top;
+        overlay.style.width = elNode.style.width;
+        overlay.style.height = elNode.style.height;
+        overlay.style.transform = elNode.style.transform;
+        overlay.style.transformOrigin = elNode.style.transformOrigin;
+        overlay.style.pointerEvents = 'none';
+        overlay.style.zIndex = '9999';
+        
+        if (elNode.parentElement) {
+          elNode.parentElement.appendChild(overlay);
         }
       });
     });
     row.addEventListener('mouseleave', () => {
       document.querySelectorAll('.el.link-highlight-hover').forEach(el => el.classList.remove('link-highlight-hover'));
       document.querySelectorAll('.el.link-highlight-hover-live').forEach(el => el.classList.remove('link-highlight-hover-live'));
+      document.querySelectorAll('.link-group-highlight-overlay').forEach(n => n.remove());
     });
     row.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
