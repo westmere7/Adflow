@@ -1,7 +1,7 @@
 // ============================================================================
-// export-pipeline.js — Google-Ads-friendly HTML5 export
+// export-pipeline.js — Standard-compliant HTML5 export
 // ============================================================================
-// Generates self-contained ZIPs that pass Google Ads / Studio validation:
+// Generates self-contained ZIPs that pass HTML5 ad validation:
 // inline assets (images as base64 / file:// in zip), inline @font-face for
 // brand fonts, clickTag wiring, CSS keyframe animations baked from the
 // app state, and a synthesized index.html shell.
@@ -343,7 +343,7 @@ function getFrameTransitionKeyframes(f) {
 
 
 // ============================================================================
-// Export — Google-Ads-friendly HTML5 (active canvas)
+// Export — Standard-compliant HTML5 (active canvas)
 // ============================================================================
 // Helper to identify exactly which brand fonts and weights are required for a canvas.
 function getRequiredFonts(c) {
@@ -2597,7 +2597,7 @@ function showBatchValidatorResults(problems) {
       <div style="padding:30px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:var(--text-main); text-align:center; display:flex; flex-direction:column; gap:16px;">
         <div style="font-size:48px; line-height:1;">🎉</div>
         <div style="font-size:18px; font-weight:600; color:#10b981;">All Versions Passed!</div>
-        <div style="font-size:13px; color:var(--text-muted); max-width:400px; margin:0 auto; line-height:1.5;">Every version and canvas size conforms to Google Ad compliance rules, accessibility guidelines, and RMIT branding rules.</div>
+        <div style="font-size:13px; color:var(--text-muted); max-width:400px; margin:0 auto; line-height:1.5;">Every version and canvas size conforms to technical compliance rules, accessibility guidelines, and RMIT branding rules.</div>
         <div style="margin-top:10px; display:flex; gap:8px; justify-content:center;">
           <button class="btn primary" id="batch-val-success-ok" style="padding:6px 20px; cursor:pointer; font-size:12px;">Awesome</button>
           <button class="btn" id="btn-batch-rerun" style="

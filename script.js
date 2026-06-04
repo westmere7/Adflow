@@ -5874,14 +5874,6 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
 
         <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
           <div style="flex:1; min-width:0;">
-            <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">GWD environment check</span>
-            <span style="font-size:12px; opacity:0.8;">Ensures creatives built in Google Web Designer were created using the correct environment.</span>
-          </div>
-          <span style="color:#10b981; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">✓ Pass</span>
-        </div>
-
-        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
-          <div style="flex:1; min-width:0;">
             <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">File Type/Count</span>
             <span style="font-size:12px; opacity:0.8;">Ensures all files contained in the zip bundle are supported.</span>
           </div>
@@ -5904,7 +5896,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
         <strong style="display:flex; align-items:center; gap:6px; font-size:14px;">
           <span>${getCheckIcon('#10b981', 14)}</span> All validation checks passed!
         </strong>
-        <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to all Google Ad compliance rules and file size limits.</p>
+        <p style="margin:0; color:var(--text-label); line-height:1.4;">This canvas conforms to all technical compliance rules and file size limits.</p>
       </div>
     `;
 
@@ -10052,7 +10044,7 @@ function renderProps() {
         </div>
       </div>`);
 
-      if (el.name && !isVector) {
+      if (!isVector) {
         const compressBtnStyle = 'background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); border:none; cursor:pointer;';
         const isCropped = !!el.cropOriginalAssetId;
         const cropBtnStyle = isCropped
@@ -13967,7 +13959,7 @@ function queueSizeUpdate() {
       });
 
       if (hasMissing) errors.push('Contains missing assets');
-      if (hasExt) errors.push('Contains external URLs (Google Ads requires local assets)');
+      if (hasExt) errors.push('Contains external URLs (local assets are required)');
 
       const zip = new JSZip();
 
@@ -14029,7 +14021,7 @@ async function updateCanvasSizeSync(c) {
   });
 
   if (hasMissing) errors.push('Contains missing assets');
-  if (hasExt) errors.push('Contains external URLs (Google Ads requires local assets)');
+  if (hasExt) errors.push('Contains external URLs (local assets are required)');
 
   const zip = new JSZip();
   await dmRunExport(dmActiveRowForOutput(), async () => {
@@ -15264,11 +15256,11 @@ document.getElementById('menu-about').addEventListener('click', () => {
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
-        <p style="margin: 0 0 16px 0;">After months of wrestling with Google Web Designer and Flashtalking, I came to a very professional conclusion: banner production should not be this painful.</p>
+        <p style="margin: 0 0 16px 0;">After months of wrestling with legacy display ad editors, I came to a very professional conclusion: banner production should not be this painful.</p>
         <p style="margin: 0 0 16px 0;">These tools somehow manage to be both massively overkill and still missing basic features I need daily. Weird workflows, clicktag chaos, timeline madness, random compatibility issues, and somehow every single ad feels like a fight against the software instead of actually designing.</p>
         <p style="margin: 0 0 16px 0;">So eventually I hit the point where I thought:<br/>
         “Fuck it, I’ll just build my own.”</p>
-        <p style="margin: 0 0 16px 0;">This project is my attempt at creating the HTML5 ad tool I always wanted: fast, lightweight, visual, export-friendly, Google Ads compatible, and without the feeling that the software is actively fighting me.</p>
+        <p style="margin: 0 0 16px 0;">This project is my attempt at creating the HTML5 ad tool I always wanted: fast, lightweight, visual, export-friendly, standards-compatible, and without the feeling that the software is actively fighting me.</p>
         <p style="margin: 0 0 16px 0;">Also, my teammate Eden, who has suffered through years of banner production alongside me, may finally have his curse lifted.</p>
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">

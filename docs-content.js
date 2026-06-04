@@ -26,7 +26,7 @@ const DOCS_SECTIONS = [
         <div style="text-align: center; margin-bottom: 24px;">
           <img src="data/Elements/Adflow_logo.svg" alt="Adflow Logo" data-adflow-logo style="max-width: 280px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));">
         </div>
-        <p>Adflow is a professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. Lay out your entire banner size set side-by-side on an infinite workspace, coordinate them with Link Groups, merge spreadsheet version rows to generate dozens of creative variants, and export Google-Ads-compliant ZIP packages in a single click.</p>
+        <p>Adflow is a professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. Lay out your entire banner size set side-by-side on an infinite workspace, coordinate them with Link Groups, merge spreadsheet version rows to generate dozens of creative variants, and export standards-compliant ZIP packages in a single click.</p>
         <p>Adflow cuts out the heavy installation requirements and complex build pipelines of legacy applications, allowing creative teams to collaborate in real-time within shared team spaces, manage cloud projects, and audit ad package weights before publication.</p>
         <p style="color:var(--text-muted); font-weight: 500;">Two core concepts to get started with:</p>
         <ul>
@@ -46,7 +46,7 @@ const DOCS_SECTIONS = [
           <li style="margin-bottom: 8px;"><b>Built-in WebP Compressor</b>: Compress and convert JPEG/PNG assets to WebP directly inside the canvas panel to meet strict ad network weight targets (150 KB standard).</li>
           <li style="margin-bottom: 8px;"><b>Layer-Based Vector Masking</b>: Use any vector shape layer (rectangles, circles, custom brand SVG pixels) to non-destructively mask images below using clean CSS clip-path logic.</li>
           <li style="margin-bottom: 8px;"><b>Supabase Team Spaces</b>: Collaborate with teammates, organize work in folders, and manage project backups with full Row-Level Security and invitation URLs.</li>
-          <li style="margin-bottom: 8px;"><b>Pre-Flight Audit & Export</b>: Package ready-to-run Google Ads-compliant ZIP bundles. Adflow validates clicktags and asset constraints automatically.</li>
+          <li style="margin-bottom: 8px;"><b>Pre-Flight Audit & Export</b>: Package ready-to-run compliant ZIP bundles. Adflow validates clicktags and asset constraints automatically.</li>
         </ul>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Combine <i>Data Merge</i> with <i>Link Groups</i> to update a specific copy element across all formats and all dynamic rows simultaneously.</div>
       `},
@@ -137,7 +137,7 @@ const DOCS_SECTIONS = [
       `},
       { id: 'images-svg', title: 'Images & SVG', body: `
         <p>Drop image files anywhere onto the workspace or insert via the Add panel. Aspect ratio is locked by default — hold <span class="kbd">Shift</span> while resizing to stretch.</p>
-        <p><b>WebP compression:</b> Adflow includes a built-in compressor for PNG/JPEG uploads — quality slider (10–100%), live KB preview, helps you stay under the Google Ads weight limit.</p>
+        <p><b>WebP compression:</b> Adflow includes a built-in compressor for PNG/JPEG uploads — quality slider (10–100%), live KB preview, helps you stay under the ad weight limit.</p>
       `},
       { id: 'shapes', title: 'Shapes & Image Masking', body: `
         <p>Rectangles, circles, and lines from the Add panel. Adjust fill, stroke, corner radius from the Properties panel.</p>
@@ -281,7 +281,7 @@ const DOCS_SECTIONS = [
         <p>While a version is active and the <b>Data lock</b> is OFF, editing a dynamic slot on the canvas writes back to <b>that row's cell</b>. Toggle the lock to ON to make dynamic inputs/textareas read-only — handy when reviewing versions without nudging the data.</p>
       `},
       { id: 'export-all-versions', title: 'Export all versions', body: `
-        <p><b>Export All Versions</b> produces one folder per row, named from the version-name column, each containing the full Google-Ads-compliant ZIP set through the standard export pipeline.</p>
+        <p><b>Export All Versions</b> produces one folder per row, named from the version-name column, each containing the full compliant ZIP set through the standard export pipeline.</p>
       `},
     ]
   },
@@ -339,7 +339,7 @@ const DOCS_SECTIONS = [
         <p><b>Open Recent</b> in the File menu shows your last manually-saved projects.</p>
       `},
       { id: 'new-project-wizard', title: 'New Project wizard', body: `
-        <p><b>File → New Project…</b> lets you pick which canvas sizes to include, the project name, ClickTag URL, default canvas background, and ad-weight limit (default 150 KB — the Google Ads standard).</p>
+        <p><b>File → New Project…</b> lets you pick which canvas sizes to include, the project name, ClickTag URL, default canvas background, and ad-weight limit (default 150 KB — the industry standard).</p>
       `},
       { id: 'settings', title: 'App settings', body: `
         <p><b>File → Settings</b>: theme (Dark, RMIT Brand, Ocean, Navy, Light), rulers, snapping, Crop to Canvas, history limit, autosave behaviour. <b>File → Project Settings</b> covers per-project options (name, ClickTag, weight limit).</p>
@@ -361,7 +361,7 @@ const DOCS_SECTIONS = [
     id: 'export', title: 'Export & Validation',
     subs: [
       { id: 'export-intro', title: 'Introduction', body: `
-        <p>Export & Validation audits ad specifications and packs layouts into final HTML5 display ads. It verifies layout compliance rules and bundles code for publishing on ad delivery networks like Google Ads.</p>
+        <p>Export & Validation audits ad specifications and packs layouts into final HTML5 display ads. It verifies layout compliance rules and bundles code for publishing on ad delivery networks.</p>
         <p>The panel runs validation checks in real time, alerting designers about missing ClickTag exit links, external assets, or total ad weights. The exporter generates self-contained ZIP packages containing final index files and media assets, as well as static PNG fallbacks.</p>
         <p><b>Adflow's Advantage:</b> Traditional editors produce bloated code that fails ad network filters. Adflow packages code cleanly, automatically fetching and embedding vector brand graphics, inlining brand stylesheets, and auditing file weight limits prior to downloading.</p>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Always review the validation panel on the left before exporting. If any canvas exceeds the 150 KB limit, run WebP image compression or remove unneeded frames from your sequence.</div>
@@ -370,7 +370,7 @@ const DOCS_SECTIONS = [
         <p>The exit URL used when someone clicks the banner. Set globally per project, or override per canvas. Can also be bound to a CSV column in Data & Versions for per-row click destinations.</p>
       `},
       { id: 'validation', title: 'Validation audits', body: `
-        <p>The left panel runs live checks: missing ClickTag, external asset references, total ad weight. Anything above your configured weight limit flags as an error — the default (150 KB) is the Google Ads standard.</p>
+        <p>The left panel runs live checks: missing ClickTag, external asset references, total ad weight. Anything above your configured weight limit flags as an error — the default (150 KB) is the industry standard.</p>
       `},
       { id: 'bundling', title: 'Bundling', body: `
         <p>Per-canvas ZIP from the canvas right-click menu. Whole-project batch from the top-bar <b>Export</b> button.</p>
@@ -1809,7 +1809,7 @@ const CHANGELOG_DATA = [
       'Composable with link groups: a slot maps to its link group when one exists (one binding fans across all sizes) or to a single element otherwise — without ever altering your link-group sync settings.',
       'Version switcher in the top bar applies the selected row live in both editing and preview, non-destructively — your template defaults are never overwritten.',
       'Edit-in-place: changing a dynamic slot on the canvas while a version is active writes back to that row’s cell. A new Data lock button makes dynamic slots read-only so you can review versions without nudging the data.',
-      'ClickTag is bindable per version, and “Export All Versions” produces one folder per row (named from your chosen key column) through the standard Google-Ads export pipeline. The data sheet is stored inside the .flow project (auto-saves & travels) and can be imported/exported as CSV.'
+      'ClickTag is bindable per version, and “Export All Versions” produces one folder per row (named from your chosen key column) through the standard export pipeline. The data sheet is stored inside the .flow project (auto-saves & travels) and can be imported/exported as CSV.'
     ]
   },
   {
