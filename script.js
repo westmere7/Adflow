@@ -8500,7 +8500,30 @@ function layerLabel(el) {
     return `<span style="color: var(--accent-light, #a78bfa); margin-right: 4px; font-weight: 500;">[mask]</span> ${label}`;
   }
   if (findMaskAbove(canvas, el)) {
-    return `<span style="color: var(--accent-light, #a78bfa); opacity: 0.7; margin-right: 4px; font-weight: 500;">[masked]</span> ${label}`;
+    return `<span style="color: var(--accent-light, #a78bfa); margin-right: 4px; font-weight: 500;">[masked]</span> ${label}`;
+  }
+  return label;
+}
+
+function layerLabelText(el) {
+  const base = baseLayerLabel(el);
+  const canvas = getActiveCanvas();
+  if (!canvas) return base;
+
+  let count = 1;
+  for (let i = 0; i < canvas.elements.length; i++) {
+    const otherEl = canvas.elements[i];
+    if (otherEl.id === el.id) break;
+    if (baseLayerLabel(otherEl) === base) {
+      count++;
+    }
+  }
+  const label = count > 1 ? `${base} ${count}` : base;
+  if (el.isMask) {
+    return `[mask] ${label}`;
+  }
+  if (findMaskAbove(canvas, el)) {
+    return `[masked] ${label}`;
   }
   return label;
 }
@@ -9292,7 +9315,7 @@ function renderProps() {
     } else if (el && dmFields.length) {
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
         <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
-          <span class="dd-marquee" style="flex:1; min-width:0; overflow:hidden; white-space:nowrap;">Dynamic Data<span style="color:var(--text-main);">: ${esc(layerLabel(el))}</span></span>
+          <span class="dd-marquee" style="flex:1; min-width:0; overflow:hidden; white-space:nowrap;">Dynamic Data<span style="color:var(--text-main);">: ${esc(layerLabelText(el))}</span></span>
           <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="flex-shrink:0; transition: transform 0.2s ease;">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
@@ -18145,8 +18168,19 @@ const appSplash = (() => {
   const barEl = document.getElementById('app-splash-bar-fill');
   const startedAt = performance.now();
   const MIN_DISPLAY_MS = 1500;
-  const QUIP_CYCLE_MS = 700;
   const TOTAL_PHASES = 5;
+
+  // Add version dynamically to splash screen
+  if (root) {
+    const inner = root.querySelector('.app-splash-inner');
+    if (inner && !inner.querySelector('.app-splash-version')) {
+      const verEl = document.createElement('div');
+      verEl.className = 'app-splash-version';
+      verEl.style.cssText = 'font-size: 11px; color: var(--text-muted, #8b8f9c); margin-top: 16px; opacity: 0.6; font-weight: 500; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;';
+      verEl.textContent = 'v0.17.5';
+      inner.appendChild(verEl);
+    }
+  }
 
   // Fisher-Yates-ish shuffle so each session feels fresh.
   const pool = SPLASH_QUIPS.slice().sort(() => Math.random() - 0.5);
@@ -18169,7 +18203,9 @@ const appSplash = (() => {
     if (finished) return;
     setText(pool[poolIdx % pool.length]);
     poolIdx++;
-    cycleTimer = setTimeout(nextQuip, QUIP_CYCLE_MS);
+    // Make durations intermittent and randomized (e.g. 300ms to 1800ms)
+    const randomMs = Math.floor(Math.random() * (1800 - 300 + 1)) + 300;
+    cycleTimer = setTimeout(nextQuip, randomMs);
   }
 
   function setPhase(idx) {
