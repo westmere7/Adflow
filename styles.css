@@ -4857,4 +4857,9 @@ body.fullscreen-mode .workspace-isolation-outline {
   background: var(--bg-input) !important;
 }
 
+/* Export Dialog Click Tag column horizontal scroll adjustments */
+.exp-clicktag div::-webkit-scrollbar {
+  display: none;
+}
+
 

@@ -1333,7 +1333,11 @@ function openExportModal() {
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.name || (c.width + '×' + c.height)}</td>
         <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.width}×${c.height}</td>
         <td class="exp-weight" style="padding: 6px 0; border-bottom: 1px solid #1f2330; color:${kb !== 'calc...' && parseFloat(kb) > 150 ? '#ef4444' : '#c7ccdb'}">${kb} ${kb === 'calc...' ? '' : 'KB'}</td>
-        <td class="exp-clicktag" style="padding: 6px 0; border-bottom: 1px solid #1f2330; font-family:monospace; font-size:10.5px; color:var(--text-label); word-break:break-all; max-width:180px;">${ct}</td>
+        <td class="exp-clicktag" style="padding: 6px 0; border-bottom: 1px solid #1f2330; max-width: 180px;">
+          <div style="font-family:monospace; font-size:10.5px; overflow-x:auto; white-space:nowrap; scrollbar-width:none; -ms-overflow-style:none;">
+            <a ${ct && ct !== '—' && ct !== 'No clickTag' ? `href="${ct.startsWith('http') ? ct : 'https://' + ct}" target="_blank" style="color:var(--accent-light, #a78bfa); text-decoration:none; cursor:pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"` : `style="color:var(--text-label); text-decoration:none;"`}>${ct}</a>
+          </div>
+        </td>
         <td class="exp-td-specs" style="padding: 6px 0; border-bottom: 1px solid #1f2330; text-align:center;">
           <span class="exp-val-badge" data-tab="specs" data-cid="${c.id}" style="cursor:pointer;" title="${specsTitle}">${specsIcon}</span>
         </td>
@@ -1410,10 +1414,10 @@ function openExportModal() {
           <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:180px;">Name</th>
           <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:80px;">Size</th>
           <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:95px;">Est. Weight</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:180px;">Click Tag</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:100px;text-align:center;">Ad Compliance</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:100px;text-align:center;">Accessibility</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:100px;text-align:center;">Branding</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Click Tag</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:110px;text-align:center;">Ad Compliance</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:110px;text-align:center;">Accessibility</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:90px;text-align:center;">Branding</th>
         </tr>
       </thead>
       <tbody>${tbody}</tbody>
@@ -1583,7 +1587,11 @@ function openExportModal() {
           weightTd.style.color = 'var(--text-muted)';
         }
         if (clicktagTd) {
-          clicktagTd.textContent = '—';
+          clicktagTd.innerHTML = `
+            <div style="font-family:monospace; font-size:10.5px; overflow-x:auto; white-space:nowrap; scrollbar-width:none; -ms-overflow-style:none;">
+              <a style="color:var(--text-muted); text-decoration:none;">—</a>
+            </div>
+          `;
         }
         if (specsTd) { specsTd.innerHTML = '<span style="color:var(--text-muted)">—</span>'; }
         if (a11yTd) { a11yTd.innerHTML = '<span style="color:var(--text-muted)">—</span>'; }
@@ -1685,7 +1693,12 @@ function openExportModal() {
         res.weightTd.style.color = res.kb > limitKb ? '#ef4444' : '#c7ccdb';
       }
       if (res.clicktagTd) {
-        res.clicktagTd.textContent = res.ct;
+        const ct = res.ct;
+        res.clicktagTd.innerHTML = `
+          <div style="font-family:monospace; font-size:10.5px; overflow-x:auto; white-space:nowrap; scrollbar-width:none; -ms-overflow-style:none;">
+            <a ${ct && ct !== '—' && ct !== 'No clickTag' ? `href="${ct.startsWith('http') ? ct : 'https://' + ct}" target="_blank" style="color:var(--accent-light, #a78bfa); text-decoration:none; cursor:pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"` : `style="color:var(--text-label); text-decoration:none;"`}>${ct}</a>
+          </div>
+        `;
       }
       if (res.specsTd) {
         res.specsTd.innerHTML = `<span class="exp-val-badge" data-tab="specs" data-cid="${res.cid}" style="cursor:pointer;" title="${res.specsTitle}">${res.specsIcon}</span>`;
