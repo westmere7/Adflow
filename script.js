@@ -184,6 +184,7 @@ function makeElement(type) {
 const state = {
   projectName: 'RMIT_ad',
   clickTag: 'https://www.rmit.edu.au/',
+  compressedAssetsMap: {},
   frames: [{ id: 1, duration: 2 }],
   activeFrameId: 1,
   canvases: PRESET_SIZES.map((p, i) => seedCanvas(p, i)),
@@ -13671,6 +13672,7 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
   state.assetLibrary = [];
   state.assetFolders = [];
   state.assets = state.assets && state.assets.rmit_logo ? { rmit_logo: state.assets.rmit_logo } : {};
+  state.compressedAssetsMap = {};
 
   await syncRmitAssets();
   state.dataMerge = {
@@ -14176,7 +14178,7 @@ async function autoCompressCanvasImages(canvasId) {
       return false;
     }
 
-    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el, true) : {};
     const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
     if (!activeAssetId) return false;
 
@@ -14198,7 +14200,7 @@ async function autoCompressCanvasImages(canvasId) {
   const imageTasks = [];
   let totalOriginalImagesSizeKB = 0;
   for (const el of imageElements) {
-    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el, true) : {};
     const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
     const originalDataUrl = (activeAssetId && state.assets && state.assets[activeAssetId]) || activeAssetId;
     if (originalDataUrl) {
@@ -14257,10 +14259,14 @@ async function autoCompressCanvasImages(canvasId) {
 
     const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(task.el, 'image');
     if (_imgDyn) {
-      if (!state.dataMerge.locked) dmWriteCell(task.el, 'image', newId);
+      // Do NOT update data sheet cell (preserving the original spreadsheet reference)
     } else {
       task.el.assetId = newId;
     }
+    
+    if (!state.compressedAssetsMap) state.compressedAssetsMap = {};
+    state.compressedAssetsMap[task.activeAssetId] = newId;
+
     task.el.isCompressed = true;
     task.el.webpQuality = optimalQuality;
     task.el.compressionFormat = 'image/webp';
@@ -14268,6 +14274,7 @@ async function autoCompressCanvasImages(canvasId) {
 
   showCanvasNotification(`Compressed ${imageTasks.length} images to WebP at ${optimalQuality}% quality.`, { type: 'success' });
   await updateCanvasSizeSync(canvas);
+  render();
 }
 
 function solveBrandElements(canvas, present, config) {
@@ -16183,7 +16190,7 @@ function compressImage(dataUrl, format, quality = 0.8) {
 }
 
 function openWebpCompressionModal(el) {
-  const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+  const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el, true) : {};
   const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
   const originalDataUrl = (activeAssetId && state.assets && state.assets[activeAssetId]) || activeAssetId;
   if (!originalDataUrl) return;
@@ -16763,7 +16770,7 @@ function openWebpCompressionModal(el) {
   bg.querySelector('#webp-close').onclick = closeFn;
   bg.querySelector('#webp-btn-cancel').onclick = closeFn;
   bg.querySelector('#webp-btn-apply').onclick = () => {
-    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+    const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el, true) : {};
     const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
     
     const newId = 'img_' + uid();
@@ -16777,10 +16784,14 @@ function openWebpCompressionModal(el) {
     
     const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
     if (_imgDyn) {
-      if (!state.dataMerge.locked) dmWriteCell(el, 'image', newId);
+      // Do NOT update data sheet cell (preserving the original spreadsheet reference)
     } else {
       el.assetId = newId;
     }
+
+    if (!state.compressedAssetsMap) state.compressedAssetsMap = {};
+    state.compressedAssetsMap[activeAssetId] = newId;
+
     el.isCompressed = true;
     el.webpQuality = parseInt(slider.value, 10);
     el.compressionFormat = selectedFormat;

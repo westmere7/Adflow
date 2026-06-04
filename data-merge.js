@@ -60,27 +60,49 @@ function dmSlotName(el) {
 
 // Resolve a sheet cell's image reference to something usable as an <img> src /
 // asset id: an existing asset id, a filename match, or a direct URL / data URI.
-function dmResolveImage(val) {
+function dmResolveImage(val, bypassRedirect = false) {
   if (!val) return null;
-  if (state.assets && state.assets[val]) return val;
-  if (state.assetNames) {
+
+  let resolvedId = null;
+
+  if (state.assets && state.assets[val]) {
+    resolvedId = val;
+  }
+
+  if (!resolvedId && state.assetNames) {
     const lc = String(val).toLowerCase();
     for (const [aid, name] of Object.entries(state.assetNames)) {
-      if (name === val || String(name).toLowerCase() === lc) return aid;
+      if (name === val || String(name).toLowerCase() === lc) {
+        resolvedId = aid;
+        break;
+      }
     }
   }
-  // An image saved in the Assets panel, matched by name with the extension ignored.
-  if (state.assetLibrary) {
+
+  if (!resolvedId && state.assetLibrary) {
     const want = String(val).replace(/\.[a-z0-9]+$/i, '').trim().toLowerCase();
     for (const asset of state.assetLibrary) {
       const an = String(asset.name || '').replace(/\.[a-z0-9]+$/i, '').trim().toLowerCase();
       if (an && an === want) {
         const imgEl = (asset.elements || []).find(e => e.type === 'image' && e.assetId);
-        if (imgEl) return imgEl.assetId;
+        if (imgEl) {
+          resolvedId = imgEl.assetId;
+          break;
+        }
       }
     }
   }
-  return val; // direct URL / data: / packaged path, or unresolved (validation flags it)
+
+  const originalId = resolvedId || val;
+
+  if (!bypassRedirect && originalId && state.compressedAssetsMap && state.compressedAssetsMap[originalId]) {
+    const compressedId = state.compressedAssetsMap[originalId];
+    if (state.assets && state.assets[compressedId]) {
+      return compressedId;
+    }
+  }
+
+  return originalId;
 }
 
 // Does the element's link group sync the property behind this dynamic field?
@@ -111,7 +133,7 @@ function dmFieldActive(el, field) {
   return dmGroupSyncsField(el, field);
 }
 
-function dmOverridesForRow(el, rowIdx) {
+function dmOverridesForRow(el, rowIdx, bypassRedirect = false) {
   const out = {};
   const dm = state.dataMerge;
   if (!dm || !dm.enabled || rowIdx == null) return out;
@@ -123,16 +145,16 @@ function dmOverridesForRow(el, rowIdx) {
     const col = dm.mappings[sk + '::' + field];
     const val = row[col];
     if (val == null || val === '') continue;
-    if (field === 'image') out.assetId = dmResolveImage(val);
+    if (field === 'image') out.assetId = dmResolveImage(val, bypassRedirect);
     else out[field] = val;
   }
   return out;
 }
 
-function dmDisplay(el) {
+function dmDisplay(el, bypassRedirect = false) {
   const dm = state.dataMerge;
   if (!dm || !dm.enabled || dm.activeVersion == null) return {};
-  return dmOverridesForRow(el, dm.activeVersion);
+  return dmOverridesForRow(el, dm.activeVersion, bypassRedirect);
 }
 
 function dmIsDynamicEditable(el, field) {

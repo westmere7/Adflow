@@ -660,6 +660,39 @@ function generateExportHTML(targetCanvas, zipRef, isImageExport = false) {
   try { return _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport); }
   finally { restore(); }
 }
+function getExportFilename(el, ext) {
+  const dm = state.dataMerge;
+  const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
+  if (_imgDyn && dm && dm.enabled && dm.activeVersion != null) {
+    const row = dm.rows[dm.activeVersion];
+    const sk = dmSlotKey(el);
+    const col = dm.mappings[sk + '::image'];
+    const val = row && row[col];
+    if (val) {
+      const base = String(val).replace(/\.[a-z0-9]+$/i, '').trim();
+      if (base) return `${base}.${ext}`;
+    }
+  }
+
+  let originalAssetId = el.assetId;
+  if (state.compressedAssetsMap) {
+    for (const [origId, compId] of Object.entries(state.compressedAssetsMap)) {
+      if (compId === el.assetId) {
+        originalAssetId = origId;
+        break;
+      }
+    }
+  }
+
+  const nameInNames = state.assetNames && state.assetNames[originalAssetId];
+  if (nameInNames) {
+    const base = String(nameInNames).replace(/\.[a-z0-9]+$/i, '').trim();
+    if (base) return `${base}.${ext}`;
+  }
+
+  return `${el.assetId}.${ext}`;
+}
+
 function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   const c = targetCanvas || getActiveCanvas();
   if (!c) return '';
@@ -859,7 +892,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
           else if (mime === 'svg+xml') ext = 'svg';
           else ext = mime;
         }
-        const filename = `assets/${el.assetId}.${ext}`;
+        const exportName = getExportFilename(el, ext);
+        const filename = `assets/${exportName}`;
         zipRef.file(filename, b64Data, { base64: true });
         src = filename;
       } else if (zipRef && src.startsWith('data/Elements/')) {
