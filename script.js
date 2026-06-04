@@ -869,6 +869,10 @@ function getDefaultSync(el) {
     defaultSync.visibility = true;
   } else if (cat === 'image') {
     defaultSync.image = true;
+    const isRmitLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo'));
+    if (isRmitLogo) {
+      defaultSync.variant = true;
+    }
     defaultSync.transform = !isRoleAssigned; // Unchecked by default for role-assigned
     defaultSync.opacity = true;
     defaultSync.rotation = true;
@@ -1104,6 +1108,11 @@ function applyLinkSync(sourceEl, targetEl, group) {
       targetEl.assetId = sourceEl.assetId;
       if (sourceEl.objectFit !== undefined) targetEl.objectFit = sourceEl.objectFit;
       else delete targetEl.objectFit;
+    }
+    if (sync.variant) {
+      targetEl.assetId = sourceEl.assetId;
+      targetEl.customName = sourceEl.customName;
+      if (sourceEl.name !== undefined) targetEl.name = sourceEl.name;
     }
     if (sync.transform) {
       targetEl.width = sourceEl.width;
@@ -6753,6 +6762,7 @@ function renderLinkControl() {
     const firstEl = selectedElements[0];
     const cat = getElementCategory(firstEl);
     const sameCat = selectedElements.every(el => getElementCategory(el) === cat);
+    const isRmitLogo = selectedElements.some(el => el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo')));
 
     if (sameCat && cat) {
       const groupIds = [...new Set(selectedElements.map(el => el.linkGroupId).filter(Boolean))];
@@ -6819,6 +6829,7 @@ function renderLinkControl() {
           } else if (cat === 'image') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
               <label title="Sync image asset across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="image" ${sync.image ? 'checked' : ''} /> Image asset</label>
+              ${isRmitLogo ? `<label title="Sync logo variant across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="variant" ${sync.variant ? 'checked' : ''} /> Variant</label>` : ''}
               <label title="Sync image width and height across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Size (W+H)</label>
               <label title="Sync image opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label title="Sync image rotation angle across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="rotation" ${sync.rotation ? 'checked' : ''} /> Rotation</label>
@@ -6942,7 +6953,10 @@ function renderLinkControl() {
           let keys = [];
           if (cat === 'text') keys = ['text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect', 'visibility'];
           else if (cat === 'button') keys = ['text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect', 'visibility'];
-          else if (cat === 'image') keys = ['image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect', 'visibility'];
+          else if (cat === 'image') {
+            keys = ['image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect', 'visibility'];
+            if (isRmitLogo) keys.push('variant');
+          }
           else if (cat === 'shape') keys = ['fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect', 'visibility'];
           else if (cat === 'line') keys = ['color', 'thickness', 'opacity', 'inAnim', 'effect', 'visibility'];
           
@@ -8049,8 +8063,10 @@ function renderLayers() {
       div.className = 'layer' + (isSel ? ' selected' : '') + maskLink;
       div.draggable = true;
       div.dataset.id = el.id;
+      const isRmitLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo'));
+      const svgInnerHtml = isRmitLogo ? layerIcon('pixel') : layerIcon(el.type);
       const iconStyle = el.autoArranged ? 'style="color: var(--accent-base); opacity: 1;"' : '';
-      const iconHtml = `<svg class="layer-icon" ${iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${layerIcon(el.type)}</svg>`;
+      const iconHtml = `<svg class="layer-icon" ${iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${svgInnerHtml}</svg>`;
 
       const eyeIconHtml = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
 
@@ -8816,8 +8832,9 @@ function stopFrameTransitionPreview() {
 function customSelect(key, options, currentVal, title, isFrameTrans = false, frameTransId = '') {
   const currentOpt = options.find(o => o.val === currentVal) || options[0];
   const dropdownItems = options.map(opt => `
-    <div class="custom-select-item" data-value="${opt.val}" style="padding: 5px 8px; font-size: 11px; color: var(--text-main); cursor: pointer; transition: background 0.1s;" title="${opt.label}">
-      ${opt.label}
+    <div class="custom-select-item" data-value="${opt.val}" style="padding: 5px 8px; font-size: 11px; color: var(--text-main); cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 6px;" title="${opt.label}">
+      ${opt.img ? `<img src="${opt.img}" style="max-height: 14px; max-width: 32px; object-fit: contain; flex-shrink: 0; background: #0b0c10; padding: 1.5px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.05);" />` : ''}
+      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${opt.label}</span>
     </div>
   `).join('');
 
@@ -8826,9 +8843,12 @@ function customSelect(key, options, currentVal, title, isFrameTrans = false, fra
 
   return `
     <div class="custom-select-container ${isFrameTrans ? 'frame-trans-select' : ''}" ${dataKeyAttr} ${containerIdHtml} style="position: relative; width: 100%;">
-      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid #272c3a; color: var(--text-main); border-radius: 4px; padding: 4px 6px; font-size: 11px; height: 24px; text-align: left; cursor: pointer; outline: none;">
-        <span class="custom-select-label">${currentOpt.label}</span>
-        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left: 4px; opacity: 0.7; pointer-events: none;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid #272c3a; color: var(--text-main); border-radius: 4px; padding: 4px 6px; font-size: 11px; height: 24px; text-align: left; cursor: pointer; outline: none; min-width: 0;">
+        <span class="custom-select-label" style="display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; white-space: nowrap; flex: 1;">
+          ${currentOpt.img ? `<img src="${currentOpt.img}" style="max-height: 12px; max-width: 28px; object-fit: contain; flex-shrink: 0; background: #0b0c10; padding: 1px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.05);" />` : ''}
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${currentOpt.label}</span>
+        </span>
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left: 4px; opacity: 0.7; pointer-events: none; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
       <div class="custom-select-dropdown" style="display: none; position: absolute; top: 26px; left: 0; right: 0; background: #171a22; border: 1px solid #272c3a; border-radius: 4px; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-height: 200px; overflow-y: auto; padding: 4px 0;">
         ${dropdownItems}
@@ -9982,17 +10002,31 @@ function renderProps() {
   if (el.type === 'image') {
     const imgDisabled = isFieldDisabled('image');
     const src = dAssetId ? ((state.assets && state.assets[dAssetId]) || dAssetId) : '';
+    const isRmitLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo'));
     const isVector = (el.name && el.name.toLowerCase().endsWith('.svg')) || 
                      (dAssetId && typeof dAssetId === 'string' && dAssetId.toLowerCase().includes('.svg')) ||
                      (dAssetId && state.assets && state.assets[dAssetId] && (
                        state.assets[dAssetId].startsWith('data:image/svg+xml') || 
                        state.assets[dAssetId].toLowerCase().includes('.svg')
                      )) ||
-                     el.role === 'rmit-logo' || 
+                     isRmitLogo || 
                      (el.customName && (
                        el.customName.toLowerCase().includes('logo') || 
                        el.customName.toLowerCase().includes('pixel')
                      ));
+
+    if (isRmitLogo) {
+      const variantOptions = [
+        { val: 'data/Elements/RMIT_full.svg', label: 'RMIT_full.svg', img: 'data/Elements/RMIT_full.svg' },
+        { val: 'data/Elements/RMIT_RedPixel.svg', label: 'RMIT_RedPixel.svg', img: 'data/Elements/RMIT_RedPixel.svg' },
+        { val: 'data/Elements/RMIT_White.svg', label: 'RMIT_white.svg', img: 'data/Elements/RMIT_White.svg' }
+      ];
+      const currentVariantVal = el.assetId || 'data/Elements/RMIT_White.svg';
+      f.push(`<div class="prop-row">
+        <label>Variant</label>
+        ${customSelect('logoVariant', variantOptions, currentVariantVal, 'RMIT Logo Variant')}
+      </div>`);
+    }
 
     // Output file input element (hidden if image already uploaded, so we can trigger it via custom UI)
     const fileInputHtml = `<input type="file" accept="image/*" id="img-upload" title="Upload an image file" style="${src ? 'display:none;' : ''}" ${imgDisabled ? 'disabled style="pointer-events:none;"' : ''} />`;
@@ -10006,14 +10040,15 @@ function renderProps() {
     } else {
       // Image uploaded / used: hide top button and filename, display preview container with overlay
       f.push(fileInputHtml);
-      f.push(`<div class="prop-row">
-        <label>Preview</label>
-        <div class="img-preview-container" style="position:relative; width:100%; border-radius:4px; overflow:hidden; border:1px solid #272c3a; background:#12131a; cursor:pointer;">
-          <img src="${src}" style="display:block; width:100%; max-height:160px; object-fit:contain; pointer-events:none;" />
-          <div class="img-preview-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.65); display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s ease; gap:8px;">
+      const overlayHtml = isRmitLogo ? '' : `<div class="img-preview-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.65); display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; transition:opacity 0.2s ease; gap:8px;">
             <button id="overlay-browse-btn" class="btn" style="background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); border:none; border-radius:4px; padding:6px 16px; font-size:11px; font-weight:600; cursor:pointer;">Browse...</button>
             <span class="overlay-filename" style="color:var(--text-muted); font-size:10px; max-width:90%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(el.name || '')}">${esc(el.name || '')}</span>
-          </div>
+          </div>`;
+      f.push(`<div class="prop-row">
+        <label>Preview</label>
+        <div class="img-preview-container" style="position:relative; width:100%; border-radius:4px; overflow:hidden; border:1px solid #272c3a; background:#12131a; cursor:${isRmitLogo ? 'default' : 'pointer'};">
+          <img src="${src}" style="display:block; width:100%; max-height:160px; object-fit:contain; pointer-events:none;" />
+          ${overlayHtml}
         </div>
       </div>`);
 
@@ -10409,6 +10444,32 @@ function checkButtonFontSizeWarning(el) {
 
   const updateProp = (k, val) => {
     if (!k) return;
+    if (k === 'logoVariant') {
+      let customName = 'RMIT Logo (white)';
+      if (val === 'data/Elements/RMIT_full.svg') {
+        customName = 'RMIT Logo (Full color)';
+      } else if (val === 'data/Elements/RMIT_RedPixel.svg') {
+        customName = 'RMIT Logo (Red Pixel)';
+      }
+
+      const updateLogo = (targetEl) => {
+        targetEl.assetId = val;
+        targetEl.customName = customName;
+        targetEl.name = customName;
+      };
+
+      const c = getActiveCanvas();
+      if (state.layerSelection && state.layerSelection.length > 1 && c) {
+        c.elements.filter(e => state.layerSelection.includes(e.id)).forEach(updateLogo);
+      } else {
+        updateLogo(el);
+      }
+
+      pushHistory();
+      renderProps();
+      render(true);
+      return;
+    }
     // (A) Edit-in-place for panel-edited dynamic fields (color/bg/text): route to the active
     // version's cell rather than the template, when a single dynamic element is selected.
     const dmField = (k === 'color' || k === 'bg' || k === 'text') ? k : null;
