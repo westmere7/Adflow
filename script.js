@@ -8832,8 +8832,8 @@ function stopFrameTransitionPreview() {
 function customSelect(key, options, currentVal, title, isFrameTrans = false, frameTransId = '') {
   const currentOpt = options.find(o => o.val === currentVal) || options[0];
   const dropdownItems = options.map(opt => `
-    <div class="custom-select-item" data-value="${opt.val}" style="padding: 5px 8px; font-size: 11px; color: var(--text-main); cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 6px;" title="${opt.label}">
-      ${opt.img ? `<img src="${opt.img}" style="max-height: 14px; max-width: 32px; object-fit: contain; flex-shrink: 0; background: #0b0c10; padding: 1.5px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.05);" />` : ''}
+    <div class="custom-select-item" data-value="${opt.val}" style="padding: 6px 10px; font-size: 12px; color: var(--text-main); cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 8px;" title="${opt.label}">
+      ${opt.img ? `<img src="${opt.img}" style="max-height: 18px; max-width: 40px; object-fit: contain; flex-shrink: 0; background: #475569; padding: 2px 4px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15);" />` : ''}
       <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${opt.label}</span>
     </div>
   `).join('');
@@ -8843,14 +8843,14 @@ function customSelect(key, options, currentVal, title, isFrameTrans = false, fra
 
   return `
     <div class="custom-select-container ${isFrameTrans ? 'frame-trans-select' : ''}" ${dataKeyAttr} ${containerIdHtml} style="position: relative; width: 100%;">
-      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid #272c3a; color: var(--text-main); border-radius: 4px; padding: 4px 6px; font-size: 11px; height: 24px; text-align: left; cursor: pointer; outline: none; min-width: 0;">
-        <span class="custom-select-label" style="display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; white-space: nowrap; flex: 1;">
-          ${currentOpt.img ? `<img src="${currentOpt.img}" style="max-height: 12px; max-width: 28px; object-fit: contain; flex-shrink: 0; background: #0b0c10; padding: 1px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.05);" />` : ''}
+      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid #2d3446; color: var(--text-main); border-radius: 5px; padding: 4px 8px; font-size: 12px; height: 28px; text-align: left; cursor: pointer; outline: none; min-width: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+        <span class="custom-select-label" style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; flex: 1;">
+          ${currentOpt.img ? `<img src="${currentOpt.img}" style="max-height: 16px; max-width: 36px; object-fit: contain; flex-shrink: 0; background: #475569; padding: 2px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15);" />` : ''}
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${currentOpt.label}</span>
         </span>
         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left: 4px; opacity: 0.7; pointer-events: none; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
-      <div class="custom-select-dropdown" style="display: none; position: absolute; top: 26px; left: 0; right: 0; background: #171a22; border: 1px solid #272c3a; border-radius: 4px; z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-height: 200px; overflow-y: auto; padding: 4px 0;">
+      <div class="custom-select-dropdown" style="display: none; position: absolute; top: 30px; left: 0; right: 0; background: #161922; border: 1px solid #3b4256; border-radius: 6px; z-index: 10000; box-shadow: 0 10px 30px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.08); max-height: 200px; overflow-y: auto; padding: 4px 0;">
         ${dropdownItems}
       </div>
     </div>
@@ -10017,9 +10017,9 @@ function renderProps() {
 
     if (isRmitLogo) {
       const variantOptions = [
-        { val: 'data/Elements/RMIT_full.svg', label: 'RMIT_full.svg', img: 'data/Elements/RMIT_full.svg' },
-        { val: 'data/Elements/RMIT_RedPixel.svg', label: 'RMIT_RedPixel.svg', img: 'data/Elements/RMIT_RedPixel.svg' },
-        { val: 'data/Elements/RMIT_White.svg', label: 'RMIT_white.svg', img: 'data/Elements/RMIT_White.svg' }
+        { val: 'data/Elements/RMIT_full.svg', label: 'Full Color', img: 'data/Elements/RMIT_full.svg' },
+        { val: 'data/Elements/RMIT_RedPixel.svg', label: 'Red Pixel', img: 'data/Elements/RMIT_RedPixel.svg' },
+        { val: 'data/Elements/RMIT_White.svg', label: 'White', img: 'data/Elements/RMIT_White.svg' }
       ];
       const currentVariantVal = el.assetId || 'data/Elements/RMIT_White.svg';
       f.push(`<div class="prop-row">
