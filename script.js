@@ -16162,6 +16162,17 @@ function compressImage(dataUrl, format, quality = 0.8) {
       return;
     }
     const img = new Image();
+    let loadUrl = dataUrl;
+    if (dataUrl && !dataUrl.startsWith('data:') && !dataUrl.startsWith('blob:')) {
+      img.crossOrigin = 'anonymous';
+      try {
+        const url = new URL(dataUrl, window.location.href);
+        url.searchParams.set('_cb', uid());
+        loadUrl = url.toString();
+      } catch (e) {
+        loadUrl = dataUrl + (dataUrl.includes('?') ? '&' : '?') + '_cb=' + uid();
+      }
+    }
     img.onload = () => {
       const canvas = document.createElement('canvas');
       canvas.width = img.naturalWidth;
@@ -16202,7 +16213,7 @@ function compressImage(dataUrl, format, quality = 0.8) {
       }
     };
     img.onerror = () => reject(new Error('Failed to load image for WebP compression'));
-    img.src = dataUrl;
+    img.src = loadUrl;
   });
 }
 
