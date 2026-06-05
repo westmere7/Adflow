@@ -26,6 +26,22 @@
 // elementNode, multiSelectionOverlay, openModal, showCanvasNotification, etc.)
 // are call-time only — fire only when the user triggers an export.
 // ============================================================================
+// Helper to get standard CSS transform-origin value from zoomAnchor name
+function getTransformOriginValue(anchor) {
+  switch (anchor) {
+    case 'top-left': return 'left top';
+    case 'top-center': return 'center top';
+    case 'top-right': return 'right top';
+    case 'middle-left': return 'left center';
+    case 'center': return 'center center';
+    case 'middle-right': return 'right center';
+    case 'bottom-left': return 'left bottom';
+    case 'bottom-center': return 'center bottom';
+    case 'bottom-right': return 'right bottom';
+    default: return 'center center';
+  }
+}
+
 // Helper to calculate the collapsed starting polygon coordinates for a split reveal
 // along a line passing through the center of the element at a given angle.
 function getSplitClipPath(angleDeg) {

@@ -1193,7 +1193,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     else delete targetEl.hidden;
   }
   if (sync.inAnim) {
-    const inAnimProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset'];
+    const inAnimProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor'];
     inAnimProps.forEach(p => {
       if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
       else delete targetEl[p];
@@ -3208,6 +3208,7 @@ function getElementAnimationCSS(el, isImageExport) {
 
   let entryAnims = [];
   let entryVars = '';
+  const isZoomLike = animType === 'zoom' || animType === 'zoom-in' || animType === 'pop-in';
   if (animType !== 'none' && !isImageExport) {
     if (animType === 'split') {
       entryAnims.push(`anim-split-${el.id} ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both`);
@@ -3277,7 +3278,10 @@ function getElementAnimationCSS(el, isImageExport) {
     }
   }
 
-  const entryConfig = entryAnims.length > 0 ? `animation: ${entryAnims.join(', ')};` : '';
+  let entryConfig = entryAnims.length > 0 ? `animation: ${entryAnims.join(', ')};` : '';
+  if (isZoomLike && !isImageExport) {
+    entryConfig += ` transform-origin: ${getTransformOriginValue(el.zoomAnchor || 'center')};`;
+  }
   const effConfig = effAnims.length > 0 ? `animation: ${effAnims.join(', ')};` : '';
   return { entryConfig, entryVars, effConfig, effVars };
 }
@@ -10039,6 +10043,7 @@ function renderProps() {
     'animDuration': 'Animation duration in seconds',
     'animDelay': 'Animation start delay in seconds',
     'zoomFrom': 'Animation zoom starting scale percentage',
+    'zoomAnchor': 'Animation zoom anchor point (transform-origin)',
     'bgOffset': 'Delay offset for background block animation in seconds',
     // Effect properties
     'effDuration': 'Effect cycle duration in seconds',
@@ -10526,10 +10531,6 @@ function renderProps() {
 
     // Seconds inputs use step=0.1 so wheel-scroll and arrow keys nudge by 0.1.
     const secNum = (key, label, def = '') => `<div class="prop-row" style="margin:0;"><label>${label}</label><input type="number" step="0.1" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
-    f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
-      ${secNum('animDuration', 'Duration (s)')}
-      ${secNum('animDelay', 'Delay (s)')}
-    </div></div>`);
 
     const isZoomLike = el.animType === 'zoom' || el.animType === 'zoom-in' || el.animType === 'pop-in';
     const isSlideLike = el.animType === 'slide' || el.animType === 'slide-up' || el.animType === 'slide-down' || el.animType === 'slide-left' || el.animType === 'slide-right';
@@ -10537,24 +10538,48 @@ function renderProps() {
     const isSplit = el.animType === 'split';
 
     if (isZoomLike) {
+      const defaultZoomFrom = el.animType === 'pop-in' ? 80 : (el.animType === 'zoom-in' ? 110 : 80);
+      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
+        ${secNum('animDuration', 'Duration (s)')}
+        ${secNum('animDelay', 'Delay (s)')}
+        ${secNum('zoomFrom', 'From (%)', defaultZoomFrom)}
+      </div></div>`);
+    } else {
+      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
+        ${secNum('animDuration', 'Duration (s)')}
+        ${secNum('animDelay', 'Delay (s)')}
+      </div></div>`);
+    }
+
+    if (isZoomLike) {
+      const renderAnchorDot = (anchorName, title) => {
+        const isSelected = el.zoomAnchor === anchorName || (!el.zoomAnchor && anchorName === 'center');
+        return `<button class="anchor-dot-btn ${isSelected ? 'active' : ''}" data-anchor="${anchorName}" title="${title}"><div></div></button>`;
+      };
       f.push(`
-        <div class="prop-row" style="margin-bottom:8px;">
-          <div style="display:flex; align-items:flex-end; gap:12px; width:100%;">
-            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
-              <div class="checkbox-row" style="margin:0;">
-                <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
-                <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
-              </div>
+        <div class="prop-row" style="margin-bottom:8px; display:flex; align-items:center; gap:16px;">
+          <!-- Left: 9-dot box -->
+          <div class="anchor-grid" style="flex-shrink:0;">
+            ${renderAnchorDot('top-left', 'Top Left')}
+            ${renderAnchorDot('top-center', 'Top Center')}
+            ${renderAnchorDot('top-right', 'Top Right')}
+            ${renderAnchorDot('middle-left', 'Middle Left')}
+            ${renderAnchorDot('center', 'Center')}
+            ${renderAnchorDot('middle-right', 'Middle Right')}
+            ${renderAnchorDot('bottom-left', 'Bottom Left')}
+            ${renderAnchorDot('bottom-center', 'Bottom Center')}
+            ${renderAnchorDot('bottom-right', 'Bottom Right')}
+          </div>
+          
+          <!-- Right: Checkboxes -->
+          <div style="display:flex; align-items:center; gap:16px;">
+            <div class="checkbox-row" style="margin:0;">
+              <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
+              <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
             </div>
-            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
-              <div class="checkbox-row" style="margin:0;">
-                <input type="checkbox" data-k="animBounce" id="prop-anim-bounce" title="Elastic bounce at the end of zoom transition" ${el.animBounce ? 'checked' : ''}/>
-                <label for="prop-anim-bounce" title="Elastic bounce at the end of zoom transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Bounce</label>
-              </div>
-            </div>
-            <div style="width:80px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
-              <label style="white-space:nowrap; text-align:right;">Zoom From (%)</label>
-              <input type="number" min="0" max="500" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : (el.animType === 'pop-in' ? 80 : (el.animType === 'zoom-in' ? 110 : 80))}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation zoom starting scale percentage" />
+            <div class="checkbox-row" style="margin:0;">
+              <input type="checkbox" data-k="animBounce" id="prop-anim-bounce" title="Elastic bounce at the end of zoom transition" ${el.animBounce ? 'checked' : ''}/>
+              <label for="prop-anim-bounce" title="Elastic bounce at the end of zoom transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Bounce</label>
             </div>
           </div>
         </div>
@@ -11131,18 +11156,25 @@ function checkButtonFontSizeWarning(el) {
       domNodes.forEach(node => {
         if (!node) return;
         node.style.animation = '';
+        node.style.transformOrigin = '';
         const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
         const activeC = getActiveCanvas();
         const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
         if (isMaskedImg) {
           const innerImg = node.querySelector('img');
-          if (innerImg) innerImg.style.animation = '';
+          if (innerImg) {
+            innerImg.style.animation = '';
+            innerImg.style.transformOrigin = '';
+          }
         }
         if (nodeEl.isMask && activeC) {
           const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
           if (imgEl) {
             const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
-            if (imgDom) imgDom.style.animation = '';
+            if (imgDom) {
+              imgDom.style.animation = '';
+              imgDom.style.transformOrigin = '';
+            }
           }
         }
         const target = node.querySelector('.editable') || node.querySelector('span');
@@ -11284,6 +11316,7 @@ function checkButtonFontSizeWarning(el) {
               styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
               const timing = tempEl.animBounce ? 'linear' : 'ease-out';
               targetNode.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
+              targetNode.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
             } else if (previewVal === 'slide' || previewVal === 'slide-up' || previewVal === 'slide-down' || previewVal === 'slide-left' || previewVal === 'slide-right') {
               const tempEl = { ...nodeEl };
               if (previewVal === 'slide-up') { tempEl.animDirection = 'up'; tempEl.animDistance = 20; }
@@ -11400,6 +11433,85 @@ function checkButtonFontSizeWarning(el) {
     btn.addEventListener('mouseenter', (e) => {
       e.stopPropagation();
       startPreviewLoop(val);
+    });
+  });
+
+  propsEl.querySelectorAll('.anchor-dot-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const anchorVal = btn.dataset.anchor;
+      updateProp('zoomAnchor', anchorVal);
+      pushHistory();
+      renderProps();
+      startPreviewLoop(el.animType || 'none');
+    });
+    btn.addEventListener('mouseenter', (e) => {
+      e.stopPropagation();
+      const oldAnchor = el.zoomAnchor;
+      el.zoomAnchor = btn.dataset.anchor;
+      
+      let styleTag = document.getElementById('dynamic-anim-styles');
+      if (styleTag) {
+        const tempEl = { ...el };
+        if (el.animType === 'pop-in') {
+          tempEl.zoomFrom = 80;
+          tempEl.animFade = true;
+        } else if (el.animType === 'zoom-in') {
+          tempEl.zoomFrom = 110;
+          tempEl.animFade = true;
+        } else {
+          if (tempEl.zoomFrom === undefined) {
+            tempEl.zoomFrom = 80;
+          }
+        }
+        const keyframesRule = getZoomKeyframes(tempEl);
+        const regex = new RegExp(`@keyframes\\s+anim-zoom-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+        styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
+      }
+      
+      const domNode = document.querySelector(`.el[data-id="${el.id}"]`);
+      if (domNode) {
+        const activeC = getActiveCanvas();
+        const isMaskedImg = activeC && findMaskAbove(activeC, el);
+        const targetNode = isMaskedImg ? domNode.querySelector('img') : domNode;
+        if (targetNode) {
+          targetNode.style.transformOrigin = getTransformOriginValue(btn.dataset.anchor);
+        }
+      }
+      
+      startPreviewLoop(el.animType || 'none');
+      
+      btn.addEventListener('mouseleave', function onLeave() {
+        el.zoomAnchor = oldAnchor;
+        btn.removeEventListener('mouseleave', onLeave);
+        
+        let styleTag = document.getElementById('dynamic-anim-styles');
+        if (styleTag) {
+          const tempEl = { ...el };
+          if (el.animType === 'pop-in') {
+            tempEl.zoomFrom = 80;
+            tempEl.animFade = true;
+          } else if (el.animType === 'zoom-in') {
+            tempEl.zoomFrom = 110;
+            tempEl.animFade = true;
+          } else {
+            if (tempEl.zoomFrom === undefined) {
+              tempEl.zoomFrom = 80;
+            }
+          }
+          const keyframesRule = getZoomKeyframes(tempEl);
+          const regex = new RegExp(`@keyframes\\s+anim-zoom-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+          styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
+        }
+        const domNode = document.querySelector(`.el[data-id="${el.id}"]`);
+        if (domNode) {
+          const activeC = getActiveCanvas();
+          const isMaskedImg = activeC && findMaskAbove(activeC, el);
+          const targetNode = isMaskedImg ? domNode.querySelector('img') : domNode;
+          if (targetNode) {
+            targetNode.style.transformOrigin = getTransformOriginValue(oldAnchor || 'center');
+          }
+        }
+      });
     });
   });
 
@@ -17597,7 +17709,7 @@ document.addEventListener('contextmenu', (e) => {
         const activeC = getActiveCanvas();
         const el = activeC ? activeC.elements.find(x => x.id === state.selectedElementId) : null;
         if (animBtn && el) {
-          const inAnimProps = ['animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset'];
+          const inAnimProps = ['animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor'];
           inAnimProps.forEach(p => delete el[p]);
         } else if (effBtn && el) {
           const effectProps = ['effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY'];
