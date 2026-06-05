@@ -479,7 +479,11 @@ async function getFontAsDataUrl(filename) {
     const blob = await res.blob();
     const base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
+      reader.onload = () => {
+        const base64Data = reader.result.split(',')[1];
+        const mime = filename.endsWith('.woff2') ? 'font/woff2' : 'font/woff';
+        resolve(`data:${mime};base64,${base64Data}`);
+      };
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
@@ -492,6 +496,12 @@ async function getFontAsDataUrl(filename) {
 }
 
 async function exportCanvasAsPng(c, options = {}) {
+  if (window.location.protocol === 'file:') {
+    alert('Local asset fetching is blocked on the file:// protocol due to browser CORS security rules. Please run the local development server (e.g., python -m http.server 8080) and open http://localhost:8080/ to export PNGs with custom fonts.');
+  }
+
+  let recorderIframe = null;
+  let cnv = null;
   try {
     // 1. Fetch and inline required fonts for this canvas
     const req = getRequiredFonts(c);
@@ -567,7 +577,19 @@ async function exportCanvasAsPng(c, options = {}) {
               const blob = await res.blob();
               const dataUrl = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
+                reader.onload = () => {
+                  const base64Data = reader.result.split(',')[1];
+                  let mime = blob.type;
+                  if (!mime || mime === 'application/octet-stream') {
+                    if (src.endsWith('.svg') || src.endsWith('.svg+xml')) mime = 'image/svg+xml';
+                    else if (src.endsWith('.png')) mime = 'image/png';
+                    else if (src.endsWith('.jpg') || src.endsWith('.jpeg')) mime = 'image/jpeg';
+                    else if (src.endsWith('.gif')) mime = 'image/gif';
+                    else if (src.endsWith('.webp')) mime = 'image/webp';
+                    else mime = 'image/png';
+                  }
+                  resolve(`data:${mime};base64,${base64Data}`);
+                };
                 reader.onerror = reject;
                 reader.readAsDataURL(blob);
               });
@@ -581,6 +603,92 @@ async function exportCanvasAsPng(c, options = {}) {
     });
     await Promise.all(imgPromises);
 
+    // Reconstruct HTML with inlined images
+    const docSerializer = new XMLSerializer();
+    html = docSerializer.serializeToString(doc);
+
+    // Create and load hidden iframe to run scripts in active visible context
+    recorderIframe = document.createElement('iframe');
+    recorderIframe.style.cssText = 'position:fixed; top:-9999px; left:-9999px; width:' + c.width + 'px; height:' + c.height + 'px; border:none; visibility:hidden;';
+    document.body.appendChild(recorderIframe);
+
+    // Bypass auto-ticks
+    recorderIframe.contentWindow.ADFLOW_RECORDING = true;
+    recorderIframe.srcdoc = html;
+
+    await new Promise(resolve => recorderIframe.onload = resolve);
+
+    // Wait for all fonts inside the iframe to be fully loaded and ready
+    if (recorderIframe.contentDocument && recorderIframe.contentDocument.fonts) {
+      try {
+        const fontLoads = [];
+        if (req.museo && req.museo.size > 0) {
+          fontLoads.push(recorderIframe.contentDocument.fonts.load('16px Museo'));
+        }
+        if (req.helvetica && req.helvetica.size > 0) {
+          fontLoads.push(recorderIframe.contentDocument.fonts.load('16px "Helvetica Neue LT Pro"'));
+        }
+        await Promise.all(fontLoads);
+      } catch (err) {
+        console.warn('Failed to force font load inside iframe:', err);
+      }
+      await recorderIframe.contentDocument.fonts.ready;
+    }
+
+    // Hide all frames except the active frame being exported
+    const activeFrames = state.frames.filter(f => !f.skip || f.id === state.activeFrameId);
+    activeFrames.forEach(f => {
+      const el = recorderIframe.contentDocument.getElementById(`frame-${f.id}`);
+      if (el) el.style.display = 'none';
+    });
+    const activeFrameEl = recorderIframe.contentDocument.getElementById(`frame-${state.activeFrameId}`);
+    if (activeFrameEl) {
+      activeFrameEl.style.display = 'block';
+    }
+
+    // Force a synchronous layout pass (reflow) in the iframe document so layout metrics are ready
+    if (recorderIframe.contentDocument.body) {
+      recorderIframe.contentDocument.body.offsetHeight;
+    }
+
+    // Re-run auto-sizing and line backgrounds inside the iframe for the active frame's elements
+    if (recorderIframe.contentWindow.adjustAutoSizes) {
+      recorderIframe.contentWindow.adjustAutoSizes();
+    }
+    if (recorderIframe.contentWindow.setupTextLineBgs) {
+      recorderIframe.contentDocument.querySelectorAll(`#frame-${state.activeFrameId} [data-bg-anim]`).forEach(wrapper => {
+        // Remove old overlay divs to prevent duplicates
+        wrapper.querySelectorAll('.line-bg-overlay').forEach(el => el.remove());
+        delete wrapper.dataset.bgInited;
+        recorderIframe.contentWindow.setupTextLineBgs(wrapper);
+        // Omit z-index: -1 to avoid it being hidden behind the canvas background in SVG foreignObject
+        wrapper.querySelectorAll('.line-bg-overlay').forEach(el => {
+          el.style.zIndex = '0';
+        });
+      });
+    }
+
+    // Overwrite in-iframe calculations using the parent page's high-precision calculation
+    // (using already-loaded fonts in the parent page context).
+    c.elements.forEach(el => {
+      if (el.hidden) return;
+      if (el.autoSize && (el.type === 'text' || el.type === 'button')) {
+        const elWrapper = recorderIframe.contentDocument.querySelector(`[data-id="${el.id}"]`);
+        if (elWrapper) {
+          const span = elWrapper.querySelector('.auto-size-span');
+          const block = elWrapper.querySelector('.auto-size-block');
+          if (span && block) {
+            const textToMeasure = span.textContent;
+            if (typeof calculateAutoSize === 'function') {
+              const computedSize = calculateAutoSize(el, textToMeasure);
+              block.style.fontSize = computedSize + 'px';
+              span.style.fontSize = computedSize + 'px';
+            }
+          }
+        }
+      }
+    });
+
     // Make sure we have a well-formed XHTML container starting with div
     const xhtmlContainer = document.createElement('div');
     xhtmlContainer.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
@@ -588,18 +696,16 @@ async function exportCanvasAsPng(c, options = {}) {
     xhtmlContainer.style.height = '100%';
     xhtmlContainer.style.position = 'relative';
     
-    const styleEl = document.createElement('style');
-    styleEl.textContent = styles;
-    xhtmlContainer.appendChild(styleEl);
+    // Clone the active ad structure
+    const activeAd = recorderIframe.contentDocument.querySelector('#ad');
+    const activeAdXml = new XMLSerializer().serializeToString(activeAd);
     
-    // Clone and append the ad structure
-    xhtmlContainer.appendChild(adEl.cloneNode(true));
-    
-    const xhtml = new XMLSerializer().serializeToString(xhtmlContainer);
-    
-    const cnv = document.createElement('canvas');
+    cnv = document.createElement('canvas');
     cnv.width = c.width;
     cnv.height = c.height;
+    cnv.style.cssText = 'position:fixed; top:-9999px; left:-9999px; visibility:hidden;';
+    document.body.appendChild(cnv);
+
     const ctx = cnv.getContext('2d');
     // PNG export captures the active frame, so paint that frame's bg
     // beneath the SVG-rendered foreignObject.
@@ -608,15 +714,42 @@ async function exportCanvasAsPng(c, options = {}) {
       : c.bgColor;
     ctx.fillStyle = _pngBg || '#000';
     ctx.fillRect(0, 0, c.width, c.height);
-    const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${c.width}" height="${c.height}"><foreignObject x="0" y="0" width="100%" height="100%">${xhtml}</foreignObject></svg>`;
+
+    // Place the styles in both the SVG defs and inside the XHTML container wrapped in CDATA.
+    // This handles Chrome/WebKit scoping rules.
+    const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${c.width}" height="${c.height}">
+      <defs>
+        <style type="text/css"><![CDATA[
+${styles}
+        ]]></style>
+      </defs>
+      <foreignObject x="0" y="0" width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; position:relative;">
+          <style type="text/css"><![CDATA[
+${styles}
+          ]]></style>
+          ${activeAdXml}
+        </div>
+      </foreignObject>
+    </svg>`;
     const base64Svg = btoa(unescape(encodeURIComponent(svgStr)));
     const svgUrl = `data:image/svg+xml;base64,${base64Svg}`;
-    await new Promise((res, rej) => {
+
+    await new Promise((resolve, reject) => {
       const img = new Image();
-      img.onload = () => { ctx.drawImage(img, 0, 0); res(); };
-      img.onerror = () => rej(new Error('Image failed to load from SVG'));
+      img.onload = () => {
+        // A 150ms timeout ensures layout & inlined assets paint before canvas draw
+        setTimeout(() => {
+          ctx.drawImage(img, 0, 0);
+          resolve();
+        }, 150);
+      };
+      img.onerror = () => {
+        reject(new Error('Image failed to load from SVG'));
+      };
       img.src = svgUrl;
     });
+
     const pngUrl = cnv.toDataURL('image/png');
     const a = document.createElement('a');
     const projName = state.projectName || 'Ad';
@@ -630,6 +763,9 @@ async function exportCanvasAsPng(c, options = {}) {
   } catch (err) {
     console.error('PNG export failed:', err);
     alert('PNG export failed. Try the ZIP export instead.');
+  } finally {
+    if (recorderIframe) recorderIframe.remove();
+    if (cnv && cnv.parentNode) cnv.remove();
   }
 }
 
@@ -711,6 +847,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     const wrapOpacity = isFillTypeWithStroke ? 1 : (el.opacity !== undefined ? el.opacity / 100 : 1);
     const fillOpacity = (el.opacity !== undefined ? el.opacity : 100) / 100;
     const wrapStyle = `position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;transform:rotate(${el.rotation || 0}deg);opacity:${wrapOpacity};`;
+    const wrapAttrs = `data-id="${el.id}" style="${wrapStyle}"`;
 
     const animType = el.animType || 'none';
     if (animType === 'split' && !isImageExport) {
@@ -753,7 +890,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
 
     if (el.type === 'text') {
       const ff = el.fontFamily ? el.fontFamily + ',sans-serif' : 'Arial,Helvetica,sans-serif';
-      let content = esc(el.text);
+      let content = esc(el.text).replace(/\n/g, '<br/>');
 
       if (animType === 'typing' || animType === 'fade-typing') {
         const chars = [...(el.text || '')];
@@ -830,22 +967,24 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       const blockClass = el.autoSize ? ' class="auto-size-block"' : '';
       const spanClass = el.autoSize ? ' class="auto-size-span"' : '';
 
+
+
       const innerSpan = el.hasBg
         ? `<span${bgDataAttrs}${spanClass} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:normal;overflow-wrap:normal;${bgStyle}">${content}</span>`
         : `<span${spanClass} style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:normal;overflow-wrap:normal;">${content}</span>`;
       // font-size + line-height on the wrapper div eliminates the inherited body strut
       // (browser default ~16px * normal) which would push small-font text downward.
       const inner = `<div${blockClass} style="text-align:${ta};width:100%;font-size:${el.fontSize}px;line-height:${resolvedLH};">${innerSpan}</div>`;
-      return `    <div style="${wrapStyle}"${autoAttrs}>${openDivs}<div style="display:flex;flex-direction:column;justify-content:${jc};width:100%;height:100%;">${inner}</div>${closeDivs}</div>`;
+      return `    <div ${wrapAttrs}${autoAttrs}>${openDivs}<div style="display:flex;flex-direction:column;justify-content:${jc};width:100%;height:100%;">${inner}</div>${closeDivs}</div>`;
     }
     if (el.type === 'rect') {
-      return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+      return `    <div ${wrapAttrs}>${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
     }
     if (el.type === 'line') {
-      return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};"></div>${closeDivs}</div>`;
+      return `    <div ${wrapAttrs}>${openDivs}<div style="width:100%;height:100%;background:${el.color};"></div>${closeDivs}</div>`;
     }
     if (el.type === 'circle') {
-      return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:50%;opacity:${fillOpacity};"></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+      return `    <div ${wrapAttrs}>${openDivs}<div style="width:100%;height:100%;background:${el.color};border-radius:50%;opacity:${fillOpacity};"></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
     }
     if (el.type === 'pixel') {
       // Match editor behaviour: gradient fills need an inline <linearGradient>
@@ -853,7 +992,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       const svgGrad = (typeof svgFillForCssColor === 'function') ? svgFillForCssColor(el.color, 'exp_' + el.id) : null;
       const pathFillAttr = svgGrad ? svgGrad.fillAttr : el.color;
       const defs = svgGrad ? svgGrad.defs : '';
-      return `    <div style="${wrapStyle}">${openDivs}<div style="width:100%;height:100%;opacity:${fillOpacity};"><svg viewBox="0 0 578.52 556.76" width="100%" height="100%" preserveAspectRatio="none">${defs}<path fill="${pathFillAttr}" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+      return `    <div ${wrapAttrs}>${openDivs}<div style="width:100%;height:100%;opacity:${fillOpacity};"><svg viewBox="0 0 578.52 556.76" width="100%" height="100%" preserveAspectRatio="none">${defs}<path fill="${pathFillAttr}" d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
     }
     if (el.type === 'button') {
       const ff = el.fontFamily ? el.fontFamily + ',sans-serif' : 'Arial,Helvetica,sans-serif';
@@ -861,18 +1000,19 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       const jc = alignMap[el.textAlign || 'center'];
       const paddingTB = el.paddingTB !== undefined ? el.paddingTB : 0;
       const paddingLR = el.paddingLR !== undefined ? el.paddingLR : 16;
-      // Fill is its own absolute layer with `fillOpacity`; the text sits on top
-      // at full opacity (relative positioning so it stacks above the fill); the
-      // stroke overlay paints last on top of both.
+      // Replace newlines with <br/> to ensure they are preserved in HTML
+      const btnContent = esc(el.text).replace(/\n/g, '<br/>');
+      
+      const spanStyle = el.wrapText
+        ? `display:inline;word-break:normal;white-space:normal;max-width:100%;position:relative;`
+        : `display:inline;white-space:nowrap;position:relative;`;
+
       if (el.autoSize) {
         const autoAttrs = ` class="auto-size-text" data-max-size="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" data-width="${el.width}" data-height="${el.height}" data-padding-lr="${paddingLR}" data-padding-tb="${paddingTB}"`;
-        const spanStyle = el.wrapText
-          ? `display:inline;word-break:normal;white-space:normal;`
-          : `display:inline;white-space:nowrap;`;
-        return `    <div style="${wrapStyle}"${autoAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div class="auto-size-block" style="position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:normal;' : ''}"><span class="auto-size-span" style="${spanStyle}">${esc(el.text)}</span></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+        return `    <div ${wrapAttrs}${autoAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div class="auto-size-block" style="position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:normal;' : ''}"><span class="auto-size-span" style="${spanStyle}">${btnContent}</span></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
       } else {
-        const normalBlockStyle = `position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:normal;' : 'white-space:nowrap;'}`;
-        return `    <div style="${wrapStyle}">${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div style="${normalBlockStyle}">${esc(el.text)}</div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+        const normalBlockStyle = `position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;`;
+        return `    <div ${wrapAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div style="${normalBlockStyle}"><span style="${spanStyle}">${btnContent}</span></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
       }
     }
     if (el.type === 'image' && el.assetId) {
@@ -952,7 +1092,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
           maskCss += `animation:${animations.join(', ')};`;
         }
       }
-      return `    <div style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};${maskImgStyle}" alt="${esc(el.altText || '')}" />${closeDivs}</div>`;
+      return `    <div data-id="${el.id}" style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};${maskImgStyle}" alt="${esc(el.altText || '')}" />${closeDivs}</div>`;
     }
     return '';
   };
