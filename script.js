@@ -9383,7 +9383,7 @@ function wireFrameTransitionEvents() {
   }
 }
 
-function wireCustomSelects(el) {
+function wireCustomSelects(el, updateProp) {
   // Wire Custom Styled Select Dropdowns & Preview on Hover
   propsEl.querySelectorAll('.custom-select-trigger').forEach(trigger => {
     trigger.onclick = (e) => {
@@ -9980,7 +9980,7 @@ function renderProps() {
       wireFrameTransitionEvents();
     }
     initCollapsiblePanels();
-    wireCustomSelects(null);
+    wireCustomSelects(null, null);
     return;
   }
 
@@ -11808,7 +11808,7 @@ function checkButtonFontSizeWarning(el) {
   }
   initCollapsiblePanels();
 
-  wireCustomSelects(el);
+  wireCustomSelects(el, updateProp);
 }
 
 // ============================================================================
