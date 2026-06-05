@@ -1782,12 +1782,14 @@ function openExportModal() {
       let hasMissing = false;
       let hasExt = false;
       imageElements.forEach(el => {
-        let src = state.assets[el.assetId] || el.assetId;
+        const overrides = (typeof dmOverridesForRow === 'function') ? dmOverridesForRow(el, exportVersionIdx) : {};
+        const activeAssetId = overrides.assetId !== undefined ? overrides.assetId : el.assetId;
+        let src = state.assets[activeAssetId] || activeAssetId;
         if (!src) {
           hasMissing = true;
         } else if (src.startsWith('http://') || src.startsWith('https://')) {
           hasExt = true;
-        } else if (!state.assets[el.assetId] && !src.startsWith('data/Elements/')) {
+        } else if (!state.assets[activeAssetId] && !src.startsWith('data/Elements/')) {
           hasMissing = true;
         }
       });
@@ -2705,12 +2707,14 @@ function runAllVersionsValidator() {
         let hasMissing = false;
         let hasExt = false;
         imageElements.forEach(el => {
-          let src = state.assets[el.assetId] || el.assetId;
+          const overrides = (typeof dmOverridesForRow === 'function') ? dmOverridesForRow(el, currentIdx) : {};
+          const activeAssetId = overrides.assetId !== undefined ? overrides.assetId : el.assetId;
+          let src = state.assets[activeAssetId] || activeAssetId;
           if (!src) {
             hasMissing = true;
           } else if (src.startsWith('http://') || src.startsWith('https://')) {
             hasExt = true;
-          } else if (!state.assets[el.assetId] && !src.startsWith('data/Elements/')) {
+          } else if (!state.assets[activeAssetId] && !src.startsWith('data/Elements/')) {
             hasMissing = true;
           }
         });

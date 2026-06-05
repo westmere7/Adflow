@@ -5851,12 +5851,14 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
     let externalAssets = [];
     
     imageElements.forEach(el => {
-      let src = state.assets[el.assetId] || el.assetId;
+      const overrides = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+      const activeAssetId = overrides.assetId !== undefined ? overrides.assetId : el.assetId;
+      let src = state.assets[activeAssetId] || activeAssetId;
       if (!src) {
         missingAssets.push(el.name || `Image Layer (${el.id})`);
       } else if (src.startsWith('http://') || src.startsWith('https://')) {
         externalAssets.push(el.name || `Image Layer (${el.id})`);
-      } else if (!state.assets[el.assetId] && !src.startsWith('data/Elements/')) {
+      } else if (!state.assets[activeAssetId] && !src.startsWith('data/Elements/')) {
         missingAssets.push(el.name || `Image Layer (${el.id})`);
       }
     });
