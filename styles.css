@@ -5092,7 +5092,6 @@ body.outline-mode #workspace-canvas .el {
   background: transparent !important;
   box-shadow: none !important;
   border-color: transparent !important;
-  outline: 1px solid #00f0ff !important;
   outline-offset: -1px;
 }
 
@@ -5109,7 +5108,6 @@ body.outline-mode #workspace-canvas .el svg path,
 body.outline-mode #workspace-canvas .el svg line,
 body.outline-mode #workspace-canvas .el svg polyline {
   fill: none !important;
-  stroke: #00f0ff !important;
   stroke-width: 1px !important;
 }
 
@@ -5117,28 +5115,21 @@ body.outline-mode #workspace-canvas .el.text span,
 body.outline-mode #workspace-canvas .el.text h1,
 body.outline-mode #workspace-canvas .el.text h2,
 body.outline-mode #workspace-canvas .el.text h3,
-body.outline-mode #workspace-canvas .el.text div {
-  color: #00f0ff !important;
+body.outline-mode #workspace-canvas .el.text div,
+body.outline-mode #workspace-canvas .el.button span {
   background: transparent !important;
-  -webkit-text-fill-color: transparent !important;
-  -webkit-text-stroke: 0.5px #00f0ff !important;
 }
 
 body.outline-mode #workspace-canvas .el.button {
   background: transparent !important;
-  outline: 1px solid #00f0ff !important;
   outline-offset: -1px;
   border-color: transparent !important;
-}
-body.outline-mode #workspace-canvas .el.button span {
-  color: #00f0ff !important;
-  -webkit-text-fill-color: transparent !important;
-  -webkit-text-stroke: 0.5px #00f0ff !important;
 }
 
 body.outline-mode #workspace-canvas .el.image img {
   opacity: 0 !important;
 }
+
 body.outline-mode #workspace-canvas .el.image::before,
 body.outline-mode #workspace-canvas .el.image::after {
   content: "";
@@ -5150,11 +5141,113 @@ body.outline-mode #workspace-canvas .el.image::after {
   pointer-events: none;
   z-index: 1;
 }
+
+/* --- Color Coding (Dark Mode): Standard Elements (Cyan) --- */
+body.outline-mode #workspace-canvas .el,
+body.outline-mode #workspace-canvas .el.button {
+  outline: 1px solid #00f0ff !important;
+}
+body.outline-mode #workspace-canvas .el svg rect,
+body.outline-mode #workspace-canvas .el svg circle,
+body.outline-mode #workspace-canvas .el svg path,
+body.outline-mode #workspace-canvas .el svg line,
+body.outline-mode #workspace-canvas .el svg polyline {
+  stroke: #00f0ff !important;
+}
+body.outline-mode #workspace-canvas .el.text span,
+body.outline-mode #workspace-canvas .el.text h1,
+body.outline-mode #workspace-canvas .el.text h2,
+body.outline-mode #workspace-canvas .el.text h3,
+body.outline-mode #workspace-canvas .el.text div,
+body.outline-mode #workspace-canvas .el.button span {
+  color: #00f0ff !important;
+}
 body.outline-mode #workspace-canvas .el.image::before {
-  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #00f0ff, transparent calc(50% + 0.5px));
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #00f0ff, transparent calc(50% + 0.5px)) !important;
 }
 body.outline-mode #workspace-canvas .el.image::after {
-  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #00f0ff, transparent calc(50% + 0.5px));
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #00f0ff, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Dark Mode): Mapped Dynamic Data Elements (Amber) --- */
+body.outline-mode #workspace-canvas .el.dynamic-el,
+body.outline-mode #workspace-canvas .el.dynamic-el.button {
+  outline: 1px solid #f59e0b !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el svg rect,
+body.outline-mode #workspace-canvas .el.dynamic-el svg circle,
+body.outline-mode #workspace-canvas .el.dynamic-el svg path,
+body.outline-mode #workspace-canvas .el.dynamic-el svg line,
+body.outline-mode #workspace-canvas .el.dynamic-el svg polyline {
+  stroke: #f59e0b !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.text span,
+body.outline-mode #workspace-canvas .el.dynamic-el.text h1,
+body.outline-mode #workspace-canvas .el.dynamic-el.text h2,
+body.outline-mode #workspace-canvas .el.dynamic-el.text h3,
+body.outline-mode #workspace-canvas .el.dynamic-el.text div,
+body.outline-mode #workspace-canvas .el.dynamic-el.button span {
+  color: #f59e0b !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #f59e0b, transparent calc(50% + 0.5px)) !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #f59e0b, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Dark Mode): Animated Elements (Pink) --- */
+body.outline-mode #workspace-canvas .el.animated-el,
+body.outline-mode #workspace-canvas .el.animated-el.button {
+  outline: 1px solid #ec4899 !important;
+}
+body.outline-mode #workspace-canvas .el.animated-el svg rect,
+body.outline-mode #workspace-canvas .el.animated-el svg circle,
+body.outline-mode #workspace-canvas .el.animated-el svg path,
+body.outline-mode #workspace-canvas .el.animated-el svg line,
+body.outline-mode #workspace-canvas .el.animated-el svg polyline {
+  stroke: #ec4899 !important;
+}
+body.outline-mode #workspace-canvas .el.animated-el.text span,
+body.outline-mode #workspace-canvas .el.animated-el.text h1,
+body.outline-mode #workspace-canvas .el.animated-el.text h2,
+body.outline-mode #workspace-canvas .el.animated-el.text h3,
+body.outline-mode #workspace-canvas .el.animated-el.text div,
+body.outline-mode #workspace-canvas .el.animated-el.button span {
+  color: #ec4899 !important;
+}
+body.outline-mode #workspace-canvas .el.animated-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #ec4899, transparent calc(50% + 0.5px)) !important;
+}
+body.outline-mode #workspace-canvas .el.animated-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #ec4899, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Dark Mode): Both Mapped & Animated Elements (Purple) --- */
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button {
+  outline: 1px solid #a855f7 !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg rect,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg circle,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg path,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg line,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg polyline {
+  stroke: #a855f7 !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text span,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h1,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h2,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h3,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text div,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button span {
+  color: #a855f7 !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #a855f7, transparent calc(50% + 0.5px)) !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #a855f7, transparent calc(50% + 0.5px)) !important;
 }
 
 body.outline-mode #workspace-canvas .selection-outline {
@@ -5179,14 +5272,6 @@ body.theme-rmit.outline-mode #workspace-canvas .canvas {
   box-shadow: none !important;
 }
 
-body[class*="-light"].outline-mode #workspace-canvas .el,
-body.theme-rmit.outline-mode #workspace-canvas .el {
-  background: transparent !important;
-  box-shadow: none !important;
-  border-color: transparent !important;
-  outline: 1px solid #000054 !important; /* RMIT Navy / dark outline */
-}
-
 body[class*="-light"].outline-mode #workspace-canvas .el div,
 body.theme-rmit.outline-mode #workspace-canvas .el div {
   background: transparent !important;
@@ -5195,6 +5280,13 @@ body.theme-rmit.outline-mode #workspace-canvas .el div {
   box-shadow: none !important;
 }
 
+/* --- Color Coding (Light Mode): Standard Elements (Dark Slate) --- */
+body[class*="-light"].outline-mode #workspace-canvas .el,
+body.theme-rmit.outline-mode #workspace-canvas .el,
+body[class*="-light"].outline-mode #workspace-canvas .el.button,
+body.theme-rmit.outline-mode #workspace-canvas .el.button {
+  outline: 1px solid #1e293b !important;
+}
 body[class*="-light"].outline-mode #workspace-canvas .el svg rect,
 body[class*="-light"].outline-mode #workspace-canvas .el svg circle,
 body[class*="-light"].outline-mode #workspace-canvas .el svg path,
@@ -5205,11 +5297,8 @@ body.theme-rmit.outline-mode #workspace-canvas .el svg circle,
 body.theme-rmit.outline-mode #workspace-canvas .el svg path,
 body.theme-rmit.outline-mode #workspace-canvas .el svg line,
 body.theme-rmit.outline-mode #workspace-canvas .el svg polyline {
-  fill: none !important;
-  stroke: #000054 !important;
-  stroke-width: 1px !important;
+  stroke: #1e293b !important;
 }
-
 body[class*="-light"].outline-mode #workspace-canvas .el.text span,
 body[class*="-light"].outline-mode #workspace-canvas .el.text h1,
 body[class*="-light"].outline-mode #workspace-canvas .el.text h2,
@@ -5219,34 +5308,264 @@ body.theme-rmit.outline-mode #workspace-canvas .el.text span,
 body.theme-rmit.outline-mode #workspace-canvas .el.text h1,
 body.theme-rmit.outline-mode #workspace-canvas .el.text h2,
 body.theme-rmit.outline-mode #workspace-canvas .el.text h3,
-body.theme-rmit.outline-mode #workspace-canvas .el.text div {
-  color: #000054 !important;
-  background: transparent !important;
-  -webkit-text-fill-color: transparent !important;
-  -webkit-text-stroke: 0.5px #000054 !important;
-}
-
-body[class*="-light"].outline-mode #workspace-canvas .el.button,
-body.theme-rmit.outline-mode #workspace-canvas .el.button {
-  background: transparent !important;
-  outline: 1px solid #000054 !important;
-  outline-offset: -1px;
-  border-color: transparent !important;
-}
+body.theme-rmit.outline-mode #workspace-canvas .el.text div,
 body[class*="-light"].outline-mode #workspace-canvas .el.button span,
 body.theme-rmit.outline-mode #workspace-canvas .el.button span {
-  color: #000054 !important;
-  -webkit-text-fill-color: transparent !important;
-  -webkit-text-stroke: 0.5px #000054 !important;
+  color: #1e293b !important;
 }
-
 body[class*="-light"].outline-mode #workspace-canvas .el.image::before,
 body.theme-rmit.outline-mode #workspace-canvas .el.image::before {
-  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #000054, transparent calc(50% + 0.5px)) !important;
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #1e293b, transparent calc(50% + 0.5px)) !important;
 }
 body[class*="-light"].outline-mode #workspace-canvas .el.image::after,
 body.theme-rmit.outline-mode #workspace-canvas .el.image::after {
-  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #000054, transparent calc(50% + 0.5px)) !important;
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #1e293b, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Light Mode): Mapped Dynamic Elements (Dark Amber) --- */
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.button,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.button {
+  outline: 1px solid #d97706 !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el svg rect,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el svg circle,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el svg path,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el svg line,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el svg polyline,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el svg rect,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el svg circle,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el svg path,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el svg line,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el svg polyline {
+  stroke: #d97706 !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.text span,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.text h1,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.text h2,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.text h3,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.text div,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.text span,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.text h1,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.text h2,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.text h3,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.text div,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.button span,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.button span {
+  color: #d97706 !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.image::before,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #d97706, transparent calc(50% + 0.5px)) !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.image::after,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #d97706, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Light Mode): Animated Elements (Dark Pink) --- */
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el,
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.button,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.button {
+  outline: 1px solid #db2777 !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el svg rect,
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el svg circle,
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el svg path,
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el svg line,
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el svg polyline,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el svg rect,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el svg circle,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el svg path,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el svg line,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el svg polyline {
+  stroke: #db2777 !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.text span,
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.text h1,
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.text h2,
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.text h3,
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.text div,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.text span,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.text h1,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.text h2,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.text h3,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.text div,
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.button span,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.button span {
+  color: #db2777 !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.image::before,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #db2777, transparent calc(50% + 0.5px)) !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.image::after,
+body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #db2777, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Light Mode): Both Dynamic & Animated Elements (Dark Purple) --- */
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.button,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button {
+  outline: 1px solid #7c3aed !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el svg rect,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el svg circle,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el svg path,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el svg line,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el svg polyline,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg rect,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg circle,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg path,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg line,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg polyline {
+  stroke: #7c3aed !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.text span,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h1,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h2,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h3,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.text div,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text span,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h1,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h2,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h3,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text div,
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.button span,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button span {
+  color: #7c3aed !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::before,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #7c3aed, transparent calc(50% + 0.5px)) !important;
+}
+body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::after,
+body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #7c3aed, transparent calc(50% + 0.5px)) !important;
+}
+
+/* ============================================================================
+   Canvas Viewport & Outline Mode Legend Overlay
+   ============================================================================ */
+.canvas-viewport {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+body.fullscreen-mode .canvas-viewport {
+  grid-column: 1 !important;
+}
+
+body.preview-active .canvas-viewport {
+  height: 100vh;
+}
+
+.canvas-viewport .canvas-area {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.outline-legend {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: rgba(18, 20, 25, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-light, #2a2f3e);
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  user-select: none;
+}
+
+body.outline-mode .outline-legend {
+  display: flex;
+}
+
+.outline-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-main, #d6d6e0);
+}
+
+.outline-legend-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 1.5px;
+  display: inline-block;
+}
+
+.outline-color-standard {
+  background-color: #00f0ff;
+  box-shadow: 0 0 4px rgba(0, 240, 255, 0.4);
+}
+.outline-color-dynamic {
+  background-color: #f59e0b;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+}
+.outline-color-animated {
+  background-color: #ec4899;
+  box-shadow: 0 0 4px rgba(236, 72, 153, 0.4);
+}
+.outline-color-hybrid {
+  background-color: #a855f7;
+  box-shadow: 0 0 4px rgba(168, 85, 247, 0.4);
+}
+
+/* Light mode overrides for legend container */
+body[class*="-light"] .outline-legend,
+body.theme-rmit .outline-legend {
+  background: rgba(248, 250, 252, 0.92);
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+body[class*="-light"] .outline-legend-item,
+body.theme-rmit .outline-legend-item {
+  color: #1e293b;
+}
+
+body[class*="-light"] .outline-color-standard,
+body.theme-rmit .outline-color-standard {
+  background-color: #1e293b;
+  box-shadow: none;
+}
+body[class*="-light"] .outline-color-dynamic,
+body.theme-rmit .outline-color-dynamic {
+  background-color: #d97706;
+  box-shadow: none;
+}
+body[class*="-light"] .outline-color-animated,
+body.theme-rmit .outline-color-animated {
+  background-color: #db2777;
+  box-shadow: none;
+}
+body[class*="-light"] .outline-color-hybrid,
+body.theme-rmit .outline-color-hybrid {
+  background-color: #7c3aed;
+  box-shadow: none;
 }
 
 

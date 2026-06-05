@@ -3704,6 +3704,17 @@ function _buildPixelClipPath(sx, sy, tx, ty, rot, cx, cy) {
 function elementNode(el, canvasCtx) {
   const d = document.createElement('div');
   d.className = 'el';
+
+  // Identify properties to color-code in outline mode
+  let isDynamic = false;
+  if (typeof dmFieldActive === 'function' && typeof dmFieldsForType === 'function') {
+    isDynamic = dmFieldsForType(el.type).some(f => dmFieldActive(el, f));
+  }
+  const isAnimated = (el.animType && el.animType !== 'none') || (el.effectType && el.effectType !== 'none');
+
+  if (isDynamic) d.classList.add('dynamic-el');
+  if (isAnimated) d.classList.add('animated-el');
+
   if (el.hidden) d.style.display = 'none';
   // Mask layers are functionally invisible — their geometry only drives the
   // mask SVG below — but stay selectable in the editor so the user can move /

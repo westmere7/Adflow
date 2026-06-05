@@ -603,10 +603,19 @@
 
       </div>
 
-      <!-- CANVAS AREA -->
-      <div class="canvas-area" id="canvas-area">
-        <div class="workspace-canvas" id="workspace-canvas">
-          <!-- canvases rendered here -->
+      <!-- CANVAS VIEWPORT -->
+      <div class="canvas-viewport" id="canvas-viewport">
+        <div class="canvas-area" id="canvas-area">
+          <div class="workspace-canvas" id="workspace-canvas">
+            <!-- canvases rendered here -->
+          </div>
+        </div>
+        <!-- Outline Mode Legend (only visible in outline mode) -->
+        <div class="outline-legend" id="outline-legend">
+          <div class="outline-legend-item"><span class="outline-legend-color outline-color-standard"></span>Static</div>
+          <div class="outline-legend-item"><span class="outline-legend-color outline-color-dynamic"></span>Dynamic</div>
+          <div class="outline-legend-item"><span class="outline-legend-color outline-color-animated"></span>Animated</div>
+          <div class="outline-legend-item"><span class="outline-legend-color outline-color-hybrid"></span>Dynamic + animated</div>
         </div>
       </div>
 
