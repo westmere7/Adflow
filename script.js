@@ -175,7 +175,22 @@ function makeElement(type) {
     case 'circle': return { ...base, type, color: '#22d3ee', width: 80, height: 80 };
     case 'line': return { ...base, type, color: '#ffffff', width: 160, height: 3, opacity: 100 };
     case 'pixel': return { ...base, type, color: '#e61e2a', width: 100, height: 100 };
-    case 'button': return { ...base, type, text: 'Learn more', fontSize: 14, color: '#ffffff', bg: '#7c5cff', radius: 6, fontFamily: 'Arial', width: 130, height: 40, isClickArea: true };
+    case 'button': {
+      let buttonBg = '#000054';
+      try {
+        const c = getActiveCanvas();
+        if (c) {
+          const bgVal = (getCanvasBg(c, fId) || '').trim().toLowerCase();
+          const cleanBg = bgVal.startsWith('#') ? bgVal : '#' + bgVal;
+          if (cleanBg === '#000054') {
+            buttonBg = '#e61e2a';
+          } else if (cleanBg === '#e61e2a') {
+            buttonBg = '#000054';
+          }
+        }
+      } catch (err) {}
+      return { ...base, type, text: 'Learn more', fontSize: 14, color: '#ffffff', bg: buttonBg, radius: 6, fontFamily: 'Museo', weight: '700', width: 130, height: 40, isClickArea: true, autoSize: true, maxFontSize: 40, wrapText: true };
+    }
     case 'image': return { ...base, type, assetId: null, width: 140, height: 90, objectFit: 'contain' };
   }
 }
@@ -15173,11 +15188,11 @@ function runAutoArrange(canvasId, selectedIds) {
     }
 
     if (cricosEl && isSelected(cricosEl)) {
-      cricosEl.x = 149;
-      cricosEl.y = 36;
-      cricosEl.width = 88;
+      cricosEl.x = 2;
+      cricosEl.y = 39;
+      cricosEl.width = 72;
       cricosEl.height = 10;
-      cricosEl.fontSize = 6;
+      cricosEl.fontSize = 5;
       cricosEl.textAlign = 'center';
       cricosEl.autoArranged = true;
       changed = true;

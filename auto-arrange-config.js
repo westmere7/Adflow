@@ -241,9 +241,9 @@ const AUTO_ARRANGE_CONFIG = {
       }
     },
     cricos: {
-      fontSize: 6,
+      fontSize: 5,
       coords: {
-        TL: { x: 149, y: 36, w: 88, h: 10 }
+        TL: { x: 2, y: 39, w: 72, h: 10 }
       }
     }
   },
