@@ -4689,6 +4689,14 @@ body.theme-light #dm-panel {
 #dm-panel .dm-row > td:nth-child(2n+4) { background-color: var(--table-zebra-1); }
 #dm-panel .dm-row:nth-child(even) > td:nth-child(2n+4) { background-color: var(--table-zebra-2); }
 
+/* Sticky table headers when scrolling the versions sheet */
+#dm-panel th {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--bg-panel);
+}
+
 /* Name-key column highlight — accent tint to call out which column is used
    for export folder names. Sits after the zebra rules so it wins at equal
    specificity. The header gets a stronger tint than body cells. */
@@ -4702,7 +4710,7 @@ body.theme-light #dm-panel {
 
 /* Column highlighting on slot mapping dropdown interaction */
 #dm-panel .dm-col-th.dm-col-highlight {
-  background-color: color-mix(in srgb, var(--accent-base) 28%, transparent) !important;
+  background-color: color-mix(in srgb, var(--accent-base) 28%, var(--bg-panel)) !important;
   box-shadow: inset 0 -2px 0 var(--text-accent);
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }

@@ -660,6 +660,27 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.17.9',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Data Merge Scrollbar Optimization: Eliminated double scrollbars in the Data & Versions modal by making the modal body and panels flexbox-driven and changing the sheetTable container style to flex: 1. All overflow scrolling is now strictly confined to the versions list table.'
+    ]
+  },
+  {
+    version: 'v0.17.8',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Sticky Header Highlight Fix: Resolved overlap issues during mid-scroll column highlights in the Data & Versions modal by making the highlighted header background opaque (mixing accent with the panel background instead of transparency).'
+    ]
+  },
+  {
+    version: 'v0.17.7',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Sticky Table Headers: Configured the Data & Versions sheet headers to remain sticky at the top when scrolling down long list versions, using a solid backdrop color matching the active theme.'
+    ]
+  },
+  {
     version: 'v0.17.6',
     date: 'June 2026 — Engine v2.18',
     items: [

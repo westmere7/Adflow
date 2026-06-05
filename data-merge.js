@@ -630,11 +630,28 @@ function openDataPanel() {
 
   openModal('Data &amp; Versions', '<div id="dm-panel"></div>', false);
   const bg = document.body.lastElementChild;
-  // Widen the modal so the sheet has real room.
+  // Widen the modal so the sheet has real room, and set a fixed height.
   const modal = bg.querySelector('.modal');
   if (modal) {
     modal.style.width = '1450px';
     modal.style.maxWidth = '96vw';
+    modal.style.height = '86vh';
+  }
+
+  const modalBody = bg.querySelector('.modal-body');
+  if (modalBody) {
+    modalBody.style.overflow = 'hidden';
+    modalBody.style.display = 'flex';
+    modalBody.style.flexDirection = 'column';
+    modalBody.style.padding = '0';
+    const wrapper = modalBody.firstElementChild;
+    if (wrapper) {
+      wrapper.style.flex = '1';
+      wrapper.style.minHeight = '0';
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.padding = '16px 18px';
+    }
   }
 
   const head = bg.querySelector('.modal-head');
@@ -716,6 +733,10 @@ function openDataPanel() {
 function dmRenderPanel(bg) {
   const panel = bg.querySelector('#dm-panel');
   if (!panel) return;
+  panel.style.flex = '1';
+  panel.style.minHeight = '0';
+  panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
   const dm = state.dataMerge;
   const dms = _dmState(bg);
   const slots = dmDiscoverSlots();
@@ -793,7 +814,7 @@ function dmRenderPanel(bg) {
   }).join('');
 
   const sheetTable = dm.columns.length
-    ? `<div style="overflow:auto; max-height:100%; min-height:0; flex:0 1 auto; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-panel);">
+    ? `<div style="overflow:auto; flex:1; min-height:0; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-panel);">
          <table style="border-collapse:collapse; width:100%; font-size:11px; color:var(--text-main);">
            <thead>
              <tr>
@@ -811,7 +832,7 @@ function dmRenderPanel(bg) {
     : `<div style="flex:1; min-height:200px; display:flex; align-items:center; justify-content:center; border:1px dashed var(--border-light); border-radius:6px; color:var(--text-muted); font-size:12px;">No data yet — import a CSV or add a column to begin.</div>`;
 
   panel.innerHTML = `
-    <div style="display:flex; gap:16px; height:calc(86vh - 110px); min-height:420px;">
+    <div style="display:flex; gap:16px; flex:1; min-height:0;">
 
       <!-- LEFT: controls -->
       <div style="width:280px; flex-shrink:0; display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-right:4px;">
