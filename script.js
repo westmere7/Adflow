@@ -242,6 +242,7 @@ const state = {
   subheadingAutoHide: true, // allow Auto-Hide Subheading setting override
   defaultCricosCode: '00122A', // RMIT default compliance CRICOS code
   clipboard: null,
+  outlineMode: false,
   linkGroups: {},
   assetNames: {},        // assetId -> original filename (for data-merge image lookup)
   assetLibrary: [],      // saved reusable elements/groups (Assets panel)
@@ -1935,6 +1936,9 @@ function render(skipProps = false) {
     if (state.activeTool !== 'select') {
       setActiveTool('select');
     }
+    if (state.outlineMode) {
+      state.outlineMode = false;
+    }
   }
   if (state.canvases) {
     state.canvases.forEach(sanitizeMasks);
@@ -2120,6 +2124,7 @@ function render(skipProps = false) {
   document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
   if (isFs) document.body.classList.add('fullscreen-mode');
   if (isPreview) document.body.classList.add('preview-active');
+  if (state.outlineMode) document.body.classList.add('outline-mode');
   // Theme-swap the Adflow wordmark — light theme gets a different SVG.
   syncAdflowLogos();
 
@@ -12318,7 +12323,7 @@ window.addEventListener('keydown', (e) => {
   }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
     e.preventDefault();
-    redo();
+    toggleOutlineMode();
     return;
   }
 
@@ -15408,7 +15413,8 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
       <tr><td><b>Bring Layer Forward</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">]</span></td></tr>
       <tr><td><b>Send Layer Backward</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">[</span></td></tr>
       <tr><td><b>Undo</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
-      <tr><td><b>Redo</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Y</span> or <span class="kbd">⇧</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
+      <tr><td><b>Redo</b></td><td style="text-align: right;"><span class="kbd">⇧</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
+      <tr><td><b>Outline Mode</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Y</span></td></tr>
       <tr><td><b>Delete Elements</b></td><td style="text-align: right;"><span class="kbd">⌫</span> <span class="kbd">Del</span></td></tr>
       <tr><td><b>Duplicate on Drag</b></td><td style="text-align: right;">Hold <span class="kbd">Alt</span> while dragging</td></tr>
       <tr><td><b>Scale Font Size</b></td><td style="text-align: right;">Hold <span class="kbd">Alt</span> + Resize handle</td></tr>
@@ -15434,7 +15440,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.17.9';
+  const currentVersion = 'v0.18.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -15485,7 +15491,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.17.9';
+  const currentVersion = 'v0.18.0';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15513,7 +15519,35 @@ document.getElementById('menu-about').addEventListener('click', () => {
   }
 });
 
+function isOutlineModeAllowed() {
+  if (state.isPreviewMode || state.singlePreviewId || document.body.classList.contains('preview-active')) {
+    return false;
+  }
+  if (document.querySelector('.modal-bg') !== null) {
+    return false;
+  }
+  const cpModal = document.getElementById('color-picker-modal');
+  if (cpModal && cpModal.style.display === 'flex') {
+    return false;
+  }
+  const splash = document.getElementById('app-splash');
+  if (splash && !splash.classList.contains('app-splash-out')) {
+    return false;
+  }
+  return true;
+}
+
+function toggleOutlineMode() {
+  if (!isOutlineModeAllowed()) return;
+  state.outlineMode = !state.outlineMode;
+  document.body.classList.toggle('outline-mode', state.outlineMode);
+  if (typeof showCanvasNotification === 'function') {
+    showCanvasNotification(state.outlineMode ? 'Outline Mode Enabled' : 'Normal Preview');
+  }
+}
+
 document.getElementById('menu-view-clear-guides').addEventListener('click', () => { state.guides = []; render(); });
+document.getElementById('menu-view-outline').addEventListener('click', () => { toggleOutlineMode(); });
 document.getElementById('menu-open-settings').addEventListener('click', () => { openSettings(); });
 
 // Settings panel — opens from the main menu only, doesn't live among the working
@@ -15620,7 +15654,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.17.9</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.18.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -17724,6 +17758,7 @@ document.addEventListener('contextmenu', (e) => {
     html += `<div class="ctx-item" id="ctx-toggle-rulers">${state.showRulers ? 'Hide' : 'Show'} Rulers & Guides</div>`;
     html += `<div class="ctx-item" id="ctx-toggle-safezones">${state.showSafezones ? '✓ ' : ''}Show Safezones</div>`;
     html += `<div class="ctx-item" id="ctx-clear-guides">Clear All Guides</div>`;
+    html += `<div class="ctx-item" id="ctx-toggle-outline">${state.outlineMode ? '✓ ' : ''}Outline Mode</div>`;
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-open-settings">Settings…</div>`;
   } else {
@@ -17731,6 +17766,7 @@ document.addEventListener('contextmenu', (e) => {
     html += `<div class="ctx-item" id="ctx-toggle-rulers">${state.showRulers ? 'Hide' : 'Show'} Rulers & Guides</div>`;
     html += `<div class="ctx-item" id="ctx-toggle-safezones">${state.showSafezones ? '✓ ' : ''}Show Safezones</div>`;
     html += `<div class="ctx-item" id="ctx-clear-guides">Clear All Guides</div>`;
+    html += `<div class="ctx-item" id="ctx-toggle-outline">${state.outlineMode ? '✓ ' : ''}Outline Mode</div>`;
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-open-settings">Settings…</div>`;
   }
@@ -18038,6 +18074,7 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-toggle-rulers', () => { state.showRulers = !state.showRulers; render(); });
   bind('ctx-toggle-safezones', () => _toggleSafezones());
   bind('ctx-clear-guides', () => { state.guides = []; render(); });
+  bind('ctx-toggle-outline', () => toggleOutlineMode());
   bind('ctx-open-settings', () => { if (typeof openSettings === 'function') openSettings(); });
 });
 
@@ -18396,7 +18433,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.17.9';
+        verEl.textContent = 'v0.18.0';
         logoEl.appendChild(verEl);
       }
     }

@@ -5075,4 +5075,84 @@ body.theme-light {
   color: var(--text-bright);
 }
 
+/* ============================================================================
+   Outline Mode (Illustrator style)
+   ============================================================================ */
+body.outline-mode #workspace-canvas {
+  background-color: #0b0c10 !important;
+}
+
+body.outline-mode #workspace-canvas .canvas {
+  background: transparent !important;
+  border: 1px dashed rgba(255, 255, 255, 0.25) !important;
+  box-shadow: none !important;
+}
+
+body.outline-mode #workspace-canvas .el {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  outline: 1px solid #00f0ff !important;
+  outline-offset: -1px;
+}
+
+body.outline-mode #workspace-canvas .el svg rect,
+body.outline-mode #workspace-canvas .el svg circle,
+body.outline-mode #workspace-canvas .el svg path,
+body.outline-mode #workspace-canvas .el svg line,
+body.outline-mode #workspace-canvas .el svg polyline {
+  fill: none !important;
+  stroke: #00f0ff !important;
+  stroke-width: 1px !important;
+}
+
+body.outline-mode #workspace-canvas .el.text span,
+body.outline-mode #workspace-canvas .el.text h1,
+body.outline-mode #workspace-canvas .el.text h2,
+body.outline-mode #workspace-canvas .el.text h3,
+body.outline-mode #workspace-canvas .el.text div {
+  color: #00f0ff !important;
+  background: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  -webkit-text-stroke: 0.5px #00f0ff !important;
+}
+
+body.outline-mode #workspace-canvas .el.button {
+  background: transparent !important;
+  border: 1px solid #00f0ff !important;
+}
+body.outline-mode #workspace-canvas .el.button span {
+  color: #00f0ff !important;
+  -webkit-text-fill-color: transparent !important;
+  -webkit-text-stroke: 0.5px #00f0ff !important;
+}
+
+body.outline-mode #workspace-canvas .el.image img {
+  opacity: 0 !important;
+}
+body.outline-mode #workspace-canvas .el.image::before,
+body.outline-mode #workspace-canvas .el.image::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+body.outline-mode #workspace-canvas .el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #00f0ff, transparent calc(50% + 0.5px));
+}
+body.outline-mode #workspace-canvas .el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #00f0ff, transparent calc(50% + 0.5px));
+}
+
+body.outline-mode #workspace-canvas .selection-outline {
+  border-color: #ff0055 !important;
+}
+body.outline-mode #workspace-canvas .handle {
+  background-color: #ff0055 !important;
+}
+
 

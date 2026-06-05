@@ -399,7 +399,8 @@ const DOCS_SECTIONS = [
             ['Ctrl + Shift + S','Save project silently to browser database (IndexedDB)'],
             ['Ctrl + C / X / V','Copy / Cut / Paste'],
             ['Ctrl + D','Duplicate selected'],
-            ['Ctrl + Z / Y','Undo / Redo'],
+            ['Ctrl + Z / Ctrl + Shift + Z','Undo / Redo'],
+            ['Ctrl + Y','Toggle Outline Mode'],
             ['Ctrl + G / Shift + G','Group / Ungroup'],
             ['Ctrl + ] / [','Layer order forward / back'],
             ['Space + Drag','Pan workspace'],
@@ -659,6 +660,14 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.18.0',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Outline Mode: Added Adobe Illustrator-style Outline Mode (toggled via View -> Outline Mode or Ctrl+Y) to render layouts as 1px vector wireframes, hide solid background/shape fills, display raster images as bounding boxes with crossed diagonal lines, and draw text contours.',
+      'Redo Shortcut Relocation: Relocated the default Redo keyboard shortcut from Ctrl+Y to Ctrl+Shift+Z to accommodate the new Outline Mode shortcut.'
+    ]
+  },
   {
     version: 'v0.17.9',
     date: 'June 2026 — Engine v2.18',

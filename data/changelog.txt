@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.17.9 (Current) - June 2026 — Engine v2.18
+v0.18.0 (Current) - June 2026 — Engine v2.18
+- Outline Mode: Added Adobe Illustrator-style Outline Mode (toggled via View -> Outline Mode or Ctrl+Y) to render layouts as 1px vector wireframes, hide solid background/shape fills, display raster images as bounding boxes with crossed diagonal lines, and draw text contours.
+- Redo Shortcut Relocation: Relocated the default Redo keyboard shortcut from Ctrl+Y to Ctrl+Shift+Z to accommodate the new Outline Mode shortcut.
+
+v0.17.9 - June 2026 — Engine v2.18
 - Data Merge Scrollbar Optimization: Eliminated double scrollbars in the Data & Versions modal by making the modal body and panels flexbox-driven and changing the sheetTable container style to flex: 1. All overflow scrolling is now strictly confined to the versions list table.
 
 v0.17.8 - June 2026 — Engine v2.18
