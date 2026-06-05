@@ -371,7 +371,10 @@ function renderVersionSwitcher() {
   wrap.style.display = 'flex';
   const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
   const options = [{ label: 'No version', val: '' }].concat(
-    dm.rows.map((r, i) => ({ label: r[keyCol] || ('Row ' + (i + 1)), val: String(i) }))
+    dm.rows.map((r, i) => {
+      const name = r[keyCol] || ('Row ' + (i + 1));
+      return { label: `${i + 1}. ${name}`, val: String(i) };
+    })
   );
   const activeVal = dm.activeVersion == null ? '' : String(dm.activeVersion);
   dmRenderCustomSelect(container, options, activeVal, (val) => dmSetActiveVersion(val));
@@ -417,7 +420,10 @@ function renderPreviewVersionBar() {
   const container = bar.querySelector('#preview-version-select-container');
   const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
   const options = [{ label: 'No version', val: '' }].concat(
-    dm.rows.map((r, i) => ({ label: r[keyCol] || ('Row ' + (i + 1)), val: String(i) }))
+    dm.rows.map((r, i) => {
+      const name = r[keyCol] || ('Row ' + (i + 1));
+      return { label: `${i + 1}. ${name}`, val: String(i) };
+    })
   );
   const activeVal = dm.activeVersion == null ? '' : String(dm.activeVersion);
   dmRenderCustomSelect(container, options, activeVal, (val) => dmSetActiveVersion(val));
@@ -535,6 +541,17 @@ function dmDeleteRow(i) {
   if (dm.activeVersion === i) dm.activeVersion = null;
   else if (dm.activeVersion != null && dm.activeVersion > i) dm.activeVersion--;
 }
+function dmDeleteSelectedRows() {
+  const dm = state.dataMerge;
+  const activeRowRef = (dm.activeVersion != null) ? dm.rows[dm.activeVersion] : null;
+  dm.rows = dm.rows.filter(r => r._selected === false);
+  if (activeRowRef) {
+    const idx = dm.rows.indexOf(activeRowRef);
+    dm.activeVersion = idx > -1 ? idx : null;
+  } else {
+    dm.activeVersion = null;
+  }
+}
 
 // ---- Data panel modal ----
 // Per-panel transient state — sort direction, etc. Lives on bg.
@@ -584,6 +601,34 @@ function openDataPanel() {
   // ESC / outside-click are intentionally NOT cancel: those keep
   // changes (same path as Save). Cancel must be an explicit click so
   // it can't fire by accident.
+  // Escape key capture handler to cancel instead of save
+  const localEscHandler = (e) => {
+    if (e.key === 'Escape') {
+      const allBgs = document.querySelectorAll('.modal-bg');
+      if (allBgs.length > 0 && allBgs[allBgs.length - 1] === bg) {
+        e.stopImmediatePropagation();
+        const cancelBtn = head?.querySelector('#dm-cancel');
+        if (cancelBtn) cancelBtn.click();
+        else bg.remove();
+      }
+    }
+  };
+  document.addEventListener('keydown', localEscHandler, true);
+
+  // Clean up escape listener on save close
+  closeBtn.addEventListener('click', () => {
+    document.removeEventListener('keydown', localEscHandler, true);
+  });
+
+  // Override background click to run cancel instead of save
+  bg.onclick = (e) => {
+    if (e.target === bg) {
+      const cancelBtn = head?.querySelector('#dm-cancel');
+      if (cancelBtn) cancelBtn.click();
+      else bg.remove();
+    }
+  };
+
   if (head && closeBtn && !head.querySelector('#dm-cancel')) {
     const cancelBtn = document.createElement('button');
     cancelBtn.className = 'btn';
@@ -601,6 +646,7 @@ function openDataPanel() {
       renderVersionSwitcher();
       pushHistory();
       render();
+      document.removeEventListener('keydown', localEscHandler, true);
       closeBtn.click();
     };
   }
@@ -625,13 +671,13 @@ function dmRenderPanel(bg) {
     mapRows += `
       <div style="display:flex; flex-direction:column; gap:4px;">
         <div style="font-size:11px; color:var(--text-main);"><b>${dmEsc(s.name)}</b>${linkIcon} <span style="color:var(--text-muted); font-weight:400;">· ${DM_FIELD_LABEL[field] || field}${s.grouped ? ` · ${s.count} sizes` : ''}</span></div>
-        <select class="dm-map" data-mapkey="${key}" style="${selStyle}">${colOptions(dm.mappings[key])}</select>
+        <div class="dm-map-container" data-mapkey="${key}" style="position:relative;"></div>
       </div>`;
   }));
   mapRows += `
     <div style="display:flex; flex-direction:column; gap:4px;">
       <div style="font-size:11px; color:var(--text-main);"><b>ClickTag</b> <span style="color:var(--text-muted); font-weight:400;">· exit URL</span></div>
-      <select class="dm-map" data-mapkey="clicktag::url" style="${selStyle}">${colOptions(dm.mappings['clicktag::url'])}</select>
+      <div class="dm-map-container" data-mapkey="clicktag::url" style="position:relative;"></div>
     </div>`;
 
   const slotHint = slots.length
@@ -646,7 +692,7 @@ function dmRenderPanel(bg) {
       : '<span style="color:var(--text-accent);">↓</span>';
   };
   const colHeaderHtml = dm.columns.map((c, ci) => `
-    <th data-col-idx="${ci}" data-col="${dmEsc(c)}" draggable="true" class="dm-col-th${c === dm.keyColumn ? ' dm-key-col' : ''}" style="padding:6px 8px;border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; color:var(--text-label); font-weight:600; text-align:left; white-space:nowrap; cursor:grab; user-select:none; min-width:140px;">
+    <th data-col-idx="${ci}" data-col="${dmEsc(c)}" draggable="true" class="dm-col-th${c === dm.keyColumn ? ' dm-key-col' : ''}" style="padding:6px 8px;border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); color:var(--text-label); font-weight:600; text-align:left; white-space:nowrap; cursor:grab; user-select:none; min-width:140px;">
       <div style="display:flex; align-items:center; gap:6px;">
         <span class="dm-col-name" data-col="${dmEsc(c)}" contenteditable="false" title="Double-click to rename" style="cursor:text; outline:none; padding:1px 2px; border-radius:3px; flex:1; overflow:hidden; text-overflow:ellipsis;">${dmEsc(c)}</span>
         <button class="dm-key-toggle" data-col="${dmEsc(c)}" title="Toggle Version name (used for exported folder names)" style="background:none; border:none; padding:0 2px; cursor:pointer; font-size:13px; line-height:1; color:${c === dm.keyColumn ? 'var(--text-accent)' : 'var(--text-muted)'};">★</button>
@@ -666,12 +712,12 @@ function dmRenderPanel(bg) {
   const rowsHtml = dm.rows.map((r, i) => {
     const active = dm.activeVersion === i;
     return `<tr data-row="${i}" class="dm-row" style="${active ? 'background:rgba(124,92,255,.10);' : ''}">
-      <td class="dm-row-handle" data-row="${i}" draggable="true" title="Drag to reorder" style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; cursor:grab; text-align:center; color:var(--text-muted); width:22px; user-select:none; font-size:11px;">⋮⋮</td>
-      <td style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; width:28px; text-align:center;"><input type="checkbox" class="dm-row-select" data-row="${i}" ${r._selected !== false ? 'checked' : ''} style="margin:0; cursor:pointer;" title="Include this version in export"/></td>
-      <td style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; width:28px; text-align:center;"><button class="dm-viewrow" data-row="${i}" title="Preview this version on the canvas" style="background:none; border:none; color:${active ? 'var(--text-accent)' : 'var(--text-muted)'}; cursor:pointer; font-size:14px; padding:0;">${active ? '●' : '○'}</button></td>
-      <td style="padding:3px 4px; border-bottom:1px solid #15171f; border-right:1px solid #15171f; width:32px; text-align:center; color:var(--text-muted); font-size:10px; font-variant-numeric:tabular-nums;">${i + 1}</td>` +
-      dm.columns.map(c => `<td class="${c === dm.keyColumn ? 'dm-key-col' : ''}" style="padding:0; border-bottom:1px solid #15171f; border-right:1px solid #15171f; min-width:140px;"><input class="dm-cell" data-row="${i}" data-col="${dmEsc(c)}" value="${dmEsc(r[c] || '')}" style="width:100%; background:transparent; border:none; color:var(--text-main); padding:6px 8px; font-size:11px; outline:none; font-family:inherit;"/></td>`).join('') +
-      `<td style="padding:3px 4px; border-bottom:1px solid #15171f; width:28px; text-align:center;"><button class="dm-delrow" data-row="${i}" title="Delete row" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:13px; padding:0;">×</button></td>
+      <td class="dm-row-handle" data-row="${i}" draggable="true" title="Drag to reorder" style="padding:3px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); cursor:grab; text-align:center; color:var(--text-muted); width:22px; user-select:none; font-size:11px;">⋮⋮</td>
+      <td style="padding:3px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); width:28px; text-align:center;"><input type="checkbox" class="dm-row-select" data-row="${i}" ${r._selected !== false ? 'checked' : ''} style="margin:0; cursor:pointer;" title="Include this version in export"/></td>
+      <td style="padding:3px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); width:28px; text-align:center;"><button class="dm-viewrow" data-row="${i}" title="Preview this version on the canvas" style="background:none; border:none; color:${active ? 'var(--text-accent)' : 'var(--text-muted)'}; cursor:pointer; font-size:14px; padding:0;">${active ? '●' : '○'}</button></td>
+      <td style="padding:3px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); width:32px; text-align:center; color:var(--text-muted); font-size:10px; font-variant-numeric:tabular-nums;">${i + 1}</td>` +
+      dm.columns.map(c => `<td class="dm-col-td ${c === dm.keyColumn ? 'dm-key-col' : ''}" data-col="${dmEsc(c)}" style="padding:0; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); min-width:140px;"><input class="dm-cell" readonly data-row="${i}" data-col="${dmEsc(c)}" value="${dmEsc(r[c] || '')}" style="width:100%; background:transparent; border:1px solid transparent; color:var(--text-main); padding:5px 7px; font-size:11px; outline:none; font-family:inherit; cursor:default; border-radius:3px; text-overflow:ellipsis;"/></td>`).join('') +
+      `<td style="padding:3px 4px; border-bottom:1px solid var(--border-light); width:28px; text-align:center;"><button class="dm-delrow" data-row="${i}" title="Delete row" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:13px; padding:0;">×</button></td>
     </tr>`;
   }).join('');
 
@@ -680,10 +726,10 @@ function dmRenderPanel(bg) {
          <table style="border-collapse:collapse; width:100%; font-size:11px; color:var(--text-main);">
            <thead>
              <tr>
-               <th style="width:22px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel);"></th>
-               <th style="width:28px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel); text-align:center;"><input type="checkbox" id="dm-select-all" ${allChecked ? 'checked' : ''} style="margin:0; cursor:pointer;" title="Select/deselect all versions"/></th>
-               <th style="width:28px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel);"></th>
-               <th style="width:32px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid #15171f; background:var(--bg-panel); color:var(--text-muted); font-size:10px; font-weight:600;">#</th>
+               <th style="width:22px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); background:var(--bg-panel);"></th>
+               <th style="width:28px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); background:var(--bg-panel); text-align:center;"><input type="checkbox" id="dm-select-all" ${allChecked ? 'checked' : ''} style="margin:0; cursor:pointer;" title="Select/deselect all versions"/></th>
+               <th style="width:28px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); background:var(--bg-panel);"></th>
+               <th style="width:32px; padding:6px 4px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); background:var(--bg-panel); color:var(--text-muted); font-size:10px; font-weight:600;">#</th>
                ${colHeaderHtml}
                <th style="width:28px; padding:6px 4px; border-bottom:1px solid var(--border-light); background:var(--bg-panel);"></th>
              </tr>
@@ -702,19 +748,16 @@ function dmRenderPanel(bg) {
           <button class="btn" id="dm-import" style="flex:1;">Import CSV…</button>
           <button class="btn" id="dm-export" ${dm.columns.length ? '' : 'disabled'} style="flex:1;">Export CSV</button>
         </div>
-        <label class="checkbox-row" style="display:flex; align-items:center; gap:7px; font-size:11px; padding:6px 10px; background:var(--bg-input); border-radius:5px; cursor:pointer;" title="If checked, CSV has no header row. Column names will be generated automatically.">
-          <input type="checkbox" id="dm-skip-headers" ${dm.skipHeaders ? 'checked' : ''} style="margin:0;"/>
-          Skip headers on import
-        </label>
-        <div style="display:flex; gap:6px;">
-          <button class="btn" id="dm-addcol" style="flex:1;">+ Column</button>
-          <button class="btn" id="dm-addrow" ${dm.columns.length ? '' : 'disabled'} style="flex:1;">+ Row</button>
+        <div style="display:flex; gap:8px;">
+          <label class="checkbox-row" style="flex:1; display:flex; align-items:center; gap:7px; font-size:11px; padding:7px 10px; background:var(--bg-input); border-radius:5px; cursor:pointer;" title="If checked, CSV has no header row. Column names will be generated automatically.">
+            <input type="checkbox" id="dm-skip-headers" ${dm.skipHeaders ? 'checked' : ''} style="margin:0;"/>
+            Skip header
+          </label>
+          <label class="checkbox-row" style="flex:1; display:flex; align-items:center; gap:7px; font-size:11px; padding:7px 10px; background:var(--bg-input); border-radius:5px; cursor:pointer;">
+            <input type="checkbox" id="dm-enabled" ${dm.enabled ? 'checked' : ''} style="margin:0;"/>
+            Enable merge
+          </label>
         </div>
-
-        <label class="checkbox-row" style="display:flex; align-items:center; gap:7px; font-size:11px; padding:8px 10px; background:var(--bg-input); border-radius:5px; cursor:pointer;">
-          <input type="checkbox" id="dm-enabled" ${dm.enabled ? 'checked' : ''} style="margin:0;"/>
-          Enable merge
-        </label>
 
         <button class="btn primary" id="dm-export-versions" ${btnDisabled} style="padding:8px; width:100%;">${btnLabel}</button>
 
@@ -729,12 +772,19 @@ function dmRenderPanel(bg) {
 
       <!-- RIGHT: sheet -->
       <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:8px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-          <h3 style="font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin:0; font-weight:600;">
-            Versions <span style="color:var(--text-main);">·</span> ${dm.rows.length} row${dm.rows.length === 1 ? '' : 's'}
-          </h3>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; border-bottom:1px solid var(--border-light); padding-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <h3 style="font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin:0; font-weight:600;">
+              Versions <span style="color:var(--text-main);">·</span> ${dm.rows.length} row${dm.rows.length === 1 ? '' : 's'}
+            </h3>
+            <div style="display:flex; align-items:center; gap:6px; margin-left:12px;">
+              <button class="btn" id="dm-table-addcol" style="font-size:10.5px; padding:3px 8px; height:24px;">+ Add Column</button>
+              <button class="btn" id="dm-table-addrow" ${dm.columns.length ? '' : 'disabled'} style="font-size:10.5px; padding:3px 8px; height:24px;">+ Add Row</button>
+              <button class="btn" id="dm-table-delselected" ${dm.rows.some(r => r._selected !== false) ? '' : 'disabled'} style="font-size:10.5px; padding:3px 8px; height:24px; background:rgba(239, 68, 68, 0.05); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.25);">Delete Selected Rows</button>
+            </div>
+          </div>
           <div style="font-size:10px; color:var(--text-muted);">
-            ● active preview · ★ version name · drag ⋮⋮ to reorder · double-click header to rename
+            ● active preview · ★ version name · drag ⋮⋮ to reorder · double-click header/cell to edit
           </div>
         </div>
         ${sheetTable}
@@ -761,8 +811,19 @@ function dmWirePanel(bg) {
     };
   }
   if (q('#dm-export')) q('#dm-export').onclick = () => dmExportCSV();
-  if (q('#dm-addcol')) q('#dm-addcol').onclick = () => { const n = prompt('New column name:'); if (n) { dmAddColumn(n); pushHistory(); reRender(); } };
-  if (q('#dm-addrow')) q('#dm-addrow').onclick = () => { dmAddRow(); pushHistory(); reRender(); };
+  if (q('#dm-table-addcol')) q('#dm-table-addcol').onclick = () => { const n = prompt('New column name:'); if (n) { dmAddColumn(n); pushHistory(); reRender(); } };
+  if (q('#dm-table-addrow')) q('#dm-table-addrow').onclick = () => { dmAddRow(); pushHistory(); reRender(); };
+  if (q('#dm-table-delselected')) {
+    q('#dm-table-delselected').onclick = () => {
+      const selectedCount = state.dataMerge.rows.filter(r => r._selected !== false).length;
+      if (selectedCount === 0) return;
+      if (confirm(`Delete ${selectedCount} selected row(s)?`)) {
+        dmDeleteSelectedRows();
+        pushHistory();
+        reRender();
+      }
+    };
+  }
   if (q('#dm-export-versions')) q('#dm-export-versions').onclick = () => dmExportAllVersions();
   if (q('#dm-enabled')) q('#dm-enabled').onchange = (e) => { state.dataMerge.enabled = e.target.checked; pushHistory(); reRender(); };
 
@@ -785,12 +846,72 @@ function dmWirePanel(bg) {
     };
   });
 
-  all('.dm-map').forEach(sel => sel.onchange = () => {
-    const k = sel.dataset.mapkey;
-    if (sel.value) state.dataMerge.mappings[k] = sel.value;
-    else delete state.dataMerge.mappings[k];
-    pushHistory();
-    render();
+  // Helper to highlight a column by name
+  const highlightColumn = (colName) => {
+    all('.dm-col-highlight').forEach(el => el.classList.remove('dm-col-highlight'));
+    if (colName) {
+      all('[data-col]').forEach(el => {
+        if ((el.tagName === 'TH' || el.tagName === 'TD') && el.getAttribute('data-col') === colName) {
+          el.classList.add('dm-col-highlight');
+        }
+      });
+    }
+  };
+
+  // Render slot mapping custom select dropdowns
+  all('.dm-map-container').forEach(container => {
+    const key = container.dataset.mapkey;
+    const activeVal = state.dataMerge.mappings[key] || '';
+    const options = [{ label: '— none —', val: '' }].concat(state.dataMerge.columns.map(c => ({ label: c, val: c })));
+
+    dmRenderCustomSelect(container, options, activeVal, (val) => {
+      if (val) state.dataMerge.mappings[key] = val;
+      else delete state.dataMerge.mappings[key];
+      pushHistory();
+      render();
+      highlightColumn(val);
+    });
+
+    const trigger = container.querySelector('.custom-select-trigger');
+    const dropdown = container.querySelector('.custom-select-dropdown');
+
+    // Hover or focus the trigger: highlight the CURRENT selected value
+    trigger.addEventListener('mouseenter', () => {
+      highlightColumn(state.dataMerge.mappings[key]);
+    });
+    trigger.addEventListener('mouseleave', () => {
+      if (dropdown.style.display !== 'block') {
+        highlightColumn(null);
+      }
+    });
+
+    trigger.addEventListener('focus', () => {
+      highlightColumn(state.dataMerge.mappings[key]);
+    });
+    trigger.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (dropdown.style.display !== 'block') {
+          highlightColumn(null);
+        }
+      }, 150);
+    });
+
+    // Hovering the items in the dropdown list
+    container.querySelectorAll('.custom-select-item').forEach(item => {
+      item.addEventListener('mouseenter', () => {
+        highlightColumn(item.dataset.value);
+      });
+      item.addEventListener('mouseleave', () => {
+        highlightColumn(state.dataMerge.mappings[key]);
+      });
+    });
+  });
+
+  // Clear highlight when clicking outside any mapping dropdown
+  bg.addEventListener('click', (e) => {
+    if (!e.target.closest('.dm-map-container')) {
+      highlightColumn(null);
+    }
   });
 
   // Key toggle
@@ -824,15 +945,71 @@ function dmWirePanel(bg) {
     pushHistory(); reRender();
   });
 
-  // Cell editing (live preview + history on blur)
+  // Cell double-click inline editing
   all('.dm-cell').forEach(inp => {
+    let originalValue = inp.value;
+
+    inp.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      originalValue = inp.value; // Store original value in case of ESC
+      inp.removeAttribute('readonly');
+      inp.style.background = 'var(--bg-input)';
+      inp.style.borderColor = 'var(--accent-base)';
+      inp.style.cursor = 'text';
+      inp.focus();
+      inp.select();
+    });
+
+    const commitCell = (cancel) => {
+      inp.setAttribute('readonly', 'true');
+      inp.style.background = 'transparent';
+      inp.style.borderColor = 'transparent';
+      inp.style.cursor = 'default';
+
+      if (cancel) {
+        inp.value = originalValue;
+        const row = state.dataMerge.rows[Number(inp.dataset.row)];
+        if (row) row[inp.dataset.col] = originalValue;
+        render();
+        renderVersionSwitcher();
+      } else {
+        if (inp.value !== originalValue) {
+          const row = state.dataMerge.rows[Number(inp.dataset.row)];
+          if (row) row[inp.dataset.col] = inp.value;
+          pushHistory();
+          render();
+          renderVersionSwitcher();
+          originalValue = inp.value;
+        }
+      }
+    };
+
+    inp.addEventListener('blur', () => {
+      if (!inp.hasAttribute('readonly')) {
+        commitCell(false);
+      }
+    });
+
+    inp.addEventListener('keydown', (e) => {
+      if (inp.hasAttribute('readonly')) return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commitCell(false);
+        inp.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        commitCell(true);
+        inp.blur();
+      }
+    });
+
     inp.oninput = () => {
+      if (inp.hasAttribute('readonly')) return;
       const row = state.dataMerge.rows[Number(inp.dataset.row)];
       if (row) row[inp.dataset.col] = inp.value;
       render();
       renderVersionSwitcher();
     };
-    inp.onchange = () => pushHistory();
   });
 
   // Inline column rename: double-click span → contenteditable; Enter/blur to commit, Esc to cancel.

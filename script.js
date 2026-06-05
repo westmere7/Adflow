@@ -6205,7 +6205,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
                        const keyCol = (state.dataMerge.keyColumn && state.dataMerge.columns.includes(state.dataMerge.keyColumn)) ? state.dataMerge.keyColumn : state.dataMerge.columns[0];
                        const name = row[keyCol] || `Version ${i + 1}`;
                        const selected = state.dataMerge.activeVersion === i ? 'selected' : '';
-                       return `<option value="${i}" ${selected} style="background:var(--bg-panel); color:var(--text-main);">${name}</option>`;
+                       return `<option value="${i}" ${selected} style="background:var(--bg-panel); color:var(--text-main);">${i + 1}. ${name}</option>`;
                     }).join('')}
                   </select>
                 </div>
