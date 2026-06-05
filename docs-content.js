@@ -661,17 +661,10 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
-    version: 'v0.18.4',
-    date: 'June 2026 — Engine v2.18',
-    items: [
-      'Blur Transition Settings: Added customizable "Blur Amount" (0-100px) and "Scale Blend" (10-500%) controls to the Blur frame transition preset for fine-grained defocus and continuous camera-zoom style animations.'
-    ]
-  },
-  {
     version: 'v0.18.3',
     date: 'June 2026 — Engine v2.18',
     items: [
-      'Blur Frame Transition: Added "Blur" frame transition preset that creates a cross-blur transition, blurring outgoing frames out to 20px (with optional fade) while blurring incoming frames in from 20px to 0px (with optional fade).'
+      'Blur Frame Transition Preset: Added a customizable "Blur" frame transition preset that creates a cross-blur transition, complete with adjustable "Blur Amount" (0-100px) and "Scale Blend" (10-500%) controls to configure defocus strength and continuous camera zoom-in/out effects (with optional fade).'
     ]
   },
   {

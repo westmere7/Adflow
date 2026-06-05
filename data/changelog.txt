@@ -1,10 +1,7 @@
 RMIT Adflow - Version & Changelog History
 
-v0.18.4 (Current) - June 2026 — Engine v2.18
-- Blur Transition Settings: Added customizable "Blur Amount" (0-100px) and "Scale Blend" (10-500%) controls to the Blur frame transition preset for fine-grained defocus and continuous camera-zoom style animations.
-
-v0.18.3 - June 2026 — Engine v2.18
-- Blur Frame Transition: Added "Blur" frame transition preset that creates a cross-blur transition, blurring outgoing frames out to 20px (with optional fade) while blurring incoming frames in from 20px to 0px (with optional fade).
+v0.18.3 (Current) - June 2026 — Engine v2.18
+- Blur Frame Transition: Added a customizable "Blur" frame transition preset that creates a cross-blur transition, complete with adjustable "Blur Amount" (0-100px) and "Scale Blend" (10-500%) controls to configure defocus strength and continuous camera zoom-in/out effects (with optional fade).
 
 v0.18.2 - June 2026 — Engine v2.18
 - Frame Transitions UI & Presets: Renamed "Transition" sidebar heading to "FRAME TRANSITION". Added "Short edge" and "Long edge" dynamic direction choices to Slide, Push, and Swipe transitions. Upgraded the Split transition to remove the raw Angle field, replacing it with the same Direction select dropdown.
