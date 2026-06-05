@@ -187,12 +187,34 @@ function dmWriteCell(el, field, value) {
 // slot stays consistent on every size.
 function dmToggleField(el, field, on) {
   const apply = (t) => {
-    if (on) { (t.dynamic || (t.dynamic = {}))[field] = true; }
-    else if (t.dynamic) { delete t.dynamic[field]; if (!Object.keys(t.dynamic).length) delete t.dynamic; }
+    if (on) {
+      (t.dynamic || (t.dynamic = {}))[field] = true;
+    } else {
+      // Bake the currently active version's value back to the template default
+      const dm = state.dataMerge;
+      if (dm && dm.enabled && dm.activeVersion != null) {
+        const overrides = dmDisplay(t);
+        const prop = field === 'image' ? 'assetId' : field;
+        const val = overrides[prop];
+        if (val !== undefined) {
+          t[prop] = val;
+        }
+      }
+      if (t.dynamic) {
+        delete t.dynamic[field];
+        if (!Object.keys(t.dynamic).length) delete t.dynamic;
+      }
+    }
   };
   apply(el);
   if (el.linkGroupId) {
     state.canvases.forEach(c => c.elements.forEach(t => { if (t !== el && t.linkGroupId === el.linkGroupId) apply(t); }));
+  }
+  
+  // Clean up the mapping if the field is toggled off
+  if (!on && state.dataMerge && state.dataMerge.mappings) {
+    const key = dmSlotKey(el) + '::' + field;
+    delete state.dataMerge.mappings[key];
   }
 }
 
