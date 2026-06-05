@@ -14157,14 +14157,16 @@ function queueSizeUpdate() {
       let hasExt = false;
       c.elements.forEach(el => {
         if (el.type === 'image') {
-          let src = state.assets[el.assetId] || el.assetId;
+          const overrides = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+          const activeAssetId = overrides.assetId !== undefined ? overrides.assetId : el.assetId;
+          let src = state.assets[activeAssetId] || activeAssetId;
           if (!src) {
             hasMissing = true;
           } else if (src.startsWith('http://') || src.startsWith('https://')) {
             hasExt = true;
           } else if (src.startsWith('data/Elements/')) {
             // Valid local application asset
-          } else if (!state.assets[el.assetId]) {
+          } else if (!state.assets[activeAssetId]) {
             hasMissing = true;
           }
         }
@@ -14219,14 +14221,16 @@ async function updateCanvasSizeSync(c) {
   let hasExt = false;
   c.elements.forEach(el => {
     if (el.type === 'image') {
-      let src = state.assets[el.assetId] || el.assetId;
+      const overrides = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
+      const activeAssetId = overrides.assetId !== undefined ? overrides.assetId : el.assetId;
+      let src = state.assets[activeAssetId] || activeAssetId;
       if (!src) {
         hasMissing = true;
       } else if (src.startsWith('http://') || src.startsWith('https://')) {
         hasExt = true;
       } else if (src.startsWith('data/Elements/')) {
         // Valid local application asset
-      } else if (!state.assets[el.assetId]) {
+      } else if (!state.assets[activeAssetId]) {
         hasMissing = true;
       }
     }
