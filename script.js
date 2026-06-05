@@ -10926,7 +10926,11 @@ function checkButtonFontSizeWarning(el) {
                 const cov = nodeEl.bgCoverage !== undefined ? nodeEl.bgCoverage : 100;
                 const opa = (nodeEl.bgOpacity !== undefined ? nodeEl.bgOpacity : 100) / 100;
                 const bgRgba = hexToRgba(nodeEl.bg || '#000000', opa);
-                const bgDelay = Number(baseDelay) + (Number(nodeEl.bgOffset) || 0);
+                let offset = Number(nodeEl.bgOffset) || 0;
+                if (offset === 0 && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade')) {
+                  offset = -0.1;
+                }
+                const bgDelay = Number(baseDelay) + offset;
                 target.style.backgroundImage = '';
                 target.style.boxDecorationBreak = '';
                 target.style.removeProperty('-webkit-box-decoration-break');

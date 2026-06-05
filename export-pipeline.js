@@ -953,7 +953,11 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         const bgRgba = hexToRgba(el.bg || '#000000', opa);
         if (useLineBgScript) {
           const dur = el.animDuration || 1;
-          const delay = (Number(el.animDelay) || 0) + (Number(el.bgOffset) || 0);
+          let offset = Number(el.bgOffset) || 0;
+          if (offset === 0 && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade')) {
+            offset = -0.1;
+          }
+          const delay = (Number(el.animDelay) || 0) + offset;
           // Padding on the wrapper matches the static path's per-line padding — without
           // it, char.offsetLeft starts at 0 and the text appears shifted left by `lr`
           // compared to the editor (and to the static-bg variant of the same element).
