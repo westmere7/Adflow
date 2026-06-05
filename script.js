@@ -17530,6 +17530,10 @@ document.addEventListener('mousedown', (e) => {
 }, true);
 
 document.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('#app-splash')) {
+    e.preventDefault();
+    return;
+  }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
   e.preventDefault();
 

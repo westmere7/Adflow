@@ -664,7 +664,8 @@ const CHANGELOG_DATA = [
     version: 'v0.18.3',
     date: 'June 2026 — Engine v2.18',
     items: [
-      'Blur Frame Transition Preset: Added a customizable "Blur" frame transition preset that creates a cross-blur transition, complete with adjustable "Blur Amount" (0-100px) and "Scale Blend" (10-500%) controls to configure defocus strength and continuous camera zoom-in/out effects (with optional fade).'
+      'Blur Frame Transition Preset: Added a customizable "Blur" frame transition preset that creates a cross-blur transition, complete with adjustable "Blur Amount" (0-100px) and "Scale Blend" (10-500%) controls to configure defocus strength and continuous camera zoom-in/out effects (with optional fade).',
+      'Overhauled Splash Loading Screen: Created a more dynamic yet sleek loading experience featuring organic shifting ambient background glows, a breathing drop-shadow pulse on the brand logo, smooth easeOutExpo slide-fades on status updates, and a glassmorphic gradient progress bar. Exit transition now executes a soft camera lens defocus zoom-out.'
     ]
   },
   {
