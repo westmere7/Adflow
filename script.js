@@ -283,8 +283,12 @@ function measureButtonWidth(el) {
   const canvas = measureButtonWidth.canvas || (measureButtonWidth.canvas = document.createElement('canvas'));
   const ctx = canvas.getContext('2d');
   ctx.font = `${el.weight || '600'} ${el.fontSize || 14}px ${el.fontFamily || 'Arial'}`;
+  if ('letterSpacing' in ctx) {
+    ctx.letterSpacing = (el.letterSpacing || 0) + 'px';
+  }
   const textW = ctx.measureText(el.text).width;
-  return Math.ceil(textW) + (el.paddingLR || 16) * 2;
+  // Add 2px safety padding to prevent layout engine rounding/kerning shifts from causing premature wraps
+  return Math.ceil(textW) + (el.paddingLR || 16) * 2 + 2;
 }
 
 let measureDiv = null;
@@ -3858,6 +3862,7 @@ function elementNode(el, canvasCtx) {
       ed.style.fontSize = computedFontSize + 'px';
       ed.style.fontFamily = el.fontFamily || 'Arial';
       ed.style.fontWeight = el.weight || '600';
+      ed.style.letterSpacing = (el.letterSpacing || 0) + 'px';
       ed.style.outline = 'none';
       // override .editable defaults so we match the non-edit <span> layout —
       // the editable also needs an inline display so its content sizes to
@@ -3880,6 +3885,7 @@ function elementNode(el, canvasCtx) {
       span.innerText = dText;
       applyColorToText(span, dColor);
       span.style.fontWeight = el.weight || '600';
+      span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
       span.style.position = 'relative';
       if (el.wrapText) {
         span.style.wordBreak = 'normal';
