@@ -1,5 +1,9 @@
 [
   {
+    "fileName": "Adflow_blank.flow",
+    "projectName": "RMIT_ad"
+  },
+  {
     "fileName": "Adflow_startup.flow",
     "projectName": "RMIT_ad"
   },
