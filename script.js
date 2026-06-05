@@ -1556,7 +1556,7 @@ function setupTextLineBgs(wrapper) {
     var lineDelay = baseDelay + totalDuration * startFrac;
     var bg = document.createElement('div');
     bg.className = 'line-bg-overlay';
-    bg.style.cssText = 'position:absolute;left:' + (lineLeft - lr) + 'px;top:' + (lineTop - tb) + 'px;width:' + ((lineWidth + 2 * lr) * cov) + 'px;height:' + (lineHeight + 2 * tb) + 'px;background:' + bgColor + ';transform-origin:left center;transform:scaleX(0);z-index:-1;pointer-events:none;animation:anim-bg-grow ' + lineDur + 's cubic-bezier(0.22,1,0.36,1) ' + lineDelay + 's both;';
+    bg.style.cssText = 'position:absolute;left:' + (lineLeft - lr) + 'px;top:' + (lineTop - tb) + 'px;width:' + ((lineWidth + 2 * lr) * cov) + 'px;height:' + (lineHeight + 2 * tb) + 'px;background:' + bgColor + ';transform-origin:left center;transform:scaleX(0);z-index:-1;pointer-events:none;animation:anim-bg-grow ' + lineDur + 's linear ' + lineDelay + 's both;';
     wrapper.insertBefore(bg, wrapper.firstChild);
   });
 }
@@ -10894,10 +10894,13 @@ function checkButtonFontSizeWarning(el) {
               if (previewVal === 'typing' || previewVal === 'fade-typing') {
                 const chars = [...(nodeEl.text || '')];
                 const charDur = previewVal === 'fade-typing' ? 0.3 : 0.01;
-                const charDelay = totalDur / Math.max(1, chars.length);
-                target.innerHTML = chars.map((c, i) => {
+                const nonNewlines = chars.filter(c => c !== '\n').length;
+                const charDelay = totalDur / Math.max(1, nonNewlines);
+                let spanIdx = 0;
+                target.innerHTML = chars.map((c) => {
                   if (c === '\n') return '<br/>';
-                  const del = (Number(baseDelay) + i * charDelay).toFixed(3);
+                  const del = (Number(baseDelay) + spanIdx * charDelay).toFixed(3);
+                  spanIdx++;
                   const escC = c === ' ' ? ' ' : c.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
                   return `<span style="opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;">${escC}</span>`;
                 }).join('');

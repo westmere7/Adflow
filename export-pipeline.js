@@ -897,11 +897,14 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         const totalDur = el.animDuration || 1;
         const charDur = animType === 'fade-typing' ? 0.3 : 0.01;
         const baseDelay = el.animDelay || 0;
-        const charDelay = totalDur / Math.max(1, chars.length);
+        const nonNewlines = chars.filter(c => c !== '\n').length;
+        const charDelay = totalDur / Math.max(1, nonNewlines);
 
-        content = chars.map((c, i) => {
+        let spanIdx = 0;
+        content = chars.map((c) => {
           if (c === '\n') return '<br/>';
-          const del = (Number(baseDelay) + i * charDelay).toFixed(3);
+          const del = (Number(baseDelay) + spanIdx * charDelay).toFixed(3);
+          spanIdx++;
           const charContent = c === ' ' ? ' ' : esc(c);
           const animStyle = isImageExport ? '' : `opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;`;
           return `<span style="${animStyle}">${charContent}</span>`;
