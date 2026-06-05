@@ -11927,6 +11927,129 @@ function addBrandElement(type) {
   }
 }
 
+function addBrandSet(setName) {
+  const c = getActiveCanvas(); if (!c) return;
+
+  if (setName === 'logo_rfwn_cricos') {
+    const hasLogo = c.elements.some(el => el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit logo')));
+    const hasRfwn = c.elements.some(el => el.role === 'rfwn' || (el.customName && el.customName.toLowerCase().includes('rfwn')));
+    const hasCricos = c.elements.some(el => el.role === 'cricos' || (el.customName && el.customName.toLowerCase().includes('cricos')));
+
+    if (hasLogo || hasRfwn || hasCricos) {
+      showCanvasNotification('Existing elements already placed', {
+        type: 'warning',
+        button: {
+          text: 'Clear all',
+          onClick: () => {
+            c.elements = c.elements.filter(el => {
+              const isLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit logo'));
+              const isRfwn = el.role === 'rfwn' || (el.customName && el.customName.toLowerCase().includes('rfwn'));
+              const isCricos = el.role === 'cricos' || (el.customName && el.customName.toLowerCase().includes('cricos'));
+              return !(isLogo || isRfwn || isCricos);
+            });
+            state.selectedElementId = null;
+            state.layerSelection = [];
+            pushHistory();
+            render();
+            if (typeof renderProps === 'function') renderProps();
+            showCanvasNotification('Existing brand elements cleared.', { type: 'success' });
+          }
+        }
+      });
+      return;
+    }
+
+    // 1. Create the logo white element
+    const logo = makeElement('image');
+    logo.customName = 'RMIT Logo (white)';
+    logo.assetId = 'data/Elements/RMIT_White.svg';
+    logo.role = 'rmit-logo';
+    logo.roleAuto = false;
+    logo.lockRatio = true;
+    logo.persistent = 'top';
+
+    // 2. Create the RFWN tagline
+    const rfwn = makeElement('text');
+    rfwn.customName = 'RFWN';
+    rfwn.text = "Ready for what's next";
+    rfwn.fontFamily = 'Museo';
+    rfwn.weight = '700';
+    rfwn.fontSize = 10;
+    rfwn.color = '#ffffff';
+    rfwn.width = 160;
+    rfwn.height = 14;
+    rfwn.role = 'rfwn';
+    rfwn.roleAuto = false;
+    rfwn.persistent = 'top';
+
+    // 3. Create the CRICOS line
+    const cricos = makeElement('text');
+    cricos.customName = 'CRICOS';
+    cricos.text = 'CRICOS: 00122A | RTO: 3046';
+    cricos.fontFamily = 'Helvetica Neue LT Pro';
+    cricos.weight = '400';
+    cricos.fontSize = 7;
+    cricos.color = '#ffffff';
+    cricos.width = 120;
+    cricos.height = 12;
+    cricos.role = 'cricos';
+    cricos.roleAuto = false;
+    cricos.persistent = 'top';
+
+    // Check if the canvas size is defined in AUTO_ARRANGE_CONFIG
+    const sizeKey = c.width + "x" + c.height;
+    const config = AUTO_ARRANGE_CONFIG[sizeKey];
+
+    if (config) {
+      c.elements.push(logo, rfwn, cricos);
+      state.selectedElementId = null;
+      state.layerSelection = [logo.id, rfwn.id, cricos.id];
+      state.editingElementId = null;
+      runAutoArrange(c.id, [logo.id, rfwn.id, cricos.id]);
+    } else {
+      const cw = c.width;
+      const ch = c.height;
+      const logoW = 113;
+      const logoH = 40;
+      const rfwnW = 160;
+      const rfwnH = 14;
+      const cricosW = 120;
+      const cricosH = 12;
+      const gap1 = 10;
+      const gap2 = 8;
+      const totalH = logoH + gap1 + rfwnH + gap2 + cricosH;
+
+      const startY = Math.max(10, (ch - totalH) / 2);
+
+      logo.width = logoW;
+      logo.height = logoH;
+      logo.x = (cw - logoW) / 2;
+      logo.y = startY;
+
+      rfwn.width = rfwnW;
+      rfwn.height = rfwnH;
+      rfwn.x = (cw - rfwnW) / 2;
+      rfwn.y = startY + logoH + gap1;
+      rfwn.textAlign = 'center';
+
+      cricos.width = cricosW;
+      cricos.height = cricosH;
+      cricos.x = (cw - cricosW) / 2;
+      cricos.y = rfwn.y + rfwnH + gap2;
+      cricos.textAlign = 'center';
+
+      c.elements.push(logo, rfwn, cricos);
+      state.selectedElementId = null;
+      state.layerSelection = [logo.id, rfwn.id, cricos.id];
+      state.editingElementId = null;
+      pushHistory();
+      render();
+      if (typeof renderProps === 'function') renderProps();
+      showCanvasNotification('Brand set added and centered.', { type: 'success' });
+    }
+  }
+}
+
 // ============================================================================
 // Drag-and-drop image / SVG import
 // ============================================================================
@@ -17328,6 +17451,7 @@ document.addEventListener('contextmenu', (e) => {
   }
 
   const svgWrap = (svg, text) => `<div style="display:flex; align-items:center; gap:8px;">${svg}${text}</div>`;
+  const brandSetsSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>`;
   const brandSvg = `<svg viewBox="0 0 578.52 556.76" fill="currentColor" style="width:14px;height:14px;"><path d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/></svg>`;
   const textSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5h16v2M9 19h6M12 5v14" /></svg>`;
   const imageSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.5-3.5L11 18" /></svg>`;
@@ -17340,6 +17464,12 @@ document.addEventListener('contextmenu', (e) => {
   const addElementsMenuHTML = `
     <div class="ctx-item has-submenu">Add Element
       <div class="ctx-submenu">
+        <div class="ctx-item has-submenu">
+          ${svgWrap(brandSetsSvg, 'Brand sets')}
+          <div class="ctx-submenu">
+            <div class="ctx-item" id="ctx-brandset-logo-rfwn-cricos" style="white-space:nowrap;">Logo + RFWN + CRICOS</div>
+          </div>
+        </div>
         <div class="ctx-item has-submenu">
           ${svgWrap(brandSvg, 'Brand Elements')}
           <div class="ctx-submenu">
@@ -17497,21 +17627,13 @@ document.addEventListener('contextmenu', (e) => {
     const autoResizeSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3H13M21 3V11M21 3L11 13M3 21H11M3 21V13M3 21L13 11"/></svg>`;
     html += `<div class="ctx-item highlight" id="ctx-canvas-auto-resize" style="display:flex; align-items:center; gap:8px;">${autoResizeSvg}Auto-Resize</div>`;
     html += `<div class="ctx-divider"></div>`;
-    const syncSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
+
     html += `<div class="ctx-item has-submenu">
-      ${svgWrap(syncSvg, 'Frame Sync')}
+      ${svgWrap(brandSetsSvg, 'Brand sets')}
       <div class="ctx-submenu">
-        <div class="ctx-item" id="ctx-canvas-sync" style="white-space:nowrap;">Sync Across Canvases...</div>
-        <div class="ctx-item" id="ctx-frame-sync" style="white-space:nowrap;">Sync Across Frames...</div>
+        <div class="ctx-item" id="ctx-brandset-logo-rfwn-cricos" style="white-space:nowrap;">Logo + RFWN + CRICOS</div>
       </div>
     </div>`;
-    html += `<div class="ctx-divider"></div>`;
-    html += `<div class="ctx-item" id="ctx-canvas-clone">Clone Canvas</div>`;
-    if (state.canvases.length > 1) {
-      html += `<div class="ctx-item" id="ctx-canvas-delete" style="color:#ef4444;">Delete Canvas</div>`;
-    }
-    html += `<div class="ctx-divider"></div>`;
-
     html += `<div class="ctx-item has-submenu">
       ${svgWrap(brandSvg, 'Brand Elements')}
       <div class="ctx-submenu">
@@ -17530,6 +17652,21 @@ document.addEventListener('contextmenu', (e) => {
     html += `<div class="ctx-item" id="ctx-add-line">${svgWrap(lineSvg, 'Add Line')}</div>`;
     html += `<div class="ctx-item" id="ctx-add-btn">${svgWrap(btnSvg, 'Add Button')}</div>`;
     html += `<div class="ctx-item" id="ctx-add-bg">${svgWrap(bgSvg, 'Add Background')}</div>`;
+    html += `<div class="ctx-divider"></div>`;
+
+    const syncSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`;
+    html += `<div class="ctx-item has-submenu">
+      ${svgWrap(syncSvg, 'Frame Sync')}
+      <div class="ctx-submenu">
+        <div class="ctx-item" id="ctx-canvas-sync" style="white-space:nowrap;">Sync Across Canvases...</div>
+        <div class="ctx-item" id="ctx-frame-sync" style="white-space:nowrap;">Sync Across Frames...</div>
+      </div>
+    </div>`;
+    html += `<div class="ctx-divider"></div>`;
+    html += `<div class="ctx-item" id="ctx-canvas-clone">Clone Canvas</div>`;
+    if (state.canvases.length > 1) {
+      html += `<div class="ctx-item" id="ctx-canvas-delete" style="color:#ef4444;">Delete Canvas</div>`;
+    }
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-canvas-bg-color">Change canvas BG color</div>`;
     html += `<div class="ctx-item has-submenu">Export
@@ -17800,6 +17937,7 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-add-bg', (e) => showBackgroundDropdown(e));
 
   bind('ctx-brand-cricos', () => addBrandElement('cricos'));
+  bind('ctx-brandset-logo-rfwn-cricos', () => addBrandSet('logo_rfwn_cricos'));
   bind('ctx-brand-rfwn', () => addBrandElement('rfwn'));
   bind('ctx-brand-logowhite', () => addBrandElement('logo_white'));
   bind('ctx-brand-logofull', () => addBrandElement('logo_full'));
