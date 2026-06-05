@@ -53,11 +53,11 @@ const DOCS_SECTIONS = [
       { id: 'multi-canvas-concept', title: 'The multi-canvas idea', body: `
         <p>Instead of opening one file per banner size, Adflow shows every canvas (300×250, 728×90, 160×600, …) side-by-side on an infinite workspace. You pan with <span class="kbd">Space</span>+drag, zoom with the scroll wheel.</p>
         <p>The win: when you edit a headline on the 728×90, you don't repeat the edit on the other 5 sizes. <b>Link Groups</b> bind siblings across canvases — a change on one propagates to all of them (immediately if Live-link is on, on demand otherwise).</p>
-        <p>See <a href="#" data-doc-sec="multi-canvas" data-doc-sub="auto-link" style="color:var(--accent-light); font-weight: 500;">Link Groups</a> for the full mechanics.</p>
+        <p>See <a href="#" data-doc-sec="multi-canvas" data-doc-sub="auto-link" style="color:var(--text-accent); font-weight: 500;">Link Groups</a> for the full mechanics.</p>
       `},
       { id: 'auto-resize-glance', title: 'Auto-Resize at a glance', body: `
         <p>Design <b>one</b> canvas exactly how you want it. Click <b>Auto-resize</b> at the bottom of the left panel (or right-click any canvas and pick <b>Auto-Resize</b> at the top of the menu). A rule-based engine reads each element's role (heading, button, logo, background, CRICOS, RFWN, image…), wipes the other canvases, and rebuilds them with format-aware placements — auto-linking everything so future edits stay in sync.</p>
-        <p style="color:var(--text-muted);">Full breakdown under <a href="#" data-doc-sec="auto-resize" data-doc-sub="auto-resize-how-it-works" style="color:var(--accent-light); font-weight: 500;">Auto-Resize</a>.</p>
+        <p style="color:var(--text-muted);">Full breakdown under <a href="#" data-doc-sec="auto-resize" data-doc-sub="auto-resize-how-it-works" style="color:var(--text-accent); font-weight: 500;">Auto-Resize</a>.</p>
       `},
       { id: 'first-project', title: 'Your first project', body: `
         <ol>
@@ -147,8 +147,8 @@ const DOCS_SECTIONS = [
         <p>The image masking system is extremely robust and natively mirrored in the HTML5 exporter.</p>
         <ul>
           <li><b>Independent Animation:</b> Mask shapes carry their own independent entry transitions and effects separate from the image they mask. Hovering animation presets previews the mask or image accurately.</li>
-          <li><b>Layer Prefixes:</b> Mask layers display a <span style="color: var(--accent-light);">[mask]</span> prefix, and target images display a <span style="color: var(--accent-light); opacity: 0.7;">[masked]</span> prefix in the Layers panel.</li>
-          <li><b>Link Group Restraint:</b> A mask is a per-canvas effect and cannot be linked across canvases. The <a href="#" data-doc-sec="multi-canvas" data-doc-sub="live-link-mode" style="color:var(--accent-light); font-weight: 500;">Live-Link mode</a> and Dynamic Data panels will display a concise warning when selecting a mask layer.</li>
+          <li><b>Layer Prefixes:</b> Mask layers display a <span style="color: var(--text-accent);">[mask]</span> prefix, and target images display a <span style="color: var(--text-accent); opacity: 0.7;">[masked]</span> prefix in the Layers panel.</li>
+          <li><b>Link Group Restraint:</b> A mask is a per-canvas effect and cannot be linked across canvases. The <a href="#" data-doc-sec="multi-canvas" data-doc-sub="live-link-mode" style="color:var(--text-accent); font-weight: 500;">Live-Link mode</a> and Dynamic Data panels will display a concise warning when selecting a mask layer.</li>
         </ul>
       `},
       { id: 'color-picker', title: 'Color picker & gradients', body: `
@@ -416,7 +416,7 @@ const DOCS_SECTIONS = [
             ['Double-click text','Inline edit'],
             ['Double-click group','Isolate & edit inside'],
             ['Escape','Deselect / close modal']
-          ].map(([k,v]) => `<tr><td style="padding:5px 8px; border-bottom:1px solid #1f2330;"><span class="kbd">${k}</span></td><td style="padding:5px 8px; border-bottom:1px solid #1f2330; color:var(--text-muted);">${v}</td></tr>`).join('')}
+          ].map(([k,v]) => `<tr><td style="padding:5px 8px; border-bottom:1px solid var(--border-light);"><span class="kbd">${k}</span></td><td style="padding:5px 8px; border-bottom:1px solid var(--border-light); color:var(--text-muted);">${v}</td></tr>`).join('')}
           </tbody>
         </table>
       `},

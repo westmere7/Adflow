@@ -2309,7 +2309,7 @@ function previewFrameNode(c) {
   titleSpan.style.display = 'flex';
   titleSpan.style.alignItems = 'center';
   titleSpan.style.gap = '8px';
-  titleSpan.innerHTML = `<span class="dim" style="font-weight:600; color:var(--text-bright);">${c.width} &times; ${c.height}</span><span class="dim" style="margin-left:8px;">&bull; <span style="color:var(--accent-light); font-size:12px; font-weight:700;">${kb} KB</span></span>`;
+  titleSpan.innerHTML = `<span class="dim" style="font-weight:600; color:var(--text-bright);">${c.width} &times; ${c.height}</span><span class="dim" style="margin-left:8px;">&bull; <span style="color:var(--accent-base); font-size:12px; font-weight:700;">${kb} KB</span></span>`;
 
   header.appendChild(titleSpan);
   frame.appendChild(header);
@@ -3013,14 +3013,14 @@ function canvasFrameNode(c) {
     const opts = state.frames.map((f, i) => `<option value="${f.id}" ${f.id === state.activeFrameId ? 'selected' : ''} style="${f.skip ? 'color: var(--text-muted); font-style: italic;' : ''}">Frame ${i + 1}</option>`).join('');
     leftSide.innerHTML = `
       <div style="display:flex; align-items:center; gap:3px;">
-        <button class="btn-prev-inline" title="Previous frame" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&lsaquo;</button>
-        <select class="frame-select-inline" title="Select active frame" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:3px; padding:0 2px; font-size:9px; height:18px; outline:none; cursor:pointer;">
+        <button class="btn-prev-inline" title="Previous frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&lsaquo;</button>
+        <select class="frame-select-inline" title="Select active frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:3px; padding:0 2px; font-size:9px; height:18px; outline:none; cursor:pointer;">
           ${opts}
         </select>
-        <button class="btn-next-inline" title="Next frame" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&rsaquo;</button>
+        <button class="btn-next-inline" title="Next frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&rsaquo;</button>
         <div style="width:2px"></div>
-        <button class="btn-add-frame-inline" title="Add Frame" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">+</button>
-        <button class="btn-remove-frame-inline" title="Remove Frame" style="background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">-</button>
+        <button class="btn-add-frame-inline" title="Add Frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">+</button>
+        <button class="btn-remove-frame-inline" title="Remove Frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">-</button>
       </div>
     `;
   } else if (isSinglePreview) {
@@ -5873,7 +5873,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
         <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
           <div style="flex:1; min-width:0;">
             <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">clickTag URL Validation</span>
-            <span style="font-size:12px; opacity:0.8; word-break:break-all;">URL: <span style="font-family:monospace; color:${clickTagValid ? 'var(--accent-light)' : '#ef4444'};">${clickTagMsg}</span></span>
+            <span style="font-size:12px; opacity:0.8; word-break:break-all;">URL: <span style="font-family:monospace; color:${clickTagValid ? 'var(--text-accent)' : '#ef4444'};">${clickTagMsg}</span></span>
           </div>
           <span style="color:${isClickTagPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">${isClickTagPassed ? '✓ Pass' : '✗ Fail'}</span>
         </div>
@@ -5965,7 +5965,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
             </strong>
             <ul style="margin:0; padding-left:18px; line-height:1.5; display:flex; flex-direction:column; gap:8px;">
               ${a11yWarnings.map(w => {
-                const locateBtn = w.layerId ? `<button class="val-locate-btn" data-layer-id="${w.layerId}" style="background:none; border:none; color:var(--accent-light); cursor:pointer; text-decoration:underline; font-size:11px; padding:0; margin-left:8px; display:inline-block;">Locate Layer</button>` : '';
+                const locateBtn = w.layerId ? `<button class="val-locate-btn" data-layer-id="${w.layerId}" style="background:none; border:none; color:var(--text-accent); cursor:pointer; text-decoration:underline; font-size:11px; padding:0; margin-left:8px; display:inline-block;">Locate Layer</button>` : '';
                 return `<li>${w.message}${locateBtn}</li>`;
               }).join('')}
             </ul>
@@ -5990,7 +5990,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
             </strong>
             <ul style="margin:0; padding-left:18px; line-height:1.5; display:flex; flex-direction:column; gap:8px;">
               ${brandWarnings.map(w => {
-                const locateBtn = w.layerId ? `<button class="val-locate-btn" data-layer-id="${w.layerId}" style="background:none; border:none; color:var(--accent-light); cursor:pointer; text-decoration:underline; font-size:11px; padding:0; margin-left:8px; display:inline-block;">Locate Layer</button>` : '';
+                const locateBtn = w.layerId ? `<button class="val-locate-btn" data-layer-id="${w.layerId}" style="background:none; border:none; color:var(--text-accent); cursor:pointer; text-decoration:underline; font-size:11px; padding:0; margin-left:8px; display:inline-block;">Locate Layer</button>` : '';
                 return `<li>${w.message}${locateBtn}</li>`;
               }).join('')}
             </ul>
@@ -6089,7 +6089,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
     const dynamicSectionHTML = dynamicDetails.length > 0 ? dynamicDetails.map(d => `
       <div style="display:flex; flex-direction:column; font-size:11.5px; margin-bottom:8px; background:rgba(255,255,255,0.02); padding:8px; border-radius:4px; border:1px solid rgba(255,255,255,0.04);">
         <span style="color:var(--text-main); font-weight:500;">${d.layerName} <span style="font-weight:normal; color:var(--text-muted); font-size:11px;">(${d.field})</span></span>
-        <span style="font-size:11px; color:var(--accent-light); font-family:monospace; margin-top:2px;">↳ mapped to {${d.mapping}}</span>
+        <span style="font-size:11px; color:var(--text-accent); font-family:monospace; margin-top:2px;">↳ mapped to {${d.mapping}}</span>
       </div>
     `).join('') : '<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding-left:4px;">No dynamic fields configured</div>';
 
@@ -6097,9 +6097,14 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
     const estimatedTotal = codeKb + fontKbSum + imgKbSum;
 
     const breakdownHTML = `
-      <div style="width:360px; flex-shrink:0; border-left:1px solid var(--border-left, var(--border-light)); padding-left:18px; display:flex; flex-direction:column; gap:20px; height:100%; overflow-y:auto; padding-right:4px;">
+      <div style="width:420px; flex-shrink:0; border-left:1px solid var(--border-left, var(--border-light)); padding-left:18px; display:flex; flex-direction:column; gap:20px; height:100%; overflow-y:auto; padding-right:4px;">
         <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
           <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright);">Ad Composition Breakdown</h3>
+          <button id="btn-val-breakdown-toggle" class="btn icon" title="Collapse Breakdown" style="padding: 2px 6px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--border-light); color: var(--text-muted); cursor: pointer; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.color='var(--text-bright)'; this.style.borderColor='var(--border-btn)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border-light)';">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
         </div>
 
         <!-- Element counts -->
@@ -6222,16 +6227,22 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
             ${activeContentHtml}
           </div>
         </div>
-        ${breakdownHTML}
+        ${state._valBreakdownExpanded !== false ? breakdownHTML : `
+          <div id="val-breakdown-expand-bar" style="width: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-left: 1px solid var(--border-light); cursor: pointer; transition: background 0.15s; background: var(--bg-panel);" title="Expand Composition Breakdown" onmouseover="this.style.background='var(--overlay-hover)'" onmouseout="this.style.background='var(--bg-panel)'">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </div>
+        `}
       </div>
     `;
   };
 
-  openModal(`Ads Validator`, generateModalContent(initialCanvas.id, activeTab), false);
+  openModal(`Validator and Audit`, generateModalContent(initialCanvas.id, activeTab), false);
   
   const modalEl = document.querySelector('.modal-bg:last-child .modal');
   if (modalEl) {
-    modalEl.style.width = '1250px';
+    modalEl.style.width = state._valBreakdownExpanded !== false ? '1320px' : '920px';
     modalEl.style.maxWidth = '98vw';
     modalEl.style.height = '720px';
     const bodyEl = modalEl.querySelector('.modal-body');
@@ -6447,6 +6458,43 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
         }
       };
     });
+
+    // Breakdown panel toggle
+    const toggleBtn = modalEl.querySelector('#btn-val-breakdown-toggle');
+    if (toggleBtn) {
+      toggleBtn.onclick = () => {
+        state._valBreakdownExpanded = false;
+        const rootModal = modalEl.closest('.modal');
+        if (rootModal) {
+          rootModal.style.width = '920px';
+        }
+        const modalContainer = document.getElementById(modalId);
+        if (modalContainer) {
+          const parent = modalContainer.parentElement;
+          parent.innerHTML = generateModalContent(activeDetailsId, activeTab);
+          const newContainer = parent.querySelector(`#${modalId}`);
+          setupModalListeners(newContainer, activeDetailsId, activeTab);
+        }
+      };
+    }
+
+    const expandBar = modalEl.querySelector('#val-breakdown-expand-bar');
+    if (expandBar) {
+      expandBar.onclick = () => {
+        state._valBreakdownExpanded = true;
+        const rootModal = modalEl.closest('.modal');
+        if (rootModal) {
+          rootModal.style.width = '1320px';
+        }
+        const modalContainer = document.getElementById(modalId);
+        if (modalContainer) {
+          const parent = modalContainer.parentElement;
+          parent.innerHTML = generateModalContent(activeDetailsId, activeTab);
+          const newContainer = parent.querySelector(`#${modalId}`);
+          setupModalListeners(newContainer, activeDetailsId, activeTab);
+        }
+      };
+    }
   };
 
   const modalContainer = document.getElementById(modalId);
@@ -6533,19 +6581,19 @@ function renderCanvasesList() {
         btnColor = '#ef4444';
         btnBgHover = 'rgba(239, 68, 68, 0.3)';
         btnText = getWarningIcon('#ef4444', 11);
-        btnTitle = 'Ad compliance errors found. Click to open Ads Validator.';
+        btnTitle = 'Ad compliance errors found. Click to open Validator and Audit.';
       } else if (hasA11y || hasBrand) {
         btnBg = 'rgba(249, 115, 22, 0.15)';
         btnColor = '#f97316';
         btnBgHover = 'rgba(249, 115, 22, 0.3)';
         btnText = getWarningIcon('#f97316', 11);
-        btnTitle = 'Validation warnings found. Click to open Ads Validator.';
+        btnTitle = 'Validation warnings found. Click to open Validator and Audit.';
       } else {
         btnBg = 'rgba(16, 185, 129, 0.15)';
         btnColor = '#10b981';
         btnBgHover = 'rgba(16, 185, 129, 0.3)';
         btnText = getCheckIcon('#10b981', 11);
-        btnTitle = 'All validation checks passed. Click to open Ads Validator.';
+        btnTitle = 'All validation checks passed. Click to open Validator and Audit.';
       }
     }
 
@@ -6613,12 +6661,12 @@ document.getElementById('btn-add-canvas').addEventListener('click', (e) => {
     popup = document.createElement('div');
     popup.id = 'canvas-size-popup';
     popup.style.position = 'absolute';
-    popup.style.background = '#181b22';
-    popup.style.border = '1px solid #272c3a';
+    popup.style.background = 'var(--bg-panel)';
+    popup.style.border = '1px solid var(--border-light)';
     popup.style.borderRadius = '6px';
     popup.style.padding = '4px 0';
     popup.style.zIndex = '2000';
-    popup.style.boxShadow = '0 8px 24px rgba(0,0,0,.5)';
+    popup.style.boxShadow = '0 8px 24px var(--shadow-medium)';
 
     PRESET_SIZES.forEach(sz => {
       const item = document.createElement('div');
@@ -6707,7 +6755,7 @@ function renderLinkControl() {
       const isGroupSelected = selectedElements.some(el => el.linkGroupId === g.id);
       const rowBg = isGroupSelected ? 'rgba(124, 92, 255, 0.12)' : 'rgba(255,255,255,0.02)';
       const rowStyle = isGroupSelected 
-        ? 'border-left: 3px solid var(--accent-light); padding-left: 5px; border-top-left-radius: 0; border-bottom-left-radius: 0;' 
+        ? 'border-left: 3px solid var(--text-accent); padding-left: 5px; border-top-left-radius: 0; border-bottom-left-radius: 0;' 
         : '';
 
       html += `
@@ -6718,7 +6766,7 @@ function renderLinkControl() {
           </div>
           <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
             <span style="font-size:9.5px; font-weight:600; color:var(--text-main); background:rgba(255,255,255,0.06); padding:2px 4px; border-radius:8px; margin-right:2px; display:inline-block; line-height:1;">${count}</span>
-            <button class="icon-btn ${g.liveLink ? 'active' : ''} lg-live-btn" data-group-id="${g.id}" title="Toggle Live-Link Mode (Instant Sync)" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:${g.liveLink ? 'var(--accent-light)' : 'var(--text-muted)'};">
+            <button class="icon-btn ${g.liveLink ? 'active' : ''} lg-live-btn" data-group-id="${g.id}" title="Toggle Live-Link Mode (Instant Sync)" style="background:none; border:none; cursor:pointer; padding:2px; display:flex; align-items:center; color:${g.liveLink ? 'var(--text-accent)' : 'var(--text-muted)'};">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="23 4 23 10 17 10"></polyline>
                 <polyline points="1 20 1 14 7 14"></polyline>
@@ -6749,7 +6797,7 @@ function renderLinkControl() {
   html += `
     <div style="margin-bottom: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--bg-input);">
       <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; width:100%; box-sizing:border-box;">
-        <button id="lnk-btn-autolink" class="btn" title="Automatically link matching layers across canvases by name and type" style="flex:1; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-dark); background: rgba(124, 92, 255, 0.05); color: var(--accent-light); box-sizing:border-box;">
+        <button id="lnk-btn-autolink" class="btn" title="Automatically link matching layers across canvases by name and type" style="flex:1; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-base); background: var(--accent-dark); color: var(--text-main); box-sizing:border-box;">
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
@@ -6765,7 +6813,7 @@ function renderLinkControl() {
 
   if (activeEl) {
     html += `
-      <button id="lnk-btn-autoadd" class="btn" title="Distribute this element to other canvases and link them together" style="width:100%; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-dark); background: rgba(124, 92, 255, 0.05); color: var(--accent-light); margin-bottom: 8px; box-sizing:border-box;">
+      <button id="lnk-btn-autoadd" class="btn" title="Distribute this element to other canvases and link them together" style="width:100%; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; border: 1px solid var(--accent-base); background: var(--accent-dark); color: var(--text-main); margin-bottom: 8px; box-sizing:border-box;">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
         Distribute & Link
       </button>
@@ -6813,7 +6861,7 @@ function renderLinkControl() {
           html += `<div style="padding-top:4px;">`;
           html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
             <div style="font-size:10px; font-weight:600; color:var(--text-label); text-transform:uppercase; letter-spacing:0.05em;">Link Properties</div>
-            <button id="lnk-toggle-all-props" title="Select or deselect all sync properties" style="background:none; border:none; color:var(--accent-light); font-size:10px; cursor:pointer; padding:0; text-decoration:underline;">${anyChecked ? 'Unselect all' : 'Select all'}</button>
+            <button id="lnk-toggle-all-props" title="Select or deselect all sync properties" style="background:none; border:none; color:var(--text-accent); font-size:10px; cursor:pointer; padding:0; text-decoration:underline;">${anyChecked ? 'Unselect all' : 'Select all'}</button>
           </div>`;
           
           if (cat === 'text') {
@@ -8498,10 +8546,10 @@ function layerLabel(el) {
   }
   const label = count > 1 ? `${base} ${count}` : base;
   if (el.isMask) {
-    return `<span style="color: var(--accent-light, #a78bfa); margin-right: 4px; font-weight: 500;">[mask]</span> ${label}`;
+    return `<span style="color: var(--accent-base, #7c5cff); margin-right: 4px; font-weight: 500;">[mask]</span> ${label}`;
   }
   if (findMaskAbove(canvas, el)) {
-    return `<span style="color: var(--accent-light, #a78bfa); margin-right: 4px; font-weight: 500;">[masked]</span> ${label}`;
+    return `<span style="color: var(--accent-base, #7c5cff); margin-right: 4px; font-weight: 500;">[masked]</span> ${label}`;
   }
   return label;
 }
@@ -8904,14 +8952,14 @@ function customSelect(key, options, currentVal, title, isFrameTrans = false, fra
 
   return `
     <div class="custom-select-container ${isFrameTrans ? 'frame-trans-select' : ''}" ${dataKeyAttr} ${containerIdHtml} style="position: relative; width: 100%;">
-      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid #2d3446; color: var(--text-main); border-radius: 5px; padding: 4px 8px; font-size: 12px; height: 28px; text-align: left; cursor: pointer; outline: none; min-width: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 5px; padding: 4px 8px; font-size: 12px; height: 28px; text-align: left; cursor: pointer; outline: none; min-width: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
         <span class="custom-select-label" style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; flex: 1;">
           ${currentOpt.img ? `<img src="${currentOpt.img}" style="max-height: 16px; max-width: 36px; object-fit: contain; flex-shrink: 0; background: #475569; padding: 2px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15);" />` : ''}
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${currentOpt.label}</span>
         </span>
         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left: 4px; opacity: 0.7; pointer-events: none; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
-      <div class="custom-select-dropdown" style="display: none; position: absolute; top: 30px; left: 0; right: 0; background: #161922; border: 1px solid #3b4256; border-radius: 6px; z-index: 10000; box-shadow: 0 10px 30px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.08); max-height: 200px; overflow-y: auto; padding: 4px 0;">
+      <div class="custom-select-dropdown" style="display: none; position: absolute; top: 30px; left: 0; right: 0; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 6px; z-index: 10000; box-shadow: 0 8px 24px var(--shadow-medium); max-height: 200px; overflow-y: auto; padding: 4px 0;">
         ${dropdownItems}
       </div>
     </div>
@@ -9029,7 +9077,7 @@ function getFrameTransitionHtml(currentFrame) {
         <div class="prop-grid-2">
           <div style="display:flex; flex-direction:column; gap:4px;">
             <label>Zoom From (%)</label>
-            <input type="number" min="0" max="500" id="frame-trans-zoom-from" value="${zfVal}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" />
+            <input type="number" min="0" max="500" id="frame-trans-zoom-from" value="${zfVal}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" />
           </div>
           <div class="checkbox-row" style="height:24px; align-items:center; margin-top:14px;">
             <input type="checkbox" id="frame-trans-bounce" ${hasBounce ? 'checked' : ''} />
@@ -9045,7 +9093,7 @@ function getFrameTransitionHtml(currentFrame) {
         <div class="prop-grid-2">
           <div style="display:flex; flex-direction:column; gap:4px;">
             <label>Angle (°)</label>
-            <input type="number" id="frame-trans-angle" value="${angleVal}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" />
+            <input type="number" id="frame-trans-angle" value="${angleVal}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" />
           </div>
         </div>
       </div>
@@ -9278,7 +9326,7 @@ function renderProps() {
     const disabledAttr = disabled ? 'disabled' : '';
     const pointerEvents = disabled ? 'pointer-events:none; opacity:0.5;' : '';
     const containerStyle = `position:relative; flex:1; min-width:0; ${pointerEvents}`;
-    const inputStyle = `width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase; ${pointerEvents}`;
+    const inputStyle = `width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 24px 4px 6px; font-size:11px; outline:none; text-transform:uppercase; ${pointerEvents}`;
     return `<div style="${containerStyle}"><input type="text" data-k="${key}" ${inputId ? `id="${inputId}"` : ''} value="${(value || '').replace(/^#/, '')}" title="Hex color code" ${disabledAttr} style="${inputStyle}" />${hexCopyBtn(key, disabled)}</div>`;
   };
 
@@ -9294,10 +9342,11 @@ function renderProps() {
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </h3>
-        <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.45; padding:10px 12px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:5px;">
+        <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.4; margin-bottom:10px;">
           <b style="color:var(--text-label);">Disabled for groups / multi-selection.</b><br>
           Isolate the group (double-click) to configure dynamic data on individual elements.
         </div>
+        <button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="width:100%;font-size:11px;">Data and Versions...</button>
       </div>`;
     } else if (el && el.isMask) {
       // Masks don't participate in dynamic data — show a permanent notice.
@@ -9308,10 +9357,11 @@ function renderProps() {
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </h3>
-        <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.45; padding:10px 12px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:5px;">
-          <b style="color:var(--accent-light);">Disabled while layer is a mask.</b><br>
+        <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.4; margin-bottom:10px;">
+          <b style="color:var(--text-accent);">Disabled while layer is a mask.</b><br>
           Right-click to toggle "Use as mask" off to bind data.
         </div>
+        <button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="width:100%;font-size:11px;">Data and Versions...</button>
       </div>`;
     } else if (el && dmFields.length) {
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
@@ -9347,9 +9397,9 @@ function renderProps() {
       });
       dynamicHtml += `<div class="prop-row" style="display:flex; flex-direction:column; gap:2px; margin-bottom:8px; width:100%;">${checkboxRows.join('')}</div>`;
       if (el.linkGroupId) {
-        dynamicHtml += `<div class="prop-row" style="font-size:10px;color:var(--accent-light);margin-top:4px;line-height:1.4;">Linked element — these toggles apply to every size in the link group.</div>`;
+        dynamicHtml += `<div class="prop-row" style="font-size:10px;color:var(--text-accent);margin-top:4px;line-height:1.4;font-weight:500;">Linked element — these toggles apply to every size in the link group.</div>`;
       }
-      dynamicHtml += `<button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="margin-top:10px;width:100%;font-size:11px;">Open Data &amp; Versions…</button>`;
+      dynamicHtml += `<button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="margin-top:10px;width:100%;font-size:11px;">Data and Versions...</button>`;
       dynamicHtml += `</div>`;
     } else {
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
@@ -9362,7 +9412,7 @@ function renderProps() {
         <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.4; margin-bottom:10px;">
           Connect layer properties (text, image, colors) to a spreadsheet to generate multiple version variants of this banner set automatically.
         </div>
-        <button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="width:100%;font-size:11px;">Open Data &amp; Versions…</button>
+        <button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="width:100%;font-size:11px;">Data and Versions...</button>
       </div>`;
     }
   }
@@ -9409,7 +9459,7 @@ function renderProps() {
         <div class="prop-row" style="margin-top:12px;">
           <label>Background Color</label>
           <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-            <button class="cp-trigger" data-k="canvas-bg" id="c-bg-color" title="Choose canvas background color" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(getCanvasBg(c, state.activeFrameId)) || '#000'}"></button>
+            <button class="cp-trigger" data-k="canvas-bg" id="c-bg-color" title="Choose canvas background color" style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border-light); cursor:pointer; background:${getBgStyle(getCanvasBg(c, state.activeFrameId)) || '#000'}"></button>
             <span style="display:none;">${hexInputBox('canvas-bg', getCanvasBg(c, state.activeFrameId), 'c-bg-color-hex')}</span>
             <div class="checkbox-row">
               <input type="checkbox" id="c-bg-per-frame" title="When ON, the background colour you pick applies to the current frame only (other frames keep their own colour). When OFF, every frame on this canvas unifies to the current colour." ${state.bgPerFrame === true ? 'checked' : ''} />
@@ -9467,7 +9517,7 @@ function renderProps() {
           </div>
           <div style="display:flex; gap:6px;">
             <button id="c-btn-dl-zip" title="Download this size as a zip package containing HTML and assets" style="
-              flex:1; padding:7px 0; border-radius:6px; border:1px solid #272c3a; cursor:pointer;
+              flex:1; padding:7px 0; border-radius:6px; border:1px solid var(--border-light); cursor:pointer;
               background:var(--bg-input); color:var(--text-main); font-size:11px; font-weight:500;
               font-family:inherit; display:flex; align-items:center; justify-content:center; gap:4px;
               transition:border-color 0.15s; white-space:nowrap;
@@ -9476,7 +9526,7 @@ function renderProps() {
               Download ZIP
             </button>
             <button id="c-btn-dl-img" title="Download a PNG snapshot of the current canvas" style="
-              flex:1; padding:7px 0; border-radius:6px; border:1px solid #272c3a; cursor:pointer;
+              flex:1; padding:7px 0; border-radius:6px; border:1px solid var(--border-light); cursor:pointer;
               background:var(--bg-input); color:var(--text-main); font-size:11px; font-weight:500;
               font-family:inherit; display:flex; align-items:center; justify-content:center; gap:4px;
               transition:border-color 0.15s; white-space:nowrap;
@@ -9635,7 +9685,7 @@ function renderProps() {
       if (isSinglePreview) {
         btnPreview.style.background = 'var(--bg-input)';
         btnPreview.style.color = 'var(--text-muted)';
-        btnPreview.style.border = '1px solid #272c3a';
+        btnPreview.style.border = '1px solid var(--border-light)';
         btnPreview.style.boxShadow = 'none';
         btnPreview.querySelector('polygon').setAttribute('fill', 'currentColor');
         btnPreview.innerHTML = btnPreview.innerHTML.replace('Preview', 'Exit Preview');
@@ -9666,7 +9716,7 @@ function renderProps() {
     const btnDlZip = document.getElementById('c-btn-dl-zip');
     if (btnDlZip) {
       btnDlZip.addEventListener('mouseenter', () => { btnDlZip.style.borderColor = 'var(--accent-base)'; });
-      btnDlZip.addEventListener('mouseleave', () => { btnDlZip.style.borderColor = '#272c3a'; });
+      btnDlZip.addEventListener('mouseleave', () => { btnDlZip.style.borderColor = 'var(--border-light)'; });
       btnDlZip.addEventListener('click', () => exportCanvasAsZip(c));
     }
 
@@ -9674,7 +9724,7 @@ function renderProps() {
     const btnDlImg = document.getElementById('c-btn-dl-img');
     if (btnDlImg) {
       btnDlImg.addEventListener('mouseenter', () => { btnDlImg.style.borderColor = 'var(--accent-base)'; });
-      btnDlImg.addEventListener('mouseleave', () => { btnDlImg.style.borderColor = '#272c3a'; });
+      btnDlImg.addEventListener('mouseleave', () => { btnDlImg.style.borderColor = 'var(--border-light)'; });
       btnDlImg.addEventListener('click', async () => {
         btnDlImg.textContent = 'Rendering…';
         btnDlImg.disabled = true;
@@ -9790,7 +9840,7 @@ function renderProps() {
     <div class="prop-row" ${isDisabled ? 'data-locked-field="true"' : ''}>
       <label>${label}</label>
       <div style="display:flex; gap:6px; align-items:center; ${isDisabled ? 'pointer-events:none;' : ''}">
-        <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} title="${triggerTitle}" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
+        <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} title="${triggerTitle}" style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border-light); cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
         ${hexInputBox(key, val, '', isDisabled)}
       </div>
     </div>`;
@@ -9807,13 +9857,13 @@ function renderProps() {
         <div class="prop-row" style="margin:0; flex:1; min-width:0;">
           <label>${label}</label>
           <div style="display:flex; gap:6px; align-items:center; ${isDisabled ? 'pointer-events:none;' : ''}">
-            <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} title="${triggerTitle}" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
+            <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} title="${triggerTitle}" style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border-light); cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
             ${hexInputBox(key, val, '', isDisabled)}
           </div>
         </div>
         <div class="prop-row" style="margin:0; width:78px; flex-shrink:0;">
           <label>Opacity %</label>
-          <input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" title="${opacityTitle}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
+          <input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" title="${opacityTitle}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
         </div>
       </div>
     </div>`;
@@ -9917,7 +9967,7 @@ function renderProps() {
         <div class="prop-row" style="margin:0; flex:1; min-width:0;">
           <label>BG Color</label>
           <div style="display:flex; gap:6px; align-items:center;">
-            <button class="cp-trigger" data-k="bg" ${!el.hasBg ? 'disabled' : ''} title="Choose text background color" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:${getBgStyle(el.bg || '#000000') || '#000'}"></button>
+            <button class="cp-trigger" data-k="bg" ${!el.hasBg ? 'disabled' : ''} title="Choose text background color" style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border-light); cursor:pointer; background:${getBgStyle(el.bg || '#000000') || '#000'}"></button>
             ${hexInputBox('bg', el.bg || '#000000', '', !el.hasBg)}
           </div>
         </div>
@@ -9927,16 +9977,16 @@ function renderProps() {
         </div>
         <div class="prop-row" style="margin:0; width:78px; flex-shrink:0;">
           <label for="prop-bg-opacity">Opacity %</label>
-          <input type="number" data-k="bgOpacity" id="prop-bg-opacity" value="${el.bgOpacity !== undefined ? el.bgOpacity : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Text background opacity percentage" />
+          <input type="number" data-k="bgOpacity" id="prop-bg-opacity" value="${el.bgOpacity !== undefined ? el.bgOpacity : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Text background opacity percentage" />
         </div>
       </div>
     </div>`);
 
     // L/R pad, T/B pad, Coverage — three compact columns on a single row.
     f.push(`<div class="prop-row" style="display:flex; gap:6px;">
-      <div style="flex:1; min-width:0;"><label for="prop-bg-pad-l">L/R Pad</label><input type="number" data-k="bgPadL" id="prop-bg-pad-l" value="${el.bgPadL !== undefined ? el.bgPadL : 8}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Left and Right padding in pixels" /></div>
-      <div style="flex:1; min-width:0;"><label for="prop-bg-pad-v">T/B Pad</label><input type="number" data-k="bgPadV" id="prop-bg-pad-v" value="${el.bgPadV !== undefined ? el.bgPadV : 4}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Top and Bottom padding in pixels" /></div>
-      <div style="flex:1; min-width:0;"><label for="prop-bg-coverage">Cover %</label><input type="number" data-k="bgCoverage" id="prop-bg-coverage" value="${el.bgCoverage !== undefined ? el.bgCoverage : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Width percentage of text background coverage" /></div>
+      <div style="flex:1; min-width:0;"><label for="prop-bg-pad-l">L/R Pad</label><input type="number" data-k="bgPadL" id="prop-bg-pad-l" value="${el.bgPadL !== undefined ? el.bgPadL : 8}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Left and Right padding in pixels" /></div>
+      <div style="flex:1; min-width:0;"><label for="prop-bg-pad-v">T/B Pad</label><input type="number" data-k="bgPadV" id="prop-bg-pad-v" value="${el.bgPadV !== undefined ? el.bgPadV : 4}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Top and Bottom padding in pixels" /></div>
+      <div style="flex:1; min-width:0;"><label for="prop-bg-coverage">Cover %</label><input type="number" data-k="bgCoverage" id="prop-bg-coverage" value="${el.bgCoverage !== undefined ? el.bgCoverage : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Width percentage of text background coverage" /></div>
     </div>`);
   }
 
@@ -9974,19 +10024,19 @@ function renderProps() {
           <div style="flex:1; min-width:0;">
             <label>Stroke Color</label>
             <div style="display:flex; gap:6px; align-items:center;">
-              <button class="cp-trigger" data-k="strokeColor" title="Choose stroke color" style="width:24px; height:24px; border-radius:4px; border:1px solid #272c3a; cursor:pointer; background:transparent; box-shadow:inset 0 0 0 4px ${getBgStyle(el.strokeColor || '#ffffff') || '#fff'};"></button>
+              <button class="cp-trigger" data-k="strokeColor" title="Choose stroke color" style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border-light); cursor:pointer; background:transparent; box-shadow:inset 0 0 0 4px ${getBgStyle(el.strokeColor || '#ffffff') || '#fff'};"></button>
               ${hexInputBox('strokeColor', el.strokeColor || '#ffffff')}
             </div>
           </div>
           <div style="width:78px; flex-shrink:0;">
             <label for="prop-stroke-opacity">Opacity %</label>
-            <input type="number" data-k="strokeOpacity" id="prop-stroke-opacity" value="${el.strokeOpacity !== undefined ? el.strokeOpacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke opacity percentage" />
+            <input type="number" data-k="strokeOpacity" id="prop-stroke-opacity" value="${el.strokeOpacity !== undefined ? el.strokeOpacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke opacity percentage" />
           </div>
         </div>`;
     h += `<div class="prop-row" style="display:flex; gap:6px;">
-          <div style="flex:1; min-width:0;"><label for="prop-stroke-width">Thickness</label><input type="number" data-k="strokeWidth" id="prop-stroke-width" value="${sw}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke thickness in pixels" /></div>
-          <div style="flex:1; min-width:0;"><label for="prop-stroke-dash">Dash</label><input type="number" data-k="strokeDash" id="prop-stroke-dash" value="${el.strokeDash !== undefined ? el.strokeDash : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke dash length in pixels" /></div>
-          <div style="flex:1; min-width:0;"><label for="prop-stroke-gap">Gap</label><input type="number" data-k="strokeGap" id="prop-stroke-gap" value="${el.strokeGap !== undefined ? el.strokeGap : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke gap length in pixels" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-stroke-width">Thickness</label><input type="number" data-k="strokeWidth" id="prop-stroke-width" value="${sw}" min="0" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke thickness in pixels" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-stroke-dash">Dash</label><input type="number" data-k="strokeDash" id="prop-stroke-dash" value="${el.strokeDash !== undefined ? el.strokeDash : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke dash length in pixels" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-stroke-gap">Gap</label><input type="number" data-k="strokeGap" id="prop-stroke-gap" value="${el.strokeGap !== undefined ? el.strokeGap : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke gap length in pixels" /></div>
         </div>`;
     return h;
   };
@@ -10040,9 +10090,9 @@ function renderProps() {
     f.push(col('color', 'Text color'));
     // Radius + Padding L/R + Padding T/B share a row.
     f.push(`<div class="prop-row" style="display:flex; gap:6px;">
-          <div style="flex:1; min-width:0;"><label for="prop-radius">Radius</label><input type="number" data-k="radius" id="prop-radius" value="${el.radius !== undefined ? el.radius : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button corner radius in pixels" /></div>
-          <div style="flex:1; min-width:0;"><label for="prop-padding-lr">Padding L/R</label><input type="number" data-k="paddingLR" id="prop-padding-lr" value="${el.paddingLR !== undefined ? el.paddingLR : 16}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button horizontal padding in pixels" /></div>
-          <div style="flex:1; min-width:0;"><label for="prop-padding-tb">Padding T/B</label><input type="number" data-k="paddingTB" id="prop-padding-tb" value="${el.paddingTB !== undefined ? el.paddingTB : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button vertical padding in pixels" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-radius">Radius</label><input type="number" data-k="radius" id="prop-radius" value="${el.radius !== undefined ? el.radius : 0}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button corner radius in pixels" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-padding-lr">Padding L/R</label><input type="number" data-k="paddingLR" id="prop-padding-lr" value="${el.paddingLR !== undefined ? el.paddingLR : 16}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button horizontal padding in pixels" /></div>
+          <div style="flex:1; min-width:0;"><label for="prop-padding-tb">Padding T/B</label><input type="number" data-k="paddingTB" id="prop-padding-tb" value="${el.paddingTB !== undefined ? el.paddingTB : 0}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button vertical padding in pixels" /></div>
         </div>`);
     f.push(`<div class="prop-row" style="display:flex; gap:16px;">
           <div class="checkbox-row">
@@ -10107,7 +10157,7 @@ function renderProps() {
           </div>`;
       f.push(`<div class="prop-row">
         <label>Preview</label>
-        <div class="img-preview-container" style="position:relative; width:100%; border-radius:4px; overflow:hidden; border:1px solid #272c3a; background:#12131a; cursor:${isRmitLogo ? 'default' : 'pointer'};">
+        <div class="img-preview-container" style="position:relative; width:100%; border-radius:4px; overflow:hidden; border:1px solid var(--border-light); background:#12131a; cursor:${isRmitLogo ? 'default' : 'pointer'};">
           <img src="${src}" style="display:block; width:100%; max-height:160px; object-fit:contain; pointer-events:none;" />
           ${overlayHtml}
         </div>
@@ -10117,7 +10167,7 @@ function renderProps() {
         const compressBtnStyle = 'background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); border:none; cursor:pointer;';
         const isCropped = !!el.cropOriginalAssetId;
         const cropBtnStyle = isCropped
-          ? 'background:rgba(124,92,255,0.15); color:var(--accent-light); border:1px solid rgba(124,92,255,0.4); cursor:pointer;'
+          ? 'background:var(--accent-dark); color:var(--text-main); border:1px solid var(--accent-base); cursor:pointer;'
           : 'background:var(--bg-input); color:var(--text-main); border:1px solid var(--border-light); cursor:pointer;';
         const cropTitle = isCropped
           ? 'Re-crop / re-rotate. Reopens the crop dialogue with the original (uncropped) image and the current crop region preselected.'
@@ -10137,7 +10187,7 @@ function renderProps() {
     f.push(`<div class="prop-row" style="display:flex; gap:6px;">
       <div style="flex:1; min-width:0;">
         <label for="prop-object-fit">Fit</label>
-        <select data-k="objectFit" id="prop-object-fit" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="How the image fits within its bounding box">
+        <select data-k="objectFit" id="prop-object-fit" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="How the image fits within its bounding box">
           <option value="cover" ${el.objectFit === 'cover' ? 'selected' : ''}>Fill</option>
           <option value="contain" ${el.objectFit === 'contain' || !el.objectFit ? 'selected' : ''}>Fit</option>
           <option value="fill" ${el.objectFit === 'fill' ? 'selected' : ''}>Stretch</option>
@@ -10145,7 +10195,7 @@ function renderProps() {
       </div>
       <div style="flex:1; min-width:0;">
         <label for="prop-opacity">Opacity %</label>
-        <input type="number" data-k="opacity" id="prop-opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Opacity percentage" />
+        <input type="number" data-k="opacity" id="prop-opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Opacity percentage" />
       </div>
     </div>`);
 
@@ -10266,7 +10316,7 @@ function renderProps() {
             </div>
             <div style="width:80px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
               <label style="white-space:nowrap; text-align:right;">Zoom From (%)</label>
-              <input type="number" min="0" max="500" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : (el.animType === 'pop-in' ? 80 : (el.animType === 'zoom-in' ? 110 : 80))}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation zoom starting scale percentage" />
+              <input type="number" min="0" max="500" data-k="zoomFrom" value="${el.zoomFrom !== undefined ? el.zoomFrom : (el.animType === 'pop-in' ? 80 : (el.animType === 'zoom-in' ? 110 : 80))}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation zoom starting scale percentage" />
             </div>
           </div>
         </div>
@@ -10303,11 +10353,11 @@ function renderProps() {
           <div style="display: grid; grid-template-columns: 3.5fr 6.5fr; gap: 6px;">
             <div style="display:flex; flex-direction:column; gap:4px;">
               <label>Dist. (px)</label>
-              <input type="number" min="1" max="500" data-k="animDistance" value="${el.animDistance !== undefined ? el.animDistance : (el.animType.startsWith('slide-') ? 20 : 100)}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation slide distance in pixels" />
+              <input type="number" min="1" max="500" data-k="animDistance" value="${el.animDistance !== undefined ? el.animDistance : (el.animType.startsWith('slide-') ? 20 : 100)}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation slide distance in pixels" />
             </div>
             <div style="display:flex; flex-direction:column; gap:4px;">
               <label>Rot. Offset (°)</label>
-              <input type="number" data-k="animRotateOffset" value="${el.animRotateOffset !== undefined ? el.animRotateOffset : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Entrance animation rotation offset in degrees" />
+              <input type="number" data-k="animRotateOffset" value="${el.animRotateOffset !== undefined ? el.animRotateOffset : 0}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Entrance animation rotation offset in degrees" />
             </div>
           </div>
         </div>
@@ -10347,7 +10397,7 @@ function renderProps() {
             </div>
             <div style="width:80px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
               <label style="white-space:nowrap; text-align:right;">Angle (°)</label>
-              <input type="number" data-k="animAngle" value="${el.animAngle !== undefined ? el.animAngle : 0}" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none; text-align:right;" title="Split reveal angle in degrees" />
+              <input type="number" data-k="animAngle" value="${el.animAngle !== undefined ? el.animAngle : 0}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none; text-align:right;" title="Split reveal angle in degrees" />
             </div>
           </div>
         </div>
@@ -11829,13 +11879,13 @@ document.getElementById('btn-add-brand')?.addEventListener('click', (e) => {
     popup = document.createElement('div');
     popup.id = 'brand-popup';
     popup.style.position = 'absolute';
-    popup.style.background = '#181b22';
-    popup.style.border = '1px solid #272c3a';
+    popup.style.background = 'var(--bg-panel)';
+    popup.style.border = '1px solid var(--border-light)';
     popup.style.borderRadius = '4px';
     popup.style.padding = '4px 0';
     popup.style.zIndex = '10000';
     popup.style.width = '200px';
-    popup.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+    popup.style.boxShadow = '0 8px 24px var(--shadow-medium)';
     
     const items = [
       { label: 'CRICOS', action: () => addBrandElement('cricos') },
@@ -11848,13 +11898,8 @@ document.getElementById('btn-add-brand')?.addEventListener('click', (e) => {
     
     items.forEach(item => {
       const btn = document.createElement('div');
+      btn.className = 'dropdown-item';
       btn.textContent = item.label;
-      btn.style.padding = '8px 16px';
-      btn.style.cursor = 'pointer';
-      btn.style.fontSize = '12px';
-      btn.style.color = '#c7ccdb';
-      btn.addEventListener('mouseenter', () => btn.style.background = '#272c3a');
-      btn.addEventListener('mouseleave', () => btn.style.background = 'transparent');
       btn.addEventListener('click', () => {
         item.action();
         popup.remove();
@@ -13736,38 +13781,38 @@ function openNewProjectDialog() {
             <input type="checkbox" id="np-use-startup-template" ${localStorage.getItem('adflow-startup-mode') !== 'fresh' ? 'checked' : ''} style="margin:0;" />
             <span>Use pre-defined startup template</span>
           </label>
-          <select id="np-startup-template-select" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
+          <select id="np-startup-template-select" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
             <!-- populated dynamically -->
           </select>
         </div>
 
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project name</label>
-          <input type="text" id="np-name" value="RMIT_ad" title="Enter the name for the new project" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="text" id="np-name" value="RMIT_ad" title="Enter the name for the new project" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
 
         <div id="np-custom-config-container" style="display:flex; flex-direction:column; gap:16px; transition: opacity 0.2s;">
           <div>
             <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
-            <input type="url" id="np-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" title="Default exit/landing page URL for all canvases" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+            <input type="url" id="np-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" title="Default exit/landing page URL for all canvases" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
           </div>
           <div>
             <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:flex; justify-content:space-between; margin-bottom:6px;">
               <span>Canvases</span>
-              <span id="np-canvas-toggle" style="cursor:pointer; color:var(--accent-light); text-transform:none; letter-spacing:0;" title="Select or deselect all preset canvas sizes">Toggle all</span>
+              <span id="np-canvas-toggle" style="cursor:pointer; color:var(--text-accent); text-transform:none; letter-spacing:0;" title="Select or deselect all preset canvas sizes">Toggle all</span>
             </label>
-            <div style="border:1px solid #272c3a; border-radius:6px; padding:4px;">${presetRows}</div>
+            <div style="border:1px solid var(--border-light); border-radius:6px; padding:4px;">${presetRows}</div>
           </div>
           <div style="display:flex; gap:14px;">
             <div style="flex:1;">
               <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
-              <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / Ads Validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+              <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / Ads Validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
             </div>
             <div style="flex:1;">
               <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Default background</label>
               <div style="display:flex; align-items:center; gap:8px;">
-                <input type="color" id="np-bg" value="${(state.defaultBg || '#0f172a')}" title="Choose default canvas background color" style="width:36px; height:32px; padding:0; border:1px solid #272c3a; border-radius:4px; background:none; cursor:pointer;" />
-                <input type="text" id="np-bg-hex" value="${(state.defaultBg || '#0f172a').replace(/^#/, '').toUpperCase()}" maxlength="6" title="Hex color code for canvas background" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; text-transform:uppercase;" />
+                <input type="color" id="np-bg" value="${(state.defaultBg || '#0f172a')}" title="Choose default canvas background color" style="width:36px; height:32px; padding:0; border:1px solid var(--border-light); border-radius:4px; background:none; cursor:pointer;" />
+                <input type="text" id="np-bg-hex" value="${(state.defaultBg || '#0f172a').replace(/^#/, '').toUpperCase()}" maxlength="6" title="Hex color code for canvas background" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; text-transform:uppercase;" />
               </div>
             </div>
           </div>
@@ -13923,19 +13968,19 @@ function openProjectSettingsDialog() {
       <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project Name</label>
-          <input type="text" id="ps-name" value="${(state.projectName || 'RMIT_ad').replace(/"/g, '&quot;')}" title="Enter the name for the project" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="text" id="ps-name" value="${(state.projectName || 'RMIT_ad').replace(/"/g, '&quot;')}" title="Enter the name for the project" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
-          <input type="url" id="ps-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" title="Default exit/landing page URL for all canvases" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="url" id="ps-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" title="Default exit/landing page URL for all canvases" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
-          <input type="number" id="ps-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / Ads Validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid #272c3a; color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="number" id="ps-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / Ads Validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
         <div style="margin-top:4px;">
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Save &amp; Sync Status</label>
-          <div style="background:var(--bg-body, #0b0c0f); border:1px solid #272c3a; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+          <div style="background:var(--bg-body, #0b0c0f); border:1px solid var(--border-light); border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px;">
             <div style="display:flex; align-items:flex-start; gap:8px;">
               <div style="margin-top:2px;">
                 <svg class="save-icon-status local ${localConf.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; flex-shrink:0;">
@@ -13948,7 +13993,7 @@ function openProjectSettingsDialog() {
                 <span style="font-size:10px; color:var(--text-muted); font-style:italic;">Last Saved: ${_formatSaveTime(_lastLocalSaveTime)}</span>
               </div>
             </div>
-            <div style="height:1px; background:#272c3a; margin:4px 0;"></div>
+            <div style="height:1px; background:var(--border-light); margin:4px 0;"></div>
             <div style="display:flex; align-items:flex-start; gap:8px;">
               <div style="margin-top:2px;">
                 <svg class="save-icon-status cloud ${cloudConf.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; flex-shrink:0;">
@@ -15240,7 +15285,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
   const body = `
     <style>
       .shortcuts-table { width: 100%; font-size: 12px; line-height: 1.4; border-collapse: collapse; }
-      .shortcuts-table td { padding: 4px 0; border-bottom: 1px solid #1f2330; }
+      .shortcuts-table td { padding: 4px 0; border-bottom: 1px solid var(--border-light); }
       .shortcuts-table tr:last-child td { border-bottom: none; }
       .shortcuts-table b { color: #fff; font-weight: 500; }
     </style>
@@ -15345,7 +15390,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
         <p style="margin: 0 0 16px 0;">This project is my attempt at creating the HTML5 ad tool I always wanted: fast, lightweight, visual, export-friendly, standards-compatible, and without the feeling that the software is actively fighting me.</p>
         <p style="margin: 0 0 16px 0;">Also, my teammate Eden, who has suffered through years of banner production alongside me, may finally have his curse lifted.</p>
         <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
-        <div style="margin-top:24px; padding-top:16px; border-top:1px solid #1f2330; display:flex; justify-content:space-between; align-items:center;">
+        <div style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="font-size:11px; color:var(--text-muted);">${currentVersion}</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
@@ -16329,7 +16374,7 @@ function openWebpCompressionModal(el) {
             <div style="font-size:11.5px; font-weight:600; color:var(--text-bright); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(el.name || el.customName || 'Unnamed Image')}</div>
             <div style="font-size:10px; color:var(--text-muted); display:grid; grid-template-columns:auto 1fr auto 1fr; gap:4px 16px; align-items:center;">
               <span>Original size:</span><span id="webp-original-size" style="font-weight:600; color:var(--text-bright);">Calculating...</span>
-              <span>Compressed size:</span><span id="webp-compressed-size" style="font-weight:600; color:var(--accent-light);">Calculating...</span>
+              <span>Compressed size:</span><span id="webp-compressed-size" style="font-weight:600; color:var(--text-accent);">Calculating...</span>
               <span>Est. Ad ZIP size:</span><span id="webp-est-ad-size" style="font-weight:700; color:var(--text-bright);">Calculating...</span>
               <span>Ad size limit:</span><span style="font-weight:600; color:var(--text-bright);">${limitKb} KB</span>
             </div>
@@ -16382,7 +16427,7 @@ function openWebpCompressionModal(el) {
             </div>
             <div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:700; color:var(--text-bright);">
               <span>Est. Ad ZIP Size:</span>
-              <span id="webp-breakdown-total" style="color:var(--accent-light);">0.0 KB</span>
+              <span id="webp-breakdown-total" style="color:var(--accent-base);">0.0 KB</span>
             </div>
           </div>
         </div>
@@ -17440,7 +17485,7 @@ document.addEventListener('contextmenu', (e) => {
         const firstGroup = state.linkGroups[groupIds[0]];
         const isLive = firstGroup?.liveLink === true;
         html += `<div class="ctx-item" id="ctx-link-toggle-live">${isLive ? '✓ Live Linking' : 'Live Linking'}</div>`;
-        html += `<div class="ctx-item" id="ctx-link-push" style="color:var(--accent-light); white-space:nowrap;">Push Changes to Group</div>`;
+        html += `<div class="ctx-item highlight" id="ctx-link-push" style="white-space:nowrap;">Push Changes to Group</div>`;
       }
       html += `<div class="ctx-item has-submenu">Link Group
         <div class="ctx-submenu">`;
@@ -17476,7 +17521,7 @@ document.addEventListener('contextmenu', (e) => {
       const beneath = findImageBeneath(c, singleEl);
       html += `<div class="ctx-divider"></div>`;
       if (singleEl.isMask) {
-        html += `<div class="ctx-item" id="ctx-mask-off" style="color:var(--accent-light);">✓ Use as mask</div>`;
+        html += `<div class="ctx-item highlight" id="ctx-mask-off">✓ Use as mask</div>`;
       } else if (beneath) {
         html += `<div class="ctx-item" id="ctx-mask-on">Use as mask</div>`;
       } else {
@@ -17975,7 +18020,7 @@ function initCollapsiblePanels() {
     setChevronPoints(isCollapsed);
 
     header.addEventListener('click', (e) => {
-      if (e.target.closest('.panel-fullscreen-btn') || e.target.closest('.fav-filter-btn')) return;
+      if (e.target.closest('.panel-fullscreen-btn') || e.target.closest('.fav-filter-btn') || e.target.closest('#btn-add-canvas')) return;
       const currentlyCollapsed = parentSection.classList.toggle('collapsed');
       localStorage.setItem(storageKey, currentlyCollapsed ? 'true' : 'false');
       setChevronPoints(currentlyCollapsed);
@@ -18005,7 +18050,7 @@ function initCollapsiblePanels() {
           if (!parentSection.classList.contains('full-mode')) {
             fsBtn.style.color = 'var(--text-muted)';
           } else {
-            fsBtn.style.color = 'var(--accent-light)';
+            fsBtn.style.color = 'var(--text-accent)';
           }
         });
         
@@ -18013,7 +18058,7 @@ function initCollapsiblePanels() {
           const isFull = parentSection.classList.contains('full-mode');
           if (isFull) {
             fsBtn.title = 'Exit Full Mode';
-            fsBtn.style.color = 'var(--accent-light)';
+            fsBtn.style.color = 'var(--text-accent)';
             fsBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v3a2 2 0 0 1-2 2H4M15 4v3a2 2 0 0 0 2 2h3M15 20v-3a2 2 0 0 1 2-2h3M9 20v-3a2 2 0 0 0-2-2H4"/></svg>`;
           } else {
             fsBtn.title = 'Toggle Full Mode';

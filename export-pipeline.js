@@ -1510,22 +1510,22 @@ function openExportModal() {
 
     return `
       <tr data-cid="${c.id}">
-        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;"><input type="checkbox" class="export-chk" data-cid="${c.id}" checked title="Include this canvas size in the export" /></td>
-        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.name || (c.width + '×' + c.height)}</td>
-        <td style="padding: 6px 0; border-bottom: 1px solid #1f2330;">${c.width}×${c.height}</td>
-        <td class="exp-weight" style="padding: 6px 0; border-bottom: 1px solid #1f2330; color:${kb !== 'calc...' && parseFloat(kb) > 150 ? '#ef4444' : '#c7ccdb'}">${kb} ${kb === 'calc...' ? '' : 'KB'}</td>
-        <td class="exp-clicktag" style="padding: 6px 0; border-bottom: 1px solid #1f2330; max-width: 180px;">
+        <td style="padding: 6px 0; border-bottom: 1px solid var(--border-light);"><input type="checkbox" class="export-chk" data-cid="${c.id}" checked title="Include this canvas size in the export" /></td>
+        <td style="padding: 6px 0; border-bottom: 1px solid var(--border-light);">${c.name || (c.width + '×' + c.height)}</td>
+        <td style="padding: 6px 0; border-bottom: 1px solid var(--border-light);">${c.width}×${c.height}</td>
+        <td class="exp-weight" style="padding: 6px 0; border-bottom: 1px solid var(--border-light); color:${kb !== 'calc...' && parseFloat(kb) > 150 ? '#ef4444' : '#c7ccdb'}">${kb} ${kb === 'calc...' ? '' : 'KB'}</td>
+        <td class="exp-clicktag" style="padding: 6px 0; border-bottom: 1px solid var(--border-light); max-width: 180px;">
           <div style="font-family:monospace; font-size:10.5px; overflow-x:auto; white-space:nowrap; scrollbar-width:none; -ms-overflow-style:none;">
             <a ${ct && ct !== '—' && ct !== 'No clickTag' ? `href="${ct.startsWith('http') ? ct : 'https://' + ct}" target="_blank" style="color:var(--accent-light, #a78bfa); text-decoration:none; cursor:pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"` : `style="color:var(--text-label); text-decoration:none;"`}>${ct}</a>
           </div>
         </td>
-        <td class="exp-td-specs" style="padding: 6px 0; border-bottom: 1px solid #1f2330; text-align:center;">
+        <td class="exp-td-specs" style="padding: 6px 0; border-bottom: 1px solid var(--border-light); text-align:center;">
           <span class="exp-val-badge" data-tab="specs" data-cid="${c.id}" style="cursor:pointer;" title="${specsTitle}">${specsIcon}</span>
         </td>
-        <td class="exp-td-a11y" style="padding: 6px 0; border-bottom: 1px solid #1f2330; text-align:center;">
+        <td class="exp-td-a11y" style="padding: 6px 0; border-bottom: 1px solid var(--border-light); text-align:center;">
           <span class="exp-val-badge" data-tab="a11y" data-cid="${c.id}" style="cursor:pointer;" title="${a11yTitle}">${a11yIcon}</span>
         </td>
-        <td class="exp-td-brand" style="padding: 6px 0; border-bottom: 1px solid #1f2330; text-align:center;">
+        <td class="exp-td-brand" style="padding: 6px 0; border-bottom: 1px solid var(--border-light); text-align:center;">
           <span class="exp-val-badge" data-tab="brand" data-cid="${c.id}" style="cursor:pointer;" title="${brandTitle}">${brandIcon}</span>
         </td>
       </tr>
@@ -1591,14 +1591,14 @@ function openExportModal() {
     <table style="width:100%; text-align:left; border-collapse:collapse; font-size:13px; color:var(--text-main);">
       <thead>
         <tr>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;width:40px;"><input type="checkbox" id="chk-all" checked title="Select/deselect all canvas sizes" /></th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:180px;">Name</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:80px;">Size</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:95px;">Est. Weight</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;">Click Tag</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:110px;text-align:center;">Ad Compliance</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:110px;text-align:center;">Accessibility</th>
-          <th style="padding-bottom:8px;border-bottom:1px solid #1f2330;color:var(--text-label);font-weight:600;width:90px;text-align:center;">Branding</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid var(--border-light);width:40px;"><input type="checkbox" id="chk-all" checked title="Select/deselect all canvas sizes" /></th>
+          <th style="padding-bottom:8px;border-bottom:1px solid var(--border-light);color:var(--text-label);font-weight:600;width:180px;">Name</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid var(--border-light);color:var(--text-label);font-weight:600;width:80px;">Size</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid var(--border-light);color:var(--text-label);font-weight:600;width:95px;">Est. Weight</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid var(--border-light);color:var(--text-label);font-weight:600;">Click Tag</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid var(--border-light);color:var(--text-label);font-weight:600;width:110px;text-align:center;">Ad Compliance</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid var(--border-light);color:var(--text-label);font-weight:600;width:110px;text-align:center;">Accessibility</th>
+          <th style="padding-bottom:8px;border-bottom:1px solid var(--border-light);color:var(--text-label);font-weight:600;width:90px;text-align:center;">Branding</th>
         </tr>
       </thead>
       <tbody>${tbody}</tbody>
@@ -1606,52 +1606,16 @@ function openExportModal() {
 
     <div style="margin-top: 16px; display: flex; gap: 8px; align-items:center; justify-content:space-between;">
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn" id="btn-export-open-validator" style="
-          background: linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(124, 92, 255, 0.05));
-          border: 1px solid rgba(124, 92, 255, 0.35);
-          color: var(--accent-light);
-          font-weight: 600;
-          padding: 6px 12px;
-          font-size: 12px;
-          cursor: pointer;
-          border-radius: 4px;
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-        " title="Open Ads Validator">
+        <button class="btn btn-val-purple-export" id="btn-export-open-validator" title="Open Validator and Audit">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          Ads Validator
+          Validator and Audit
         </button>
         ${hasVersions ? `
-        <button class="btn" id="btn-export-all-versions-validator" style="
-          background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05));
-          border: 1px solid rgba(20, 184, 166, 0.35);
-          color: #2dd4bf;
-          font-weight: 600;
-          padding: 6px 12px;
-          font-size: 12px;
-          cursor: pointer;
-          border-radius: 4px;
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-        " title="Batch-validate compliance, accessibility, and branding across all versions">
+        <button class="btn btn-val-teal-export" id="btn-export-all-versions-validator" title="Batch-validate compliance, accessibility, and branding across all versions">
           All Versions Validator
         </button>
         ` : ''}
-        <button class="btn" id="btn-export-batch-webp" style="
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
-          border: 1px solid rgba(16, 185, 129, 0.35);
-          color: #34d399;
-          font-weight: 600;
-          padding: 6px 12px;
-          font-size: 12px;
-          cursor: pointer;
-          border-radius: 4px;
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-        " title="Compress image assets of oversized canvases to WebP format across selected canvases and versions">
+        <button class="btn btn-val-green-export" id="btn-export-batch-webp" title="Compress image assets of oversized canvases to WebP format across selected canvases and versions">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
@@ -2659,7 +2623,7 @@ function runAllVersionsValidator() {
         <div id="batch-val-progress-bar" style="width:0%; height:100%; background:linear-gradient(135deg, #14b8a6, #0d9488); border-radius:4px; transition: width 0.15s ease;"></div>
       </div>
       
-      <div id="batch-val-status-text" style="font-size:13px; font-weight:500; color:var(--accent-light);">Starting audit...</div>
+      <div id="batch-val-status-text" style="font-size:13px; font-weight:500; color:var(--text-accent);">Starting audit...</div>
       
       <div style="margin-top:12px;">
         <button class="btn" id="batch-val-cancel" style="padding:6px 16px; font-size:12px; cursor:pointer;">Cancel Audit</button>
@@ -2873,7 +2837,7 @@ function showBatchValidatorResults(problems) {
           <h3 style="margin:0; font-size:15px; font-weight:600; color:#ef4444; display:flex; align-items:center; gap:6px;">
             <span>⚠️</span> Issues Detected in ${problems.length} Canvas-Version Combinations
           </h3>
-          <span style="font-size:11.5px; color:var(--text-muted); display:block; margin-top:4px;">The following combinations failed verification. Click the "Fix" button to automatically load that version/canvas in the editor and open the Ads Validator.</span>
+          <span style="font-size:11.5px; color:var(--text-muted); display:block; margin-top:4px;">The following combinations failed verification. Click the "Fix" button to automatically load that version/canvas in the editor and open the Validator and Audit.</span>
         </div>
         <button class="btn" id="btn-batch-rerun" style="
           background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05));
