@@ -994,6 +994,9 @@ async function autoLinkElements(forceSelectedOnly = false) {
 
       set.forEach(el => {
         if (el.linkGroupId !== gid) {
+          if (typeof dmMigrateSlotKey === 'function') {
+            dmMigrateSlotKey(el, gid);
+          }
           el.linkGroupId = gid;
           countLinked++;
         }
@@ -1249,6 +1252,9 @@ function createAndLinkGroup(name) {
   // Assign selected elements to this group
   c.elements.forEach(el => {
     if (state.layerSelection.includes(el.id)) {
+      if (typeof dmMigrateSlotKey === 'function') {
+        dmMigrateSlotKey(el, gid);
+      }
       el.linkGroupId = gid;
     }
   });
@@ -1263,6 +1269,9 @@ function linkSelectionToGroup(gid) {
 
   c.elements.forEach(el => {
     if (state.layerSelection.includes(el.id)) {
+      if (typeof dmMigrateSlotKey === 'function') {
+        dmMigrateSlotKey(el, gid);
+      }
       el.linkGroupId = gid;
     }
   });
@@ -1326,6 +1335,9 @@ function autoAddAndLink(srcEl, skipNotify = false) {
       syncProperties: defaultSync
     };
     
+    if (typeof dmMigrateSlotKey === 'function') {
+      dmMigrateSlotKey(srcEl, gid);
+    }
     srcEl.linkGroupId = gid;
   }
 

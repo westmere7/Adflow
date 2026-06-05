@@ -218,6 +218,27 @@ function dmToggleField(el, field, on) {
   }
 }
 
+// Migrate slot mapping from an element's old slot key to its new linkGroupId slot key
+function dmMigrateSlotKey(el, newGid) {
+  if (!el || !newGid) return;
+  const oldSlotKey = dmSlotKey(el);
+  const newSlotKey = 'g:' + newGid;
+  if (oldSlotKey === newSlotKey) return;
+
+  const dm = state.dataMerge;
+  if (dm && dm.mappings) {
+    const fields = dmFieldsForType(el.type);
+    fields.forEach(field => {
+      const oldKey = oldSlotKey + '::' + field;
+      const newKey = newSlotKey + '::' + field;
+      if (dm.mappings[oldKey]) {
+        dm.mappings[newKey] = dm.mappings[oldKey];
+        delete dm.mappings[oldKey];
+      }
+    });
+  }
+}
+
 // Collapse every dynamic-flagged element into a list of slots (group = one slot).
 function dmDiscoverSlots() {
   const slots = []; const seen = {};
@@ -911,50 +932,55 @@ function dmWirePanel(bg) {
   // Render slot mapping custom select dropdowns
   all('.dm-map-container').forEach(container => {
     const key = container.dataset.mapkey;
-    const activeVal = state.dataMerge.mappings[key] || '';
     const options = [{ label: '— none —', val: '' }].concat(state.dataMerge.columns.map(c => ({ label: c, val: c })));
 
-    dmRenderCustomSelect(container, options, activeVal, (val) => {
-      if (val) state.dataMerge.mappings[key] = val;
-      else delete state.dataMerge.mappings[key];
-      pushHistory();
-      render();
-      highlightColumn(val);
-    });
+    const updateSelect = () => {
+      const activeVal = state.dataMerge.mappings[key] || '';
+      dmRenderCustomSelect(container, options, activeVal, (val) => {
+        if (val) state.dataMerge.mappings[key] = val;
+        else delete state.dataMerge.mappings[key];
+        pushHistory();
+        render();
+        highlightColumn(val);
+        updateSelect();
+      });
 
-    const trigger = container.querySelector('.custom-select-trigger');
-    const dropdown = container.querySelector('.custom-select-dropdown');
+      const trigger = container.querySelector('.custom-select-trigger');
+      const dropdown = container.querySelector('.custom-select-dropdown');
 
-    // Hover or focus the trigger: highlight the CURRENT selected value
-    trigger.addEventListener('mouseenter', () => {
-      highlightColumn(state.dataMerge.mappings[key]);
-    });
-    trigger.addEventListener('mouseleave', () => {
-      if (dropdown.style.display !== 'block') {
-        highlightColumn(null);
-      }
-    });
-
-    trigger.addEventListener('focus', () => {
-      highlightColumn(state.dataMerge.mappings[key]);
-    });
-    trigger.addEventListener('blur', () => {
-      setTimeout(() => {
+      // Hover or focus the trigger: highlight the CURRENT selected value
+      trigger.addEventListener('mouseenter', () => {
+        highlightColumn(state.dataMerge.mappings[key]);
+      });
+      trigger.addEventListener('mouseleave', () => {
         if (dropdown.style.display !== 'block') {
           highlightColumn(null);
         }
-      }, 150);
-    });
-
-    // Hovering the items in the dropdown list
-    container.querySelectorAll('.custom-select-item').forEach(item => {
-      item.addEventListener('mouseenter', () => {
-        highlightColumn(item.dataset.value);
       });
-      item.addEventListener('mouseleave', () => {
+
+      trigger.addEventListener('focus', () => {
         highlightColumn(state.dataMerge.mappings[key]);
       });
-    });
+      trigger.addEventListener('blur', () => {
+        setTimeout(() => {
+          if (dropdown.style.display !== 'block') {
+            highlightColumn(null);
+          }
+        }, 150);
+      });
+
+      // Hovering the items in the dropdown list
+      container.querySelectorAll('.custom-select-item').forEach(item => {
+        item.addEventListener('mouseenter', () => {
+          highlightColumn(item.dataset.value);
+        });
+        item.addEventListener('mouseleave', () => {
+          highlightColumn(state.dataMerge.mappings[key]);
+        });
+      });
+    };
+
+    updateSelect();
   });
 
   // Clear highlight when clicking outside any mapping dropdown

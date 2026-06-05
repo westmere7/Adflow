@@ -1977,6 +1977,9 @@ function wireLinkGroup(srcEl, target, role, cat) {
       syncProperties: syncProps,
       liveLink:       isLiveLinkActive
     };
+    if (typeof dmMigrateSlotKey === 'function') {
+      dmMigrateSlotKey(srcEl, gid);
+    }
     srcEl.linkGroupId = gid;
   } else {
     state.linkGroups[gid].syncProperties = syncProps;
