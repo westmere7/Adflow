@@ -205,13 +205,29 @@ function dmDiscoverSlots() {
     if (!fields.length) return;
     const sk = dmSlotKey(el);
     if (!seen[sk]) {
-      seen[sk] = { slotKey: sk, type: el.type, name: dmSlotName(el), fields: new Set(), count: 0, grouped: !!el.linkGroupId };
+      let frameLabel = 'Frame 1';
+      if (el.persistent === 'top') frameLabel = 'Always Top';
+      else if (el.persistent === 'bottom') frameLabel = 'Always Bottom';
+      else {
+        const idx = state.frames.findIndex(f => f.id === el.frameId);
+        if (idx > -1) frameLabel = `Frame ${idx + 1}`;
+      }
+
+      seen[sk] = {
+        slotKey: sk,
+        type: el.type,
+        name: dmSlotName(el),
+        fields: new Set(),
+        frameLabel: frameLabel,
+        grouped: !!el.linkGroupId
+      };
       slots.push(seen[sk]);
     }
     fields.forEach(f => seen[sk].fields.add(f));
-    seen[sk].count++;
   }));
-  slots.forEach(s => { s.fields = Array.from(s.fields); });
+  slots.forEach(s => {
+    s.fields = Array.from(s.fields);
+  });
   return slots;
 }
 
@@ -668,15 +684,27 @@ function dmRenderPanel(bg) {
   slots.forEach(s => s.fields.forEach(field => {
     const key = s.slotKey + '::' + field;
     const linkIcon = s.grouped ? `<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-left:4px; color:var(--text-accent);"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>` : '';
+    const frameLabel = s.frameLabel;
+    const typeLabel = DM_FIELD_LABEL[field] || field;
     mapRows += `
       <div style="display:flex; flex-direction:column; gap:4px;">
-        <div style="font-size:11px; color:var(--text-main);"><b>${dmEsc(s.name)}</b>${linkIcon} <span style="color:var(--text-muted); font-weight:400;">· ${DM_FIELD_LABEL[field] || field}${s.grouped ? ` · ${s.count} sizes` : ''}</span></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; line-height:1.4;">
+          <div style="color:var(--text-main); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;" title="${dmEsc(s.name)}">
+            ${dmEsc(s.name)}${linkIcon}
+          </div>
+          <div style="color:var(--text-muted); font-weight:400; font-size:10px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px;" title="${dmEsc(frameLabel)} · ${dmEsc(typeLabel)}">
+            ${dmEsc(frameLabel)} · ${dmEsc(typeLabel)}
+          </div>
+        </div>
         <div class="dm-map-container" data-mapkey="${key}" style="position:relative;"></div>
       </div>`;
   }));
   mapRows += `
     <div style="display:flex; flex-direction:column; gap:4px;">
-      <div style="font-size:11px; color:var(--text-main);"><b>ClickTag</b> <span style="color:var(--text-muted); font-weight:400;">· exit URL</span></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; line-height:1.4;">
+        <div style="color:var(--text-main); font-weight:700;"><b>ClickTag</b></div>
+        <div style="color:var(--text-muted); font-weight:400; font-size:10px; text-align:right;">All frames · exit URL</div>
+      </div>
       <div class="dm-map-container" data-mapkey="clicktag::url" style="position:relative;"></div>
     </div>`;
 
@@ -762,7 +790,7 @@ function dmRenderPanel(bg) {
         <button class="btn primary" id="dm-export-versions" ${btnDisabled} style="padding:8px; width:100%;">${btnLabel}</button>
 
         <div>
-          <h3 style="font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin:0 0 8px; font-weight:600;">Column → Slot Mapping</h3>
+          <h3 style="font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin:0 0 8px; font-weight:600;">Dynamic Slots</h3>
           <div style="display:flex; flex-direction:column; gap:10px;">
             ${slotHint}
             ${mapRows}
