@@ -1761,6 +1761,19 @@ body.theme-rmit-navy {
       background: rgba(0, 0, 0, 0.05);
     }
 
+    body.theme-rmit .layer.selected,
+    body.theme-nordic-light .layer.selected,
+    body.theme-amber-light .layer.selected,
+    body.theme-sage-light .layer.selected,
+    body.theme-light .layer.selected,
+    body.theme-rmit .link-group-row.selected,
+    body.theme-nordic-light .link-group-row.selected,
+    body.theme-amber-light .link-group-row.selected,
+    body.theme-sage-light .link-group-row.selected,
+    body.theme-light .link-group-row.selected {
+      background: var(--accent-light);
+    }
+
     .layer.read-only-folder {
       color: var(--text-accent, #a78bfa) !important;
       font-weight: 600;
@@ -4391,25 +4404,7 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 }
 
 #asset-list {
-  max-height: 250px;
-  overflow-y: auto;
-  overflow-x: hidden;
   padding-right: 4px;
-}
-
-/* Custom scrollbar for #asset-list to match modern style */
-#asset-list::-webkit-scrollbar {
-  width: 4px;
-}
-#asset-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-#asset-list::-webkit-scrollbar-thumb {
-  background: var(--border-light);
-  border-radius: 2px;
-}
-#asset-list::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-base, #3b82f6);
 }
 
 

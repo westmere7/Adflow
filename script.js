@@ -6070,98 +6070,93 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
 
     // Construct the breakdown HTML column
     const fontSectionHTML = fontDetails.length > 0 ? fontDetails.map(f => `
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:6px;">
-        <span style="color:var(--text-main); font-family:monospace; font-size:12px;">${f.name}</span>
-        <span style="color:var(--text-muted); font-size:11px;">~${f.size} KB</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:4px;">
+        <span style="color:var(--text-main); font-family:monospace; font-size:11px;">${f.name}</span>
+        <span style="color:var(--text-muted); font-size:10px;">~${f.size} KB</span>
       </div>
-    `).join('') : '<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding-left:4px;">No custom fonts embedded</div>';
+    `).join('') : '<div style="font-size:11px; color:var(--text-muted); font-style:italic; padding-left:4px;">No custom fonts embedded</div>';
 
     const imageSectionHTML = imageDetails.length > 0 ? imageDetails.map(img => `
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:6px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:4px;">
         <div style="display:flex; flex-direction:column; min-width:0; flex:1; padding-right:8px;">
-          <span style="color:var(--text-main); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:500; font-size:12px;">${img.name}</span>
-          <span style="font-size:11px; color:var(--text-muted);">${img.dimensions} • ${img.isLocal ? 'Template' : 'Upload'}</span>
+          <span style="color:var(--text-main); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:500; font-size:11px;">${img.name}</span>
+          <span style="font-size:10px; color:var(--text-muted);">${img.dimensions} • ${img.isLocal ? 'Template' : 'Upload'}</span>
         </div>
-        <span style="color:var(--text-muted); font-size:11.5px; flex-shrink:0;">${img.size ? img.size.toFixed(1) + ' KB' : '0 KB'}</span>
+        <span style="color:var(--text-muted); font-size:10.5px; flex-shrink:0;">${img.size ? img.size.toFixed(1) + ' KB' : '0 KB'}</span>
       </div>
-    `).join('') : '<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding-left:4px;">No image layers used</div>';
+    `).join('') : '<div style="font-size:11px; color:var(--text-muted); font-style:italic; padding-left:4px;">No image layers used</div>';
 
     const dynamicSectionHTML = dynamicDetails.length > 0 ? dynamicDetails.map(d => `
-      <div style="display:flex; flex-direction:column; font-size:11.5px; margin-bottom:8px; background:rgba(255,255,255,0.02); padding:8px; border-radius:4px; border:1px solid rgba(255,255,255,0.04);">
-        <span style="color:var(--text-main); font-weight:500;">${d.layerName} <span style="font-weight:normal; color:var(--text-muted); font-size:11px;">(${d.field})</span></span>
-        <span style="font-size:11px; color:var(--text-accent); font-family:monospace; margin-top:2px;">↳ mapped to {${d.mapping}}</span>
+      <div style="display:flex; flex-direction:column; font-size:11px; margin-bottom:6px; background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:4px; border:1px solid rgba(255,255,255,0.04);">
+        <span style="color:var(--text-main); font-weight:500;">${d.layerName} <span style="font-weight:normal; color:var(--text-muted); font-size:10.5px;">(${d.field})</span></span>
+        <span style="font-size:10px; color:var(--text-accent); font-family:monospace; margin-top:1px;">↳ mapped to {${d.mapping}}</span>
       </div>
-    `).join('') : '<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding-left:4px;">No dynamic fields configured</div>';
+    `).join('') : '<div style="font-size:11px; color:var(--text-muted); font-style:italic; padding-left:4px;">No dynamic fields configured</div>';
 
     const codeKb = 2.5;
     const estimatedTotal = codeKb + fontKbSum + imgKbSum;
 
     const breakdownHTML = `
-      <div style="width:420px; flex-shrink:0; border-left:1px solid var(--border-left, var(--border-light)); padding-left:18px; display:flex; flex-direction:column; gap:20px; height:100%; overflow-y:auto; padding-right:4px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:10px; flex-shrink:0;">
-          <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-bright);">Ad Composition Breakdown</h3>
-          <button id="btn-val-breakdown-toggle" class="btn icon" title="Collapse Breakdown" style="padding: 2px 6px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--border-light); color: var(--text-muted); cursor: pointer; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.color='var(--text-bright)'; this.style.borderColor='var(--border-btn)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border-light)';">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </button>
+      <div style="width:320px; flex-shrink:0; border-left:1px solid var(--border-light); padding-left:14px; display:flex; flex-direction:column; gap:14px; height:100%; overflow-y:auto; padding-right:4px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:8px; flex-shrink:0;">
+          <h3 style="margin:0; font-size:15px; font-weight:600; color:var(--text-bright);">Ad size breakdown</h3>
         </div>
 
         <!-- Element counts -->
-        <div style="background:rgba(255,255,255,0.01); padding:12px; border-radius:6px; border:1px solid var(--border-light);">
-          <strong style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:10px;">Layers &amp; Elements</strong>
-          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:8px; font-size:12.5px;">
-            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:6px 8px; border-radius:4px;">
-              <span style="color:var(--text-muted); font-size:11px;">Total Layers</span>
-              <span style="font-weight:600; color:var(--text-bright); font-size:12.5px;">${totalCount}</span>
+        <div style="background:rgba(255,255,255,0.01); padding:10px; border-radius:6px; border:1px solid var(--border-light);">
+          <strong style="display:block; font-size:10.5px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Layers &amp; Elements</strong>
+          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:6px; font-size:11.5px;">
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:10.5px;">Total Layers</span>
+              <span style="font-weight:600; color:var(--text-bright); font-size:11.5px;">${totalCount}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:6px 8px; border-radius:4px;">
-              <span style="color:var(--text-muted); font-size:11px;">Text Fields</span>
-              <span style="font-weight:600; color:var(--text-bright); font-size:12.5px;">${textCount}</span>
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:10.5px;">Text Fields</span>
+              <span style="font-weight:600; color:var(--text-bright); font-size:11.5px;">${textCount}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:6px 8px; border-radius:4px;">
-              <span style="color:var(--text-muted); font-size:11px;">Images</span>
-              <span style="font-weight:600; color:var(--text-bright); font-size:12.5px;">${imgCount}</span>
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:10.5px;">Images</span>
+              <span style="font-weight:600; color:var(--text-bright); font-size:11.5px;">${imgCount}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:6px 8px; border-radius:4px;">
-              <span style="color:var(--text-muted); font-size:11px;">Shapes &amp; Buttons</span>
-              <span style="font-weight:600; color:var(--text-bright); font-size:12.5px;">${shapeCount + btnCount}</span>
+            <div style="display:flex; justify-content:space-between; background:var(--bg-input); padding:4px 6px; border-radius:4px;">
+              <span style="color:var(--text-muted); font-size:10.5px;">Shapes &amp; BTNs</span>
+              <span style="font-weight:600; color:var(--text-bright); font-size:11.5px;">${shapeCount + btnCount}</span>
             </div>
           </div>
         </div>
 
         <!-- Weight breakdown chart -->
-        <div style="background:rgba(255,255,255,0.01); padding:12px; border-radius:6px; border:1px solid var(--border-light);">
-          <strong style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:10px;">Weight Contribution (Est.)</strong>
-          <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="background:rgba(255,255,255,0.01); padding:10px; border-radius:6px; border:1px solid var(--border-light);">
+          <strong style="display:block; font-size:10.5px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Weight Contribution (Est.)</strong>
+          <div style="display:flex; flex-direction:column; gap:8px;">
             <!-- Code progress bar -->
             <div>
-              <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:4px;">
-                <span style="color:var(--text-main);">Structure &amp; Libraries</span>
-                <span style="color:var(--text-muted); font-family:monospace; font-size:10.5px;">${codeKb.toFixed(1)} KB</span>
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
+                <span style="color:var(--text-main);">Structure &amp; Libs</span>
+                <span style="color:var(--text-muted); font-family:monospace; font-size:10px;">${codeKb.toFixed(1)} KB</span>
               </div>
-              <div style="height:6px; background:var(--bg-input); border-radius:3px; overflow:hidden;">
-                <div style="width:${Math.min(100, (codeKb / estimatedTotal) * 100)}%; height:100%; background:#3b82f6; border-radius:3px;"></div>
+              <div style="height:4px; background:var(--bg-input); border-radius:2px; overflow:hidden;">
+                <div style="width:${Math.min(100, (codeKb / estimatedTotal) * 100)}%; height:100%; background:#3b82f6; border-radius:2px;"></div>
               </div>
             </div>
             <!-- Fonts progress bar -->
             <div>
-              <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:4px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
                 <span style="color:var(--text-main);">Embedded Fonts</span>
-                <span style="color:var(--text-muted); font-family:monospace; font-size:10.5px;">${fontKbSum.toFixed(1)} KB</span>
+                <span style="color:var(--text-muted); font-family:monospace; font-size:10px;">${fontKbSum.toFixed(1)} KB</span>
               </div>
-              <div style="height:6px; background:var(--bg-input); border-radius:3px; overflow:hidden;">
-                <div style="width:${Math.min(100, (fontKbSum / estimatedTotal) * 100)}%; height:100%; background:#8b5cf6; border-radius:3px;"></div>
+              <div style="height:4px; background:var(--bg-input); border-radius:2px; overflow:hidden;">
+                <div style="width:${Math.min(100, (fontKbSum / estimatedTotal) * 100)}%; height:100%; background:#8b5cf6; border-radius:2px;"></div>
               </div>
             </div>
             <!-- Images progress bar -->
             <div>
-              <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:4px;">
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;">
                 <span style="color:var(--text-main);">Image Assets</span>
-                <span style="color:var(--text-muted); font-family:monospace; font-size:10.5px;">${imgKbSum.toFixed(1)} KB</span>
+                <span style="color:var(--text-muted); font-family:monospace; font-size:10px;">${imgKbSum.toFixed(1)} KB</span>
               </div>
-              <div style="height:6px; background:var(--bg-input); border-radius:3px; overflow:hidden;">
-                <div style="width:${Math.min(100, (imgKbSum / estimatedTotal) * 100)}%; height:100%; background:#10b981; border-radius:3px;"></div>
+              <div style="height:4px; background:var(--bg-input); border-radius:2px; overflow:hidden;">
+                <div style="width:${Math.min(100, (imgKbSum / estimatedTotal) * 100)}%; height:100%; background:#10b981; border-radius:2px;"></div>
               </div>
             </div>
           </div>
@@ -6169,22 +6164,22 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
 
         <!-- Embedded Fonts list -->
         <div>
-          <strong style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Embedded Fonts</strong>
+          <strong style="display:block; font-size:10.5px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Embedded Fonts</strong>
           ${fontSectionHTML}
         </div>
 
         <!-- Images list -->
         <div>
-          <strong style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Image Assets (Uncompressed)</strong>
-          <div style="max-height:250px; overflow-y:auto; padding-right:2px;">
+          <strong style="display:block; font-size:10.5px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Image Assets (Uncompressed)</strong>
+          <div style="max-height:180px; overflow-y:auto; padding-right:2px;">
             ${imageSectionHTML}
           </div>
         </div>
 
         <!-- Dynamic Slot Variables -->
         <div>
-          <strong style="display:block; font-size:11px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:8px;">Dynamic Mappings</strong>
-          <div style="max-height:200px; overflow-y:auto; padding-right:2px;">
+          <strong style="display:block; font-size:10.5px; text-transform:uppercase; color:var(--text-label); letter-spacing:0.05em; margin-bottom:6px;">Dynamic Mappings</strong>
+          <div style="max-height:150px; overflow-y:auto; padding-right:2px;">
             ${dynamicSectionHTML}
           </div>
         </div>
@@ -6207,10 +6202,10 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
                   <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Version:</span>
                   <select id="val-version-select" style="background:transparent; border:none; color:var(--text-bright); font-size:11.5px; font-weight:600; outline:none; cursor:pointer; font-family:inherit; max-width:180px;">
                     ${state.dataMerge.rows.map((row, i) => {
-                      const keyCol = (state.dataMerge.keyColumn && state.dataMerge.columns.includes(state.dataMerge.keyColumn)) ? state.dataMerge.keyColumn : state.dataMerge.columns[0];
-                      const name = row[keyCol] || `Version ${i + 1}`;
-                      const selected = state.dataMerge.activeVersion === i ? 'selected' : '';
-                      return `<option value="${i}" ${selected} style="background:var(--bg-panel); color:var(--text-main);">${name}</option>`;
+                       const keyCol = (state.dataMerge.keyColumn && state.dataMerge.columns.includes(state.dataMerge.keyColumn)) ? state.dataMerge.keyColumn : state.dataMerge.columns[0];
+                       const name = row[keyCol] || `Version ${i + 1}`;
+                       const selected = state.dataMerge.activeVersion === i ? 'selected' : '';
+                       return `<option value="${i}" ${selected} style="background:var(--bg-panel); color:var(--text-main);">${name}</option>`;
                     }).join('')}
                   </select>
                 </div>
@@ -6227,13 +6222,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
             ${activeContentHtml}
           </div>
         </div>
-        ${state._valBreakdownExpanded !== false ? breakdownHTML : `
-          <div id="val-breakdown-expand-bar" style="width: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-left: 1px solid var(--border-light); cursor: pointer; transition: background 0.15s; background: var(--bg-panel);" title="Expand Composition Breakdown" onmouseover="this.style.background='var(--overlay-hover)'" onmouseout="this.style.background='var(--bg-panel)'">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted);">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-          </div>
-        `}
+        ${breakdownHTML}
       </div>
     `;
   };
@@ -6242,7 +6231,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
   
   const modalEl = document.querySelector('.modal-bg:last-child .modal');
   if (modalEl) {
-    modalEl.style.width = state._valBreakdownExpanded !== false ? '1320px' : '920px';
+    modalEl.style.width = '1240px';
     modalEl.style.maxWidth = '98vw';
     modalEl.style.height = '720px';
     const bodyEl = modalEl.querySelector('.modal-body');
@@ -6459,42 +6448,6 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
       };
     });
 
-    // Breakdown panel toggle
-    const toggleBtn = modalEl.querySelector('#btn-val-breakdown-toggle');
-    if (toggleBtn) {
-      toggleBtn.onclick = () => {
-        state._valBreakdownExpanded = false;
-        const rootModal = modalEl.closest('.modal');
-        if (rootModal) {
-          rootModal.style.width = '920px';
-        }
-        const modalContainer = document.getElementById(modalId);
-        if (modalContainer) {
-          const parent = modalContainer.parentElement;
-          parent.innerHTML = generateModalContent(activeDetailsId, activeTab);
-          const newContainer = parent.querySelector(`#${modalId}`);
-          setupModalListeners(newContainer, activeDetailsId, activeTab);
-        }
-      };
-    }
-
-    const expandBar = modalEl.querySelector('#val-breakdown-expand-bar');
-    if (expandBar) {
-      expandBar.onclick = () => {
-        state._valBreakdownExpanded = true;
-        const rootModal = modalEl.closest('.modal');
-        if (rootModal) {
-          rootModal.style.width = '1320px';
-        }
-        const modalContainer = document.getElementById(modalId);
-        if (modalContainer) {
-          const parent = modalContainer.parentElement;
-          parent.innerHTML = generateModalContent(activeDetailsId, activeTab);
-          const newContainer = parent.querySelector(`#${modalId}`);
-          setupModalListeners(newContainer, activeDetailsId, activeTab);
-        }
-      };
-    }
   };
 
   const modalContainer = document.getElementById(modalId);
