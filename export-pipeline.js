@@ -275,6 +275,19 @@ function getFrameTransitionKeyframes(f, c) {
         to { transform: ${transformToOut}; ${fade ? 'opacity: 0;' : ''} }
       }`;
     }
+  } else if (t === 'blur') {
+    const blurAmount = f.transitionBlurAmount !== undefined ? f.transitionBlurAmount : 20;
+    const blurScaleVal = f.transitionBlurScale !== undefined ? f.transitionBlurScale : 100;
+    const blurScale = blurScaleVal / 100;
+    const animNameOut = `anim-frame-trans-out-${f.id}`;
+    keyframes = `@keyframes ${animName} {
+      from { filter: blur(${blurAmount}px); transform: scale(${blurScale}); ${fade ? 'opacity: 0;' : ''} }
+      to { filter: blur(0px); transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
+    }`;
+    keyframes += '\n' + `@keyframes ${animNameOut} {
+      from { filter: blur(0px); transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
+      to { filter: blur(${blurAmount}px); transform: scale(${2 - blurScale}); ${fade ? 'opacity: 0;' : ''} }
+    }`;
   } else if (t.startsWith('swipe') || t === 'swipe') {
     let clipFrom = '';
     if (dir === 'up') clipFrom = 'inset(100% 0 0 0)';
@@ -1376,7 +1389,7 @@ ${elsTop}
       var animOut = '';
       if (t && t !== 'none') {
         anim = 'anim-frame-trans-' + frames[currentFrame].id;
-        if (t === 'push') {
+        if (t === 'push' || t === 'blur') {
           animOut = 'anim-frame-trans-out-' + frames[currentFrame].id;
         }
       }

@@ -8672,6 +8672,9 @@ function startFrameTransitionPreview(type) {
     }
     const irisShape = currentFrame.transitionIrisShape || 'circle';
     const irisOrigin = currentFrame.transitionIrisOrigin || 'center';
+    const blurAmount = currentFrame.transitionBlurAmount !== undefined ? currentFrame.transitionBlurAmount : 20;
+    const blurScaleVal = currentFrame.transitionBlurScale !== undefined ? currentFrame.transitionBlurScale : 100;
+    const blurScale = blurScaleVal / 100;
 
     let overlay = canvasDom.querySelector('.frame-transition-preview-overlay');
     if (overlay) overlay.remove();
@@ -8862,6 +8865,15 @@ function startFrameTransitionPreview(type) {
           from { clip-path: ${fromPoly}; ${fade ? 'opacity: 0;' : ''} }
           to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fade ? 'opacity: 1;' : ''} }
         }`;
+      } else if (type === 'blur') {
+        keyframes = `@keyframes ${animName} {
+          from { filter: blur(${blurAmount}px); transform: scale(${blurScale}); ${fade ? 'opacity: 0;' : ''} }
+          to { filter: blur(0px); transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
+        }`;
+        keyframesOut = `@keyframes ${animNameOut} {
+          from { filter: blur(0px); transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
+          to { filter: blur(${blurAmount}px); transform: scale(${2 - blurScale}); ${fade ? 'opacity: 0;' : ''} }
+        }`;
       } else if (type === 'iris') {
         let originCoords = '50% 50%';
         if (irisOrigin === 'top-left') originCoords = '0% 0%';
@@ -9004,6 +9016,7 @@ function getFrameTransitionHtml(currentFrame) {
   else if (tType === 'zoom') activePreset = 'zoom';
   else if (tType === 'split') activePreset = 'split';
   else if (tType === 'iris') activePreset = 'iris';
+  else if (tType === 'blur') activePreset = 'blur';
 
   const presets = [
     { val: 'none', label: 'None' },
@@ -9013,7 +9026,8 @@ function getFrameTransitionHtml(currentFrame) {
     { val: 'swipe', label: 'Swipe' },
     { val: 'zoom', label: 'Zoom' },
     { val: 'split', label: 'Split' },
-    { val: 'iris', label: 'Iris' }
+    { val: 'iris', label: 'Iris' },
+    { val: 'blur', label: 'Blur' }
   ];
 
   let filteredPresets = presets;
@@ -9037,7 +9051,7 @@ function getFrameTransitionHtml(currentFrame) {
   const durVal = currentFrame.transitionDuration !== undefined ? currentFrame.transitionDuration : 0.5;
   const durHtml = `<div class="prop-row" style="margin:0;"><label>Duration (s)</label><input type="number" step="0.1" id="frame-trans-duration" value="${durVal}" min="0.1" /></div>`;
 
-  const showFade = ['slide', 'push', 'swipe', 'zoom', 'split', 'iris'].includes(activePreset);
+  const showFade = ['slide', 'push', 'swipe', 'zoom', 'split', 'iris', 'blur'].includes(activePreset);
   let fadeToggleHtml = '';
   if (showFade) {
     const resolvedFade = (currentFrame.transitionFade !== false);
@@ -9143,6 +9157,23 @@ function getFrameTransitionHtml(currentFrame) {
         </div>
       </div>
     `;
+  } else if (activePreset === 'blur') {
+    const blurAmount = currentFrame.transitionBlurAmount !== undefined ? currentFrame.transitionBlurAmount : 20;
+    const blurScale = currentFrame.transitionBlurScale !== undefined ? currentFrame.transitionBlurScale : 100;
+    conditionalControls = `
+      <div class="prop-row" style="margin-bottom:8px;">
+        <div class="prop-grid-2">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label>Blur Amount (px)</label>
+            <input type="number" min="0" max="100" id="frame-trans-blur-amount" value="${blurAmount}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" />
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label>Scale Blend (%)</label>
+            <input type="number" min="10" max="500" id="frame-trans-blur-scale" value="${blurScale}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" />
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   return `
@@ -9174,6 +9205,10 @@ function wireFrameTransitionEvents() {
       if (val === 'iris') {
         if (!currentFrame.transitionIrisShape) currentFrame.transitionIrisShape = 'circle';
         if (!currentFrame.transitionIrisOrigin) currentFrame.transitionIrisOrigin = 'center';
+      }
+      if (val === 'blur') {
+        if (currentFrame.transitionBlurAmount === undefined) currentFrame.transitionBlurAmount = 20;
+        if (currentFrame.transitionBlurScale === undefined) currentFrame.transitionBlurScale = 100;
       }
       pushHistory();
       renderProps();
@@ -9305,6 +9340,38 @@ function wireFrameTransitionEvents() {
       pushHistory();
       renderProps();
       startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+  }
+
+  const blurAmtInp = propsEl.querySelector('#frame-trans-blur-amount');
+  if (blurAmtInp) {
+    blurAmtInp.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    blurAmtInp.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      currentFrame.transitionBlurAmount = isNaN(val) ? 20 : val;
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+      render(true);
+    });
+    blurAmtInp.addEventListener('change', () => {
+      pushHistory();
+    });
+  }
+
+  const blurScaleInp = propsEl.querySelector('#frame-trans-blur-scale');
+  if (blurScaleInp) {
+    blurScaleInp.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    blurScaleInp.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      currentFrame.transitionBlurScale = isNaN(val) ? 100 : val;
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+      render(true);
+    });
+    blurScaleInp.addEventListener('change', () => {
+      pushHistory();
     });
   }
 
@@ -15482,7 +15549,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.18.2';
+  const currentVersion = 'v0.18.4';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -15696,7 +15763,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.18.2</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.18.4</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -17523,7 +17590,7 @@ document.addEventListener('contextmenu', (e) => {
         } else if (frameTransBtn) {
           const currentFrame = state.frames.find(f => f.id === state.activeFrameId);
           if (currentFrame) {
-            const frameProps = ['transitionDuration', 'transitionFade', 'transitionDirection', 'transitionBounce', 'transitionZoomFrom', 'transitionAngle', 'transitionIrisShape', 'transitionIrisOrigin'];
+            const frameProps = ['transitionDuration', 'transitionFade', 'transitionDirection', 'transitionBounce', 'transitionZoomFrom', 'transitionAngle', 'transitionIrisShape', 'transitionIrisOrigin', 'transitionBlurAmount', 'transitionBlurScale'];
             frameProps.forEach(p => delete currentFrame[p]);
           }
         }
@@ -18475,7 +18542,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.18.2';
+        verEl.textContent = 'v0.18.4';
         logoEl.appendChild(verEl);
       }
     }
