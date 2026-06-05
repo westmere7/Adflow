@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.17.5 (Current) - June 2026 — Engine v2.18
+v0.17.6 (Current) - June 2026 — Engine v2.18
+- Data Merge Dropdown Fix: Resolved click registering issues inside the Data & Versions mapping dropdown by locally updating the select components to render selection updates instantly without resetting the scroll position of the panel.
+- Background Validator Asset Audit: Updated compliance checking routines to audit active spreadsheet version assets instead of falling back to default template values, eliminating mismatched compliance warning banners.
+- Dynamic Slot Preservation: Configured Distributed/Auto-Resized elements to retain active spreadsheet mapping assignments instead of resetting to none.
+
+v0.17.5 - June 2026 — Engine v2.18
 - Exclude Persistent Layers Option: Added a checkbox in the transition panel to exclude persistent layers from transitions, allowing them to remain static on top/bottom while other elements transition.
 
 v0.17.4 - June 2026 — Engine v2.18

@@ -660,6 +660,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.17.6',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Data Merge Dropdown Fix: Resolved click registering issues inside the Data & Versions mapping dropdown by locally updating the select components to render selection updates instantly without resetting the scroll position of the panel.',
+      'Background Validator Asset Audit: Updated compliance checking routines to audit active spreadsheet version assets instead of falling back to default template values, eliminating mismatched compliance warning banners.',
+      'Dynamic Slot Preservation: Configured Distributed/Auto-Resized elements to retain active spreadsheet mapping assignments instead of resetting to none.'
+    ]
+  },
+  {
     version: 'v0.17.5',
     date: 'June 2026 — Engine v2.18',
     items: [
