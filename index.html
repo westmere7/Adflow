@@ -464,29 +464,27 @@
 
       <!-- LEFT PANEL -->
       <div class="panel">
-        <div class="panel-scroll">
-
-
-
-          <!-- Validator and Audit trigger button -->
+        <!-- Pinned Top Area -->
+        <div style="flex-shrink: 0; display: flex; flex-direction: column;">
+          <!-- Validation and Audit trigger button -->
           <div style="padding: 12px 14px 2px 14px;">
-            <button id="btn-validator-dashboard-trigger" class="btn primary" style="width: 100%; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 6px 12px; font-size: 12px;" title="Open Validator and Audit">
+            <button id="btn-validator-dashboard-trigger" class="btn primary" style="width: 100%; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 6px 12px; font-size: 12px;" title="Open Validation and Audit">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              Validator and Audit
+              Validation and Audit
             </button>
           </div>
 
-          <!-- Canvases list panel section -->
+          <!-- Canvases list panel section (pinned, non-collapsible) -->
           <div class="panel-section" id="panel-section-canvases" data-permanent="true">
-            <h3 class="panel-header-collapsible" id="header-canvases" style="cursor: pointer; user-select: none;">
+            <h3 class="panel-header-collapsible" id="header-canvases" style="cursor: default; user-select: none;">
               <span>Canvases</span>
-              <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
               <button id="btn-add-canvas" title="Add canvas">+</button>
             </h3>
             <div id="canvases-list"></div>
           </div>
+        </div>
+
+        <div class="panel-scroll">
 
           <div class="panel-section" id="panel-section-add-elements">
             <h3 class="panel-header-collapsible" id="header-add-elements" style="cursor: pointer; user-select: none;">

@@ -1606,9 +1606,9 @@ function openExportModal() {
 
     <div style="margin-top: 16px; display: flex; gap: 8px; align-items:center; justify-content:space-between;">
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button class="btn btn-val-purple-export" id="btn-export-open-validator" title="Open Validator and Audit">
+        <button class="btn btn-val-purple-export" id="btn-export-open-validator" title="Open Validation and Audit">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          Validator and Audit
+          Validation and Audit
         </button>
         ${hasVersions ? `
         <button class="btn btn-val-teal-export" id="btn-export-all-versions-validator" title="Batch-validate compliance, accessibility, and branding across all versions">
@@ -2837,7 +2837,7 @@ function showBatchValidatorResults(problems) {
           <h3 style="margin:0; font-size:15px; font-weight:600; color:#ef4444; display:flex; align-items:center; gap:6px;">
             <span>⚠️</span> Issues Detected in ${problems.length} Canvas-Version Combinations
           </h3>
-          <span style="font-size:11.5px; color:var(--text-muted); display:block; margin-top:4px;">The following combinations failed verification. Click the "Fix" button to automatically load that version/canvas in the editor and open the Validator and Audit.</span>
+          <span style="font-size:11.5px; color:var(--text-muted); display:block; margin-top:4px;">The following combinations failed verification. Click the "Fix" button to automatically load that version/canvas in the editor and open the Validation and Audit.</span>
         </div>
         <button class="btn" id="btn-batch-rerun" style="
           background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05));

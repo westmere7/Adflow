@@ -6238,7 +6238,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
     `;
   };
 
-  openModal(`Validator and Audit`, generateModalContent(initialCanvas.id, activeTab), false);
+  openModal(`Validation and Audit`, generateModalContent(initialCanvas.id, activeTab), false);
   
   const modalEl = document.querySelector('.modal-bg:last-child .modal');
   if (modalEl) {
@@ -6581,19 +6581,19 @@ function renderCanvasesList() {
         btnColor = '#ef4444';
         btnBgHover = 'rgba(239, 68, 68, 0.3)';
         btnText = getWarningIcon('#ef4444', 11);
-        btnTitle = 'Ad compliance errors found. Click to open Validator and Audit.';
+        btnTitle = 'Ad compliance errors found. Click to open Validation and Audit.';
       } else if (hasA11y || hasBrand) {
         btnBg = 'rgba(249, 115, 22, 0.15)';
         btnColor = '#f97316';
         btnBgHover = 'rgba(249, 115, 22, 0.3)';
         btnText = getWarningIcon('#f97316', 11);
-        btnTitle = 'Validation warnings found. Click to open Validator and Audit.';
+        btnTitle = 'Validation warnings found. Click to open Validation and Audit.';
       } else {
         btnBg = 'rgba(16, 185, 129, 0.15)';
         btnColor = '#10b981';
         btnBgHover = 'rgba(16, 185, 129, 0.3)';
         btnText = getCheckIcon('#10b981', 11);
-        btnTitle = 'All validation checks passed. Click to open Validator and Audit.';
+        btnTitle = 'All validation checks passed. Click to open Validation and Audit.';
       }
     }
 
@@ -6753,13 +6753,9 @@ function renderLinkControl() {
       const iconHtml = `<svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted); width: 13px; height: 13px; flex-shrink: 0;">${iconPath}</svg>`;
 
       const isGroupSelected = selectedElements.some(el => el.linkGroupId === g.id);
-      const rowBg = isGroupSelected ? 'rgba(124, 92, 255, 0.12)' : 'rgba(255,255,255,0.02)';
-      const rowStyle = isGroupSelected 
-        ? 'border-left: 3px solid var(--text-accent); padding-left: 5px; border-top-left-radius: 0; border-bottom-left-radius: 0;' 
-        : '';
 
       html += `
-        <div class="link-group-row" data-group-id="${g.id}" style="display:flex; align-items:center; justify-content:space-between; padding:5px 6px; border-radius:4px; margin-bottom:4px; background:${rowBg}; ${rowStyle} cursor:pointer; gap:6px;">
+        <div class="link-group-row ${isGroupSelected ? 'selected' : ''}" data-group-id="${g.id}">
           <div style="display:flex; align-items:center; gap:5px; flex:1; min-width:0;">
             ${iconHtml}
             <span class="layer-name" style="font-size:10.5px; font-weight:500; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${g.name}</span>
@@ -9128,7 +9124,7 @@ function getFrameTransitionHtml(currentFrame) {
   }
 
   return `
-    <div id="frame-transition-preview-area" style="background: rgba(255, 255, 255, 0.035); padding: 10px; border-radius: 6px; margin-bottom: 8px;">
+    <div id="frame-transition-preview-area" style="margin-bottom: 8px;">
       <div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">TRANSITION</label></div>
       <div class="anim-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:12px;">
         ${presetButtons}
@@ -9572,8 +9568,6 @@ function renderProps() {
             </button>
           </div>
         </div>
-
-        <div class="prop-empty" style="padding: 16px 0 0;">Tip: double-click text to edit it inline. Use <span class="kbd">←↑↓→</span> to nudge, <span class="kbd">⌫</span> to delete.</div>
       </div></div>
       ${frameTransitionSectionHtml}`;
     const wInp = document.getElementById('c-w');
@@ -10245,7 +10239,7 @@ function renderProps() {
       </h3>
       <div class="panel-section-content">`);
 
-    f.push(`<div id="in-transition-preview-area" style="background: rgba(255, 255, 255, 0.035); padding: 10px; border-radius: 6px; margin-bottom: 8px;">`);
+    f.push(`<div id="in-transition-preview-area" style="margin-bottom: 16px;">`);
     f.push(`<div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">IN TRANSITIONS</label></div>`);
 
     const animOptions = [
@@ -10427,7 +10421,7 @@ function renderProps() {
     }
 
     f.push(`</div>`); // Close in-transition-preview-area
-    f.push(`<div id="effects-preview-area" style="background: rgba(255, 255, 255, 0.035); padding: 10px; border-radius: 6px; margin-bottom: 8px;">`);
+    f.push(`<div id="effects-preview-area" style="margin-bottom: 16px;">`);
     f.push(`<div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">CONTINUOUS EFFECT</label></div>`);
     const effectOptions = [
       { val: 'none', label: 'None' },
@@ -18001,7 +17995,7 @@ function initCollapsiblePanels() {
     
     const keyAttr = header.id || header.innerText.trim().toLowerCase().replace(/\s+/g, '-');
     const storageKey = `panel-collapsed-${keyAttr}`;
-    const isCollapsed = localStorage.getItem(storageKey) === 'true';
+    const isCollapsed = keyAttr === 'header-canvases' ? false : (localStorage.getItem(storageKey) === 'true');
 
     // Swap the chevron's polyline points instead of relying on a CSS
     // `transform: rotate()` on the <svg> root — that doesn't actually
@@ -18020,14 +18014,15 @@ function initCollapsiblePanels() {
     setChevronPoints(isCollapsed);
 
     header.addEventListener('click', (e) => {
+      if (keyAttr === 'header-canvases') return;
       if (e.target.closest('.panel-fullscreen-btn') || e.target.closest('.fav-filter-btn') || e.target.closest('#btn-add-canvas')) return;
       const currentlyCollapsed = parentSection.classList.toggle('collapsed');
       localStorage.setItem(storageKey, currentlyCollapsed ? 'true' : 'false');
       setChevronPoints(currentlyCollapsed);
     });
 
-    // Exclude canvases (which is not collapsible anyway) and Dynamic Data
-    const isExcluded = (keyAttr === 'header-dynamic-data');
+    // Exclude canvases and Dynamic Data
+    const isExcluded = (keyAttr === 'header-dynamic-data' || keyAttr === 'header-canvases');
     if (!isExcluded) {
       const collapseIcon = header.querySelector('.collapse-icon');
       if (collapseIcon) {
