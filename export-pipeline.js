@@ -119,7 +119,35 @@ function getZoomKeyframes(el) {
 
 // Helper to calculate the keyframes for a slide transition (with optional elastic bounce, custom distance, and rotation offset)
 function getSlideKeyframes(el) {
-  const dir = el.animDirection || 'up';
+  let dir = el.animDirection || 'up';
+  if (dir === 'closest') {
+    let parentCanvas = null;
+    if (typeof state !== 'undefined' && state.canvases) {
+      parentCanvas = state.canvases.find(c => c.elements && c.elements.some(e => e.id === el.id));
+    }
+    if (parentCanvas) {
+      const w = el.width || 0;
+      const h = el.height || 0;
+      const cx = el.x + w / 2;
+      const cy = el.y + h / 2;
+      const distLeft = cx;
+      const distRight = parentCanvas.width - cx;
+      const distTop = cy;
+      const distBottom = parentCanvas.height - cy;
+      const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+      if (minDist === distLeft) {
+        dir = 'right';
+      } else if (minDist === distRight) {
+        dir = 'left';
+      } else if (minDist === distTop) {
+        dir = 'down';
+      } else {
+        dir = 'up';
+      }
+    } else {
+      dir = 'up';
+    }
+  }
   const dist = el.animDistance !== undefined ? el.animDistance : 100;
   const rOffset = el.animRotateOffset !== undefined ? el.animRotateOffset : 0;
   const fade = el.animFade !== false;
@@ -171,14 +199,28 @@ function getSlideKeyframes(el) {
   }
 }
 
-function getFrameTransitionKeyframes(f) {
+function getFrameTransitionKeyframes(f, c) {
   const t = f.transition || 'none';
   if (t === 'none') return '';
 
   const animName = `anim-frame-trans-${f.id}`;
   const fade = f.transitionFade !== false;
   const bounce = !!f.transitionBounce;
-  const dir = f.transitionDirection || (t.startsWith('slide-') ? t.replace('slide-', '') : (t.startsWith('swipe-') ? t.replace('swipe-', '') : 'left'));
+  let dir = f.transitionDirection || (t.startsWith('slide-') ? t.replace('slide-', '') : (t.startsWith('swipe-') ? t.replace('swipe-', '') : 'left'));
+  if (dir === 'short' || dir === 'long') {
+    if (c) {
+      const isShort = dir === 'short';
+      if (c.width > c.height) {
+        dir = isShort ? 'up' : 'left';
+      } else if (c.width < c.height) {
+        dir = isShort ? 'left' : 'up';
+      } else {
+        dir = isShort ? 'up' : 'left';
+      }
+    } else {
+      dir = 'left';
+    }
+  }
   
   let keyframes = '';
 
@@ -275,7 +317,7 @@ function getFrameTransitionKeyframes(f) {
       }`;
     }
   } else if (t === 'split') {
-    const angle = f.transitionAngle !== undefined ? f.transitionAngle : 0;
+    const angle = (dir === 'left' || dir === 'right') ? 90 : 0;
     const fromPoly = getSplitClipPath(angle);
     keyframes = `@keyframes ${animName} {
       from { clip-path: ${fromPoly}; ${fade ? 'opacity: 0;' : ''} }
@@ -1195,7 +1237,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
 
   activeFrames.forEach((f, i) => {
     if (i > 0 || (i === 0 && state.loopAd)) {
-      const kf = getFrameTransitionKeyframes(f);
+      const kf = getFrameTransitionKeyframes(f, c);
       if (kf) {
         dynamicKeyframes += '\n' + kf;
       }

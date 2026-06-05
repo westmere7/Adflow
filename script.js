@@ -3506,8 +3506,36 @@ function generateMaskClipPathKeyframes(mask, image, presetOverride) {
   }
 
   const isSlide = animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right';
+  let slideDir = 'up';
   if (isSlide) {
-    const dir = mask.animDirection || 'up';
+    slideDir = mask.animDirection || 'up';
+    if (slideDir === 'closest') {
+      let parentCanvas = null;
+      if (typeof state !== 'undefined' && state.canvases) {
+        parentCanvas = state.canvases.find(c => c.elements && c.elements.some(e => e.id === mask.id));
+      }
+      if (parentCanvas) {
+        const w = mask.width || 0;
+        const h = mask.height || 0;
+        const cx = mask.x + w / 2;
+        const cy = mask.y + h / 2;
+        const distLeft = cx;
+        const distRight = parentCanvas.width - cx;
+        const distTop = cy;
+        const distBottom = parentCanvas.height - cy;
+        const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+        if (minDist === distLeft) slideDir = 'right';
+        else if (minDist === distRight) slideDir = 'left';
+        else if (minDist === distTop) slideDir = 'down';
+        else slideDir = 'up';
+      } else {
+        slideDir = 'up';
+      }
+    }
+  }
+
+  if (isSlide) {
+    const dir = slideDir;
     const dist = mask.animDistance !== undefined ? mask.animDistance : (animType.startsWith('slide-') ? 20 : 100);
     const rOffset = mask.animRotateOffset !== undefined ? mask.animRotateOffset : 0;
     if (dir === 'up') fromMask.y += dist;
@@ -3531,7 +3559,7 @@ function generateMaskClipPathKeyframes(mask, image, presetOverride) {
   const timing = mask.animBounce ? 'linear' : 'ease-out';
 
   if (isSlide && mask.animBounce) {
-    const dir = mask.animDirection || 'up';
+    const dir = slideDir;
     const dist = mask.animDistance !== undefined ? mask.animDistance : (animType.startsWith('slide-') ? 20 : 100);
     const rOffset = mask.animRotateOffset !== undefined ? mask.animRotateOffset : 0;
     const d = 4.0; // damping
@@ -8631,7 +8659,17 @@ function startFrameTransitionPreview(type) {
     const bounce = !!currentFrame.transitionBounce;
     const zoomFrom = currentFrame.transitionZoomFrom !== undefined ? currentFrame.transitionZoomFrom : 80;
     const angle = currentFrame.transitionAngle !== undefined ? currentFrame.transitionAngle : 0;
-    const dir = currentFrame.transitionDirection || (type.startsWith('slide-') ? type.replace('slide-', '') : (type.startsWith('swipe-') ? type.replace('swipe-', '') : 'left'));
+    let dir = currentFrame.transitionDirection || (type.startsWith('slide-') ? type.replace('slide-', '') : (type.startsWith('swipe-') ? type.replace('swipe-', '') : 'left'));
+    if (dir === 'short' || dir === 'long') {
+      const isShort = dir === 'short';
+      if (c.width > c.height) {
+        dir = isShort ? 'up' : 'left';
+      } else if (c.width < c.height) {
+        dir = isShort ? 'left' : 'up';
+      } else {
+        dir = isShort ? 'up' : 'left';
+      }
+    }
     const irisShape = currentFrame.transitionIrisShape || 'circle';
     const irisOrigin = currentFrame.transitionIrisOrigin || 'center';
 
@@ -8818,7 +8856,8 @@ function startFrameTransitionPreview(type) {
           }`;
         }
       } else if (type === 'split') {
-        const fromPoly = getSplitClipPath(angle);
+        const resolvedAngle = (dir === 'left' || dir === 'right') ? 90 : 0;
+        const fromPoly = getSplitClipPath(resolvedAngle);
         keyframes = `@keyframes ${animName} {
           from { clip-path: ${fromPoly}; ${fade ? 'opacity: 0;' : ''} }
           to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fade ? 'opacity: 1;' : ''} }
@@ -9030,7 +9069,7 @@ function getFrameTransitionHtml(currentFrame) {
   `;
 
   let conditionalControls = '';
-  if (activePreset === 'slide' || activePreset === 'push' || activePreset === 'swipe') {
+  if (activePreset === 'slide' || activePreset === 'push' || activePreset === 'swipe' || activePreset === 'split') {
     const currentDir = currentFrame.transitionDirection || 'left';
     let bounceHtml = '';
     if (activePreset === 'slide' || activePreset === 'push') {
@@ -9051,7 +9090,9 @@ function getFrameTransitionHtml(currentFrame) {
               { val: 'left', label: 'Left' },
               { val: 'right', label: 'Right' },
               { val: 'up', label: 'Up' },
-              { val: 'down', label: 'Down' }
+              { val: 'down', label: 'Down' },
+              { val: 'short', label: 'Short edge' },
+              { val: 'long', label: 'Long edge' }
             ], currentDir, 'Transition direction', true, 'frame-trans-direction')}
           </div>
           ${bounceHtml}
@@ -9071,18 +9112,6 @@ function getFrameTransitionHtml(currentFrame) {
           <div class="checkbox-row" style="height:24px; align-items:center; margin-top:14px;">
             <input type="checkbox" id="frame-trans-bounce" ${hasBounce ? 'checked' : ''} />
             <label for="frame-trans-bounce" style="cursor:pointer; font-size:11px; white-space:nowrap;">Bounce</label>
-          </div>
-        </div>
-      </div>
-    `;
-  } else if (activePreset === 'split') {
-    const angleVal = currentFrame.transitionAngle !== undefined ? currentFrame.transitionAngle : 0;
-    conditionalControls = `
-      <div class="prop-row" style="margin-bottom:8px;">
-        <div class="prop-grid-2">
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label>Angle (°)</label>
-            <input type="number" id="frame-trans-angle" value="${angleVal}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" />
           </div>
         </div>
       </div>
@@ -9118,7 +9147,7 @@ function getFrameTransitionHtml(currentFrame) {
 
   return `
     <div id="frame-transition-preview-area" style="margin-bottom: 8px;">
-      <div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">TRANSITION</label></div>
+      <div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">FRAME TRANSITION</label></div>
       <div class="anim-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:12px;">
         ${presetButtons}
         ${favMessageHtml}
@@ -9136,14 +9165,11 @@ function wireFrameTransitionEvents() {
     const val = btn.dataset.val;
     btn.addEventListener('click', () => {
       currentFrame.transition = val;
-      if (val === 'slide' || val === 'push' || val === 'swipe') {
+      if (val === 'slide' || val === 'push' || val === 'swipe' || val === 'split') {
         if (!currentFrame.transitionDirection) currentFrame.transitionDirection = 'left';
       }
       if (val === 'zoom') {
         if (currentFrame.transitionZoomFrom === undefined) currentFrame.transitionZoomFrom = 80;
-      }
-      if (val === 'split') {
-        if (currentFrame.transitionAngle === undefined) currentFrame.transitionAngle = 0;
       }
       if (val === 'iris') {
         if (!currentFrame.transitionIrisShape) currentFrame.transitionIrisShape = 'circle';
@@ -9286,6 +9312,149 @@ function wireFrameTransitionEvents() {
   if (area) {
     area.addEventListener('mouseleave', () => {
       stopFrameTransitionPreview();
+    });
+  }
+}
+
+function wireCustomSelects(el) {
+  // Wire Custom Styled Select Dropdowns & Preview on Hover
+  propsEl.querySelectorAll('.custom-select-trigger').forEach(trigger => {
+    trigger.onclick = (e) => {
+      e.stopPropagation();
+      const container = trigger.closest('.custom-select-container');
+      const dropdown = container.querySelector('.custom-select-dropdown');
+      const isOpen = dropdown.style.display === 'block';
+      propsEl.querySelectorAll('.custom-select-dropdown').forEach(d => {
+        if (d !== dropdown) d.style.display = 'none';
+      });
+      dropdown.style.display = isOpen ? 'none' : 'block';
+    };
+
+    trigger.onmouseenter = () => {
+      const container = trigger.closest('.custom-select-container');
+      const isFrame = container.classList.contains('frame-trans-select');
+      const key = isFrame ? container.dataset.frameK : container.dataset.k;
+      if (isFrame) {
+        const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+        if (activeIdx > 0 || (activeIdx === 0 && state.loopAd)) {
+          startFrameTransitionPreview(state.frames[activeIdx].transition || 'none');
+        }
+      } else {
+        if (el) {
+          if (key === 'animDirection') {
+            startPreviewLoop(el.animType || 'none');
+          } else if (key === 'panDir') {
+            startEffectPreview(el);
+          }
+        }
+      }
+    };
+  });
+
+  propsEl.querySelectorAll('.custom-select-item').forEach(item => {
+    const container = item.closest('.custom-select-container');
+    const isFrame = container.classList.contains('frame-trans-select');
+    const key = isFrame ? container.dataset.frameK : container.dataset.k;
+    const val = item.dataset.value;
+
+    item.onclick = (e) => {
+      e.stopPropagation();
+      container.querySelector('.custom-select-label').textContent = item.textContent.trim();
+      container.querySelector('.custom-select-dropdown').style.display = 'none';
+
+      if (isFrame) {
+        const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+        if (activeIdx > 0 || (activeIdx === 0 && state.loopAd)) {
+          const currentFrame = state.frames[activeIdx];
+          if (key === 'direction') currentFrame.transitionDirection = val;
+          else if (key === 'irisShape') currentFrame.transitionIrisShape = val;
+          else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = val;
+
+          pushHistory();
+          renderProps();
+          startFrameTransitionPreview(currentFrame.transition || 'none');
+        }
+      } else {
+        if (el) {
+          if (key === 'animDirection') {
+            if ((el.animType || '').startsWith('swipe-')) {
+              updateProp('animType', `swipe-${val}`);
+            } else {
+              updateProp('animDirection', val);
+            }
+          } else {
+            updateProp(key, val);
+          }
+          pushHistory();
+          renderProps();
+          if (key === 'animDirection') {
+            startPreviewLoop(el.animType || 'none');
+          } else if (key === 'panDir') {
+            startEffectPreview(el);
+          }
+        }
+      }
+    };
+
+    item.onmouseenter = () => {
+      if (isFrame) {
+        const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+        if (activeIdx > 0 || (activeIdx === 0 && state.loopAd)) {
+          const currentFrame = state.frames[activeIdx];
+          const origDirection = currentFrame.transitionDirection || 'left';
+          const origShape = currentFrame.transitionIrisShape || 'circle';
+          const origOrigin = currentFrame.transitionIrisOrigin || 'center';
+
+          if (key === 'direction') currentFrame.transitionDirection = val;
+          else if (key === 'irisShape') currentFrame.transitionIrisShape = val;
+          else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = val;
+
+          startFrameTransitionPreview(currentFrame.transition || 'none');
+
+          item.onmouseleave = () => {
+            if (key === 'direction') currentFrame.transitionDirection = origDirection;
+            else if (key === 'irisShape') currentFrame.transitionIrisShape = origShape;
+            else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = origOrigin;
+            startFrameTransitionPreview(currentFrame.transition || 'none');
+          };
+        }
+      } else {
+        if (el) {
+          const origType = el.animType;
+          const origDirection = el.animDirection;
+          const origPanDir = el.panDir;
+
+          if (key === 'animDirection') {
+            if ((el.animType || '').startsWith('swipe-')) {
+              el.animType = `swipe-${val}`;
+            } else {
+              el.animDirection = val;
+            }
+            startPreviewLoop(el.animType || 'none');
+          } else if (key === 'panDir') {
+            el.panDir = val;
+            startEffectPreview(el);
+          }
+
+          item.onmouseleave = () => {
+            el.animType = origType;
+            el.animDirection = origDirection;
+            el.panDir = origPanDir;
+            if (key === 'animDirection') {
+              startPreviewLoop(el.animType || 'none');
+            } else if (key === 'panDir') {
+              startEffectPreview(el);
+            }
+          };
+        }
+      }
+    };
+  });
+
+  if (!window.customSelectGlobalBound) {
+    window.customSelectGlobalBound = true;
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.custom-select-dropdown').forEach(d => d.style.display = 'none');
     });
   }
 }
@@ -9744,6 +9913,7 @@ function renderProps() {
       wireFrameTransitionEvents();
     }
     initCollapsiblePanels();
+    wireCustomSelects(null);
     return;
   }
 
@@ -10328,13 +10498,14 @@ function renderProps() {
                 <label for="prop-anim-bounce" title="Elastic bounce at the end of slide transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Bounce</label>
               </div>
             </div>
-            <div style="width:85px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
+            <div style="width:115px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
               <label style="white-space:nowrap; text-align:right;">Direction</label>
               ${customSelect('animDirection', [
                 { val: 'up', label: 'Up' },
                 { val: 'down', label: 'Down' },
                 { val: 'left', label: 'Left' },
-                { val: 'right', label: 'Right' }
+                { val: 'right', label: 'Right' },
+                { val: 'closest', label: 'Closest edge' }
               ], currentDirection, 'Animation direction', false, 'prop-anim-direction')}
             </div>
           </div>
@@ -11570,142 +11741,7 @@ function checkButtonFontSizeWarning(el) {
   }
   initCollapsiblePanels();
 
-  // Wire Custom Styled Select Dropdowns & Preview on Hover
-  propsEl.querySelectorAll('.custom-select-trigger').forEach(trigger => {
-    trigger.onclick = (e) => {
-      e.stopPropagation();
-      const container = trigger.closest('.custom-select-container');
-      const dropdown = container.querySelector('.custom-select-dropdown');
-      const isOpen = dropdown.style.display === 'block';
-      propsEl.querySelectorAll('.custom-select-dropdown').forEach(d => {
-        if (d !== dropdown) d.style.display = 'none';
-      });
-      dropdown.style.display = isOpen ? 'none' : 'block';
-    };
-
-    trigger.onmouseenter = () => {
-      const container = trigger.closest('.custom-select-container');
-      const isFrame = container.classList.contains('frame-trans-select');
-      const key = isFrame ? container.dataset.frameK : container.dataset.k;
-      if (isFrame) {
-        const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-        if (activeIdx > 0 || (activeIdx === 0 && state.loopAd)) {
-          startFrameTransitionPreview(state.frames[activeIdx].transition || 'none');
-        }
-      } else {
-        if (key === 'animDirection') {
-          startPreviewLoop(el.animType || 'none');
-        } else if (key === 'panDir') {
-          startEffectPreview(el);
-        }
-      }
-    };
-  });
-
-  propsEl.querySelectorAll('.custom-select-item').forEach(item => {
-    const container = item.closest('.custom-select-container');
-    const isFrame = container.classList.contains('frame-trans-select');
-    const key = isFrame ? container.dataset.frameK : container.dataset.k;
-    const val = item.dataset.value;
-
-    item.onclick = (e) => {
-      e.stopPropagation();
-      container.querySelector('.custom-select-label').textContent = item.textContent.trim();
-      container.querySelector('.custom-select-dropdown').style.display = 'none';
-
-      if (isFrame) {
-        const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-        if (activeIdx > 0 || (activeIdx === 0 && state.loopAd)) {
-          const currentFrame = state.frames[activeIdx];
-          if (key === 'direction') currentFrame.transitionDirection = val;
-          else if (key === 'irisShape') currentFrame.transitionIrisShape = val;
-          else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = val;
-
-          pushHistory();
-          renderProps();
-          startFrameTransitionPreview(currentFrame.transition || 'none');
-        }
-      } else {
-        if (key === 'animDirection') {
-          if ((el.animType || '').startsWith('swipe-')) {
-            updateProp('animType', `swipe-${val}`);
-          } else {
-            updateProp('animDirection', val);
-          }
-        } else {
-          updateProp(key, val);
-        }
-        pushHistory();
-        renderProps();
-        if (key === 'animDirection') {
-          startPreviewLoop(el.animType || 'none');
-        } else if (key === 'panDir') {
-          startEffectPreview(el);
-        }
-      }
-    };
-
-    item.onmouseenter = () => {
-      if (isFrame) {
-        const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-        if (activeIdx > 0 || (activeIdx === 0 && state.loopAd)) {
-          const currentFrame = state.frames[activeIdx];
-          const origDirection = currentFrame.transitionDirection || 'left';
-          const origShape = currentFrame.transitionIrisShape || 'circle';
-          const origOrigin = currentFrame.transitionIrisOrigin || 'center';
-
-          if (key === 'direction') currentFrame.transitionDirection = val;
-          else if (key === 'irisShape') currentFrame.transitionIrisShape = val;
-          else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = val;
-
-          startFrameTransitionPreview(currentFrame.transition || 'none');
-
-          item.onmouseleave = () => {
-            if (key === 'direction') currentFrame.transitionDirection = origDirection;
-            else if (key === 'irisShape') currentFrame.transitionIrisShape = origShape;
-            else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = origOrigin;
-            startFrameTransitionPreview(currentFrame.transition || 'none');
-          };
-        }
-      } else {
-        if (el) {
-          const origType = el.animType;
-          const origDirection = el.animDirection;
-          const origPanDir = el.panDir;
-
-          if (key === 'animDirection') {
-            if ((el.animType || '').startsWith('swipe-')) {
-              el.animType = `swipe-${val}`;
-            } else {
-              el.animDirection = val;
-            }
-            startPreviewLoop(el.animType || 'none');
-          } else if (key === 'panDir') {
-            el.panDir = val;
-            startEffectPreview(el);
-          }
-
-          item.onmouseleave = () => {
-            el.animType = origType;
-            el.animDirection = origDirection;
-            el.panDir = origPanDir;
-            if (key === 'animDirection') {
-              startPreviewLoop(el.animType || 'none');
-            } else if (key === 'panDir') {
-              startEffectPreview(el);
-            }
-          };
-        }
-      }
-    };
-  });
-
-  if (!window.customSelectGlobalBound) {
-    window.customSelectGlobalBound = true;
-    document.addEventListener('click', () => {
-      document.querySelectorAll('.custom-select-dropdown').forEach(d => d.style.display = 'none');
-    });
-  }
+  wireCustomSelects(el);
 }
 
 // ============================================================================
@@ -15446,7 +15482,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.18.0';
+  const currentVersion = 'v0.18.2';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -15497,7 +15533,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.18.0';
+  const currentVersion = 'v0.18.2';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
@@ -15660,7 +15696,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.18.0</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.18.2</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -18439,7 +18475,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.18.0';
+        verEl.textContent = 'v0.18.2';
         logoEl.appendChild(verEl);
       }
     }

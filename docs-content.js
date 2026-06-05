@@ -661,6 +661,20 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.18.2',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Frame Transitions UI & Presets: Renamed "Transition" sidebar heading to "FRAME TRANSITION". Added "Short edge" and "Long edge" dynamic direction choices to Slide, Push, and Swipe transitions. Upgraded the Split transition to remove the raw Angle field, replacing it with the same Direction select dropdown.'
+    ]
+  },
+  {
+    version: 'v0.18.1',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Closest Edge Slide Preset: Added "Closest edge" animation direction to the Slide transition preset. When selected, the animation direction (Up, Down, Left, or Right) is determined dynamically per canvas, checking which edge of the parent canvas is closest to the element\'s center coordinate. This ensures shared link-group elements or elements of different sizes always slide in from their closest canvas boundary.'
+    ]
+  },
+  {
     version: 'v0.18.0',
     date: 'June 2026 — Engine v2.18',
     items: [
