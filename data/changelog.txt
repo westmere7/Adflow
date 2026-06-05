@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.18.3 (Current) - June 2026 — Engine v2.18
+v0.18.4 (Current) - June 2026 — Engine v2.18
+- WebM Video Export: Integrated WebM video export for layout canvas animations and transitions. Accessible directly from the Export modal, it uses the WebCodecs VideoEncoder API and a browser-side WebMMuxer to bundle canvas frames. Rendering uses a deterministic virtual-clock synchronization technique that pauses and steps all CSS animations, transitions, and JS timelines in discrete 33.3ms ticks, guaranteeing 100% smooth 30fps video files with no frame drops regardless of local CPU performance.
+- Layout Legend & Styling Fixes: Anchored the outline mode legend overlay to the top-right corner of the canvas viewport, ensuring it remains static and visible independent of canvas scrolling or zoom level. Cleaned up text rendering in outline mode to keep text characters solid and filled, preserving legibility.
+- Legend Labels: Updated the hybrid outline indicator legend label from "Both" to "Dynamic + animated" to clarify mappings.
+
+v0.18.3 - June 2026 — Engine v2.18
 - Blur Frame Transition: Added a customizable "Blur" frame transition preset that creates a cross-blur transition, complete with adjustable "Blur Amount" (0-100px) and "Scale Blend" (10-500%) controls to configure defocus strength and continuous camera zoom-in/out effects (with optional fade).
 - Overhauled Splash Loading Screen: Created a more dynamic yet sleek loading experience featuring organic shifting ambient background glows, a breathing drop-shadow pulse on the brand logo, smooth easeOutExpo slide-fades on status updates, and a glassmorphic gradient progress bar. Exit transition now executes a soft camera lens defocus zoom-out.
 - Outline Mode Enhancements: Added smart color-coding in both light and dark outline modes. Elements bound to dynamic data merge columns now draw with an Amber outline, elements with intro animations or continuous effects draw in Pink, and elements featuring both draw in Purple, making layer properties readable at a glance in wireframe mode.

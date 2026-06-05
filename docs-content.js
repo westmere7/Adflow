@@ -661,6 +661,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.18.4',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'WebM Video Export: Integrated WebM video export for layout canvas animations and transitions. Accessible directly from the Export modal, it uses the WebCodecs VideoEncoder API and a browser-side WebMMuxer to bundle canvas frames. Rendering uses a deterministic virtual-clock synchronization technique that pauses and steps all CSS animations, transitions, and JS timelines in discrete 33.3ms ticks, guaranteeing 100% smooth 30fps video files with no frame drops regardless of local CPU performance.',
+      'Layout Legend & Styling Fixes: Anchored the outline mode legend overlay to the top-right corner of the canvas viewport, ensuring it remains static and visible independent of canvas scrolling or zoom level. Cleaned up text rendering in outline mode to keep text characters solid and filled, preserving legibility.',
+      'Legend Labels: Updated the hybrid outline indicator legend label from "Both" to "Dynamic + animated" to clarify mappings.'
+    ]
+  },
+  {
     version: 'v0.18.3',
     date: 'June 2026 — Engine v2.18',
     items: [

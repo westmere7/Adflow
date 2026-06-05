@@ -824,6 +824,404 @@ ${styles}
   }
 }
 
+async function exportCanvasAsWebm(c, options = {}) {
+  if (typeof WebMMuxer === 'undefined') {
+    alert('WebM Muxer library is not loaded. Please make sure webm-muxer is loaded.');
+    return;
+  }
+  if (typeof VideoEncoder === 'undefined') {
+    alert('WebM export requires the WebCodecs VideoEncoder API, which is not supported in this browser. Please use Chrome, Edge, or a modern Chromium-based browser.');
+    return;
+  }
+  if (window.location.protocol === 'file:') {
+    alert('Local asset fetching is blocked on the file:// protocol due to browser CORS security rules. Please run the local development server and open http://localhost:8080/ to export WebM videos with custom fonts.');
+  }
+
+  // Calculate total duration from the frames (sum of all frames' duration)
+  const totalDuration = state.frames.reduce((sum, f) => sum + f.duration, 0);
+  if (totalDuration <= 0) {
+    alert('Cannot record WebM: total animation duration must be greater than 0.');
+    return;
+  }
+
+  let recorderIframe = null;
+  let cnv = null;
+  let progressUI = null;
+
+  try {
+    let isCancelled = false;
+    progressUI = showExportProgressModal(() => {
+      isCancelled = true;
+    });
+
+    progressUI.update(0, 'Preparing assets and fonts...', '0 frames written');
+
+    // Fetch and inline required fonts for this canvas
+    const req = getRequiredFonts(c);
+    const fontPromises = [];
+    const fontReplacements = [];
+    
+    const museoFiles = {
+      300: 'Museo300-Regular.woff2',
+      500: 'Museo500-Regular.woff2',
+      700: 'Museo700-Regular.woff2'
+    };
+    const helveticaFiles = {
+      300: 'helveticaneueltpro_lt.woff2',
+      400: 'helveticaneueltpro_roman.woff2',
+      500: 'helveticaneueltpro.woff2'
+    };
+    
+    if (req.museo) {
+      for (const w of req.museo) {
+        const file = museoFiles[w];
+        if (file) {
+          fontPromises.push((async () => {
+            const dataUrl = await getFontAsDataUrl(file);
+            if (dataUrl) fontReplacements.push({ file, dataUrl });
+          })());
+        }
+      }
+    }
+    if (req.helvetica) {
+      for (const w of req.helvetica) {
+        const file = helveticaFiles[w];
+        if (file) {
+          fontPromises.push((async () => {
+            const dataUrl = await getFontAsDataUrl(file);
+            if (dataUrl) fontReplacements.push({ file, dataUrl });
+          })());
+        }
+      }
+    }
+    await Promise.all(fontPromises);
+
+    if (isCancelled) return;
+
+    // Generate HTML with animations enabled (isImageExport = false)
+    let html = generateExportHTML(c, null, false);
+    for (const rep of fontReplacements) {
+      html = html.split(`data/fonts/${rep.file}`).join(rep.dataUrl);
+      html = html.split(`assets/${rep.file}`).join(rep.dataUrl);
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const styles = Array.from(doc.querySelectorAll('style')).map(s => s.textContent).join('\n');
+    
+    const adEl = doc.querySelector('#ad');
+    if (!adEl) throw new Error('#ad element not found');
+    
+    // Inline images
+    const imgPromises = [];
+    const imgs = adEl.querySelectorAll('img');
+    imgs.forEach(img => {
+      const src = img.getAttribute('src');
+      if (src && !src.startsWith('data:') && !src.startsWith('http:') && !src.startsWith('https:')) {
+        imgPromises.push((async () => {
+          try {
+            const res = await fetch(src);
+            if (res.ok) {
+              const blob = await res.blob();
+              const dataUrl = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const base64Data = reader.result.split(',')[1];
+                  let mime = blob.type;
+                  if (!mime || mime === 'application/octet-stream') {
+                    if (src.endsWith('.svg') || src.endsWith('.svg+xml')) mime = 'image/svg+xml';
+                    else if (src.endsWith('.png')) mime = 'image/png';
+                    else if (src.endsWith('.jpg') || src.endsWith('.jpeg')) mime = 'image/jpeg';
+                    else if (src.endsWith('.gif')) mime = 'image/gif';
+                    else if (src.endsWith('.webp')) mime = 'image/webp';
+                    else mime = 'image/png';
+                  }
+                  resolve(`data:${mime};base64,${base64Data}`);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              img.setAttribute('src', dataUrl);
+            }
+          } catch (e) {
+            console.warn(`Failed to inline image ${src}:`, e);
+          }
+        })());
+      }
+    });
+    await Promise.all(imgPromises);
+
+    if (isCancelled) return;
+
+    const docSerializer = new XMLSerializer();
+    html = docSerializer.serializeToString(doc);
+
+    // Create recorder iframe
+    recorderIframe = document.createElement('iframe');
+    recorderIframe.style.cssText = 'position:fixed; top:-9999px; left:-9999px; width:' + c.width + 'px; height:' + c.height + 'px; border:none; visibility:hidden;';
+    document.body.appendChild(recorderIframe);
+
+    // Inject Mock Clock BEFORE srcdoc parses
+    const clockMockCode = `
+      (function() {
+        window.ADFLOW_RECORDING = true;
+        var virtualTime = 0;
+        var timeouts = [];
+        var rafCallbacks = [];
+        
+        window.setTimeout = function(fn, delay) {
+          var args = Array.prototype.slice.call(arguments, 2);
+          var id = timeouts.length + 1;
+          timeouts.push({ id: id, fn: fn, time: virtualTime + (delay || 0), args: args });
+          return id;
+        };
+        window.clearTimeout = function(id) {
+          timeouts = timeouts.filter(function(t) { return t.id !== id; });
+        };
+        window.requestAnimationFrame = function(cb) {
+          var id = rafCallbacks.length + 1;
+          rafCallbacks.push({ id: id, cb: cb });
+          return id;
+        };
+        window.cancelAnimationFrame = function(id) {
+          rafCallbacks = rafCallbacks.filter(function(c) { return c.id !== id; });
+        };
+        window.Date.now = function() {
+          return virtualTime;
+        };
+        
+        window.adflowTick = function(dt) {
+          virtualTime += dt;
+          
+          // Run due timeouts
+          var due = timeouts.filter(function(t) { return t.time <= virtualTime; });
+          timeouts = timeouts.filter(function(t) { return t.time > virtualTime; });
+          due.sort(function(a, b) { return a.time - b.time; }).forEach(function(t) {
+            t.fn.apply(null, t.args);
+          });
+          
+          // Run RAF callbacks
+          var currentRafs = rafCallbacks;
+          rafCallbacks = [];
+          currentRafs.forEach(function(r) {
+            r.cb(virtualTime);
+          });
+          
+          // Step CSS animations
+          var seen = window.adflowSeenAnimations;
+          if (!seen) {
+            seen = new WeakSet();
+            window.adflowSeenAnimations = seen;
+          }
+          var animations = document.getAnimations();
+          animations.forEach(function(anim) {
+            if (!seen.has(anim)) {
+              anim.pause();
+              anim.currentTime = 0;
+              seen.add(anim);
+            } else {
+              anim.currentTime = (anim.currentTime || 0) + dt;
+            }
+          });
+        };
+      })();
+    `;
+    html = html.replace('<head>', '<head><script>' + clockMockCode + '</script>');
+
+    recorderIframe.srcdoc = html;
+    await new Promise(resolve => recorderIframe.onload = resolve);
+
+    // Wait for fonts
+    if (recorderIframe.contentDocument && recorderIframe.contentDocument.fonts) {
+      try {
+        const fontLoads = [];
+        if (req.museo && req.museo.size > 0) {
+          fontLoads.push(recorderIframe.contentDocument.fonts.load('16px Museo'));
+        }
+        if (req.helvetica && req.helvetica.size > 0) {
+          fontLoads.push(recorderIframe.contentDocument.fonts.load('16px "Helvetica Neue LT Pro"'));
+        }
+        await Promise.all(fontLoads);
+      } catch (err) {
+        console.warn('Failed to force font load inside iframe:', err);
+      }
+      await recorderIframe.contentDocument.fonts.ready;
+    }
+
+    if (isCancelled) return;
+
+    if (recorderIframe.contentDocument.body) {
+      recorderIframe.contentDocument.body.offsetHeight;
+    }
+    if (recorderIframe.contentWindow.adjustAutoSizes) {
+      recorderIframe.contentWindow.adjustAutoSizes();
+    }
+
+    // Defensive dimension rounding (VideoEncoder requires even dimensions)
+    const exportWidth = c.width % 2 === 0 ? c.width : c.width + 1;
+    const exportHeight = c.height % 2 === 0 ? c.height : c.height + 1;
+
+    cnv = document.createElement('canvas');
+    cnv.width = exportWidth;
+    cnv.height = exportHeight;
+    cnv.style.cssText = 'position:fixed; top:-9999px; left:-9999px; visibility:hidden;';
+    document.body.appendChild(cnv);
+
+    const ctx = cnv.getContext('2d');
+
+    // Initialize WebMMuxer and VideoEncoder
+    let muxer = new WebMMuxer.Muxer({
+      target: new WebMMuxer.ArrayBufferTarget(),
+      video: {
+        codec: 'V_VP8',
+        width: exportWidth,
+        height: exportHeight
+      },
+      firstTimestampBehavior: 'offset'
+    });
+
+    let encoderError = null;
+    let encoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => {
+        console.error('VideoEncoder error:', e);
+        encoderError = e;
+      }
+    });
+
+    encoder.configure({
+      codec: 'vp8',
+      width: exportWidth,
+      height: exportHeight,
+      bitrate: 5e6, // 5 Mbps
+      framerate: 30
+    });
+
+    // Start frame-by-frame rendering ticks
+    const dt = 33.333; // 30 fps
+    const totalDurationMs = totalDuration * 1000;
+    let elapsedMs = 0;
+    let frameIndex = 0;
+    
+    const iframeDoc = recorderIframe.contentDocument;
+    const activeAd = iframeDoc.querySelector('#ad');
+    if (!activeAd) throw new Error('#ad element not found in player document');
+
+    const _bg = (typeof getCanvasBg === 'function')
+      ? getCanvasBg(c, state.activeFrameId)
+      : c.bgColor;
+    const fillBgColor = _bg || '#000';
+
+    while (elapsedMs <= totalDurationMs && !isCancelled) {
+      if (encoderError) {
+        throw new Error('VideoEncoder failed: ' + (encoderError.message || encoderError));
+      }
+
+      progressUI.update(
+        (elapsedMs / totalDurationMs) * 100,
+        `Rendering WebM... Frame ${frameIndex} (${Math.round((elapsedMs / totalDurationMs) * 100)}%)`,
+        `${frameIndex} frames encoded`
+      );
+
+      // Advance iframe virtual clock
+      if (recorderIframe.contentWindow.adflowTick) {
+        recorderIframe.contentWindow.adflowTick(dt);
+      }
+
+      // Draw standard background
+      ctx.fillStyle = fillBgColor;
+      ctx.fillRect(0, 0, exportWidth, exportHeight);
+
+      // Serialize frame XML
+      const activeAdXml = new XMLSerializer().serializeToString(activeAd);
+      const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${exportWidth}" height="${exportHeight}">
+        <defs>
+          <style type="text/css"><![CDATA[
+  ${styles}
+          ]]></style>
+        </defs>
+        <foreignObject x="0" y="0" width="100%" height="100%">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; position:relative;">
+            <style type="text/css"><![CDATA[
+  ${styles}
+            ]]></style>
+            ${activeAdXml}
+          </div>
+        </foreignObject>
+      </svg>`;
+      const base64Svg = btoa(unescape(encodeURIComponent(svgStr)));
+      const svgUrl = `data:image/svg+xml;base64,${base64Svg}`;
+
+      // Paint SVG onto canvas
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          setTimeout(() => {
+            ctx.drawImage(img, 0, 0);
+            resolve();
+          }, 60);
+        };
+        img.onerror = () => {
+          reject(new Error('Failed to paint frame ' + frameIndex));
+        };
+        img.src = svgUrl;
+      });
+
+      // Encode VideoFrame (WebCodecs expects timestamp in microseconds)
+      const timestampUs = Math.round(elapsedMs * 1000);
+      let frame = new VideoFrame(cnv, { timestamp: timestampUs });
+      encoder.encode(frame, { keyFrame: frameIndex % 30 === 0 });
+      frame.close();
+
+      elapsedMs += dt;
+      frameIndex++;
+    }
+
+    if (isCancelled) {
+      encoder.close();
+      return;
+    }
+
+    if (encoderError) {
+      throw new Error('VideoEncoder failed: ' + (encoderError.message || encoderError));
+    }
+
+    // Finalize encoding and muxing
+    progressUI.update(100, 'Compiling video track...', `${frameIndex} frames encoded`);
+    await encoder.flush();
+    encoder.close();
+    
+    muxer.finalize();
+    const buffer = muxer.target.buffer;
+    const videoBlob = new Blob([buffer], { type: 'video/webm' });
+
+    // Download the WebM video
+    const a = document.createElement('a');
+    const projName = state.projectName || 'Ad';
+    const fallbackSafe = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const prefix = (options.filenamePrefix && String(options.filenamePrefix).trim())
+      ? String(options.filenamePrefix).trim().replace(/[^a-zA-Z0-9_-]/g, '_')
+      : fallbackSafe;
+    
+    a.download = `${prefix}_${c.width}x${c.height}.webm`;
+    a.href = URL.createObjectURL(videoBlob);
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    if (typeof showCanvasNotification === 'function') {
+      showCanvasNotification('WebM video exported successfully');
+    }
+
+  } catch (err) {
+    console.error('WebM video export failed:', err);
+    alert('WebM export failed. Please check the console logs.');
+  } finally {
+    if (recorderIframe) recorderIframe.remove();
+    if (cnv && cnv.parentNode) cnv.remove();
+    if (progressUI) progressUI.close();
+  }
+}
+
 // Clear contents = remove all frame-specific elements from the active frame, keep
 // persistent top/bottom layers. Maps to the "wipe the working frame" intent.
 function clearCanvasFrame(c) {
@@ -1608,8 +2006,12 @@ function openExportModal() {
             <input type="radio" name="exp-format" value="png" style="margin:0;" />
             <span>PNG</span>
           </label>
+          <label style="flex:1; display:flex; align-items:center; gap:6px; padding:7px 9px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; cursor:pointer; font-size:12px;">
+            <input type="radio" name="exp-format" value="webm" style="margin:0;" />
+            <span>WebM Video</span>
+          </label>
         </div>
-        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">PNG exports the active frame as a static image (one file per canvas).</div>
+        <div id="format-desc" style="font-size:10px; color:var(--text-muted); margin-top:4px;">Generates an interactive HTML5 ad banner in a ZIP package.</div>
       </div>
       ${hasVersions ? `
       <div>
@@ -2126,6 +2528,21 @@ function openExportModal() {
     modalBg.querySelector('#exp-version')?.addEventListener('change', updateExportTableDetails);
   }
 
+  modalBg.querySelectorAll('input[name="exp-format"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      const desc = modalBg.querySelector('#format-desc');
+      if (desc) {
+        if (e.target.value === 'zip') {
+          desc.textContent = 'Generates an interactive HTML5 ad banner in a ZIP package.';
+        } else if (e.target.value === 'png') {
+          desc.textContent = 'PNG exports the active frame as a static image (one file per canvas).';
+        } else if (e.target.value === 'webm') {
+          desc.textContent = 'WebM exports the active frame animation as a video file (one file per canvas).';
+        }
+      }
+    });
+  });
+
   modalBg.querySelector('#btn-export-selected').addEventListener('click', async () => {
     const selectedIds = Array.from(chks).filter(c => c.checked).map(c => c.dataset.cid);
     if (selectedIds.length === 0) { alert('No ads selected.'); return; }
@@ -2162,6 +2579,15 @@ function openExportModal() {
       await dmRunExport(exportVersionIdx, async () => {
         for (const c of selectedCanvases) {
           await exportCanvasAsPng(c, { filenamePrefix });
+        }
+      });
+      return;
+    }
+
+    if (format === 'webm') {
+      await dmRunExport(exportVersionIdx, async () => {
+        for (const c of selectedCanvases) {
+          await exportCanvasAsWebm(c, { filenamePrefix });
         }
       });
       return;
