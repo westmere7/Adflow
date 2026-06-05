@@ -517,6 +517,14 @@ function openAutoResizeModal() {
               <span style="color:var(--text-muted); font-size:10.5px;">On (default): right-clicking a canvas and selecting Auto-Resize opens this dialog. Off: runs Auto-Resize instantly to all targets.</span>
             </span>
           </label>
+          <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
+            <input type="checkbox" id="ar-sync-canvas-bg" ${persistedSettings.behaviour.syncCanvasBg ? 'checked' : ''} />
+            <span>
+              <span style="color:var(--text-main); font-weight:500;">Sync canvas background</span>
+              <br>
+              <span style="color:var(--text-muted); font-size:10.5px;">On: sync background changes across all canvases per-frame (disabling "Per canvas" mode and enabling "Per frame" mode).</span>
+            </span>
+          </label>
         </div>
 
         <div style="padding:10px 12px; background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.25); border-radius:4px; font-size:11.5px; color:#fca5a5; line-height:1.5;">
@@ -561,13 +569,34 @@ function openAutoResizeModal() {
     const lockBrandElements = bg.querySelector('#ar-lock-brand').checked;
     const liveLinkEnabled = bg.querySelector('#ar-live-link').checked;
     const showModalInCtxMenu = bg.querySelector('#ar-show-ctx-modal').checked;
+    const syncCanvasBg = bg.querySelector('#ar-sync-canvas-bg').checked;
 
     persistedSettings.behaviour.includeUnassigned = includeUnassigned;
     persistedSettings.behaviour.lockBrandElements = lockBrandElements;
     persistedSettings.behaviour.liveLink.enabled = liveLinkEnabled;
     persistedSettings.behaviour.showModalInCtxMenu = showModalInCtxMenu;
+    persistedSettings.behaviour.syncCanvasBg = syncCanvasBg;
+
+    if (syncCanvasBg) {
+      state.bgPerFrame = true;
+      state.bgPerCanvas = false;
+      const c = getActiveCanvas();
+      if (c) {
+        const activeColor = getCanvasBg(c, state.activeFrameId);
+        const activeFid = state.activeFrameId;
+        const firstId = state.frames && state.frames[0] ? state.frames[0].id : null;
+        state.canvases.forEach(cv => {
+          if (!cv.bgByFrame) cv.bgByFrame = {};
+          cv.bgByFrame[activeFid] = activeColor;
+          if (activeFid === firstId) {
+            cv.bgColor = activeColor;
+          }
+        });
+      }
+    }
 
     close();
+    if (typeof render === 'function') render(true);
     runRuleBasedAutoResize({
       sourceId: src.id,
       targetIds,
@@ -2030,6 +2059,7 @@ const AUTO_RESIZE_DEFAULT_SETTINGS = {
     lockBrandElements:    true,   // lock logo, tagline, cricos after layout/arrange
     includeUnassigned:    false,  // remembered value for the misc-elements toggle
     showModalInCtxMenu:   true,   // show confirmation modal when resizing from context menu
+    syncCanvasBg:         false,  // sync canvas background per-frame to all canvases
     liveLink: {
       enabled:      false,
       syncText:     true,
@@ -2053,6 +2083,7 @@ function getAutoResizeSettings() {
   if (typeof s.behaviour.lockBrandElements    !== 'boolean') s.behaviour.lockBrandElements    = true;
   if (typeof s.behaviour.includeUnassigned   !== 'boolean') s.behaviour.includeUnassigned   = false;
   if (typeof s.behaviour.showModalInCtxMenu  !== 'boolean') s.behaviour.showModalInCtxMenu  = true;
+  if (typeof s.behaviour.syncCanvasBg        !== 'boolean') s.behaviour.syncCanvasBg        = false;
   if (!s.behaviour.liveLink) s.behaviour.liveLink = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour.liveLink };
   const ll = s.behaviour.liveLink;
   if (typeof ll.enabled        !== 'boolean') ll.enabled        = false;
@@ -2158,6 +2189,13 @@ function openAutoResizeSettingsModal() {
             <div style="flex:1; min-width:0;">
               <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Show confirmation dialog in context menu</div>
               <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">When on, right-clicking a canvas and selecting Auto-Resize opens the target selection dialog. Off: runs Auto-Resize instantly to all targets.</div>
+            </div>
+          </label>
+          <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
+            <input type="checkbox" id="ars-sync-canvas-bg" ${s.behaviour.syncCanvasBg ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Sync canvas background</div>
+              <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Sync background changes across all canvases per-frame (disabling "Per canvas" mode and enabling "Per frame" mode).</div>
             </div>
           </label>
         </div>
@@ -2267,6 +2305,26 @@ function openAutoResizeSettingsModal() {
     next.behaviour.includeUnassigned     = bg.querySelector('#ars-include-unassigned').checked;
     next.behaviour.lockBrandElements     = bg.querySelector('#ars-lock-brand').checked;
     next.behaviour.showModalInCtxMenu    = bg.querySelector('#ars-show-ctx-modal').checked;
+    next.behaviour.syncCanvasBg         = bg.querySelector('#ars-sync-canvas-bg').checked;
+    
+    if (next.behaviour.syncCanvasBg) {
+      state.bgPerFrame = true;
+      state.bgPerCanvas = false;
+      const c = getActiveCanvas();
+      if (c) {
+        const activeColor = getCanvasBg(c, state.activeFrameId);
+        const activeFid = state.activeFrameId;
+        const firstId = state.frames && state.frames[0] ? state.frames[0].id : null;
+        state.canvases.forEach(cv => {
+          if (!cv.bgByFrame) cv.bgByFrame = {};
+          cv.bgByFrame[activeFid] = activeColor;
+          if (activeFid === firstId) {
+            cv.bgColor = activeColor;
+          }
+        });
+      }
+    }
+
     next.behaviour.liveLink = {
       enabled:        bg.querySelector('#ars-ll-enabled').checked,
       syncText:       bg.querySelector('#ars-ll-text').checked,
@@ -2278,6 +2336,7 @@ function openAutoResizeSettingsModal() {
     state.autoResizeSettings = next;
     pushHistory();
     close();
+    if (typeof render === 'function') render(true);
     showCanvasNotification('Auto-Resize settings saved.', { type: 'success' });
   };
 }

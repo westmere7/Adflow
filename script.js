@@ -9402,6 +9402,9 @@ function renderProps() {
       `;
     }
 
+    const autoSettings = (typeof getAutoResizeSettings === 'function') ? getAutoResizeSettings() : null;
+    const isSyncCanvasBg = !!(autoSettings && autoSettings.behaviour && autoSettings.behaviour.syncCanvasBg === true);
+
     // show canvas properties when no element is selected
     propsEl.innerHTML = `
       ${dynamicHtml}
