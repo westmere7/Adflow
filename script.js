@@ -13509,29 +13509,53 @@ document.getElementById('btn-preview').addEventListener('click', () => {
 // ============================================================================
 // Build a .flow Blob + sidecar metadata (savedAt, suggestedName, exportState).
 // Reused by both the menu Save (saveProjectAsFlow) and the cloud push.
-async function buildFlowBlob() {
+async function buildFlowBlob(isTemplate = false) {
   if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
 
   const zip = new JSZip();
   const exportState = JSON.parse(JSON.stringify(state));
-  exportState.editingElementId = null;
-  if (document.getElementById('canvas-area')) {
-    const ca = document.getElementById('canvas-area');
-    exportState.viewScrollLeft = ca.scrollLeft;
-    exportState.viewScrollTop = ca.scrollTop;
-  }
-  exportState.zoom = state.zoom || 0.6;
-  if (!exportState.projectId) exportState.projectId = state.projectId = uid('proj_');
 
-  const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50;
-  const capped = getCappedHistory(limit);
-  exportState.history = capped.history;
-  exportState.historyIndex = capped.historyIndex;
-
-  const settings = (await _idbGet('settings')) || {};
-  if (settings.saveHistoryInProject !== true) {
+  if (isTemplate) {
+    exportState.isTemplate = true;
     delete exportState.history;
     delete exportState.historyIndex;
+    delete exportState.projectId;
+    delete exportState.cloudId;
+    delete exportState.cloudFolder;
+
+    exportState.selectedElementId = null;
+    exportState.layerSelection = [];
+    exportState.assetSelection = [];
+    exportState.editingElementId = null;
+    exportState.isolatedGroupId = null;
+    exportState.activeSmartGuides = null;
+    exportState.clipboard = null;
+    exportState.previewMode = false;
+    exportState.singlePreviewId = null;
+    exportState.playState = 'paused';
+    exportState.viewScrollLeft = 0;
+    exportState.viewScrollTop = 0;
+    exportState.zoom = 0.6;
+  } else {
+    exportState.editingElementId = null;
+    if (document.getElementById('canvas-area')) {
+      const ca = document.getElementById('canvas-area');
+      exportState.viewScrollLeft = ca.scrollLeft;
+      exportState.viewScrollTop = ca.scrollTop;
+    }
+    exportState.zoom = state.zoom || 0.6;
+    if (!exportState.projectId) exportState.projectId = state.projectId = uid('proj_');
+
+    const limit = state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50;
+    const capped = getCappedHistory(limit);
+    exportState.history = capped.history;
+    exportState.historyIndex = capped.historyIndex;
+
+    const settings = (await _idbGet('settings')) || {};
+    if (settings.saveHistoryInProject !== true) {
+      delete exportState.history;
+      delete exportState.historyIndex;
+    }
   }
 
   const imgFolder = zip.folder('images');
@@ -13558,7 +13582,8 @@ async function buildFlowBlob() {
     version: 1,
     savedAt,
     projectName: state.projectName || 'RMIT_ad',
-    projectId: exportState.projectId
+    projectId: exportState.projectId,
+    isTemplate: !!isTemplate
   }, null, 2));
   zip.file('project.json', JSON.stringify(exportState, null, 2));
 
@@ -13592,6 +13617,38 @@ async function saveProjectAsFlow() {
     a.click();
     URL.revokeObjectURL(a.href);
     await addRecentProject(exportState);
+  }
+}
+
+async function saveTemplateAsFlow() {
+  let built;
+  try { built = await buildFlowBlob(true); }
+  catch (e) { alert(e.message || 'Save failed'); return; }
+  const { blob, exportState, suggestedName } = built;
+
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        types: [{ description: 'Ad Flow Template', accept: { 'application/octet-stream': ['.flow'] } }],
+        suggestedName
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      showCanvasNotification('Template saved successfully', { type: 'success' });
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        console.error('Save failed:', e);
+        showCanvasNotification('Failed to save template: ' + (e.message || e), { type: 'error' });
+      }
+    }
+  } else {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = suggestedName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showCanvasNotification('Template saved successfully', { type: 'success' });
   }
 }
 
@@ -14053,6 +14110,7 @@ document.getElementById('menu-file-save-browser').addEventListener('click', asyn
   showCanvasNotification('Project saved to browser', { type: 'success' });
 });
 document.getElementById('menu-file-save-file').addEventListener('click', saveProjectToZip);
+document.getElementById('menu-file-save-template').addEventListener('click', saveTemplateAsFlow);
 document.getElementById('menu-file-new').addEventListener('click', openNewProjectDialog);
 document.getElementById('menu-project-settings').addEventListener('click', openProjectSettingsDialog);
 
@@ -14445,6 +14503,9 @@ function openNewProjectDialog() {
       <span style="font-size:11px; color:var(--text-muted); margin-left:auto;">${p.width} × ${p.height}</span>
     </label>`).join('');
 
+  let selectedLocalTemplateBlob = null;
+  let selectedLocalTemplateName = '';
+
   bg.innerHTML = `
     <div class="modal" style="max-width:480px;">
       <div class="modal-head">
@@ -14452,15 +14513,25 @@ function openNewProjectDialog() {
         <button class="btn" id="np-close" title="Close dialog">Close</button>
       </div>
       <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:18px 22px;">
-        <!-- Startup Template mode checkbox and selection -->
+        <!-- Template mode checkbox and selection -->
         <div style="border-bottom: 1px solid var(--border-light); padding-bottom: 12px; margin-bottom: 4px; display:flex; flex-direction:column; gap:8px;">
-          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:600; color:var(--text-bright); user-select:none;" title="If checked, initializes the project with the preset Startup template.">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:600; color:var(--text-bright); user-select:none;" title="If checked, initializes the project with a template.">
             <input type="checkbox" id="np-use-startup-template" ${localStorage.getItem('adflow-startup-mode') !== 'fresh' ? 'checked' : ''} style="margin:0;" />
-            <span>Use pre-defined startup template</span>
+            <span>Use template</span>
           </label>
-          <select id="np-startup-template-select" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
-            <!-- populated dynamically -->
-          </select>
+          <div id="np-template-container" style="display:flex; gap:8px; align-items:center;">
+            <select id="np-startup-template-select" style="flex:1; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
+              <!-- populated dynamically -->
+            </select>
+            <button class="btn" id="np-rescan-templates-btn" title="Re-scan Startup folder templates" style="padding:7px 10px; font-size:12px;">↻</button>
+            <button class="btn" id="np-browse-template-btn" style="padding:7px 12px; font-size:12px; white-space:nowrap;">Browse...</button>
+            <input type="file" id="np-local-template-file" accept=".flow" style="display:none;" />
+          </div>
+          <div id="np-local-template-status" style="font-size:11px; color:var(--text-accent); display:none; align-items:center; gap:6px;">
+            <span>Selected local template:</span>
+            <span id="np-local-template-name" style="font-weight:600; color:var(--text-bright);"></span>
+            <button class="btn ghost icon" id="np-clear-local-template-btn" title="Clear local template selection" style="padding:2px 4px; font-size:10px; line-height:1;">&times;</button>
+          </div>
         </div>
 
         <div>
@@ -14515,6 +14586,12 @@ function openNewProjectDialog() {
   const chkUseStartup = bg.querySelector('#np-use-startup-template');
   const selectTemplate = bg.querySelector('#np-startup-template-select');
   const customConfigContainer = bg.querySelector('#np-custom-config-container');
+  const btnBrowse = bg.querySelector('#np-browse-template-btn');
+  const btnRescan = bg.querySelector('#np-rescan-templates-btn');
+  const fileInput = bg.querySelector('#np-local-template-file');
+  const localStatus = bg.querySelector('#np-local-template-status');
+  const localName = bg.querySelector('#np-local-template-name');
+  const btnClearLocal = bg.querySelector('#np-clear-local-template-btn');
 
   const currentPref = localStorage.getItem('adflow-startup-mode') || 'fresh';
   const activeTemplate = currentPref !== 'fresh' ? currentPref : 'Adflow_startup.flow';
@@ -14531,13 +14608,116 @@ function openNewProjectDialog() {
   const updateFieldsVisibility = () => {
     const useStartup = chkUseStartup.checked;
     if (useStartup) {
-      selectTemplate.style.display = 'block';
+      bg.querySelector('#np-template-container').style.display = 'flex';
+      if (selectedLocalTemplateBlob) {
+        localStatus.style.display = 'flex';
+      } else {
+        localStatus.style.display = 'none';
+      }
       customConfigContainer.style.opacity = '0.4';
       customConfigContainer.style.pointerEvents = 'none';
     } else {
-      selectTemplate.style.display = 'none';
+      bg.querySelector('#np-template-container').style.display = 'none';
+      localStatus.style.display = 'none';
       customConfigContainer.style.opacity = '1';
       customConfigContainer.style.pointerEvents = 'auto';
+    }
+  };
+
+  btnBrowse.onclick = () => {
+    fileInput.click();
+  };
+
+  fileInput.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
+      const zip = await JSZip.loadAsync(file);
+      
+      let isTemplate = false;
+      const projFile = zip.file('project.json');
+      if (projFile) {
+        const jsonStr = await projFile.async('string');
+        const loadedState = JSON.parse(jsonStr);
+        if (loadedState.isTemplate === true) {
+          isTemplate = true;
+        }
+      }
+      
+      if (!isTemplate) {
+        const metaFile = zip.file('meta.json');
+        if (metaFile) {
+          const metaStr = await metaFile.async('string');
+          const meta = JSON.parse(metaStr);
+          if (meta.isTemplate === true) {
+            isTemplate = true;
+          }
+        }
+      }
+
+      if (!isTemplate) {
+        showCanvasNotification('Selected file is not a valid template (missing template metadata).', { type: 'error' });
+        fileInput.value = '';
+        return;
+      }
+
+      selectedLocalTemplateBlob = file;
+      selectedLocalTemplateName = file.name;
+      localName.textContent = file.name;
+      localStatus.style.display = 'flex';
+      
+      selectTemplate.disabled = true;
+      selectTemplate.style.opacity = '0.5';
+    } catch (err) {
+      console.error(err);
+      showCanvasNotification('Failed to read template file: ' + err.message, { type: 'error' });
+      fileInput.value = '';
+    }
+  };
+
+  const clearLocalSelection = () => {
+    selectedLocalTemplateBlob = null;
+    selectedLocalTemplateName = '';
+    localName.textContent = '';
+    localStatus.style.display = 'none';
+    fileInput.value = '';
+    selectTemplate.disabled = false;
+    selectTemplate.style.opacity = '1';
+  };
+
+  btnClearLocal.onclick = clearLocalSelection;
+
+  selectTemplate.onchange = () => {
+    clearLocalSelection();
+  };
+
+  btnRescan.onclick = async () => {
+    btnRescan.disabled = true;
+    btnRescan.style.opacity = '0.5';
+    btnRescan.textContent = '...';
+    showCanvasNotification('Scanning startup templates...', { type: 'info' });
+    
+    const ok = await scanStartupTemplates();
+    
+    btnRescan.disabled = false;
+    btnRescan.style.opacity = '1';
+    btnRescan.textContent = '↻';
+    
+    if (ok) {
+      if (Array.isArray(startupTemplates) && startupTemplates.length > 0) {
+        selectTemplate.innerHTML = startupTemplates.map(t => {
+          return `<option value="${t.fileName}">${t.projectName} (${t.fileName})</option>`;
+        }).join('');
+        showCanvasNotification(`Scan completed! Found ${startupTemplates.length} template(s).`, { type: 'success' });
+      } else {
+        selectTemplate.innerHTML = `<option value="" disabled selected>(No verified templates found)</option>`;
+        showCanvasNotification('Scan completed. No templates found.', { type: 'warning' });
+      }
+      clearLocalSelection();
+    } else {
+      showCanvasNotification('Failed to scan startup folder.', { type: 'error' });
     }
   };
 
@@ -14590,6 +14770,13 @@ function openNewProjectDialog() {
 
     try {
       if (useStartup) {
+        if (selectedLocalTemplateBlob) {
+          await loadProjectFromBlob(selectedLocalTemplateBlob, name);
+          closeFn();
+          showCanvasNotification('Loaded local template.', { type: 'success' });
+          return;
+        }
+
         const chosenTemplate = selectTemplate.value;
         const ok = await loadStartupTemplate(chosenTemplate, name);
         if (ok) {
@@ -19216,12 +19403,86 @@ const appSplash = (() => {
 })();
 
 
+async function scanStartupTemplates() {
+  try {
+    const res = await fetch(`Startup/registry.json?t=${Date.now()}`);
+    if (res.ok) {
+      const rawTemplates = await res.json();
+      const verified = [];
+      for (const t of rawTemplates) {
+        try {
+          const fileRes = await fetch(`Startup/${t.fileName}?t=${Date.now()}`);
+          if (fileRes.ok) {
+            const blob = await fileRes.blob();
+            const zip = await JSZip.loadAsync(blob);
+            let isTemplate = false;
+
+            const projFile = zip.file('project.json');
+            if (projFile) {
+              const jsonStr = await projFile.async('string');
+              const loadedState = JSON.parse(jsonStr);
+              if (loadedState.isTemplate === true) isTemplate = true;
+            }
+            if (!isTemplate) {
+              const metaFile = zip.file('meta.json');
+              if (metaFile) {
+                const metaStr = await metaFile.async('string');
+                const meta = JSON.parse(metaStr);
+                if (meta.isTemplate === true) isTemplate = true;
+              }
+            }
+
+            if (isTemplate) {
+              verified.push(t);
+            } else {
+              console.warn(`Template registry file ${t.fileName} is missing template metadata. Omitted.`);
+            }
+          }
+        } catch (err) {
+          console.warn(`Failed to validate registry template ${t.fileName}:`, err);
+        }
+      }
+      startupTemplates = verified;
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.warn('Could not load startup templates registry:', e);
+    return false;
+  }
+}
+
 async function loadStartupTemplate(fileName, customProjectName) {
   try {
     const fileToFetch = fileName || 'Adflow_startup.flow';
-    const response = await fetch(`Startup/${fileToFetch}`);
+    const response = await fetch(`Startup/${fileToFetch}?t=${Date.now()}`);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const blob = await response.blob();
+
+    if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
+    const zip = await JSZip.loadAsync(blob);
+    let isTemplate = false;
+
+    const projFile = zip.file('project.json');
+    if (projFile) {
+      const jsonStr = await projFile.async('string');
+      const loadedState = JSON.parse(jsonStr);
+      if (loadedState.isTemplate === true) isTemplate = true;
+    }
+    if (!isTemplate) {
+      const metaFile = zip.file('meta.json');
+      if (metaFile) {
+        const metaStr = await metaFile.async('string');
+        const meta = JSON.parse(metaStr);
+        if (meta.isTemplate === true) isTemplate = true;
+      }
+    }
+
+    if (!isTemplate) {
+      showCanvasNotification('Selected startup file is not a valid template.', { type: 'error' });
+      return false;
+    }
+
     await loadProjectFromBlob(blob, customProjectName);
     if (typeof writeAutosave === 'function') {
       await writeAutosave();
@@ -19237,14 +19498,7 @@ async function loadStartupTemplate(fileName, customProjectName) {
 
 (async function initApp() {
   appSplash.setPhase(0.5);
-  try {
-    const res = await fetch('Startup/registry.json');
-    if (res.ok) {
-      startupTemplates = await res.json();
-    }
-  } catch (e) {
-    console.warn('Could not load startup templates registry:', e);
-  }
+  await scanStartupTemplates();
 
   appSplash.setPhase(1);
   let restored = false;
