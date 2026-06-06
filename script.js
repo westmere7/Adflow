@@ -10522,11 +10522,13 @@ function renderProps() {
         </div>`);
       }
 
-      f.push(`<div class="prop-row" style="margin-top:0; margin-bottom:8px;">
-        <button id="btn-image-remove" class="btn" title="Remove image and keep placeholder" style="width:100%; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); cursor:pointer; transition: background 0.2s, border-color 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.borderColor='rgba(239, 68, 68, 0.5)';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderColor='rgba(239, 68, 68, 0.3)';" ${imgDisabled ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}>
-          Remove Image
-        </button>
-      </div>`);
+      if (!isRmitLogo) {
+        f.push(`<div class="prop-row" style="margin-top:0; margin-bottom:8px;">
+          <button id="btn-image-remove" class="btn" title="Remove image and keep placeholder" style="width:100%; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); cursor:pointer; transition: background 0.2s, border-color 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.borderColor='rgba(239, 68, 68, 0.5)';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderColor='rgba(239, 68, 68, 0.3)';" ${imgDisabled ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}>
+            Remove Image
+          </button>
+        </div>`);
+      }
     }
 
     // Sizing (Fit) and Opacity inline side-by-side
