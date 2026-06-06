@@ -50,6 +50,7 @@
 
 const urlSizeCache = {};
 
+
 // Auto-resize engine (rule-based v2) lives in `auto-resize-engine.js`. That
 // file is loaded BEFORE this one in index.html, so its constants and
 // functions (ROLE_IDS, ROLE_LABELS, ROLE_PICKER_ORDER, autoAssignRole,
@@ -2756,6 +2757,8 @@ function canvasFrameNode(c) {
       }
     }
 
+
+
     // selection overlay (only if this canvas is active and an element is selected)
     if (c.id === state.activeCanvasId) {
       if (state.isolatedGroupId) {
@@ -4601,6 +4604,68 @@ function placeholderOverlay(el) {
   w.appendChild(hint);
 
   return w;
+}
+
+function createAssetDragImage(asset) {
+  const src = asset.elements || [];
+  if (src.length === 0) return null;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  src.forEach(e => {
+    minX = Math.min(minX, e.x); minY = Math.min(minY, e.y);
+    maxX = Math.max(maxX, e.x + e.width); maxY = Math.max(maxY, e.y + e.height);
+  });
+  const bw = maxX - minX, bh = maxY - minY;
+
+  const padding = 4;
+  const canvas = document.createElement('canvas');
+  canvas.width = bw + padding * 2;
+  canvas.height = bh + padding * 2;
+  const ctx = canvas.getContext('2d');
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  let accentColor = '#7c5cff';
+  const computedStyle = getComputedStyle(document.documentElement);
+  const accentVal = computedStyle.getPropertyValue('--accent-base').trim();
+  if (accentVal) accentColor = accentVal;
+
+  ctx.strokeStyle = accentColor;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+
+  const offX = padding - minX;
+  const offY = padding - minY;
+
+  src.forEach(e => {
+    ctx.save();
+    const cx = e.x + offX + e.width / 2;
+    const cy = e.y + offY + e.height / 2;
+    ctx.translate(cx, cy);
+    ctx.rotate(((e.rotation || 0) * Math.PI) / 180);
+    ctx.beginPath();
+    const w = e.width;
+    const h = e.height;
+    if (e.type === 'circle') {
+      const r = Math.min(w, h) / 2;
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+    } else {
+      const rad = e.radius || 0;
+      if (rad > 0 && typeof ctx.roundRect === 'function') {
+        ctx.roundRect(-w / 2, -h / 2, w, h, rad);
+      } else {
+        ctx.rect(-w / 2, -h / 2, w, h);
+      }
+    }
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  return {
+    canvas,
+    offsetX: bw / 2 + padding,
+    offsetY: bh / 2 + padding
+  };
 }
 
 function selectionOverlay(el) {
@@ -7846,10 +7911,16 @@ function renderAssets() {
       const isSelected = (state.assetSelection || []).includes(asset.id);
       const idsToDrag = isSelected ? state.assetSelection.join(',') : asset.id;
       e.dataTransfer.setData('application/x-asset', idsToDrag);
+      state.draggingAssetId = asset.id;
+      const dragImageInfo = createAssetDragImage(asset);
+      if (dragImageInfo && e.dataTransfer.setDragImage) {
+        e.dataTransfer.setDragImage(dragImageInfo.canvas, dragImageInfo.offsetX, dragImageInfo.offsetY);
+      }
       e.dataTransfer.effectAllowed = 'copyMove';
       assetHoverPreview.hide();
     });
     div.addEventListener('dragend', () => {
+      state.draggingAssetId = null;
       if (state.dragOverPlaceholderId) {
         state.dragOverPlaceholderId = null;
         render(true);
@@ -7873,7 +7944,7 @@ function renderAssets() {
     div.className = 'layer' + (folder.readOnly ? ' read-only-folder' : '');
     div.dataset.folderId = folder.id;
     const caretRot = folder.collapsed ? 'transform:rotate(-90deg);' : '';
-    const deleteBtn = folder.readOnly ? '' : `<button class="icon-btn active" data-act="del-folder" title="Delete folder (its assets move out)">${TRASH}</button>`;
+    const deleteBtn = folder.readOnly ? '' : `<button class="icon-btn active" data-act="del-folder" title="Delete folder (contents move out; Shift+Click to delete folder and all contents)">${TRASH}</button>`;
     div.innerHTML = `
       <svg class="folder-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;cursor:pointer;${caretRot}transition:transform .15s;"><polyline points="6 9 12 15 18 9"/></svg>
       <svg class="layer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h5l2 3h9v11H4z"/></svg>
@@ -7889,7 +7960,11 @@ function renderAssets() {
     if (!folder.readOnly) {
       div.querySelector('[data-act="del-folder"]').addEventListener('click', (e) => {
         e.stopPropagation();
-        (state.assetLibrary || []).forEach(a => { if (a.folderId === folder.id) a.folderId = null; });
+        if (e.shiftKey) {
+          state.assetLibrary = (state.assetLibrary || []).filter(a => a.folderId !== folder.id);
+        } else {
+          (state.assetLibrary || []).forEach(a => { if (a.folderId === folder.id) a.folderId = null; });
+        }
         state.assetFolders = (state.assetFolders || []).filter(f => f.id !== folder.id);
         pushHistory();
         render();
@@ -10505,6 +10580,7 @@ function renderProps() {
 
       if (!isVector) {
         const compressBtnStyle = 'background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); border:none; cursor:pointer;';
+        const gearBtnStyle = 'background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); border:none; cursor:pointer; width:28px; display:flex; align-items:center; justify-content:center; padding:0;';
         const isCropped = !!el.cropOriginalAssetId;
         const cropBtnStyle = isCropped
           ? 'background:var(--accent-dark); color:var(--text-main); border:1px solid var(--accent-base); cursor:pointer;'
@@ -10512,22 +10588,37 @@ function renderProps() {
         const cropTitle = isCropped
           ? 'Re-crop / re-rotate. Reopens the crop dialogue with the original (uncropped) image and the current crop region preselected.'
           : 'Crop & level — rotate the image and pull the corners to crop. Result is baked into the image (element rotation stays 0).';
-        f.push(`<div class="prop-row" style="margin-top:4px; margin-bottom:8px; display:flex; gap:6px;">
-          <button id="btn-webp-compress" class="btn" title="Compress image to WebP format to reduce file size" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; ${compressBtnStyle}" ${imgDisabled ? 'disabled' : ''}>
-            ${el.isCompressed ? '✓ Compression' : 'Compression'}
-          </button>
+        const GEAR_ICON = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+
+        f.push(`<div class="prop-row" style="margin-top:4px; margin-bottom:6px; display:flex; gap:6px; width:100%;">
+          <div style="display:flex; gap:4px; flex:1;">
+            <button id="btn-webp-compress" class="btn" title="Auto-compress image to WebP format to reduce file size at suggested level" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; ${compressBtnStyle}" ${imgDisabled ? 'disabled' : ''}>
+              ${el.isCompressed ? '✓ Auto-compress' : 'Auto-compress'}
+            </button>
+            <button id="btn-webp-settings" class="btn" title="Open WebP compression settings dialog" style="border-radius:4px; transition:opacity 0.2s; ${gearBtnStyle}" ${imgDisabled ? 'disabled' : ''}>
+              ${GEAR_ICON}
+            </button>
+          </div>
+        </div>`);
+
+        f.push(`<div class="prop-row" style="margin-top:0; margin-bottom:8px; display:flex; gap:6px; width:100%;">
           <button id="btn-image-crop" class="btn" title="${cropTitle}" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; ${cropBtnStyle}" ${imgDisabled ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}>
             ${isCropped ? '✓ Crop & Level' : 'Crop & Level'}
           </button>
-        </div>`);
-      }
-
-      if (!isRmitLogo) {
-        f.push(`<div class="prop-row" style="margin-top:0; margin-bottom:8px;">
-          <button id="btn-image-remove" class="btn" title="Remove image and keep placeholder" style="width:100%; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); cursor:pointer; transition: background 0.2s, border-color 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.borderColor='rgba(239, 68, 68, 0.5)';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderColor='rgba(239, 68, 68, 0.3)';" ${imgDisabled ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}>
+          ${!isRmitLogo ? `
+          <button id="btn-image-remove" class="btn" title="Remove image and keep placeholder" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); cursor:pointer; transition: background 0.2s, border-color 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.borderColor='rgba(239, 68, 68, 0.5)';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderColor='rgba(239, 68, 68, 0.3)';" ${imgDisabled ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}>
             Remove Image
           </button>
+          ` : ''}
         </div>`);
+      } else {
+        if (!isRmitLogo) {
+          f.push(`<div class="prop-row" style="margin-top:0; margin-bottom:8px;">
+            <button id="btn-image-remove" class="btn" title="Remove image and keep placeholder" style="width:100%; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); cursor:pointer; transition: background 0.2s, border-color 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.borderColor='rgba(239, 68, 68, 0.5)';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderColor='rgba(239, 68, 68, 0.3)';" ${imgDisabled ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}>
+              Remove Image
+            </button>
+          </div>`);
+        }
       }
     }
 
@@ -12007,7 +12098,26 @@ function checkButtonFontSizeWarning(el) {
 
   const btnCompress = propsEl.querySelector('#btn-webp-compress');
   if (btnCompress) {
-    btnCompress.onclick = (e) => {
+    btnCompress.onclick = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const origText = btnCompress.textContent;
+      btnCompress.textContent = 'Compressing...';
+      btnCompress.disabled = true;
+      try {
+        await autoCompressImage(el);
+      } catch (err) {
+        console.error(err);
+        alert('Failed to auto-compress image: ' + err.message);
+      } finally {
+        btnCompress.textContent = origText;
+        btnCompress.disabled = false;
+      }
+    };
+  }
+  const btnSettings = propsEl.querySelector('#btn-webp-settings');
+  if (btnSettings) {
+    btnSettings.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
       openWebpCompressionModal(el);
@@ -17452,6 +17562,82 @@ function openWebpCompressionModal(el) {
     renderProps();
     closeFn();
   };
+}
+
+async function autoCompressImage(el) {
+  const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el, true) : {};
+  const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
+  const originalDataUrl = (activeAssetId && state.assets && state.assets[activeAssetId]) || activeAssetId;
+  if (!originalDataUrl) return;
+
+  const activeC = getActiveCanvas();
+  const currentAdSize = activeC && activeC._valKb ? parseFloat(activeC._valKb) : 0;
+  const limitKb = state.adSizeLimit || 150;
+
+  let originalImageSizeKB = 0;
+  try {
+    const sizeStr = await getImageSizeKB(originalDataUrl);
+    originalImageSizeKB = parseFloat(sizeStr) || 0;
+  } catch (e) {
+    originalImageSizeKB = 0;
+  }
+
+  const qualities = [];
+  for (let q = 80; q >= 10; q -= 5) {
+    qualities.push(q);
+  }
+
+  const scanPromises = qualities.map(async (q) => {
+    try {
+      const compressed = await compressImage(originalDataUrl, 'image/webp', q / 100);
+      const compSizeStr = await getImageSizeKB(compressed);
+      const compSize = parseFloat(compSizeStr) || 0;
+      const estAdSize = currentAdSize - originalImageSizeKB + compSize;
+      return { q, estAdSize, dataUrl: compressed };
+    } catch (err) {
+      return { q, estAdSize: Infinity, dataUrl: null };
+    }
+  });
+
+  const scanResults = await Promise.all(scanPromises);
+  scanResults.sort((a, b) => b.q - a.q);
+
+  let best = scanResults.find(r => r.estAdSize <= limitKb);
+  if (!best) {
+    best = scanResults[scanResults.length - 1];
+  }
+
+  if (best && best.dataUrl) {
+    const newId = 'img_' + uid();
+    if (!state.assets) state.assets = {};
+    state.assets[newId] = best.dataUrl;
+
+    if (!state.assetNames) state.assetNames = {};
+    const origName = state.assetNames && state.assetNames[activeAssetId] ? state.assetNames[activeAssetId] : (el.name || 'image');
+    state.assetNames[newId] = origName.replace(/\.[a-z0-9]+$/i, '') + '.webp';
+
+    const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
+    if (_imgDyn) {
+      if (state.dataMerge) {
+        if (!state.dataMerge.mappings) state.dataMerge.mappings = {};
+        const sk = dmSlotKey(el) + '::image';
+        state.dataMerge.mappings[sk] = newId;
+      }
+    } else {
+      el.assetId = newId;
+    }
+
+    if (!state.compressedAssetsMap) state.compressedAssetsMap = {};
+    state.compressedAssetsMap[activeAssetId] = newId;
+
+    el.isCompressed = true;
+    el.webpQuality = best.q;
+    el.compressionFormat = 'image/webp';
+
+    pushHistory();
+    render();
+    renderProps();
+  }
 }
 
 // Image crop + rotate modal. Lets users level a tilted horizon or crop a
