@@ -624,84 +624,69 @@ function _formatSaveTime(date) {
 }
 
 function updateSaveStatusUI() {
-  const localEl = document.getElementById('save-status-local');
-  const cloudEl = document.getElementById('save-status-cloud');
-  const containerEl = document.getElementById('save-status-container');
-  if (!localEl || !cloudEl) return;
+  const barEl = document.getElementById('save-progress-bar');
+  if (!barEl) return;
 
-  // 1. Determine Browser (Local DB) Text and Class
-  let localText = 'Browser: Saved';
-  let localClass = 'status-fully-saved';
-
-  if (_localSaveStatus === 'saving') {
-    localText = 'Browser: Saving...';
-    localClass = 'status-saving';
-  } else if (_localSaveStatus === 'error') {
-    localText = 'Browser: Error';
-    localClass = 'status-error';
-  } else if (_localSaveStatus === 'unsaved') {
-    localText = 'Browser: Unsaved';
-    localClass = 'status-unsaved';
-  }
-
-  localEl.textContent = localText;
-  localEl.className = `save-line-text ${localClass}`;
-
-  // 2. Determine External Backup (Cloud or File) Text and Class
+  // Determine ambient saving/progress state
   let currentCloudStatus = _cloudSaveStatus;
   if (typeof authState !== 'undefined' && authState.enabled && !authState.currentUser()) {
     currentCloudStatus = 'none';
   }
 
-  let extText = 'Cloud: Local Only';
-  let extClass = 'status-none';
-
-  if (currentCloudStatus !== 'none') {
-    // Render Cloud Backup status
-    if (currentCloudStatus === 'saving') {
-      extText = 'Cloud: Syncing...';
-      extClass = 'status-saving';
-    } else if (currentCloudStatus === 'error') {
-      extText = 'Cloud: Error';
-      extClass = 'status-error';
-    } else if (currentCloudStatus === 'unsaved') {
-      extText = 'Cloud: Unsaved';
-      extClass = 'status-unsaved';
-    } else if (currentCloudStatus === 'saved') {
-      extText = 'Cloud: Synced';
-      extClass = 'status-fully-saved';
-    }
-  } else {
-    // Render File Backup status
-    if (_fileSaveStatus === 'saved') {
-      extText = 'File: Saved';
-      extClass = 'status-fully-saved';
-    } else if (_fileSaveStatus === 'unsaved') {
-      extText = 'File: Unsaved';
-      extClass = 'status-unsaved';
+  // 1. Error state (takes priority)
+  if (_localSaveStatus === 'error' || currentCloudStatus === 'error') {
+    barEl.className = 'status-error';
+  }
+  // 2. Saving/Syncing state
+  else if (_localSaveStatus === 'saving' || currentCloudStatus === 'saving') {
+    barEl.className = 'status-saving';
+  }
+  // 3. Saved transition state
+  else if (_localSaveStatus === 'saved' && (currentCloudStatus === 'saved' || currentCloudStatus === 'none')) {
+    if (barEl.classList.contains('status-saving')) {
+      barEl.className = 'status-saved';
     } else {
-      extText = 'File: Not Saved';
-      extClass = 'status-none';
+      barEl.className = '';
+    }
+  }
+  // 4. Default / Idle / Unsaved state
+  else {
+    barEl.className = '';
+  }
+
+  // Update the status dot next to the project name
+  const dotEl = document.getElementById('project-save-status-dot');
+  if (dotEl) {
+    if (_localSaveStatus === 'error' || currentCloudStatus === 'error') {
+      dotEl.className = 'status-error';
+      dotEl.setAttribute('title', 'Save error');
+    } else if (_localSaveStatus === 'saving' || currentCloudStatus === 'saving') {
+      dotEl.className = 'status-saving';
+      dotEl.setAttribute('title', 'Saving changes...');
+    } else if (_localSaveStatus === 'unsaved' || currentCloudStatus === 'unsaved' || _fileSaveStatus === 'unsaved') {
+      dotEl.className = 'status-unsaved';
+      dotEl.setAttribute('title', 'Unsaved changes');
+    } else {
+      dotEl.className = '';
+      dotEl.setAttribute('title', 'All changes saved');
     }
   }
 
-  cloudEl.textContent = extText;
-  cloudEl.className = `save-line-text ${extClass}`;
-
-  // 3. Set Container Tooltip
-  const localTime = _formatSaveTime(_lastLocalSaveTime);
-  const cloudTime = _lastCloudSaveTime ? _formatSaveTime(_lastCloudSaveTime) : 'Never';
-  const fileTime = _lastFileSaveTime ? _formatSaveTime(_lastFileSaveTime) : 'Never';
-  const localConfText = localMap[_localSaveStatus]?.text || 'Saved';
-  const cloudConfText = cloudMap[currentCloudStatus]?.text || 'Local Only';
-  const fileConfText = _fileSaveStatus === 'saved' ? 'Saved' : (_fileSaveStatus === 'unsaved' ? 'Out of Sync' : 'Not Saved');
-
-  const title = `[Save & Sync Status]\n` +
-                `• Browser Auto-save: ${localConfText} (Last: ${localTime})\n` +
-                `• Cloud Sync: ${cloudConfText} (Last: ${cloudTime})\n` +
-                `• File Export: ${fileConfText} (Last: ${fileTime})`;
-
+  // Update the tooltip on the project-meta-container so the user can inspect detailed status on hover
+  const containerEl = document.getElementById('project-meta-container');
   if (containerEl) {
+    const localTime = _formatSaveTime(_lastLocalSaveTime);
+    const cloudTime = _lastCloudSaveTime ? _formatSaveTime(_lastCloudSaveTime) : 'Never';
+    const fileTime = _lastFileSaveTime ? _formatSaveTime(_lastFileSaveTime) : 'Never';
+    const localConfText = localMap[_localSaveStatus]?.text || 'Saved';
+    const cloudConfText = cloudMap[currentCloudStatus]?.text || 'Local Only';
+    const fileConfText = _fileSaveStatus === 'saved' ? 'Saved' : (_fileSaveStatus === 'unsaved' ? 'Out of Sync' : 'Not Saved');
+
+    const title = `[Save & Sync Status]\n` +
+                  `• Browser Auto-save: ${localConfText} (Last: ${localTime})\n` +
+                  `• Cloud Sync: ${cloudConfText} (Last: ${cloudTime})\n` +
+                  `• File Export: ${fileConfText} (Last: ${fileTime})\n\n` +
+                  `Click to open project settings / Double-click to rename`;
     containerEl.setAttribute('title', title);
   }
 }
@@ -14868,6 +14853,40 @@ function openProjectSettingsDialog() {
   }
   const cloudConf = cloudMap[currentCloudStatus] || cloudMap.none;
 
+  const fileConf = {
+    class: _fileSaveStatus === 'saved' ? 'status-saved' : (_fileSaveStatus === 'unsaved' ? 'status-unsaved' : 'status-none'),
+    text: _fileSaveStatus === 'saved' ? 'Saved' : (_fileSaveStatus === 'unsaved' ? 'Out of Sync' : 'Not Saved'),
+    title: _fileSaveStatus === 'saved' ? 'Project is backed up to a physical file' : (_fileSaveStatus === 'unsaved' ? 'Changes have been made since last file save' : 'Project has not been saved as a file yet'),
+    lastTime: _lastFileSaveTime ? _formatSaveTime(_lastFileSaveTime) : 'Never'
+  };
+
+  const isCloudProject = currentCloudStatus !== 'none';
+  const secondStatusHtml = isCloudProject ? `
+            <div style="display:flex; align-items:flex-start; gap:8px;">
+              <div style="margin-top:2px;">
+                <svg class="save-icon-status cloud ${cloudConf.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; flex-shrink:0;">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:11px; font-weight:600; color:var(--text-bright);">Cloud Backup: ${cloudConf.text}</span>
+                <span style="font-size:10px; color:var(--text-muted);">${cloudConf.title}</span>
+                <span style="font-size:10px; color:var(--text-muted); font-style:italic;">Last Synced: ${_formatSaveTime(_lastCloudSaveTime)}</span>
+              </div>
+            </div>` : `
+            <div style="display:flex; align-items:flex-start; gap:8px;">
+              <div style="margin-top:2px;">
+                <svg class="save-icon-status file ${fileConf.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; flex-shrink:0;">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:2px;">
+                <span style="font-size:11px; font-weight:600; color:var(--text-bright);">File Backup: ${fileConf.text}</span>
+                <span style="font-size:10px; color:var(--text-muted);">${fileConf.title}</span>
+                <span style="font-size:10px; color:var(--text-muted); font-style:italic;">Last Saved: ${fileConf.lastTime}</span>
+              </div>
+            </div>`;
+
   bg.innerHTML = `
     <div class="modal" style="max-width:400px;">
       <div class="modal-head">
@@ -14897,24 +14916,13 @@ function openProjectSettingsDialog() {
                 </svg>
               </div>
               <div style="display:flex; flex-direction:column; gap:2px;">
-                <span style="font-size:11px; font-weight:600; color:var(--text-bright);">Local Autosave: ${localConf.text}</span>
-                <span style="font-size:10px; color:var(--text-muted);">${localConf.title}</span>
+                <span style="font-size:11px; font-weight:600; color:var(--text-bright);">Browser Autosave: ${localConf.text}</span>
+                <span style="font-size:10px; color:var(--text-muted);">${localConf.title.replace('locally', 'in browser cache')}</span>
                 <span style="font-size:10px; color:var(--text-muted); font-style:italic;">Last Saved: ${_formatSaveTime(_lastLocalSaveTime)}</span>
               </div>
             </div>
             <div style="height:1px; background:var(--border-light); margin:4px 0;"></div>
-            <div style="display:flex; align-items:flex-start; gap:8px;">
-              <div style="margin-top:2px;">
-                <svg class="save-icon-status cloud ${cloudConf.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; flex-shrink:0;">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <div style="display:flex; flex-direction:column; gap:2px;">
-                <span style="font-size:11px; font-weight:600; color:var(--text-bright);">Cloud Backup: ${cloudConf.text}</span>
-                <span style="font-size:10px; color:var(--text-muted);">${cloudConf.title}</span>
-                <span style="font-size:10px; color:var(--text-muted); font-style:italic;">Last Synced: ${_formatSaveTime(_lastCloudSaveTime)}</span>
-              </div>
-            </div>
+            ${secondStatusHtml}
           </div>
         </div>
       </div>

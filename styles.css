@@ -4192,54 +4192,79 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
   color: color-mix(in srgb, var(--text-muted) 35%, transparent);
 }
 
-.save-line-text {
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
+#save-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  box-sizing: border-box;
-  background: none !important;
-  border: none !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  transition: all 0.25s ease;
-  color: var(--text-muted, #8b8f9c);
-  text-align: left;
+  height: 2px;
+  background: var(--accent-base, #7c5cff);
+  z-index: 99999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, background-color 0.4s ease;
 }
 
-.save-line-text::before {
-  content: '●';
-  font-size: 7px;
-  margin-right: 2px;
+#save-progress-bar.status-saving {
+  opacity: 1;
+  background: linear-gradient(90deg, var(--accent-base, #7c5cff) 0%, #a78bfa 50%, var(--accent-base, #7c5cff) 100%);
+  background-size: 200% 100%;
+  animation: save-progress-pulse 1.5s infinite linear;
+}
+
+#save-progress-bar.status-saved {
+  opacity: 1;
+  background: #10b981;
+  animation: save-progress-fade 1.5s forwards ease-out;
+}
+
+#save-progress-bar.status-error {
+  opacity: 1;
+  background: #ef4444;
+  animation: save-shake 0.4s ease;
+}
+
+@keyframes save-progress-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes save-progress-fade {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#project-save-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #10b981; /* Green */
+  display: inline-block;
   vertical-align: middle;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  margin-left: 2px;
 }
 
-.save-line-text.status-fully-saved::before {
-  color: #10b981; /* Green */
+#project-save-status-dot.status-saving {
+  background-color: var(--accent-base, #7c5cff); /* Purple */
+  box-shadow: 0 0 4px var(--accent-base, #7c5cff);
+  animation: save-dot-pulse 1s infinite alternate;
 }
 
-.save-line-text.status-saving::before {
-  color: var(--accent-base, #7c5cff); /* Purple */
+#project-save-status-dot.status-unsaved {
+  background-color: #f59e0b; /* Amber */
 }
 
-.save-line-text.status-unsaved::before {
-  color: #f59e0b; /* Amber */
+#project-save-status-dot.status-error {
+  background-color: #ef4444; /* Red */
+  box-shadow: 0 0 4px #ef4444;
 }
 
-.save-line-text.status-error::before {
-  color: #ef4444; /* Red */
-}
-
-.save-line-text.status-none {
-  color: color-mix(in srgb, var(--text-muted) 50%, transparent);
-}
-.save-line-text.status-none::before {
-  color: color-mix(in srgb, var(--text-muted) 40%, transparent);
+@keyframes save-dot-pulse {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  100% { transform: scale(1.1); opacity: 1; }
 }
 
 #project-name-display {
