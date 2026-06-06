@@ -1523,6 +1523,7 @@ function resolveNoTouchCollisions(ctx) {
     for (let j = i + 1; j < order.length; j++) {
       const low = ctx.placedElements[order[j]];
       if (!low) continue;
+      if (ctx.target.layoutOverrides && ctx.target.layoutOverrides[order[j]]) continue;
       _shrinkToClear(low, high, 4);
     }
   }
@@ -1568,6 +1569,7 @@ function enforceHeadingSubheadAdjacency(ctx) {
 
   Object.entries(ctx.placedElements).forEach(([role, el]) => {
     if (role === 'heading' || role === 'subheading' || role === 'main-image' || role === 'background-image') return;
+    if (ctx.target.layoutOverrides && ctx.target.layoutOverrides[role]) return;
     _shrinkToClear(el, zone, 4);
   });
 }
@@ -1579,6 +1581,7 @@ function clampToCanvas(ctx) {
   const allowOutside = new Set(['main-image', 'background-image']);
   Object.entries(ctx.placedElements).forEach(([role, el]) => {
     if (allowOutside.has(role)) return;
+    if (ctx.target.layoutOverrides && ctx.target.layoutOverrides[role]) return;
     if (el.x < 0) {
       el.width = Math.max(20, el.width + el.x);
       el.x = 0;
@@ -1609,6 +1612,7 @@ function applyRelationR1(ctx) {
   const logo = ctx.placedElements['rmit-logo'];
   const rfwn = ctx.placedElements['rfwn'];
   if (!logo || !rfwn) return;
+  if (ctx.target.layoutOverrides && ctx.target.layoutOverrides['rfwn']) return;
 
   const w = ctx.target.width, h = ctx.target.height;
   const config = AUTO_ARRANGE_CONFIG[w + "x" + h];
@@ -1670,6 +1674,7 @@ function adjustCricosRelation(ctx) {
   const rfwn = ctx.placedElements['rfwn'];
   const cricos = ctx.placedElements['cricos'];
   if (!cricos) return;
+  if (ctx.target.layoutOverrides && ctx.target.layoutOverrides['cricos']) return;
 
   const w = ctx.target.width, h = ctx.target.height;
   const config = AUTO_ARRANGE_CONFIG[w + "x" + h];
@@ -1803,8 +1808,13 @@ function runRuleBasedAutoResize(settings) {
         return;
       }
 
-      const placer = PLACEMENT_RULES[role];
-      const geom = placer ? placer(srcEl, target, ctx) : null;
+      let geom = null;
+      if (target.layoutOverrides && target.layoutOverrides[role]) {
+        geom = Object.assign({}, target.layoutOverrides[role]);
+      } else {
+        const placer = PLACEMENT_RULES[role];
+        geom = placer ? placer(srcEl, target, ctx) : null;
+      }
       if (!geom) { droppedTotal++; return; }
 
       const clone = cloneSourceElement(srcEl);

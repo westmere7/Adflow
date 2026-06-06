@@ -15950,6 +15950,24 @@ function runAutoArrange(canvasId, selectedIds) {
     }
   }
 
+  if (canvas.layoutOverrides) {
+    canvas.elements.forEach(el => {
+      if (el.role && canvas.layoutOverrides[el.role] && isSelected(el)) {
+        const o = canvas.layoutOverrides[el.role];
+        if (typeof o.x === 'number') el.x = o.x;
+        if (typeof o.y === 'number') el.y = o.y;
+        if (typeof o.width === 'number') el.width = o.width;
+        if (typeof o.height === 'number') el.height = o.height;
+        if (typeof o.fontSize === 'number') el.fontSize = o.fontSize;
+        if (typeof o.maxFontSize === 'number') el.maxFontSize = o.maxFontSize;
+        if (typeof o.textAlign === 'string') el.textAlign = o.textAlign;
+        if (typeof o.verticalAlign === 'string') el.verticalAlign = o.verticalAlign;
+        el.autoArranged = true;
+        changed = true;
+      }
+    });
+  }
+
   if (changed) {
     pushHistory();
     render();
@@ -16119,6 +16137,7 @@ function toggleOutlineMode() {
 document.getElementById('menu-view-clear-guides').addEventListener('click', () => { state.guides = []; render(); });
 document.getElementById('menu-view-outline').addEventListener('click', () => { toggleOutlineMode(); });
 document.getElementById('menu-open-settings').addEventListener('click', () => { openSettings(); });
+
 
 // Settings panel — opens from the main menu only, doesn't live among the working
 // panels. Houses everything that's an app/view preference (rulers, snapping,
@@ -18328,6 +18347,17 @@ document.addEventListener('contextmenu', (e) => {
 
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-save-asset">Save to Assets</div>`;
+
+    if (activeEl && activeEl.role && activeEl.role !== 'misc') {
+      html += `<div class="ctx-divider"></div>`;
+      html += `<div class="ctx-item has-submenu">Advanced
+        <div class="ctx-submenu">
+          <div class="ctx-item" id="ctx-define-placement" style="white-space:nowrap;">Define default placement</div>`;
+      if (c.layoutOverrides && c.layoutOverrides[activeEl.role]) {
+        html += `<div class="ctx-item" id="ctx-clear-override" style="color:#ef4444; white-space:nowrap;">Clear placement override</div>`;
+      }
+      html += `</div></div>`;
+    }
     html += `<div class="ctx-divider"></div>`;
     html += addElementsMenuHTML;
     html += `<div class="ctx-divider"></div>`;
@@ -18552,6 +18582,47 @@ document.addEventListener('contextmenu', (e) => {
     }
   });
   bind('ctx-save-asset', async () => await saveSelectionAsAsset());
+  bind('ctx-define-placement', () => {
+    const c = getActiveCanvas();
+    const el = getSelectedElement() || (state.layerSelection?.length > 0 ? c.elements.find(x => x.id === state.layerSelection[0]) : null);
+    if (!c || !el || !el.role || el.role === 'misc') return;
+    
+    if (!c.layoutOverrides) {
+      c.layoutOverrides = {};
+    }
+    
+    c.layoutOverrides[el.role] = {
+      x: el.x,
+      y: el.y,
+      width: el.width,
+      height: el.height,
+      fontSize: el.fontSize,
+      maxFontSize: el.maxFontSize,
+      textAlign: el.textAlign,
+      verticalAlign: el.verticalAlign
+    };
+
+    const roleName = ROLE_LABELS[el.role] || el.role;
+    showCanvasNotification(`Custom placement override for "${roleName}" saved for this canvas size.`, { type: 'success' });
+    pushHistory();
+    render();
+  });
+  bind('ctx-clear-override', () => {
+    const c = getActiveCanvas();
+    const el = getSelectedElement() || (state.layerSelection?.length > 0 ? c.elements.find(x => x.id === state.layerSelection[0]) : null);
+    if (!c || !el || !el.role) return;
+    
+    if (c.layoutOverrides && c.layoutOverrides[el.role]) {
+      delete c.layoutOverrides[el.role];
+      if (Object.keys(c.layoutOverrides).length === 0) {
+        delete c.layoutOverrides;
+      }
+      const roleName = ROLE_LABELS[el.role] || el.role;
+      showCanvasNotification(`Cleared placement override for "${roleName}" on this canvas.`, { type: 'success' });
+      pushHistory();
+      render();
+    }
+  });
   bind('ctx-delete', () => {
     const c = getActiveCanvas();
     if (c && state.layerSelection) {
