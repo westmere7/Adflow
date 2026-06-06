@@ -2748,6 +2748,14 @@ function canvasFrameNode(c) {
 
     if (state.showSafezones) canvas.appendChild(safezoneOverlay(c));
 
+    // drag over placeholder highlight overlay
+    if (state.dragOverPlaceholderId) {
+      const placeholderEl = c.elements.find(e => e.id === state.dragOverPlaceholderId && !e.hidden);
+      if (placeholderEl) {
+        canvas.appendChild(placeholderOverlay(placeholderEl));
+      }
+    }
+
     // selection overlay (only if this canvas is active and an element is selected)
     if (c.id === state.activeCanvasId) {
       if (state.isolatedGroupId) {
@@ -3955,7 +3963,7 @@ function elementNode(el, canvasCtx) {
       d.style.justifyContent = 'center';
       d.style.color = '#9aa1b6';
       d.style.fontSize = '11px';
-      d.textContent = '(no image)';
+      d.textContent = 'Drag image here';
     }
   }
 
@@ -4567,6 +4575,34 @@ function moveGuideOverlay(el, c) {
   return container;
 }
 
+function findElementById(id) {
+  for (const c of state.canvases) {
+    const found = c.elements.find(e => e.id === id);
+    if (found) return { element: found, canvas: c };
+  }
+  return null;
+}
+
+function placeholderOverlay(el) {
+  const w = document.createElement('div');
+  w.className = 'placeholder-highlight-overlay';
+  w.style.position = 'absolute';
+  w.style.left = (el.x - 2) + 'px';
+  w.style.top = (el.y - 2) + 'px';
+  w.style.width = (el.width + 4) + 'px';
+  w.style.height = (el.height + 4) + 'px';
+  w.style.transform = `rotate(${el.rotation || 0}deg)`;
+  w.style.pointerEvents = 'none';
+  w.style.zIndex = '99999';
+
+  const hint = document.createElement('div');
+  hint.className = 'placeholder-hint-text';
+  hint.textContent = 'Drop to replace image';
+  w.appendChild(hint);
+
+  return w;
+}
+
 function selectionOverlay(el) {
   const w = document.createElement('div');
   w.className = 'selection-outline';
@@ -4934,13 +4970,29 @@ function onElementMouseDown(e, el, canvasCtx) {
 
     let cvsId = null;
     const elsFromPoint = document.elementsFromPoint(ev.clientX, ev.clientY);
+
+    // Check if dragging a single image element that has an assetId
+    let targetPlaceholderId = null;
+    if (targets.length === 1 && targets[0].type === 'image' && targets[0].assetId) {
+      const targetElNode = elsFromPoint
+        .map(node => node.closest && node.closest('.el'))
+        .find(elNode => elNode && !targets.some(t => t.id === elNode.dataset.id));
+      if (targetElNode) {
+        const found = findElementById(targetElNode.dataset.id);
+        if (found && found.element.type === 'image' && found.element.id !== targets[0].id) {
+          targetPlaceholderId = found.element.id;
+        }
+      }
+    }
+    state.dragOverPlaceholderId = targetPlaceholderId;
+
     const canvasNode = elsFromPoint.find(n => n.classList && n.classList.contains('canvas'));
     if (canvasNode) {
       const frameNode = canvasNode.closest('.canvas-frame');
       if (frameNode) cvsId = frameNode.dataset.canvasId;
     }
 
-    if (cvsId && cvsId !== canvasCtx.id) {
+    if (cvsId && cvsId !== canvasCtx.id && !targetPlaceholderId) {
       crossCanvasCtx = state.canvases.find(c => c.id === cvsId);
       state.dropTargetCanvasId = cvsId;
     } else {
@@ -5045,6 +5097,45 @@ function onElementMouseDown(e, el, canvasCtx) {
     window.removeEventListener('mouseup', onUp);
     state.activeSmartGuides = null;
     state.dropTargetCanvasId = null;
+
+    if (state.dragOverPlaceholderId) {
+      const placeholderId = state.dragOverPlaceholderId;
+      state.dragOverPlaceholderId = null;
+
+      const target = targets[0];
+      if (target && target.type === 'image' && target.assetId) {
+        const found = findElementById(placeholderId);
+        if (found) {
+          found.element.assetId = target.assetId;
+          found.element.name = target.name || found.element.name;
+
+          if (!ev.altKey) {
+            // Remove the source element from its canvas
+            canvasCtx.elements = canvasCtx.elements.filter(e => e.id !== target.id);
+          } else {
+            // Revert position of the dragged element
+            targets.forEach((t, i) => {
+              t.x = origPos[i].x;
+              t.y = origPos[i].y;
+            });
+          }
+
+          // Clean up temp clones if any
+          if (tempClones) {
+            canvasCtx.elements = canvasCtx.elements.filter(e => !tempClones.includes(e));
+            tempClones = null;
+          }
+
+          // Select the updated placeholder
+          state.selectedElementId = found.element.id;
+          state.layerSelection = [found.element.id];
+
+          pushHistory();
+          render();
+          return;
+        }
+      }
+    }
 
     const ap = document.getElementById('panel-section-assets');
     let droppedOnAssets = false;
@@ -7758,6 +7849,12 @@ function renderAssets() {
       e.dataTransfer.effectAllowed = 'copyMove';
       assetHoverPreview.hide();
     });
+    div.addEventListener('dragend', () => {
+      if (state.dragOverPlaceholderId) {
+        state.dragOverPlaceholderId = null;
+        render(true);
+      }
+    });
 
     if (asset.iconType === 'image') {
       const imgEl = (asset.elements || []).find(el => el.type === 'image' && el.assetId);
@@ -10424,6 +10521,12 @@ function renderProps() {
           </button>
         </div>`);
       }
+
+      f.push(`<div class="prop-row" style="margin-top:0; margin-bottom:8px;">
+        <button id="btn-image-remove" class="btn" title="Remove image and keep placeholder" style="width:100%; padding:6px 8px; font-size:11px; border-radius:4px; font-weight:600; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); cursor:pointer; transition: background 0.2s, border-color 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.borderColor='rgba(239, 68, 68, 0.5)';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderColor='rgba(239, 68, 68, 0.3)';" ${imgDisabled ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}>
+          Remove Image
+        </button>
+      </div>`);
     }
 
     // Sizing (Fit) and Opacity inline side-by-side
@@ -11922,6 +12025,35 @@ function checkButtonFontSizeWarning(el) {
     };
   }
 
+  const btnRemove = propsEl.querySelector('#btn-image-remove');
+  if (btnRemove) {
+    btnRemove.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
+      if (_imgDyn && state.dataMerge && state.dataMerge.locked) {
+        alert('Data lock is on — unlock to remove this version’s image.');
+        return;
+      }
+      delete el.assetId;
+      delete el.name;
+      delete el.isCompressed;
+      delete el.webpQuality;
+      delete el.cropOriginalAssetId;
+      delete el.cropRegion;
+      delete el.cropRotation;
+      delete el.cropMirror;
+
+      if (_imgDyn && state.dataMerge && state.dataMerge.mappings) {
+        const sk = dmSlotKey(el) + '::image';
+        delete state.dataMerge.mappings[sk];
+      }
+
+      pushHistory();
+      render();
+    };
+  }
+
   if (typeof syncColorPickerWithSelection === 'function') {
     syncColorPickerWithSelection(el, null);
   }
@@ -12423,15 +12555,102 @@ canvasArea.addEventListener('dragover', (e) => {
   if (!t.includes('Files') && !t.includes('application/x-asset')) return;
   e.preventDefault();
   e.dataTransfer.dropEffect = 'copy';
-  setDropHighlight(e.target.closest('.canvas'), true);
+
+  // Check if hovering over an image placeholder
+  const elsFromPoint = document.elementsFromPoint(e.clientX, e.clientY);
+  const targetElNode = elsFromPoint.map(node => node.closest && node.closest('.el')).find(Boolean);
+  let targetPlaceholderId = null;
+  if (targetElNode) {
+    const found = findElementById(targetElNode.dataset.id);
+    if (found && found.element.type === 'image') {
+      targetPlaceholderId = found.element.id;
+    }
+  }
+
+  if (targetPlaceholderId) {
+    if (state.dragOverPlaceholderId !== targetPlaceholderId) {
+      state.dragOverPlaceholderId = targetPlaceholderId;
+      render(true);
+    }
+    setDropHighlight(null, false);
+  } else {
+    if (state.dragOverPlaceholderId) {
+      state.dragOverPlaceholderId = null;
+      render(true);
+    }
+    setDropHighlight(e.target.closest('.canvas'), true);
+  }
 });
 
 canvasArea.addEventListener('dragleave', (e) => {
-  if (!canvasArea.contains(e.relatedTarget)) setDropHighlight(null, false);
+  if (!canvasArea.contains(e.relatedTarget)) {
+    setDropHighlight(null, false);
+    if (state.dragOverPlaceholderId) {
+      state.dragOverPlaceholderId = null;
+      render(true);
+    }
+  }
 });
 
 canvasArea.addEventListener('drop', async (e) => {
-  // Asset dragged out of the Assets panel onto a canvas.
+  if (state.dragOverPlaceholderId) {
+    const placeholderId = state.dragOverPlaceholderId;
+    state.dragOverPlaceholderId = null;
+
+    // 1. Asset dragged out of the Assets panel onto a canvas placeholder.
+    const assetId = e.dataTransfer.getData('application/x-asset');
+    if (assetId) {
+      e.preventDefault();
+      const dropCanvas = e.target.closest('.canvas');
+      setDropHighlight(dropCanvas, false);
+      const asset = (state.assetLibrary || []).find(a => a.id === assetId);
+      if (asset) {
+        const imgEl = (asset.elements || []).find(el => el.type === 'image');
+        if (imgEl && imgEl.assetId) {
+          const found = findElementById(placeholderId);
+          if (found) {
+            found.element.assetId = imgEl.assetId;
+            found.element.name = imgEl.name || found.element.name;
+            if (imgEl._assetDmMap && state.dataMerge) {
+              if (!state.dataMerge.mappings) state.dataMerge.mappings = {};
+              const sk = dmSlotKey(found.element) + '::';
+              Object.keys(imgEl._assetDmMap).forEach(field => {
+                state.dataMerge.mappings[sk + field] = imgEl._assetDmMap[field];
+              });
+            }
+            pushHistory();
+            render();
+            return;
+          }
+        }
+      }
+    }
+
+    // 2. Files dropped directly from computer onto a placeholder
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      e.preventDefault();
+      const dropCanvas = e.target.closest('.canvas');
+      setDropHighlight(dropCanvas, false);
+      const imageFiles = Array.from(e.dataTransfer.files).filter(f => ACCEPTED_IMAGE_TYPES.test(f.type));
+      if (imageFiles.length > 0) {
+        try {
+          const { assetId } = await readFileAsAsset(imageFiles[0]);
+          const found = findElementById(placeholderId);
+          if (found) {
+            found.element.assetId = assetId;
+            found.element.name = imageFiles[0].name || found.element.name;
+            pushHistory();
+            render();
+            return;
+          }
+        } catch (err) {
+          console.warn('[drop] Failed to read file for placeholder:', err.message);
+        }
+      }
+    }
+  }
+
+  // Fallback to original drop behavior if not dropping onto a placeholder
   const assetId = e.dataTransfer.getData('application/x-asset');
   if (assetId) {
     e.preventDefault();
@@ -12456,6 +12675,13 @@ canvasArea.addEventListener('drop', async (e) => {
     (e.clientX - rect.left) / z,
     (e.clientY - rect.top) / z
   );
+});
+
+document.addEventListener('dragend', () => {
+  if (state.dragOverPlaceholderId) {
+    state.dragOverPlaceholderId = null;
+    render(true);
+  }
 });
 
 
