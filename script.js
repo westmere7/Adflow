@@ -907,7 +907,7 @@ function getDefaultSync(el) {
     defaultSync.visibility = true;
   } else if (cat === 'image') {
     defaultSync.image = true;
-    const isRmitLogo = isElementRmitLogo(el);
+    const isRmitLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo'));
     if (isRmitLogo) {
       defaultSync.variant = true;
     }
@@ -1049,21 +1049,6 @@ async function autoLinkElements(forceSelectedOnly = false) {
       await showAdflowAlert("No matching elements with the same layer name and style were found.");
     }
   }
-}
-
-function isElementRmitLogo(el) {
-  if (!el) return false;
-  if (el.role === 'rmit-logo') return true;
-  // Backwards compatibility for templates without roles:
-  if (el.customName && typeof el.customName === 'string') {
-    const lower = el.customName.toLowerCase();
-    if (lower.includes('rmit') && (lower.includes('logo') || lower.includes('pixel'))) {
-      if (!el.assetId || (typeof el.assetId === 'string' && el.assetId.startsWith('data/Elements/'))) {
-        return true;
-      }
-    }
-  }
-  return false;
 }
 
 function getElementCategory(el) {
@@ -7045,7 +7030,7 @@ function renderLinkControl() {
     const firstEl = selectedElements[0];
     const cat = getElementCategory(firstEl);
     const sameCat = selectedElements.every(el => getElementCategory(el) === cat);
-    const isRmitLogo = selectedElements.some(isElementRmitLogo);
+    const isRmitLogo = selectedElements.some(el => el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo')));
 
     if (sameCat && cat) {
       const groupIds = [...new Set(selectedElements.map(el => el.linkGroupId).filter(Boolean))];
@@ -8384,7 +8369,7 @@ function renderLayers() {
       div.className = 'layer' + (isSel ? ' selected' : '') + maskLink;
       div.draggable = true;
       div.dataset.id = el.id;
-      const isRmitLogo = isElementRmitLogo(el);
+      const isRmitLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo'));
       const svgInnerHtml = isRmitLogo ? layerIcon('pixel') : layerIcon(el.type);
       const iconStyle = el.autoArranged ? 'style="color: var(--accent-base); opacity: 1;"' : '';
       const iconHtml = `<svg class="layer-icon" ${iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${svgInnerHtml}</svg>`;
@@ -10559,14 +10544,18 @@ function renderProps() {
   if (el.type === 'image') {
     const imgDisabled = isFieldDisabled('image');
     const src = dAssetId ? ((state.assets && state.assets[dAssetId]) || dAssetId) : '';
-    const isRmitLogo = isElementRmitLogo(el);
+    const isRmitLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo'));
     const isVector = (el.name && el.name.toLowerCase().endsWith('.svg')) || 
                      (dAssetId && typeof dAssetId === 'string' && dAssetId.toLowerCase().includes('.svg')) ||
                      (dAssetId && state.assets && state.assets[dAssetId] && (
                        state.assets[dAssetId].startsWith('data:image/svg+xml') || 
                        state.assets[dAssetId].toLowerCase().includes('.svg')
                      )) ||
-                     isRmitLogo;
+                     isRmitLogo || 
+                     (el.customName && (
+                       el.customName.toLowerCase().includes('logo') || 
+                       el.customName.toLowerCase().includes('pixel')
+                     ));
 
     if (isRmitLogo) {
       const variantOptions = [
@@ -12471,7 +12460,7 @@ function addBrandSet(setName) {
   const c = getActiveCanvas(); if (!c) return;
 
   if (setName === 'logo_rfwn_cricos') {
-    const hasLogo = c.elements.some(isElementRmitLogo);
+    const hasLogo = c.elements.some(el => el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit logo')));
     const hasRfwn = c.elements.some(el => el.role === 'rfwn' || (el.customName && el.customName.toLowerCase().includes('rfwn')));
     const hasCricos = c.elements.some(el => el.role === 'cricos' || (el.customName && el.customName.toLowerCase().includes('cricos')));
 
@@ -12482,7 +12471,7 @@ function addBrandSet(setName) {
           text: 'Clear all',
           onClick: () => {
             c.elements = c.elements.filter(el => {
-              const isLogo = isElementRmitLogo(el);
+              const isLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit logo'));
               const isRfwn = el.role === 'rfwn' || (el.customName && el.customName.toLowerCase().includes('rfwn'));
               const isCricos = el.role === 'cricos' || (el.customName && el.customName.toLowerCase().includes('cricos'));
               return !(isLogo || isRfwn || isCricos);
@@ -15104,7 +15093,10 @@ async function autoCompressCanvasImages(canvasId) {
   // Repair pass: if any RMIT logo / brand element was previously mistakenly compressed/rasterized,
   // restore it to its original SVG asset.
   canvas.elements.forEach(el => {
-    if (isElementRmitLogo(el)) {
+    if (el.role === 'rmit-logo' || (el.customName && (
+      el.customName.toLowerCase().includes('logo') || 
+      el.customName.toLowerCase().includes('pixel')
+    ))) {
       const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
       const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
       if (activeAssetId && typeof activeAssetId === 'string' && activeAssetId.startsWith('img_')) {
@@ -15152,7 +15144,10 @@ async function autoCompressCanvasImages(canvasId) {
     if (el.type !== 'image') return false;
 
     // Do not compress branding or logo elements (SVG or otherwise)
-    if (isElementRmitLogo(el)) {
+    if (el.role === 'rmit-logo' || (el.customName && (
+      el.customName.toLowerCase().includes('logo') || 
+      el.customName.toLowerCase().includes('pixel')
+    ))) {
       return false;
     }
 
