@@ -14520,7 +14520,7 @@ function openNewProjectDialog() {
             <span>Use template</span>
           </label>
           <div id="np-template-container" style="display:flex; gap:8px; align-items:center;">
-            <select id="np-startup-template-select" style="flex:1; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
+            <select id="np-startup-template-select" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
               <!-- populated dynamically -->
             </select>
             <button class="btn" id="np-rescan-templates-btn" title="Re-scan Startup folder templates" style="padding:7px 10px; font-size:12px;">↻</button>
