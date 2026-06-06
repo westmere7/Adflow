@@ -525,8 +525,10 @@ const _isLocalUuid = (s) => typeof s === 'string' && _LOCAL_UUID_RE.test(s);
 
 let _localSaveStatus = 'saved'; // 'saved' | 'unsaved' | 'saving' | 'error'
 let _cloudSaveStatus = 'none';  // 'none' | 'saved' | 'saving' | 'error'
+let _fileSaveStatus = 'none';   // 'none' | 'saved' | 'unsaved'
 let _lastLocalSaveTime = new Date();
 let _lastCloudSaveTime = null;
+let _lastFileSaveTime = null;
 let _autosaveTimer = null;
 let _autosaveSuspended = true;  // suppressed until the initial restore/render finishes
 
@@ -622,66 +624,82 @@ function _formatSaveTime(date) {
 }
 
 function updateSaveStatusUI() {
-  const textEl = document.getElementById('save-status-text');
+  const localEl = document.getElementById('save-status-local');
+  const cloudEl = document.getElementById('save-status-cloud');
   const containerEl = document.getElementById('save-status-container');
-  if (!textEl) return;
+  if (!localEl || !cloudEl) return;
 
-  let text = 'Saved';
-  let className = 'status-saved';
+  // 1. Determine Browser (Local DB) Text and Class
+  let localText = 'Browser: Saved';
+  let localClass = 'status-fully-saved';
 
+  if (_localSaveStatus === 'saving') {
+    localText = 'Browser: Saving...';
+    localClass = 'status-saving';
+  } else if (_localSaveStatus === 'error') {
+    localText = 'Browser: Error';
+    localClass = 'status-error';
+  } else if (_localSaveStatus === 'unsaved') {
+    localText = 'Browser: Unsaved';
+    localClass = 'status-unsaved';
+  }
+
+  localEl.textContent = localText;
+  localEl.className = `save-line-text ${localClass}`;
+
+  // 2. Determine External Backup (Cloud or File) Text and Class
   let currentCloudStatus = _cloudSaveStatus;
   if (typeof authState !== 'undefined' && authState.enabled && !authState.currentUser()) {
     currentCloudStatus = 'none';
   }
 
-  if (_localSaveStatus === 'saving') {
-    text = 'Saving...';
-    className = 'status-saving';
-  } else if (_localSaveStatus === 'error') {
-    text = 'Save Error';
-    className = 'status-error';
-  } else if (_localSaveStatus === 'unsaved') {
+  let extText = 'Cloud: Local Only';
+  let extClass = 'status-none';
+
+  if (currentCloudStatus !== 'none') {
+    // Render Cloud Backup status
     if (currentCloudStatus === 'saving') {
-      text = 'Syncing...';
-      className = 'status-saving';
+      extText = 'Cloud: Syncing...';
+      extClass = 'status-saving';
     } else if (currentCloudStatus === 'error') {
-      text = 'Sync Error';
-      className = 'status-error';
+      extText = 'Cloud: Error';
+      extClass = 'status-error';
+    } else if (currentCloudStatus === 'unsaved') {
+      extText = 'Cloud: Unsaved';
+      extClass = 'status-unsaved';
     } else if (currentCloudStatus === 'saved') {
-      text = 'Cloud synced';
-      className = 'status-cloud-only';
-    } else {
-      text = 'Unsaved';
-      className = 'status-unsaved';
+      extText = 'Cloud: Synced';
+      extClass = 'status-fully-saved';
     }
   } else {
-    // Local is saved
-    if (currentCloudStatus === 'saving') {
-      text = 'Syncing...';
-      className = 'status-saving';
-    } else if (currentCloudStatus === 'error') {
-      text = 'Sync Error';
-      className = 'status-error';
-    } else if (currentCloudStatus === 'saved') {
-      text = 'Saved & synced';
-      className = 'status-fully-saved';
+    // Render File Backup status
+    if (_fileSaveStatus === 'saved') {
+      extText = 'File: Saved';
+      extClass = 'status-fully-saved';
+    } else if (_fileSaveStatus === 'unsaved') {
+      extText = 'File: Unsaved';
+      extClass = 'status-unsaved';
     } else {
-      text = 'Save locally';
-      className = 'status-local-only';
+      extText = 'File: Not Saved';
+      extClass = 'status-none';
     }
   }
 
-  textEl.textContent = text;
-  textEl.className = `save-line-text ${className}`;
+  cloudEl.textContent = extText;
+  cloudEl.className = `save-line-text ${extClass}`;
 
+  // 3. Set Container Tooltip
   const localTime = _formatSaveTime(_lastLocalSaveTime);
   const cloudTime = _lastCloudSaveTime ? _formatSaveTime(_lastCloudSaveTime) : 'Never';
+  const fileTime = _lastFileSaveTime ? _formatSaveTime(_lastFileSaveTime) : 'Never';
   const localConfText = localMap[_localSaveStatus]?.text || 'Saved';
   const cloudConfText = cloudMap[currentCloudStatus]?.text || 'Local Only';
+  const fileConfText = _fileSaveStatus === 'saved' ? 'Saved' : (_fileSaveStatus === 'unsaved' ? 'Out of Sync' : 'Not Saved');
 
   const title = `[Save & Sync Status]\n` +
-                `• Local Save: ${localConfText} (Last: ${localTime})\n` +
-                `• Cloud Sync: ${cloudConfText} (Last: ${cloudTime})`;
+                `• Browser Auto-save: ${localConfText} (Last: ${localTime})\n` +
+                `• Cloud Sync: ${cloudConfText} (Last: ${cloudTime})\n` +
+                `• File Export: ${fileConfText} (Last: ${fileTime})`;
 
   if (containerEl) {
     containerEl.setAttribute('title', title);
@@ -735,10 +753,23 @@ async function writeAutosave() {
   }
 }
 
-// Debounced — called from every state-mutating path (pushHistory + render).
 function scheduleAutosave() {
   if (_autosaveSuspended) return;
   if (_localSaveStatus !== 'saving') setLocalSaveStatus('unsaved');
+
+  let currentCloudStatus = _cloudSaveStatus;
+  if (typeof authState !== 'undefined' && authState.enabled && !authState.currentUser()) {
+    currentCloudStatus = 'none';
+  }
+  if (currentCloudStatus !== 'none' && currentCloudStatus !== 'saving') {
+    setCloudSaveStatus('unsaved');
+  }
+
+  if (_fileSaveStatus === 'saved') {
+    _fileSaveStatus = 'unsaved';
+    updateSaveStatusUI();
+  }
+
   if (_autosaveTimer) clearTimeout(_autosaveTimer);
   const intervalSecs = state.autosaveInterval !== undefined ? state.autosaveInterval : 10;
   _autosaveTimer = setTimeout(writeAutosave, intervalSecs * 1000);
@@ -13609,6 +13640,9 @@ async function saveProjectAsFlow() {
       await writable.write(blob);
       await writable.close();
       await addRecentProject(exportState);
+      _fileSaveStatus = 'saved';
+      _lastFileSaveTime = new Date();
+      updateSaveStatusUI();
     } catch (e) { if (e.name !== 'AbortError') console.error('Save failed:', e); }
   } else {
     const a = document.createElement('a');
@@ -13617,6 +13651,9 @@ async function saveProjectAsFlow() {
     a.click();
     URL.revokeObjectURL(a.href);
     await addRecentProject(exportState);
+    _fileSaveStatus = 'saved';
+    _lastFileSaveTime = new Date();
+    updateSaveStatusUI();
   }
 }
 
@@ -13636,6 +13673,9 @@ async function saveTemplateAsFlow() {
       await writable.write(blob);
       await writable.close();
       showCanvasNotification('Template saved successfully', { type: 'success' });
+      _fileSaveStatus = 'saved';
+      _lastFileSaveTime = new Date();
+      updateSaveStatusUI();
     } catch (e) {
       if (e.name !== 'AbortError') {
         console.error('Save failed:', e);
@@ -13649,6 +13689,9 @@ async function saveTemplateAsFlow() {
     a.click();
     URL.revokeObjectURL(a.href);
     showCanvasNotification('Template saved successfully', { type: 'success' });
+    _fileSaveStatus = 'saved';
+    _lastFileSaveTime = new Date();
+    updateSaveStatusUI();
   }
 }
 
@@ -13969,6 +14012,8 @@ async function loadProjectFromBlob(file, customProjectName) {
   await syncRmitAssets();
   setLocalSaveStatus('saved');
   initializeCloudSaveStatus();
+  _fileSaveStatus = 'saved';
+  _lastFileSaveTime = new Date();
 
   if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
     history.length = 0;
@@ -19556,6 +19601,36 @@ async function loadStartupTemplate(fileName, customProjectName) {
   }
   await appSplash.finish();
   offerResumeView(savedLeft, savedTop, savedZoom);
+
+  // Project name auto-scrolling on hover when text is too long
+  const projMetaContainer = document.getElementById('project-meta-container');
+  const projNameDisplay = document.getElementById('project-name-display');
+  if (projMetaContainer && projNameDisplay) {
+    let scrollAnimFrame = null;
+    projMetaContainer.addEventListener('mouseenter', () => {
+      const limit = projNameDisplay.scrollWidth - projNameDisplay.clientWidth;
+      if (limit > 0) {
+        let start = null;
+        const duration = limit * 25; // 25ms per pixel
+        function step(timestamp) {
+          if (!start) start = timestamp;
+          const progress = Math.min(1, (timestamp - start) / duration);
+          projNameDisplay.scrollLeft = progress * limit;
+          if (progress < 1) {
+            scrollAnimFrame = requestAnimationFrame(step);
+          }
+        }
+        scrollAnimFrame = requestAnimationFrame(step);
+      }
+    });
+    projMetaContainer.addEventListener('mouseleave', () => {
+      if (scrollAnimFrame) {
+        cancelAnimationFrame(scrollAnimFrame);
+        scrollAnimFrame = null;
+      }
+      projNameDisplay.scrollTo({ left: 0, behavior: 'smooth' });
+    });
+  }
 })();
 
 
