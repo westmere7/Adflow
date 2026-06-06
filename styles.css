@@ -5478,7 +5478,7 @@ body.preview-active .canvas-viewport {
 .outline-legend {
   position: absolute;
   top: 24px;
-  right: 24px;
+  left: 24px;
   background: rgba(18, 20, 25, 0.88);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
