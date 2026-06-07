@@ -12204,33 +12204,57 @@ function checkButtonFontSizeWarning(el) {
 function addElement(type) {
   const c = getActiveCanvas(); if (!c) return;
   const isBg = type === 'background';
-  const el = makeElement(isBg ? 'rect' : type);
-  
-  if (isBg) {
-    el.customName = 'Background';
-    el.color = '#000054';
-    el.x = 0;
-    el.y = 0;
-    el.width = c.width;
-    el.height = c.height;
-    el.radius = 0;
-    el.locked = true;
-    
-    const firstFrameIdx = c.elements.findIndex(e => e.persistent === false && e.frameId === state.activeFrameId);
-    if (firstFrameIdx === -1) {
-      c.elements.unshift(el);
-    } else {
-      c.elements.splice(firstFrameIdx, 0, el);
-    }
+  const addAllArrange = document.getElementById('chk-add-all-arrange')?.checked;
+
+  if (addAllArrange && !isBg) {
+    const addedIdsPerCanvas = {};
+    state.canvases.forEach(cv => {
+      const el = makeElement(type);
+      cv.elements.push(el);
+      addedIdsPerCanvas[cv.id] = el.id;
+      ensureRolesAssigned(cv);
+    });
+
+    state.canvases.forEach(cv => {
+      const elId = addedIdsPerCanvas[cv.id];
+      runAutoArrange(cv.id, [elId]);
+    });
+
+    const activeElId = addedIdsPerCanvas[c.id];
+    state.selectedElementId = activeElId;
+    state.layerSelection = [activeElId];
+    state.editingElementId = null;
+    pushHistory();
+    render();
   } else {
-    c.elements.push(el);
+    const el = makeElement(isBg ? 'rect' : type);
+    
+    if (isBg) {
+      el.customName = 'Background';
+      el.color = '#000054';
+      el.x = 0;
+      el.y = 0;
+      el.width = c.width;
+      el.height = c.height;
+      el.radius = 0;
+      el.locked = true;
+      
+      const firstFrameIdx = c.elements.findIndex(e => e.persistent === false && e.frameId === state.activeFrameId);
+      if (firstFrameIdx === -1) {
+        c.elements.unshift(el);
+      } else {
+        c.elements.splice(firstFrameIdx, 0, el);
+      }
+    } else {
+      c.elements.push(el);
+    }
+    
+    state.selectedElementId = el.id;
+    state.layerSelection = [el.id];
+    state.editingElementId = null;
+    pushHistory();
+    render();
   }
-  
-  state.selectedElementId = el.id;
-  state.layerSelection = [el.id];
-  state.editingElementId = null;
-  pushHistory();
-  render();
 }
 
 function addBackgroundToCanvases(allCanvases) {
@@ -12342,7 +12366,12 @@ function showBackgroundDropdown(e) {
 document.querySelectorAll('[data-add]').forEach(btn => {
   if (btn.dataset.add === 'background') {
     btn.addEventListener('click', (e) => {
-      showBackgroundDropdown(e);
+      const addAllArrange = document.getElementById('chk-add-all-arrange')?.checked;
+      if (addAllArrange) {
+        addBackgroundToCanvases(true);
+      } else {
+        showBackgroundDropdown(e);
+      }
     });
   } else {
     btn.addEventListener('click', () => addElement(btn.dataset.add));
@@ -12399,82 +12428,182 @@ document.getElementById('btn-add-brand')?.addEventListener('click', (e) => {
   popup.style.top = (rect.bottom + 4) + 'px';
 });
 
+document.getElementById('btn-add-brandset')?.addEventListener('click', (e) => {
+  let popup = document.getElementById('brandset-popup');
+  if (!popup) {
+    popup = document.createElement('div');
+    popup.id = 'brandset-popup';
+    popup.style.position = 'absolute';
+    popup.style.background = 'var(--bg-panel)';
+    popup.style.border = '1px solid var(--border-light)';
+    popup.style.borderRadius = '4px';
+    popup.style.padding = '4px 0';
+    popup.style.zIndex = '10000';
+    popup.style.width = '200px';
+    popup.style.boxShadow = '0 8px 24px var(--shadow-medium)';
+    
+    const items = [
+      { label: 'Logo + RFWN + CRICOS', action: () => addBrandSet('logo_rfwn_cricos') }
+    ];
+    
+    items.forEach(item => {
+      const btn = document.createElement('div');
+      btn.className = 'dropdown-item';
+      btn.textContent = item.label;
+      btn.addEventListener('click', () => {
+        item.action();
+        popup.remove();
+      });
+      popup.appendChild(btn);
+    });
+    
+    document.body.appendChild(popup);
+    
+    const closer = (ev) => {
+      if (!popup.contains(ev.target) && ev.target !== e.target && !e.target.contains(ev.target)) {
+        popup.remove();
+        document.removeEventListener('mousedown', closer);
+      }
+    };
+    document.addEventListener('mousedown', closer);
+  }
+  
+  const rect = e.currentTarget.getBoundingClientRect();
+  popup.style.left = rect.left + 'px';
+  popup.style.top = (rect.bottom + 4) + 'px';
+});
+
 function addBrandElement(type) {
   const c = getActiveCanvas(); if (!c) return;
-  let el;
-  if (type === 'cricos') {
-    el = makeElement('text');
-    el.customName = 'CRICOS';
-    el.text = 'CRICOS: 00122A | RTO: 3046';
-    el.fontFamily = 'Helvetica Neue LT Pro';
-    el.weight = '400';
-    el.fontSize = 7;
-    el.color = '#ffffff';
-    el.width = 120;
-    el.height = 12;
-  } else if (type === 'rfwn') {
-    el = makeElement('text');
-    el.customName = 'RFWN';
-    el.text = "Ready for what's next";
-    el.fontFamily = 'Museo';
-    el.weight = '700';
-    el.fontSize = 10;
-    el.color = '#ffffff';
-    el.width = 160;
-    el.height = 14;
-  } else if (type === 'logo_white') {
-    el = makeElement('image');
-    el.customName = 'RMIT Logo (white)';
-    el.assetId = 'data/Elements/RMIT_White.svg';
-  } else if (type === 'logo_full') {
-    el = makeElement('image');
-    el.customName = 'RMIT Logo (Full color)';
-    el.assetId = 'data/Elements/RMIT_full.svg';
-  } else if (type === 'logo_red') {
-    el = makeElement('image');
-    el.customName = 'RMIT Logo (Red Pixel)';
-    el.assetId = 'data/Elements/RMIT_RedPixel.svg';
-  } else if (type === 'pixel') {
-    // The RMIT Pixel brand shape is a hero/main-image element by
-    // design (it's the focal element on most banners). Mark its role
-    // explicitly with roleAuto:false so the auto-resize engine's
-    // role-detection sweep doesn't re-classify it as e.g. 'misc'
-    // based on aspect/area heuristics.
-    el = makeElement('pixel');
-    el.customName = 'RMIT Pixel';
-    el.role = 'main-image';
-    el.roleAuto = false;
-  }
+  const addAllArrange = document.getElementById('chk-add-all-arrange')?.checked;
 
-  if (el) {
-    c.elements.push(el);
-    state.selectedElementId = el.id;
-    state.layerSelection = [el.id];
-    state.editingElementId = null;
+  const getElementForType = () => {
+    let el;
+    if (type === 'cricos') {
+      el = makeElement('text');
+      el.customName = 'CRICOS';
+      el.text = 'CRICOS: 00122A | RTO: 3046';
+      el.fontFamily = 'Helvetica Neue LT Pro';
+      el.weight = '400';
+      el.fontSize = 7;
+      el.color = '#ffffff';
+      el.width = 120;
+      el.height = 12;
+      el.role = 'cricos';
+      el.roleAuto = false;
+      el.persistent = 'top';
+    } else if (type === 'rfwn') {
+      el = makeElement('text');
+      el.customName = 'RFWN';
+      el.text = "Ready for what's next";
+      el.fontFamily = 'Museo';
+      el.weight = '700';
+      el.fontSize = 10;
+      el.color = '#ffffff';
+      el.width = 160;
+      el.height = 14;
+      el.role = 'rfwn';
+      el.roleAuto = false;
+      el.persistent = 'top';
+    } else if (type === 'logo_white') {
+      el = makeElement('image');
+      el.customName = 'RMIT Logo (white)';
+      el.assetId = 'data/Elements/RMIT_White.svg';
+      el.role = 'rmit-logo';
+      el.roleAuto = false;
+      el.persistent = 'top';
+    } else if (type === 'logo_full') {
+      el = makeElement('image');
+      el.customName = 'RMIT Logo (Full color)';
+      el.assetId = 'data/Elements/RMIT_full.svg';
+      el.role = 'rmit-logo';
+      el.roleAuto = false;
+      el.persistent = 'top';
+    } else if (type === 'logo_red') {
+      el = makeElement('image');
+      el.customName = 'RMIT Logo (Red Pixel)';
+      el.assetId = 'data/Elements/RMIT_RedPixel.svg';
+      el.role = 'rmit-logo';
+      el.roleAuto = false;
+      el.persistent = 'top';
+    } else if (type === 'pixel') {
+      el = makeElement('pixel');
+      el.customName = 'RMIT Pixel';
+      el.role = 'main-image';
+      el.roleAuto = false;
+    }
+    return el;
+  };
+
+  if (addAllArrange) {
+    const addedIdsPerCanvas = {};
+    state.canvases.forEach(cv => {
+      const el = getElementForType();
+      if (el) {
+        cv.elements.push(el);
+        addedIdsPerCanvas[cv.id] = el.id;
+        ensureRolesAssigned(cv);
+      }
+    });
+
+    state.canvases.forEach(cv => {
+      const elId = addedIdsPerCanvas[cv.id];
+      if (elId) {
+        runAutoArrange(cv.id, [elId]);
+      }
+    });
+
+    const activeElId = addedIdsPerCanvas[c.id];
+    if (activeElId) {
+      state.selectedElementId = activeElId;
+      state.layerSelection = [activeElId];
+      state.editingElementId = null;
+    }
     pushHistory();
     render();
+  } else {
+    const el = getElementForType();
+    if (el) {
+      c.elements.push(el);
+      state.selectedElementId = el.id;
+      state.layerSelection = [el.id];
+      state.editingElementId = null;
+      pushHistory();
+      render();
+    }
   }
 }
 
 function addBrandSet(setName) {
   const c = getActiveCanvas(); if (!c) return;
+  const addAllArrange = document.getElementById('chk-add-all-arrange')?.checked;
 
   if (setName === 'logo_rfwn_cricos') {
-    const hasLogo = c.elements.some(el => el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit logo')));
-    const hasRfwn = c.elements.some(el => el.role === 'rfwn' || (el.customName && el.customName.toLowerCase().includes('rfwn')));
-    const hasCricos = c.elements.some(el => el.role === 'cricos' || (el.customName && el.customName.toLowerCase().includes('cricos')));
+    const canvasesToCheck = addAllArrange ? state.canvases : [c];
+    let alreadyHas = false;
+    for (const cv of canvasesToCheck) {
+      const hasLogo = cv.elements.some(el => el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit logo')));
+      const hasRfwn = cv.elements.some(el => el.role === 'rfwn' || (el.customName && el.customName.toLowerCase().includes('rfwn')));
+      const hasCricos = cv.elements.some(el => el.role === 'cricos' || (el.customName && el.customName.toLowerCase().includes('cricos')));
+      if (hasLogo || hasRfwn || hasCricos) {
+        alreadyHas = true;
+        break;
+      }
+    }
 
-    if (hasLogo || hasRfwn || hasCricos) {
+    if (alreadyHas) {
       showCanvasNotification('Existing elements already placed', {
         type: 'warning',
         button: {
           text: 'Clear all',
           onClick: () => {
-            c.elements = c.elements.filter(el => {
-              const isLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit logo'));
-              const isRfwn = el.role === 'rfwn' || (el.customName && el.customName.toLowerCase().includes('rfwn'));
-              const isCricos = el.role === 'cricos' || (el.customName && el.customName.toLowerCase().includes('cricos'));
-              return !(isLogo || isRfwn || isCricos);
+            canvasesToCheck.forEach(cv => {
+              cv.elements = cv.elements.filter(el => {
+                const isLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit logo'));
+                const isRfwn = el.role === 'rfwn' || (el.customName && el.customName.toLowerCase().includes('rfwn'));
+                const isCricos = el.role === 'cricos' || (el.customName && el.customName.toLowerCase().includes('cricos'));
+                return !(isLogo || isRfwn || isCricos);
+              });
             });
             state.selectedElementId = null;
             state.layerSelection = [];
@@ -12488,93 +12617,119 @@ function addBrandSet(setName) {
       return;
     }
 
-    // 1. Create the logo white element
-    const logo = makeElement('image');
-    logo.customName = 'RMIT Logo (white)';
-    logo.assetId = 'data/Elements/RMIT_White.svg';
-    logo.role = 'rmit-logo';
-    logo.roleAuto = false;
-    logo.lockRatio = true;
-    logo.persistent = 'top';
+    const addedIdsPerCanvas = {};
+    const canvasesToAdd = addAllArrange ? state.canvases : [c];
 
-    // 2. Create the RFWN tagline
-    const rfwn = makeElement('text');
-    rfwn.customName = 'RFWN';
-    rfwn.text = "Ready for what's next";
-    rfwn.fontFamily = 'Museo';
-    rfwn.weight = '700';
-    rfwn.fontSize = 10;
-    rfwn.color = '#ffffff';
-    rfwn.width = 160;
-    rfwn.height = 14;
-    rfwn.role = 'rfwn';
-    rfwn.roleAuto = false;
-    rfwn.persistent = 'top';
+    canvasesToAdd.forEach(cv => {
+      // 1. Create the logo white element
+      const logo = makeElement('image');
+      logo.customName = 'RMIT Logo (white)';
+      logo.assetId = 'data/Elements/RMIT_White.svg';
+      logo.role = 'rmit-logo';
+      logo.roleAuto = false;
+      logo.lockRatio = true;
+      logo.persistent = 'top';
 
-    // 3. Create the CRICOS line
-    const cricos = makeElement('text');
-    cricos.customName = 'CRICOS';
-    cricos.text = 'CRICOS: 00122A | RTO: 3046';
-    cricos.fontFamily = 'Helvetica Neue LT Pro';
-    cricos.weight = '400';
-    cricos.fontSize = 7;
-    cricos.color = '#ffffff';
-    cricos.width = 120;
-    cricos.height = 12;
-    cricos.role = 'cricos';
-    cricos.roleAuto = false;
-    cricos.persistent = 'top';
+      // 2. Create the RFWN tagline
+      const rfwn = makeElement('text');
+      rfwn.customName = 'RFWN';
+      rfwn.text = "Ready for what's next";
+      rfwn.fontFamily = 'Museo';
+      rfwn.weight = '700';
+      rfwn.fontSize = 10;
+      rfwn.color = '#ffffff';
+      rfwn.width = 160;
+      rfwn.height = 14;
+      rfwn.role = 'rfwn';
+      rfwn.roleAuto = false;
+      rfwn.persistent = 'top';
 
-    // Check if the canvas size is defined in AUTO_ARRANGE_CONFIG
-    const sizeKey = c.width + "x" + c.height;
-    const config = AUTO_ARRANGE_CONFIG[sizeKey];
+      // 3. Create the CRICOS line
+      const cricos = makeElement('text');
+      cricos.customName = 'CRICOS';
+      cricos.text = 'CRICOS: 00122A | RTO: 3046';
+      cricos.fontFamily = 'Helvetica Neue LT Pro';
+      cricos.weight = '400';
+      cricos.fontSize = 7;
+      cricos.color = '#ffffff';
+      cricos.width = 120;
+      cricos.height = 12;
+      cricos.role = 'cricos';
+      cricos.roleAuto = false;
+      cricos.persistent = 'top';
 
-    if (config) {
-      c.elements.push(logo, rfwn, cricos);
+      const sizeKey = cv.width + "x" + cv.height;
+      const config = AUTO_ARRANGE_CONFIG[sizeKey];
+
+      if (config) {
+        cv.elements.push(logo, rfwn, cricos);
+        addedIdsPerCanvas[cv.id] = [logo.id, rfwn.id, cricos.id];
+      } else {
+        const cw = cv.width;
+        const ch = cv.height;
+        const logoW = 113;
+        const logoH = 40;
+        const rfwnW = 160;
+        const rfwnH = 14;
+        const cricosW = 120;
+        const cricosH = 12;
+        const gap1 = 10;
+        const gap2 = 8;
+        const totalH = logoH + gap1 + rfwnH + gap2 + cricosH;
+
+        const startY = Math.max(10, (ch - totalH) / 2);
+
+        logo.width = logoW;
+        logo.height = logoH;
+        logo.x = (cw - logoW) / 2;
+        logo.y = startY;
+
+        rfwn.width = rfwnW;
+        rfwn.height = rfwnH;
+        rfwn.x = (cw - rfwnW) / 2;
+        rfwn.y = startY + logoH + gap1;
+        rfwn.textAlign = 'center';
+
+        cricos.width = cricosW;
+        cricos.height = cricosH;
+        cricos.x = (cw - cricosW) / 2;
+        cricos.y = rfwn.y + rfwnH + gap2;
+        cricos.textAlign = 'center';
+
+        cv.elements.push(logo, rfwn, cricos);
+        addedIdsPerCanvas[cv.id] = [logo.id, rfwn.id, cricos.id];
+      }
+    });
+
+    canvasesToAdd.forEach(cv => {
+      const ids = addedIdsPerCanvas[cv.id];
+      const sizeKey = cv.width + "x" + cv.height;
+      const config = AUTO_ARRANGE_CONFIG[sizeKey];
+      if (config && ids) {
+        runAutoArrange(cv.id, ids);
+      }
+    });
+
+    const activeIds = addedIdsPerCanvas[c.id];
+    if (activeIds) {
       state.selectedElementId = null;
-      state.layerSelection = [logo.id, rfwn.id, cricos.id];
+      state.layerSelection = activeIds;
       state.editingElementId = null;
-      runAutoArrange(c.id, [logo.id, rfwn.id, cricos.id]);
+    }
+
+    pushHistory();
+    render();
+    if (typeof renderProps === 'function') renderProps();
+
+    if (addAllArrange) {
+      showCanvasNotification('Brand set added to all canvases and arranged.', { type: 'success' });
     } else {
-      const cw = c.width;
-      const ch = c.height;
-      const logoW = 113;
-      const logoH = 40;
-      const rfwnW = 160;
-      const rfwnH = 14;
-      const cricosW = 120;
-      const cricosH = 12;
-      const gap1 = 10;
-      const gap2 = 8;
-      const totalH = logoH + gap1 + rfwnH + gap2 + cricosH;
-
-      const startY = Math.max(10, (ch - totalH) / 2);
-
-      logo.width = logoW;
-      logo.height = logoH;
-      logo.x = (cw - logoW) / 2;
-      logo.y = startY;
-
-      rfwn.width = rfwnW;
-      rfwn.height = rfwnH;
-      rfwn.x = (cw - rfwnW) / 2;
-      rfwn.y = startY + logoH + gap1;
-      rfwn.textAlign = 'center';
-
-      cricos.width = cricosW;
-      cricos.height = cricosH;
-      cricos.x = (cw - cricosW) / 2;
-      cricos.y = rfwn.y + rfwnH + gap2;
-      cricos.textAlign = 'center';
-
-      c.elements.push(logo, rfwn, cricos);
-      state.selectedElementId = null;
-      state.layerSelection = [logo.id, rfwn.id, cricos.id];
-      state.editingElementId = null;
-      pushHistory();
-      render();
-      if (typeof renderProps === 'function') renderProps();
-      showCanvasNotification('Brand set added and centered.', { type: 'success' });
+      const sizeKey = c.width + "x" + c.height;
+      if (AUTO_ARRANGE_CONFIG[sizeKey]) {
+        showCanvasNotification('Brand set added and arranged.', { type: 'success' });
+      } else {
+        showCanvasNotification('Brand set added and centered.', { type: 'success' });
+      }
     }
   }
 }
@@ -16268,7 +16423,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.18.3';
+  const currentVersion = 'v0.18.6';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -16483,7 +16638,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.18.3</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.18.6</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -19394,7 +19549,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.18.3';
+        verEl.textContent = 'v0.18.6';
         logoEl.appendChild(verEl);
       }
     }

@@ -1495,6 +1495,16 @@ body.theme-rmit-navy {
 
     }
 
+    .brand-dropdown-btn {
+      border: 1px solid color-mix(in srgb, var(--accent-base) 35%, var(--border-light)) !important;
+      background: color-mix(in srgb, var(--accent-base) 4%, var(--bg-input)) !important;
+    }
+
+    .brand-dropdown-btn:hover {
+      border-color: var(--accent-base) !important;
+      background: color-mix(in srgb, var(--accent-base) 10%, var(--bg-input)) !important;
+    }
+
 
 
     .add-btn:disabled {
@@ -4236,30 +4246,31 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
 }
 
 #project-save-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #10b981; /* Green */
-  display: inline-block;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981; /* Green */
   vertical-align: middle;
   transition: all 0.3s ease;
   flex-shrink: 0;
-  margin-left: 2px;
+  margin-left: 4px;
 }
 
 #project-save-status-dot.status-saving {
-  background-color: var(--accent-base, #7c5cff); /* Purple */
-  box-shadow: 0 0 4px var(--accent-base, #7c5cff);
+  color: var(--accent-base, #7c5cff); /* Purple */
+  filter: drop-shadow(0 0 2px var(--accent-base, #7c5cff));
   animation: save-dot-pulse 1s infinite alternate;
 }
 
 #project-save-status-dot.status-unsaved {
-  background-color: #f59e0b; /* Amber */
+  color: #f59e0b; /* Amber */
 }
 
 #project-save-status-dot.status-error {
-  background-color: #ef4444; /* Red */
-  box-shadow: 0 0 4px #ef4444;
+  color: #ef4444; /* Red */
+  filter: drop-shadow(0 0 2px #ef4444);
 }
 
 @keyframes save-dot-pulse {

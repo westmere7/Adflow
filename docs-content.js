@@ -661,6 +661,29 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.18.6',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Floppy Disk Save Icon: Converted the save status indicator dot next to the project name in the topbar to a minimal and sleek floppy disk SVG icon. The icon dynamically updates its stroke color and applies subtle shadow glow transitions based on active save status (Green: Saved, Purple: Saving, Amber: Unsaved, Red: Error).'
+    ]
+  },
+  {
+    version: 'v0.18.5',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Dropdown Visual Indicators: Added visual indicators (▼ down chevrons) next to the labels of "Brand Elements" and "Brand Sets" buttons.',
+      'Distinct Brand Button Styling: Styled brand-specific dropdown buttons with an RMIT accent-tinted border and a subtle background highlight to visually distinguish them from standard single-click action buttons.'
+    ]
+  },
+  {
+    version: 'v0.18.4',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Add Brand Sets Button: Added a "Brand Sets" button inside the left panel "Add element" grid to match the "Brand Elements" button. Clicking it displays a dropdown selector to place pre-defined brand sets (e.g. Logo + RFWN + CRICOS) instantly onto the active canvas.',
+      'Add to all Canvases & Auto-Arrange Checkbox: Added a checkbox "Add to all canvases and auto-arrange" to the top of the left panel "Add element" section. When checked, adding any element, brand element, or brand set automatically creates a copy across all canvases in the workspace and auto-arranges them to fit the dimensions.'
+    ]
+  },
+  {
     version: 'v0.18.3',
     date: 'June 2026 — Engine v2.18',
     items: [
