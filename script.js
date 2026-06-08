@@ -9119,16 +9119,65 @@ function startFrameTransitionPreview(type) {
           }`;
         }
       } else if (type === 'swipe') {
-        let clipFrom = '';
-        if (dir === 'up') clipFrom = 'inset(100% 0 0 0)';
-        else if (dir === 'down') clipFrom = 'inset(0 0 100% 0)';
-        else if (dir === 'left') clipFrom = 'inset(0 0 0 100%)';
-        else if (dir === 'right') clipFrom = 'inset(0 100% 0 0)';
-        
-        keyframes = `@keyframes ${animName} {
-          from { clip-path: ${clipFrom}; ${fade ? 'opacity: 0;' : ''} }
-          to { clip-path: inset(0 0 0 0); ${fade ? 'opacity: 1;' : ''} }
-        }`;
+        const feather = !!currentFrame.transitionFeather;
+        if (feather) {
+          let maskGrad = '';
+          let maskSize = '';
+          let posFrom = '';
+          let posTo = '';
+          
+          if (dir === 'up') {
+            maskGrad = 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+            maskSize = '100% 300%';
+            posFrom = '0 100%';
+            posTo = '0 0';
+          } else if (dir === 'down') {
+            maskGrad = 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+            maskSize = '100% 300%';
+            posFrom = '0 100%';
+            posTo = '0 0';
+          } else if (dir === 'left') {
+            maskGrad = 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+            maskSize = '300% 100%';
+            posFrom = '100% 0';
+            posTo = '0 0';
+          } else if (dir === 'right') {
+            maskGrad = 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+            maskSize = '300% 100%';
+            posFrom = '100% 0';
+            posTo = '0 0';
+          }
+          
+          keyframes = `@keyframes ${animName} {
+            from {
+              -webkit-mask-image: ${maskGrad};
+              mask-image: ${maskGrad};
+              -webkit-mask-size: ${maskSize};
+              mask-size: ${maskSize};
+              -webkit-mask-position: ${posFrom};
+              mask-position: ${posFrom};
+            }
+            to {
+              -webkit-mask-image: ${maskGrad};
+              mask-image: ${maskGrad};
+              -webkit-mask-size: ${maskSize};
+              mask-size: ${maskSize};
+              -webkit-mask-position: ${posTo};
+              mask-position: ${posTo};
+            }
+          }`;
+        } else {
+          let clipFrom = '';
+          if (dir === 'up') clipFrom = 'inset(100% 0 0 0)';
+          else if (dir === 'down') clipFrom = 'inset(0 0 100% 0)';
+          else if (dir === 'left') clipFrom = 'inset(0 0 0 100%)';
+          else if (dir === 'right') clipFrom = 'inset(0 100% 0 0)';
+          
+          keyframes = `@keyframes ${animName} {
+            from { clip-path: ${clipFrom}; ${fade ? 'opacity: 0;' : ''} }
+            to { clip-path: inset(0 0 0 0); ${fade ? 'opacity: 1;' : ''} }
+          }`;
+        }
       } else if (type === 'zoom') {
         const zf = zoomFrom / 100;
         if (bounce) {
@@ -9352,22 +9401,42 @@ function getFrameTransitionHtml(currentFrame) {
   const durHtml = `<div class="prop-row" style="margin:0;"><label>Duration (s)</label><input type="number" step="0.1" id="frame-trans-duration" value="${durVal}" min="0.1" /></div>`;
 
   const showFade = ['slide', 'push', 'swipe', 'zoom', 'split', 'iris', 'blur'].includes(activePreset);
+  const showFeather = activePreset === 'swipe';
   let fadeToggleHtml = '';
+  let featherToggleHtml = '';
+
   if (showFade) {
-    const resolvedFade = (currentFrame.transitionFade !== false);
+    const isFeathered = showFeather && !!currentFrame.transitionFeather;
+    const resolvedFade = isFeathered ? false : (currentFrame.transitionFade !== false);
+    const fadeDisabledAttr = isFeathered ? 'disabled' : '';
+    const fadeOpacityStyle = isFeathered ? 'opacity: 0.5; pointer-events: none;' : '';
+
     fadeToggleHtml = `
-      <div class="checkbox-row" style="height:24px; align-items:center; margin-top:14px;">
-        <input type="checkbox" id="frame-trans-fade" ${resolvedFade ? 'checked' : ''} />
+      <div class="checkbox-row" style="height:24px; align-items:center; margin-top:14px; ${fadeOpacityStyle}">
+        <input type="checkbox" id="frame-trans-fade" ${resolvedFade ? 'checked' : ''} ${fadeDisabledAttr} />
         <label for="frame-trans-fade" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
       </div>
     `;
   }
 
+  if (showFeather) {
+    const resolvedFeather = !!currentFrame.transitionFeather;
+    featherToggleHtml = `
+      <div class="checkbox-row" style="height:24px; align-items:center; margin-top:14px;">
+        <input type="checkbox" id="frame-trans-feather" ${resolvedFeather ? 'checked' : ''} />
+        <label for="frame-trans-feather" style="cursor:pointer; font-size:11px; white-space:nowrap;">Feather</label>
+      </div>
+    `;
+  }
+
+  const gridCols = (showFade && showFeather) ? 'grid-template-columns: 1.2fr 0.9fr 0.9fr;' : 'grid-template-columns: 1fr 1fr;';
+
   const standardProps = `
     <div class="prop-row" style="margin-bottom:8px;">
-      <div class="prop-grid-2">
+      <div style="display:grid; ${gridCols} gap:8px;">
         ${durHtml}
         ${fadeToggleHtml}
+        ${featherToggleHtml}
       </div>
     </div>
   `;
@@ -9546,6 +9615,22 @@ function wireFrameTransitionEvents() {
     fadeChk.addEventListener('change', (e) => {
       currentFrame.transitionFade = e.target.checked;
       pushHistory();
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+  }
+
+  const featherChk = propsEl.querySelector('#frame-trans-feather');
+  if (featherChk) {
+    featherChk.addEventListener('mouseenter', () => {
+      startFrameTransitionPreview(currentFrame.transition || 'none');
+    });
+    featherChk.addEventListener('change', (e) => {
+      currentFrame.transitionFeather = e.target.checked;
+      if (currentFrame.transitionFeather) {
+        currentFrame.transitionFade = false;
+      }
+      pushHistory();
+      renderProps();
       startFrameTransitionPreview(currentFrame.transition || 'none');
     });
   }
@@ -18894,7 +18979,7 @@ document.addEventListener('contextmenu', (e) => {
         } else if (frameTransBtn) {
           const currentFrame = state.frames.find(f => f.id === state.activeFrameId);
           if (currentFrame) {
-            const frameProps = ['transitionDuration', 'transitionFade', 'transitionDirection', 'transitionBounce', 'transitionZoomFrom', 'transitionAngle', 'transitionIrisShape', 'transitionIrisOrigin', 'transitionBlurAmount', 'transitionBlurScale'];
+            const frameProps = ['transitionDuration', 'transitionFade', 'transitionDirection', 'transitionBounce', 'transitionZoomFrom', 'transitionAngle', 'transitionIrisShape', 'transitionIrisOrigin', 'transitionBlurAmount', 'transitionBlurScale', 'transitionFeather'];
             frameProps.forEach(p => delete currentFrame[p]);
           }
         }

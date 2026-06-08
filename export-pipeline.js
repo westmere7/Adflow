@@ -305,16 +305,65 @@ function getFrameTransitionKeyframes(f, c) {
       to { filter: blur(${blurAmount}px); transform: scale(${2 - blurScale}); ${fade ? 'opacity: 0;' : ''} }
     }`;
   } else if (t.startsWith('swipe') || t === 'swipe') {
-    let clipFrom = '';
-    if (dir === 'up') clipFrom = 'inset(100% 0 0 0)';
-    else if (dir === 'down') clipFrom = 'inset(0 0 100% 0)';
-    else if (dir === 'left') clipFrom = 'inset(0 0 0 100%)';
-    else if (dir === 'right') clipFrom = 'inset(0 100% 0 0)';
-    
-    keyframes = `@keyframes ${animName} {
-      from { clip-path: ${clipFrom}; ${fade ? 'opacity: 0;' : ''} }
-      to { clip-path: inset(0 0 0 0); ${fade ? 'opacity: 1;' : ''} }
-    }`;
+    const feather = !!f.transitionFeather;
+    if (feather) {
+      let maskGrad = '';
+      let maskSize = '';
+      let posFrom = '';
+      let posTo = '';
+      
+      if (dir === 'up') {
+        maskGrad = 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+        maskSize = '100% 300%';
+        posFrom = '0 100%';
+        posTo = '0 0';
+      } else if (dir === 'down') {
+        maskGrad = 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+        maskSize = '100% 300%';
+        posFrom = '0 100%';
+        posTo = '0 0';
+      } else if (dir === 'left') {
+        maskGrad = 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+        maskSize = '300% 100%';
+        posFrom = '100% 0';
+        posTo = '0 0';
+      } else if (dir === 'right') {
+        maskGrad = 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+        maskSize = '300% 100%';
+        posFrom = '100% 0';
+        posTo = '0 0';
+      }
+      
+      keyframes = `@keyframes ${animName} {
+        from {
+          -webkit-mask-image: ${maskGrad};
+          mask-image: ${maskGrad};
+          -webkit-mask-size: ${maskSize};
+          mask-size: ${maskSize};
+          -webkit-mask-position: ${posFrom};
+          mask-position: ${posFrom};
+        }
+        to {
+          -webkit-mask-image: ${maskGrad};
+          mask-image: ${maskGrad};
+          -webkit-mask-size: ${maskSize};
+          mask-size: ${maskSize};
+          -webkit-mask-position: ${posTo};
+          mask-position: ${posTo};
+        }
+      }`;
+    } else {
+      let clipFrom = '';
+      if (dir === 'up') clipFrom = 'inset(100% 0 0 0)';
+      else if (dir === 'down') clipFrom = 'inset(0 0 100% 0)';
+      else if (dir === 'left') clipFrom = 'inset(0 0 0 100%)';
+      else if (dir === 'right') clipFrom = 'inset(0 100% 0 0)';
+      
+      keyframes = `@keyframes ${animName} {
+        from { clip-path: ${clipFrom}; ${fade ? 'opacity: 0;' : ''} }
+        to { clip-path: inset(0 0 0 0); ${fade ? 'opacity: 1;' : ''} }
+      }`;
+    }
   } else if (t === 'zoom') {
     const zfVal = f.transitionZoomFrom !== undefined ? f.transitionZoomFrom : 80;
     const zf = zfVal / 100;
