@@ -1591,6 +1591,7 @@ const canvasesListEl = document.getElementById('canvases-list');
 // and the exported HTML (serialized via .toString() in the export template).
 function setupTextLineBgs(wrapper) {
   if (wrapper.dataset.bgInited) return;
+  if (wrapper.offsetWidth === 0) return;
   wrapper.dataset.bgInited = '1';
   var charSpans = Array.prototype.filter.call(wrapper.children, function (c) { return c.tagName === 'SPAN'; });
   if (!charSpans.length) return;
@@ -3129,17 +3130,26 @@ function canvasFrameNode(c) {
     if (prevBtn) prevBtn.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       const idx = state.frames.findIndex(f => f.id === state.activeFrameId);
-      if (idx > 0) { state.activeFrameId = state.frames[idx - 1].id; render(); }
+      if (idx > 0) {
+        state.activeFrameId = state.frames[idx - 1].id;
+        deselectNonPersistentLayers();
+        render();
+      }
     });
     if (nextBtn) nextBtn.addEventListener('mousedown', (e) => {
       e.stopPropagation();
       const idx = state.frames.findIndex(f => f.id === state.activeFrameId);
-      if (idx < state.frames.length - 1) { state.activeFrameId = state.frames[idx + 1].id; render(); }
+      if (idx < state.frames.length - 1) {
+        state.activeFrameId = state.frames[idx + 1].id;
+        deselectNonPersistentLayers();
+        render();
+      }
     });
     if (sel) {
       sel.addEventListener('mousedown', e => e.stopPropagation());
       sel.addEventListener('change', (e) => {
         state.activeFrameId = parseInt(e.target.value, 10);
+        deselectNonPersistentLayers();
         render();
       });
     }
@@ -3149,6 +3159,7 @@ function canvasFrameNode(c) {
       const newId = Math.max(...state.frames.map(f => f.id), 0) + 1;
       state.frames.push({ id: newId, duration: 2 });
       state.activeFrameId = newId;
+      deselectNonPersistentLayers();
       pushHistory();
       render();
     });
@@ -3165,8 +3176,7 @@ function canvasFrameNode(c) {
       state.canvases.forEach(cv => {
         cv.elements = cv.elements.filter(el => el.persistent !== false || state.frames.some(f => f.id === el.frameId));
       });
-      state.selectedElementId = null;
-      state.layerSelection = [];
+      deselectNonPersistentLayers();
       pushHistory();
       render();
     });
@@ -13158,6 +13168,28 @@ document.addEventListener('dragend', () => {
   }
 });
 
+function deselectNonPersistentLayers() {
+  const isPersistent = (id) => {
+    for (const c of state.canvases) {
+      const el = c.elements.find(e => e.id === id);
+      if (el) return el.persistent !== false;
+    }
+    return false;
+  };
+
+  state.layerSelection = state.layerSelection.filter(isPersistent);
+
+  if (state.selectedElementId && !isPersistent(state.selectedElementId)) {
+    state.selectedElementId = null;
+  }
+
+  if (state.layerSelection.length === 1 && !state.selectedElementId) {
+    state.selectedElementId = state.layerSelection[0];
+  } else if (state.layerSelection.length === 0) {
+    state.selectedElementId = null;
+  }
+}
+
 
 // ============================================================================
 // Keyboard shortcuts
@@ -14397,8 +14429,7 @@ async function openProjectFromZip() {
 // ============================================================================
 document.getElementById('frame-select').addEventListener('change', (e) => {
   state.activeFrameId = parseInt(e.target.value);
-  state.selectedElementId = null;
-  state.layerSelection = [];
+  deselectNonPersistentLayers();
   render();
 });
 
@@ -14406,8 +14437,7 @@ document.getElementById('btn-prev-frame').addEventListener('click', () => {
   const idx = state.frames.findIndex(f => f.id === state.activeFrameId);
   if (idx > 0) {
     state.activeFrameId = state.frames[idx - 1].id;
-    state.selectedElementId = null;
-    state.layerSelection = [];
+    deselectNonPersistentLayers();
     render();
   }
 });
@@ -14416,8 +14446,7 @@ document.getElementById('btn-next-frame').addEventListener('click', () => {
   const idx = state.frames.findIndex(f => f.id === state.activeFrameId);
   if (idx < state.frames.length - 1) {
     state.activeFrameId = state.frames[idx + 1].id;
-    state.selectedElementId = null;
-    state.layerSelection = [];
+    deselectNonPersistentLayers();
     render();
   }
 });
@@ -14426,6 +14455,7 @@ document.getElementById('btn-add-frame').addEventListener('click', () => {
   const newId = Math.max(...state.frames.map(f => f.id), 0) + 1;
   state.frames.push({ id: newId, duration: 2 });
   state.activeFrameId = newId;
+  deselectNonPersistentLayers();
   pushHistory();
   render();
 });
@@ -14443,8 +14473,7 @@ document.getElementById('btn-remove-frame').addEventListener('click', () => {
     c.elements = c.elements.filter(e => e.persistent !== false || state.frames.some(f => f.id === e.frameId));
   });
 
-  state.selectedElementId = null;
-  state.layerSelection = [];
+  deselectNonPersistentLayers();
   pushHistory();
   render();
 });

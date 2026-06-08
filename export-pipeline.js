@@ -1405,6 +1405,7 @@ ${elsTop}
       prevFrameEl.style.zIndex = '1';
       nextFrameEl.style.zIndex = '2';
       nextFrameEl.style.display = 'block';
+      nextFrameEl.querySelectorAll('[data-bg-anim]').forEach(setupTextLineBgs);
       
       var t = frames[currentFrame].transition;
       var td = (frames[currentFrame].transitionDuration || 0.5) + 's';
