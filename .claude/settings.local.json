@@ -13,7 +13,9 @@
       "Bash(node \"G:/My Drive/RMIT_WORKS/Apps/Adflow/.claude/worktrees/dazzling-knuth-cf446d/scripts/build-asset-manifest.js\")",
       "Bash(git -C \"G:/My Drive/RMIT_WORKS/Apps/Adflow/.claude/worktrees/dazzling-knuth-cf446d\" status)",
       "Bash(git -C \"G:/My Drive/RMIT_WORKS/Apps/Adflow/.claude/worktrees/dazzling-knuth-cf446d\" add script.js data/assets/manifest.json netlify.toml scripts/build-asset-manifest.js)",
-      "Bash(git -C 'G:/My Drive/RMIT_WORKS/Apps/Adflow/.claude/worktrees/dazzling-knuth-cf446d' commit -m ' *)"
+      "Bash(git -C 'G:/My Drive/RMIT_WORKS/Apps/Adflow/.claude/worktrees/dazzling-knuth-cf446d' commit -m ' *)",
+      "Bash(node --check export-pipeline.js)",
+      "Bash(node --check docs-content.js)"
     ]
   }
 }

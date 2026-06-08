@@ -956,7 +956,14 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       dynamicKeyframes += '\n' + getPanCurveKeyframes(el);
     }
     const { entryConfig, entryVars, effConfig, effVars } = getElementAnimationCSS(el, isImageExport);
-    const openDivs = `<div style="width:100%;height:100%;${entryConfig}${entryVars}"><div style="width:100%;height:100%;${effConfig}${effVars}">`;
+    // Continuous-effect wrapper goes OUTSIDE the entry wrapper. Clip-path entry
+    // animations (swipe / typing) settle on `clip-path: inset(0 0 0 0)` (their
+    // "fully revealed" state, kept by fill-mode), which clips to the element's
+    // box. If a movement/scale effect (wiggle, pan, zoom, spin…) lived inside
+    // that, its overflow past the box would get cropped in export/preview. With
+    // the effect wrapper outer, it moves the (clipped) entry wrapper as a whole,
+    // so the clip travels with the content instead of cropping it.
+    const openDivs = `<div style="width:100%;height:100%;${effConfig}${effVars}"><div style="width:100%;height:100%;${entryConfig}${entryVars}">`;
     const closeDivs = `</div></div>`;
 
     if (el.type === 'text') {
@@ -1086,7 +1093,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         : `display:inline;white-space:nowrap;position:relative;`;
 
       if (el.autoSize) {
-        const autoAttrs = ` class="auto-size-text" data-max-size="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" data-width="${el.width}" data-height="${el.height}" data-padding-lr="${paddingLR}" data-padding-tb="${paddingTB}"`;
+        const autoAttrs = ` class="auto-size-text" data-max-size="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" data-width="${el.width}" data-height="${el.height}" data-padding-lr="${paddingLR}" data-padding-tb="${paddingTB}" data-wrap="${el.wrapText ? '1' : '0'}" data-wrap-min="${el.wrapMinSize !== undefined ? el.wrapMinSize : 14}"`;
         return `    <div ${wrapAttrs}${autoAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div class="auto-size-block" style="position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:normal;' : ''}"><span class="auto-size-span" style="${spanStyle}">${btnContent}</span></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
       } else {
         const normalBlockStyle = `position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;`;
@@ -1485,37 +1492,52 @@ ${elsTop}
         // data-padding-lr, so it doubles as the discriminator.
         var isButton = wrapper.hasAttribute('data-padding-lr');
         var BTN_FIT_MARGIN = 2;
+        var wrapOn = wrapper.getAttribute('data-wrap') === '1';
+        var wrapMin = parseFloat(wrapper.getAttribute('data-wrap-min'));
+        if (isNaN(wrapMin)) wrapMin = 14;
 
-        var low = 4;
-        var high = maxFontSize;
-        var best = low;
-
-        while (low <= high) {
-          var mid = Math.floor((low + high) / 2);
-          block.style.fontSize = mid + 'px';
-          span.style.fontSize = mid + 'px';
-
-          var fitsHeight, fitsWidth;
-          if (isButton) {
+        // Does the label fit at the given size? For buttons, wrapMode=false tests a
+        // single line (unwrapped + unclamped, with a safety margin so display
+        // scaling can't tip one line into two); wrapMode=true tests a wrapped
+        // multi-line layout. Text always uses the auto-height block measurement.
+        function fitsAt(size, wrapMode) {
+          block.style.fontSize = size + 'px';
+          span.style.fontSize = size + 'px';
+          if (isButton && !wrapMode) {
             var _ws = span.style.whiteSpace, _mw = span.style.maxWidth;
-            span.style.whiteSpace = 'nowrap';
-            span.style.maxWidth = 'none';
+            span.style.whiteSpace = 'nowrap'; span.style.maxWidth = 'none';
             var r = span.getBoundingClientRect();
-            fitsWidth = r.width <= (targetWidth - BTN_FIT_MARGIN);
-            fitsHeight = r.height <= (targetHeight + 1.5);
-            span.style.whiteSpace = _ws;
-            span.style.maxWidth = _mw;
-          } else {
-            fitsHeight = (block.scrollHeight - padTB * 2) <= (targetHeight + 1.5);
-            fitsWidth = (block.scrollWidth - padLR * 2) <= (targetWidth + 1.5);
+            var ok = (r.width <= (targetWidth - BTN_FIT_MARGIN)) && (r.height <= (targetHeight + 1.5));
+            span.style.whiteSpace = _ws; span.style.maxWidth = _mw;
+            return ok;
           }
+          if (isButton && wrapMode) {
+            var _ws2 = span.style.whiteSpace;
+            span.style.whiteSpace = 'normal';
+            var rr = span.getBoundingClientRect();
+            var okWrap = (span.scrollWidth <= (targetWidth + 1.5)) && (rr.height <= (targetHeight + 1.5));
+            span.style.whiteSpace = _ws2;
+            return okWrap;
+          }
+          return ((block.scrollHeight - padTB * 2) <= (targetHeight + 1.5)) &&
+                 ((block.scrollWidth - padLR * 2) <= (targetWidth + 1.5));
+        }
 
-          if (fitsHeight && fitsWidth) {
-            best = mid;
-            low = mid + 1;
-          } else {
-            high = mid - 1;
-          }
+        function searchSize(wrapMode) {
+          var lo = 4, hi = maxFontSize, b = 4;
+          while (lo <= hi) { var m = Math.floor((lo + hi) / 2); if (fitsAt(m, wrapMode)) { b = m; lo = m + 1; } else { hi = m - 1; } }
+          return b;
+        }
+
+        // Buttons with Wrap on stay single-line until that would shrink below
+        // the threshold, then wrap to a (usually larger) multi-line layout.
+        // Mirrors calculateAutoSize() in script.js so editor and preview agree.
+        var best;
+        if (isButton && wrapOn) {
+          var oneLine = searchSize(false);
+          best = (oneLine >= wrapMin) ? oneLine : Math.max(oneLine, searchSize(true));
+        } else {
+          best = searchSize(false);
         }
         
         block.style.fontSize = best + 'px';

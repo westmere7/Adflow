@@ -1,6 +1,13 @@
 RMIT Adflow - Version & Changelog History
 
-v0.18.7 (Current) - June 2026 — Engine v2.18
+v0.18.9 (Current) - June 2026 — Engine v2.18
+- Movement/Scale Effects No Longer Clipped on Buttons: Fixed continuous effects (Wiggle, Pan, Zoom, Spin, etc.) being cropped to the button's bounding box in Preview/Export when the button also had a clip-path entry animation (Swipe / Typing). The reveal/clip from the entry animation was wrapping the movement; the continuous-effect wrapper now sits outside it, so the button can move and scale past its box exactly as it does in the editor.
+- Tidier Button Sizing Controls: Reorganized the button auto-size controls in the Properties panel — the Auto-size and Wrap toggles now share one row, with Size / Max / Wrap-threshold grouped on the row below. The wrap threshold ("Wrap <") only appears when it applies (Auto-size + Wrap both on), removing the cramped layout and the wrapped hint text.
+
+v0.18.8 - June 2026 — Engine v2.18
+- Per-Button Wrap Threshold: Added a "Wrap below" control to auto-sized buttons (Properties panel, alongside Size / Auto / Wrap). The button keeps its label on one line until auto-sizing would shrink the font below the set threshold; below that, it wraps to a (usually larger) multi-line layout instead. This makes automatic line-breaking useful again — previously, after the wrap-consistency fix, auto-sized buttons only broke when the text became tiny. The threshold is per-button, syncs with font settings across linked sizes, and is applied identically in the editor and the export/preview.
+
+v0.18.7 - June 2026 — Engine v2.18
 - Consistent Button Text Wrapping: Fixed auto-sized button labels wrapping to two lines in Preview/Export while staying on one line in the editor (with "Wrap" enabled). Auto-sized buttons now pick the largest font that fits the label on a single line — measured the same way, with a small safety margin, in both the editor and the export sizers. Previously the sizer could choose a font whose one-line text was a hair too wide; it rendered as one line in the editor but tipped into wrapping in the preview on displays with fractional scaling (DPR). The margin makes the result identical across editing, preview, and export on any display.
 
 v0.18.6 - June 2026 — Engine v2.18

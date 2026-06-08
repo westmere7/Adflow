@@ -661,6 +661,21 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.18.9',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Movement/Scale Effects No Longer Clipped on Buttons: Fixed continuous effects (Wiggle, Pan, Zoom, Spin, etc.) being cropped to the button\'s bounding box in Preview/Export when the button also had a clip-path entry animation (Swipe / Typing). The continuous-effect wrapper now sits outside the entry-reveal wrapper, so the button can move and scale past its box exactly as it does in the editor.',
+      'Tidier Button Sizing Controls: Reorganized the button auto-size controls in the Properties panel — the Auto-size and Wrap toggles now share one row, with Size / Max / Wrap-threshold grouped on the row below. The wrap threshold ("Wrap <") only appears when it applies (Auto-size + Wrap both on), removing the cramped layout.'
+    ]
+  },
+  {
+    version: 'v0.18.8',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Per-Button Wrap Threshold: Added a "Wrap below" control to auto-sized buttons (Properties panel, alongside Size / Auto / Wrap). The button keeps its label on one line until auto-sizing would shrink the font below the set threshold; below that, it wraps to a (usually larger) multi-line layout instead. This makes automatic line-breaking useful again — previously, after the wrap-consistency fix, auto-sized buttons only broke when the text became tiny. The threshold is per-button, syncs with font settings across linked sizes, and is applied identically in the editor and the export/preview.'
+    ]
+  },
+  {
     version: 'v0.18.7',
     date: 'June 2026 — Engine v2.18',
     items: [

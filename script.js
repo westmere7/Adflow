@@ -309,7 +309,13 @@ function getMeasureDiv() {
   return measureDiv;
 }
 
-function measureTextFits(el, text, fontSize) {
+// Smallest one-line font (px) an auto-sized button will use before it wraps to a
+// (larger) multi-line layout instead. Overridable per button via el.wrapMinSize.
+const DEFAULT_WRAP_MIN = 14;
+
+// buttonMode: 'wrap' measures the label wrapped (to test a multi-line fit);
+// anything else ('oneline'/undefined) measures it unwrapped (single-line fit).
+function measureTextFits(el, text, fontSize, buttonMode) {
   const m = getMeasureDiv();
   m.innerHTML = '';
   
@@ -342,10 +348,10 @@ function measureTextFits(el, text, fontSize) {
   span.style.lineHeight = lh;
   span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
   if (isButton) {
-    // Auto-size buttons to fit on a SINGLE line: always measure the label
-    // unwrapped so the chosen font keeps it one line in the editor AND the
-    // export preview. Mirrors adjustAutoSizes() in export-pipeline.js.
-    span.style.whiteSpace = 'nowrap';
+    // 'wrap' mode lets the label wrap (multi-line fit test); 'oneline' (default)
+    // measures it unwrapped so it can be auto-sized to a single line. Mirrors
+    // adjustAutoSizes() in export-pipeline.js.
+    span.style.whiteSpace = (buttonMode === 'wrap') ? 'normal' : 'nowrap';
     span.style.wordBreak = 'normal';
   } else {
     span.style.wordBreak = 'normal';
@@ -365,15 +371,15 @@ function measureTextFits(el, text, fontSize) {
   m.appendChild(textBlock);
   
   const rect = textBlock.getBoundingClientRect();
-  // Buttons require a 2px width safety margin (negative tolerance) so sub-pixel
-  // / display-scaling (DPR) differences between the editor and the export
-  // preview can't tip a single line into wrapping. Measure the unwrapped span's
-  // OWN width — textBlock.scrollWidth floors at the block width, so it can't see
-  // a genuinely-narrower fit and the negative margin would never pass. Text
-  // keeps the +1.5px leniency / block measurement. (2px mirrors BTN_FIT_MARGIN
-  // in export-pipeline.js's adjustAutoSizes so both sizers pick the same font.)
+  // One-line button fit needs a 2px width safety margin (negative tolerance) so
+  // sub-pixel / display-scaling (DPR) differences between the editor and the
+  // export preview can't tip a single line into wrapping — and it measures the
+  // unwrapped span's OWN width (textBlock.scrollWidth floors at the block width,
+  // so it couldn't see a narrower fit). Wrap-mode buttons and text use the
+  // wrapped block width with the usual +1.5 leniency. (Mirrors adjustAutoSizes()
+  // in export-pipeline.js so both sizers pick the same font.)
   const fitsHeight = rect.height <= (targetHeight + 1.5);
-  const fitsWidth = isButton
+  const fitsWidth = (isButton && buttonMode !== 'wrap')
     ? (span.getBoundingClientRect().width <= (targetWidth - 2))
     : (textBlock.scrollWidth <= (targetWidth + 1.5));
 
@@ -382,21 +388,27 @@ function measureTextFits(el, text, fontSize) {
 
 function calculateAutoSize(el, text) {
   if (!text) return 4;
-  let low = 4;
-  let high = el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72);
-  if (high < low) high = low;
-  let best = low;
-  
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    if (measureTextFits(el, text, mid)) {
-      best = mid;
-      low = mid + 1;
-    } else {
-      high = mid - 1;
+  const hi0 = Math.max(4, el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72));
+  const search = (mode) => {
+    let low = 4, high = hi0, best = 4;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      if (measureTextFits(el, text, mid, mode)) { best = mid; low = mid + 1; }
+      else high = mid - 1;
     }
+    return best;
+  };
+  
+  // Buttons with Wrap on: keep the label on ONE line as long as it can be sized
+  // at/above the per-button threshold (wrapMinSize); if a single line would need
+  // a smaller font than that, wrap instead (usually larger multi-line text).
+  // Mirrors adjustAutoSizes() in export-pipeline.js so editor and preview agree.
+  if (el.type === 'button' && el.wrapText) {
+    const oneLine = search('oneline');
+    const threshold = el.wrapMinSize !== undefined ? el.wrapMinSize : DEFAULT_WRAP_MIN;
+    return (oneLine >= threshold) ? oneLine : Math.max(oneLine, search('wrap'));
   }
-  return best;
+  return search('oneline');
 }
 
 
@@ -1116,7 +1128,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
       else delete targetEl.color;
     }
     if (sync.font) {
-      const fontProps = ['fontFamily', 'weight', 'fontSize', 'autoSize', 'maxFontSize', 'paddingLR', 'paddingTB', 'textAlign', 'verticalAlign', 'wrapText'];
+      const fontProps = ['fontFamily', 'weight', 'fontSize', 'autoSize', 'maxFontSize', 'paddingLR', 'paddingTB', 'textAlign', 'verticalAlign', 'wrapText', 'wrapMinSize'];
       fontProps.forEach(p => {
         if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
         else delete targetEl[p];
@@ -10503,26 +10515,37 @@ function renderProps() {
       </div>
     </div>`);
 
-    // Row 2: Size & Auto & Max size
+    // Sizing controls: the two toggles share a row, then the numeric limits
+    // (Size / Max / Wrap-threshold) sit together on the row below. "Wrap <"
+    // only appears when it's actually in play (Auto-size + Wrap both on).
     const computedFontSize = el.autoSize ? calculateAutoSize(el, dText) : (el.fontSize || 14);
+    const showWrapMin = el.autoSize && el.wrapText;
+    f.push(`<div class="prop-row" style="margin-bottom:6px;">
+      <div style="display:flex; align-items:center; gap:18px; width:100%;">
+        <div class="checkbox-row" style="margin:0; font-size:11px; color:var(--text-main); gap:5px;">
+          <input type="checkbox" data-k="autoSize" id="prop-auto-size" title="Auto-scale the text to fit the button" ${el.autoSize ? 'checked' : ''} style="width:13px; height:13px; margin:0;" />
+          <label for="prop-auto-size" title="Auto-scale the text to fit the button" style="cursor:pointer; margin:0;">Auto-size</label>
+        </div>
+        <div class="checkbox-row" style="margin:0; font-size:11px; color:var(--text-main); gap:5px;">
+          <input type="checkbox" data-k="wrapText" id="prop-wrap-text" title="Allow the label to break onto multiple lines" ${el.wrapText ? 'checked' : ''} style="width:13px; height:13px; margin:0;" />
+          <label for="prop-wrap-text" title="Allow the label to break onto multiple lines" style="cursor:pointer; margin:0;">Wrap lines</label>
+        </div>
+      </div>
+    </div>`);
     f.push(`<div class="prop-row">
-      <div style="display:flex; align-items:end; gap:8px; width:100%;">
-        <div class="prop-row" style="margin:0; flex:1;">
-          <label for="prop-font-size">Size</label>
-          <input type="number" data-k="fontSize" id="prop-font-size" value="${computedFontSize}" ${el.autoSize ? 'disabled' : ''} style="width:100%;" title="Button Font Size" />
+      <div style="display:flex; align-items:flex-end; gap:8px; width:100%;">
+        <div class="prop-row" style="margin:0; flex:1; min-width:0;">
+          <label for="prop-font-size">${el.autoSize ? 'Size (auto)' : 'Size'}</label>
+          <input type="number" data-k="fontSize" id="prop-font-size" value="${computedFontSize}" ${el.autoSize ? 'disabled' : ''} style="width:100%;" title="${el.autoSize ? 'Auto-size is on — turn it off to set a fixed font size' : 'Fixed font size'}" />
         </div>
-        <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
-          <input type="checkbox" data-k="autoSize" id="prop-auto-size" title="Auto-scale button text size to fit boundary" ${el.autoSize ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
-          <label for="prop-auto-size" title="Auto-scale button text size to fit boundary" style="cursor:pointer; margin:0;">Auto</label>
+        <div class="prop-row" style="margin:0; flex:1; min-width:0;">
+          <label for="prop-max-font-size">Max</label>
+          <input type="number" data-k="maxFontSize" id="prop-max-font-size" value="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" ${!el.autoSize ? 'disabled' : ''} style="width:100%;" title="Largest font size auto-size may use" />
         </div>
-        <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
-          <input type="checkbox" data-k="wrapText" id="prop-wrap-text" title="Allow button text to wrap onto multiple lines" ${el.wrapText ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
-          <label for="prop-wrap-text" title="Allow button text to wrap onto multiple lines" style="cursor:pointer; margin:0;">Wrap</label>
-        </div>
-        <div class="prop-row" style="margin:0; flex:1;">
-          <label for="prop-max-font-size">Max size</label>
-          <input type="number" data-k="maxFontSize" id="prop-max-font-size" value="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" ${!el.autoSize ? 'disabled' : ''} style="width:100%;" title="Maximum font size when using Auto-size" />
-        </div>
+        ${showWrapMin ? `<div class="prop-row" style="margin:0; flex:1; min-width:0;">
+          <label for="prop-wrap-min" title="When auto-size would shrink the label below this size, it wraps onto multiple lines instead of shrinking further.">Wrap &lt;</label>
+          <input type="number" data-k="wrapMinSize" id="prop-wrap-min" min="4" value="${el.wrapMinSize !== undefined ? el.wrapMinSize : DEFAULT_WRAP_MIN}" style="width:100%;" title="When auto-size would shrink the label below this size, it wraps onto multiple lines instead of shrinking further." />
+        </div>` : ''}
       </div>
     </div>`);
 
@@ -11248,7 +11271,7 @@ function checkButtonFontSizeWarning(el) {
     });
     inp.addEventListener('change', () => {
       pushHistory();
-      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText') renderProps();
+      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize') renderProps();
     });
     if (inp.type === 'number') {
       inp.addEventListener('wheel', (e) => {
@@ -16432,7 +16455,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.18.7';
+  const currentVersion = 'v0.18.9';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -16647,7 +16670,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.18.7</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.18.9</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -19558,7 +19581,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.18.7';
+        verEl.textContent = 'v0.18.9';
         logoEl.appendChild(verEl);
       }
     }
