@@ -7014,6 +7014,7 @@ function renderLinkControl() {
   }
   const groups = Object.values(state.linkGroups);
   let html = '';
+  let isRmitLogo = false;
 
   // 1. ACTIVE LINK GROUPS LIST AT THE TOP
   if (groups.length > 0) {
@@ -7115,7 +7116,7 @@ function renderLinkControl() {
     const firstEl = selectedElements[0];
     const cat = getElementCategory(firstEl);
     const sameCat = selectedElements.every(el => getElementCategory(el) === cat);
-    const isRmitLogo = selectedElements.some(el => el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo')));
+    isRmitLogo = selectedElements.some(el => el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo')));
 
     if (sameCat && cat) {
       const groupIds = [...new Set(selectedElements.map(el => el.linkGroupId).filter(Boolean))];
