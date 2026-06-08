@@ -440,7 +440,7 @@ body.theme-rmit-navy {
 
       50% {
 
-        scale: 1.05;
+        scale: var(--pulse-scale, 1.05);
 
       }
 
@@ -468,7 +468,7 @@ body.theme-rmit-navy {
 
       50% {
 
-        translate: 0 -10px;
+        translate: var(--float-x, 0px) var(--float-y, -10px);
 
       }
 
@@ -543,7 +543,7 @@ body.theme-rmit-navy {
 
       14% {
 
-        scale: 1.3;
+        scale: var(--heartbeat-scale, 1.3);
 
       }
 
@@ -559,7 +559,7 @@ body.theme-rmit-navy {
 
       42% {
 
-        scale: 1.3;
+        scale: var(--heartbeat-scale, 1.3);
 
       }
 
@@ -597,12 +597,12 @@ body.theme-rmit-navy {
 
     @keyframes eff-pulse-inverse {
       0% { scale: 1; }
-      50% { scale: 0.9524; }
+      50% { scale: var(--pulse-scale-inverse, 0.9524); }
       100% { scale: 1; }
     }
     @keyframes eff-float-inverse {
       0% { translate: 0 0; }
-      50% { translate: 0 10px; }
+      50% { translate: var(--float-x-inverse, 0px) var(--float-y-inverse, 10px); }
       100% { translate: 0 0; }
     }
     @keyframes eff-wiggle-inverse {
@@ -614,9 +614,9 @@ body.theme-rmit-navy {
     }
     @keyframes eff-heartbeat-inverse {
       0% { scale: 1; }
-      14% { scale: 0.7692; }
+      14% { scale: var(--heartbeat-scale-inverse, 0.7692); }
       28% { scale: 1; }
-      42% { scale: 0.7692; }
+      42% { scale: var(--heartbeat-scale-inverse, 0.7692); }
       70% { scale: 1; }
     }
     @keyframes eff-pan-inverse {

@@ -661,6 +661,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.0',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Continuous Animation Settings Expansion: Added scale parameters for Pulse and Heartbeat continuous effects, and range and direction options for the Float continuous effect. The settings are fully integrated with real-time viewport preview rendering, HTML/ZIP export pipelines, and link-group cross-canvas sync.'
+    ]
+  },
+  {
     version: 'v0.18.9',
     date: 'June 2026 — Engine v2.18',
     items: [

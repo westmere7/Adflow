@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.18.9 (Current) - June 2026 — Engine v2.18
+v0.19.0 (Current) - June 2026 — Engine v2.19
+- Continuous Animation Settings Expansion: Added scale parameters for Pulse and Heartbeat continuous effects, and range and direction options for the Float continuous effect. The settings are fully integrated with real-time viewport preview rendering, HTML/ZIP export pipelines, and link-group cross-canvas sync.
+
+v0.18.9 - June 2026 — Engine v2.18
 - Movement/Scale Effects No Longer Clipped on Buttons: Fixed continuous effects (Wiggle, Pan, Zoom, Spin, etc.) being cropped to the button's bounding box in Preview/Export when the button also had a clip-path entry animation (Swipe / Typing). The reveal/clip from the entry animation was wrapping the movement; the continuous-effect wrapper now sits outside it, so the button can move and scale past its box exactly as it does in the editor.
 - Tidier Button Sizing Controls: Reorganized the button auto-size controls in the Properties panel — the Auto-size and Wrap toggles now share one row, with Size / Max / Wrap-threshold grouped on the row below. The wrap threshold ("Wrap <") only appears when it applies (Auto-size + Wrap both on), removing the cramped layout and the wrapped hint text.
 

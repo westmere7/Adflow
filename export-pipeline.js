@@ -1325,19 +1325,19 @@ ${dynamicKeyframes}
   @keyframes anim-swipe-right-fade { from { clip-path: inset(0 100% 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
   @keyframes anim-swipe-up-fade    { from { clip-path: inset(100% 0 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
   @keyframes anim-swipe-down-fade  { from { clip-path: inset(0 0 100% 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
-  @keyframes eff-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-  @keyframes eff-float { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
+  @keyframes eff-pulse { 0% { scale: 1; } 50% { scale: var(--pulse-scale, 1.05); } 100% { scale: 1; } }
+  @keyframes eff-float { 0% { translate: 0 0; } 50% { translate: var(--float-x, 0px) var(--float-y, -10px); } 100% { translate: 0 0; } }
   @keyframes eff-flash { 0%, 50%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }
   @keyframes eff-wiggle { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
   @keyframes eff-spin { 100% { transform: rotate(var(--spin-target, 360deg)); } }
-  @keyframes eff-heartbeat { 0% { transform: scale(1); } 14% { transform: scale(1.3); } 28% { transform: scale(1); } 42% { transform: scale(1.3); } 70% { transform: scale(1); } }
+  @keyframes eff-heartbeat { 0% { scale: 1; } 14% { scale: var(--heartbeat-scale, 1.3); } 28% { scale: 1; } 42% { scale: var(--heartbeat-scale, 1.3); } 70% { scale: 1; } }
   @keyframes eff-pan { 0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); opacity: var(--pan-opacity-start, 1); } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
   @keyframes eff-zoom { 0% { scale: 1; } 100% { scale: var(--zoom-target, 1.5); } }
-  @keyframes eff-pulse-inverse { 0% { scale: 1; } 50% { scale: 0.9524; } 100% { scale: 1; } }
-  @keyframes eff-float-inverse { 0% { translate: 0 0; } 50% { translate: 0 10px; } 100% { translate: 0 0; } }
+  @keyframes eff-pulse-inverse { 0% { scale: 1; } 50% { scale: var(--pulse-scale-inverse, 0.9524); } 100% { scale: 1; } }
+  @keyframes eff-float-inverse { 0% { translate: 0 0; } 50% { translate: var(--float-x-inverse, 0px) var(--float-y-inverse, 10px); } 100% { translate: 0 0; } }
   @keyframes eff-wiggle-inverse { 0%, 100% { rotate: 5deg; } 50% { rotate: -5deg; } }
   @keyframes eff-spin-inverse { 100% { rotate: var(--spin-target-inverse, -360deg); } }
-  @keyframes eff-heartbeat-inverse { 0% { scale: 1; } 14% { scale: 0.7692; } 28% { scale: 1; } 42% { scale: 0.7692; } 70% { scale: 1; } }
+  @keyframes eff-heartbeat-inverse { 0% { scale: 1; } 14% { scale: var(--heartbeat-scale-inverse, 0.7692); } 28% { scale: 1; } 42% { scale: var(--heartbeat-scale-inverse, 0.7692); } 70% { scale: 1; } }
   @keyframes eff-pan-inverse { 0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); } 100% { translate: 0 0; rotate: 0deg; } }
   @keyframes eff-zoom-inverse { 0% { scale: 1; } 100% { scale: var(--zoom-target-inverse, 0.6667); } }
 

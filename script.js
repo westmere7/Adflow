@@ -1238,7 +1238,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     });
   }
   if (sync.effect) {
-    const effectProps = ['effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY'];
+    const effectProps = ['effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
     effectProps.forEach(p => {
       if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
       else delete targetEl[p];
@@ -3318,6 +3318,33 @@ function getElementAnimationCSS(el, isImageExport) {
       const fill = Math.max(1, repeat);
       if (!isImageExport) effAnims.push(`eff-spin ${effDur}s ${ease} ${effDelay}s ${fill} both`);
       effVars = `--spin-target:${spinT}deg;`;
+    } else if (effType === 'pulse') {
+      const scaleVal = el.pulseScale !== undefined ? el.pulseScale / 100 : 1.05;
+      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+      const speed = Math.max(1, Number(speedStr));
+      const duration = 2 / (speed / 100);
+      if (!isImageExport) effAnims.push(`eff-pulse ${duration}s ease-in-out ${effDelay}s infinite`);
+      effVars = `--pulse-scale:${scaleVal}; --pulse-scale-inverse:${(1 / scaleVal).toFixed(4)};`;
+    } else if (effType === 'heartbeat') {
+      const scaleVal = el.heartbeatScale !== undefined ? el.heartbeatScale / 100 : 1.3;
+      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+      const speed = Math.max(1, Number(speedStr));
+      const duration = 2 / (speed / 100);
+      if (!isImageExport) effAnims.push(`eff-heartbeat ${duration}s ease-in-out ${effDelay}s infinite`);
+      effVars = `--heartbeat-scale:${scaleVal}; --heartbeat-scale-inverse:${(1 / scaleVal).toFixed(4)};`;
+    } else if (effType === 'float') {
+      const range = el.floatRange !== undefined ? el.floatRange : 10;
+      const dir = el.floatDirection || 'up';
+      let fx = 0, fy = 0;
+      if (dir === 'up') fy = -range;
+      else if (dir === 'down') fy = range;
+      else if (dir === 'left') fx = -range;
+      else if (dir === 'right') fx = range;
+      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+      const speed = Math.max(1, Number(speedStr));
+      const duration = 2 / (speed / 100);
+      if (!isImageExport) effAnims.push(`eff-float ${duration}s ease-in-out ${effDelay}s infinite`);
+      effVars = `--float-x:${fx}px; --float-y:${fy}px; --float-x-inverse:${-fx}px; --float-y-inverse:${-fy}px;`;
     } else {
       const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
       const speed = Math.max(1, Number(speedStr));
@@ -3380,6 +3407,33 @@ function getInverseElementAnimationCSS(el, isImageExport, imageEl) {
       const fill = Math.max(1, repeat);
       effAnims.push(`eff-spin-inverse ${effDur}s ${ease} ${effDelay}s ${fill} both`);
       effVars = `--spin-target-inverse:${-spinT}deg;`;
+    } else if (effType === 'pulse') {
+      const scaleVal = el.pulseScale !== undefined ? el.pulseScale / 100 : 1.05;
+      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+      const speed = Math.max(1, Number(speedStr));
+      const duration = 2 / (speed / 100);
+      effAnims.push(`eff-pulse-inverse ${duration}s ease-in-out ${effDelay}s infinite`);
+      effVars = `--pulse-scale-inverse:${(1 / scaleVal).toFixed(4)}; --pulse-scale:${scaleVal};`;
+    } else if (effType === 'heartbeat') {
+      const scaleVal = el.heartbeatScale !== undefined ? el.heartbeatScale / 100 : 1.3;
+      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+      const speed = Math.max(1, Number(speedStr));
+      const duration = 2 / (speed / 100);
+      effAnims.push(`eff-heartbeat-inverse ${duration}s ease-in-out ${effDelay}s infinite`);
+      effVars = `--heartbeat-scale-inverse:${(1 / scaleVal).toFixed(4)}; --heartbeat-scale:${scaleVal};`;
+    } else if (effType === 'float') {
+      const range = el.floatRange !== undefined ? el.floatRange : 10;
+      const dir = el.floatDirection || 'up';
+      let fx = 0, fy = 0;
+      if (dir === 'up') fy = -range;
+      else if (dir === 'down') fy = range;
+      else if (dir === 'left') fx = -range;
+      else if (dir === 'right') fx = range;
+      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+      const speed = Math.max(1, Number(speedStr));
+      const duration = 2 / (speed / 100);
+      effAnims.push(`eff-float-inverse ${duration}s ease-in-out ${effDelay}s infinite`);
+      effVars = `--float-x-inverse:${-fx}px; --float-y-inverse:${-fy}px; --float-x:${fx}px; --float-y:${fy}px;`;
     } else {
       const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
       const speed = Math.max(1, Number(speedStr));
@@ -10263,7 +10317,11 @@ function renderProps() {
     'effOnce': 'Run the effect cycle only once',
     'effEase': 'Apply smooth ease in/out curve',
     'spinTarget': 'Target rotation angle in degrees',
-    'spinRepeat': 'Repeat count (minimum 1)'
+    'spinRepeat': 'Repeat count (minimum 1)',
+    'pulseScale': 'Pulse peak scale percentage',
+    'heartbeatScale': 'Heartbeat peak scale percentage',
+    'floatRange': 'Float translation distance in pixels',
+    'floatDirection': 'Float movement direction'
   };
 
   const num = (key, label, def = '') => `<div class="prop-row"><label>${label}</label><input type="number" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" title="${propTooltips[key] || label}" /></div>`;
@@ -11021,6 +11079,33 @@ function renderProps() {
         <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease-spin" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease-spin" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
       </div>
       </div>`);
+      } else if (el.effectType === 'pulse') {
+        f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
+        ${num('effSpeed', 'Speed (%)', 100)}
+        ${num('effDelay', 'Delay (s)', 0)}
+        ${num('pulseScale', 'Scale (%)', 105)}
+      </div></div>`);
+      } else if (el.effectType === 'heartbeat') {
+        f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
+        ${num('effSpeed', 'Speed (%)', 100)}
+        ${num('effDelay', 'Delay (s)', 0)}
+        ${num('heartbeatScale', 'Scale (%)', 130)}
+      </div></div>`);
+      } else if (el.effectType === 'float') {
+        const currentDir = el.floatDirection || 'up';
+        f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
+        ${num('effSpeed', 'Speed (%)', 100)}
+        ${num('effDelay', 'Delay (s)', 0)}
+        ${num('floatRange', 'Range (px)', 10)}
+        <div class="prop-row"><label>Direction</label>
+          <select data-k="floatDirection" title="Float direction" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none; cursor:pointer;">
+            <option value="up" ${currentDir === 'up' ? 'selected' : ''}>Up</option>
+            <option value="down" ${currentDir === 'down' ? 'selected' : ''}>Down</option>
+            <option value="left" ${currentDir === 'left' ? 'selected' : ''}>Left</option>
+            <option value="right" ${currentDir === 'right' ? 'selected' : ''}>Right</option>
+          </select>
+        </div>
+      </div></div>`);
       } else {
         f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
         ${num('effSpeed', 'Speed (%)', 100)}
@@ -11872,6 +11957,38 @@ function checkButtonFontSizeWarning(el) {
             const repeat = nodeEl.spinRepeat !== undefined ? nodeEl.spinRepeat : 1;
             const fill = Math.max(1, repeat);
             tNode.style.animation = `eff-spin ${effDur}s ${ease} 0s ${fill} both`;
+          } else if (val === 'pulse') {
+            const scaleVal = nodeEl.pulseScale !== undefined ? nodeEl.pulseScale / 100 : 1.05;
+            tNode.style.setProperty('--pulse-scale', scaleVal);
+            tNode.style.setProperty('--pulse-scale-inverse', (1 / scaleVal).toFixed(4));
+            const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
+            const speed = Math.max(1, Number(speedStr));
+            const duration = 2 / (speed / 100);
+            tNode.style.animation = `eff-pulse ${duration}s ease-in-out 0s infinite`;
+          } else if (val === 'heartbeat') {
+            const scaleVal = nodeEl.heartbeatScale !== undefined ? nodeEl.heartbeatScale / 100 : 1.3;
+            tNode.style.setProperty('--heartbeat-scale', scaleVal);
+            tNode.style.setProperty('--heartbeat-scale-inverse', (1 / scaleVal).toFixed(4));
+            const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
+            const speed = Math.max(1, Number(speedStr));
+            const duration = 2 / (speed / 100);
+            tNode.style.animation = `eff-heartbeat ${duration}s ease-in-out 0s infinite`;
+          } else if (val === 'float') {
+            const range = nodeEl.floatRange !== undefined ? nodeEl.floatRange : 10;
+            const dir = nodeEl.floatDirection || 'up';
+            let fx = 0, fy = 0;
+            if (dir === 'up') fy = -range;
+            else if (dir === 'down') fy = range;
+            else if (dir === 'left') fx = -range;
+            else if (dir === 'right') fx = range;
+            tNode.style.setProperty('--float-x', fx + 'px');
+            tNode.style.setProperty('--float-y', fy + 'px');
+            tNode.style.setProperty('--float-x-inverse', -fx + 'px');
+            tNode.style.setProperty('--float-y-inverse', -fy + 'px');
+            const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
+            const speed = Math.max(1, Number(speedStr));
+            const duration = 2 / (speed / 100);
+            tNode.style.animation = `eff-float ${duration}s ease-in-out 0s infinite`;
           } else {
             const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
             const speed = Math.max(1, Number(speedStr));
@@ -11924,6 +12041,38 @@ function checkButtonFontSizeWarning(el) {
             const repeat = nodeEl.spinRepeat !== undefined ? nodeEl.spinRepeat : 1;
             const fill = Math.max(1, repeat);
             tNode.style.animation = `eff-spin-inverse ${effDur}s ${ease} 0s ${fill} both`;
+          } else if (val === 'pulse') {
+            const scaleVal = nodeEl.pulseScale !== undefined ? nodeEl.pulseScale / 100 : 1.05;
+            tNode.style.setProperty('--pulse-scale-inverse', (1 / scaleVal).toFixed(4));
+            tNode.style.setProperty('--pulse-scale', scaleVal);
+            const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
+            const speed = Math.max(1, Number(speedStr));
+            const duration = 2 / (speed / 100);
+            tNode.style.animation = `eff-pulse-inverse ${duration}s ease-in-out 0s infinite`;
+          } else if (val === 'heartbeat') {
+            const scaleVal = nodeEl.heartbeatScale !== undefined ? nodeEl.heartbeatScale / 100 : 1.3;
+            tNode.style.setProperty('--heartbeat-scale-inverse', (1 / scaleVal).toFixed(4));
+            tNode.style.setProperty('--heartbeat-scale', scaleVal);
+            const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
+            const speed = Math.max(1, Number(speedStr));
+            const duration = 2 / (speed / 100);
+            tNode.style.animation = `eff-heartbeat-inverse ${duration}s ease-in-out 0s infinite`;
+          } else if (val === 'float') {
+            const range = nodeEl.floatRange !== undefined ? nodeEl.floatRange : 10;
+            const dir = nodeEl.floatDirection || 'up';
+            let fx = 0, fy = 0;
+            if (dir === 'up') fy = -range;
+            else if (dir === 'down') fy = range;
+            else if (dir === 'left') fx = -range;
+            else if (dir === 'right') fx = range;
+            tNode.style.setProperty('--float-x-inverse', -fx + 'px');
+            tNode.style.setProperty('--float-y-inverse', -fy + 'px');
+            tNode.style.setProperty('--float-x', fx + 'px');
+            tNode.style.setProperty('--float-y', fy + 'px');
+            const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
+            const speed = Math.max(1, Number(speedStr));
+            const duration = 2 / (speed / 100);
+            tNode.style.animation = `eff-float-inverse ${duration}s ease-in-out 0s infinite`;
           } else {
             const speedStr = nodeEl.effSpeed !== undefined ? nodeEl.effSpeed : 100;
             const speed = Math.max(1, Number(speedStr));
@@ -12028,6 +12177,16 @@ function checkButtonFontSizeWarning(el) {
         if (el.spinRepeat === undefined) updateProp('spinRepeat', 1);
         if (el.effDuration === undefined) updateProp('effDuration', 2);
         if (el.effEase === undefined) updateProp('effEase', true);
+      } else if (val === 'pulse') {
+        if (el.pulseScale === undefined) updateProp('pulseScale', 105);
+        if (el.effSpeed === undefined) updateProp('effSpeed', 100);
+      } else if (val === 'heartbeat') {
+        if (el.heartbeatScale === undefined) updateProp('heartbeatScale', 130);
+        if (el.effSpeed === undefined) updateProp('effSpeed', 100);
+      } else if (val === 'float') {
+        if (el.floatRange === undefined) updateProp('floatRange', 10);
+        if (el.floatDirection === undefined) updateProp('floatDirection', 'up');
+        if (el.effSpeed === undefined) updateProp('effSpeed', 100);
       } else if (val !== 'none') {
         if (el.effSpeed === undefined) updateProp('effSpeed', 100);
       }
@@ -16455,7 +16614,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.18.9';
+  const currentVersion = 'v0.19.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -16670,7 +16829,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.18.9</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -18572,7 +18731,7 @@ document.addEventListener('contextmenu', (e) => {
           const inAnimProps = ['animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor'];
           inAnimProps.forEach(p => delete el[p]);
         } else if (effBtn && el) {
-          const effectProps = ['effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY'];
+          const effectProps = ['effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
           effectProps.forEach(p => delete el[p]);
         } else if (frameTransBtn) {
           const currentFrame = state.frames.find(f => f.id === state.activeFrameId);
@@ -19581,7 +19740,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.18.9';
+        verEl.textContent = 'v0.19.0';
         logoEl.appendChild(verEl);
       }
     }
