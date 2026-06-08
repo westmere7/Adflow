@@ -12336,10 +12336,10 @@ function checkButtonFontSizeWarning(el) {
   }
   const btnSettings = propsEl.querySelector('#btn-webp-settings');
   if (btnSettings) {
-    btnSettings.onclick = (e) => {
+    btnSettings.onclick = async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      openWebpCompressionModal(el);
+      await openWebpCompressionModal(el);
     };
   }
   const btnCrop = propsEl.querySelector('#btn-image-crop');
@@ -15516,6 +15516,11 @@ async function autoCompressCanvasImages(canvasId) {
   });
   const tempBlob = await tempZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
   const currentAdSize = tempBlob.size / 1024;
+
+  if (currentAdSize <= limitKb) {
+    showCanvasNotification('Ad package size is already under the limit.', { type: 'info' });
+    return;
+  }
   
   const imageElements = canvas.elements.filter(el => {
     if (el.type !== 'image') return false;
@@ -17627,7 +17632,7 @@ function compressImage(dataUrl, format, quality = 0.8) {
   });
 }
 
-function openWebpCompressionModal(el) {
+async function openWebpCompressionModal(el) {
   const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el, true) : {};
   const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
   const originalDataUrl = (activeAssetId && state.assets && state.assets[activeAssetId]) || activeAssetId;
@@ -17637,8 +17642,19 @@ function openWebpCompressionModal(el) {
   const warningDisplay = el.isCompressed ? 'block' : 'none';
 
   const activeC = getActiveCanvas();
-  const currentAdSize = activeC && activeC._valKb ? parseFloat(activeC._valKb) : 0;
   const limitKb = state.adSizeLimit || 150;
+
+  // Calculate current ad size dynamically and synchronously to be 100% accurate
+  let currentAdSize = 0;
+  if (activeC) {
+    const tempZip = new JSZip();
+    await dmRunExport(dmActiveRowForOutput(), async () => {
+      await addCanvasAssetsToZip(activeC, tempZip);
+      tempZip.file('index.html', generateExportHTML(activeC, tempZip));
+    });
+    const tempBlob = await tempZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    currentAdSize = tempBlob.size / 1024;
+  }
 
   const bg = document.createElement('div');
   bg.className = 'modal-bg';
@@ -17778,9 +17794,10 @@ function openWebpCompressionModal(el) {
           <div style="display:flex; flex-direction:column; gap:6px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Compression Quality</label>
+              <span id="webp-quality-display" style="font-size:11px; color:var(--text-bright); font-weight:700;">${el.webpQuality || 80}%</span>
             </div>
             <div style="position:relative; padding-top:20px; padding-bottom:4px;">
-              <input type="range" id="webp-quality-slider" min="10" max="100" value="80" title="Adjust compression quality percentage" />
+              <input type="range" id="webp-quality-slider" min="10" max="100" value="${el.webpQuality || 80}" title="Adjust compression quality percentage" />
               <div id="webp-slider-marker-container" style="position:absolute; left:9px; right:9px; top:23px; height:12px; pointer-events:none;">
                 <div id="webp-suggested-marker" style="display:none; position:absolute; transform:translate(-50%, -30px); z-index:2; background:#10b981; color:#fff; font-size:10.5px; font-weight:700; padding:4px 8px; border-radius:4px; white-space:nowrap; box-shadow:0 2px 4px rgba(0,0,0,0.3); pointer-events:auto; cursor:pointer;">
                   SUGGESTED: <span id="webp-suggested-val">...</span>
@@ -18102,6 +18119,10 @@ function openWebpCompressionModal(el) {
     if (tick) tick.style.display = 'none';
     suggestedQuality = null;
 
+    if (currentAdSize <= limitKb) {
+      return; // Do not show suggestion if already under limit
+    }
+
     const qualities = [];
     for (let q = 100; q >= 10; q -= 5) {
       qualities.push(q);
@@ -18270,6 +18291,11 @@ async function autoCompressImage(el) {
     });
     const tempBlob = await tempZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     currentAdSize = tempBlob.size / 1024;
+  }
+
+  if (currentAdSize <= limitKb) {
+    showCanvasNotification('Ad package size is already under the limit.', { type: 'info' });
+    return;
   }
   
   let originalImageSizeKB = 0;
