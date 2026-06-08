@@ -1190,11 +1190,37 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   // included via `state._exportIncludeSkippedFrames` (set by the Export
   // dialogue's "Skip flagged frames" toggle).
   const includeSkipped = !!state._exportIncludeSkippedFrames;
-  const activeFrames = state.frames.filter(f =>
-    includeSkipped ||
-    !f.skip ||
-    (isImageExport && f.id === state.activeFrameId)
-  );
+  const isPreviewCurrent = !zipRef && !isImageExport && state.previewCurrentOnly;
+  
+  let activeFrames = [];
+  let isCurrentWithPrev = false;
+
+  if (isPreviewCurrent) {
+    const f = state.frames.find(frame => frame.id === state.activeFrameId);
+    if (f) {
+      const allActive = state.frames.filter(frame => includeSkipped || !frame.skip);
+      const idx = allActive.findIndex(frame => frame.id === f.id);
+      if (idx > 0) {
+        const prevFrameForCurrent = allActive[idx - 1];
+        activeFrames = [prevFrameForCurrent, f];
+        isCurrentWithPrev = true;
+      } else if (idx === 0 && state.loopAd && allActive.length > 1) {
+        const prevFrameForCurrent = allActive[allActive.length - 1];
+        activeFrames = [prevFrameForCurrent, f];
+        isCurrentWithPrev = true;
+      } else {
+        activeFrames = [f];
+      }
+    } else {
+      activeFrames = state.frames.filter(frame => includeSkipped || !frame.skip);
+    }
+  } else {
+    activeFrames = state.frames.filter(f =>
+      includeSkipped ||
+      !f.skip ||
+      (isImageExport && f.id === state.activeFrameId)
+    );
+  }
 
   // Each frame div paints its own bg so animations show bg changes
   // correctly between frames. Falls back to c.bgColor when no override.
@@ -1216,17 +1242,36 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     }
     const frameEls = frameElsList.join('\n');
 
-    const displayStyle = isImageExport
+    const displayStyle = (isImageExport || isPreviewCurrent)
       ? (f.id === state.activeFrameId ? 'block' : 'none')
       : (i === 0 ? 'block' : 'none');
+    
+    // In current frame preview, we show the previous frame (index 0) briefly, then transition to index 1 (active frame)
+    const isFirstOfPreviewCurrent = isPreviewCurrent && isCurrentWithPrev && i === 0;
+    const isSecondOfPreviewCurrent = isPreviewCurrent && isCurrentWithPrev && i === 1;
+    
+    const displayStyleVal = isPreviewCurrent
+      ? (isFirstOfPreviewCurrent ? 'block' : 'none')
+      : displayStyle;
+
     const frameBg = _frameBgOf(f.id);
-    framesHTML += `<div class="frame" id="frame-${f.id}" style="display:${displayStyle};width:100%;height:100%;position:absolute;inset:0;background:${frameBg};">\n${frameEls}\n</div>\n`;
-    const transitionVal = (i === 0)
-      ? (state.loopAd ? (f.transition || 'none') : 'none')
-      : (f.transition || 'fade');
+    framesHTML += `<div class="frame" id="frame-${f.id}" style="display:${displayStyleVal};width:100%;height:100%;position:absolute;inset:0;background:${frameBg};">\n${frameEls}\n</div>\n`;
+
+    let transitionVal = f.transition || 'fade';
+    if (isPreviewCurrent) {
+      transitionVal = isFirstOfPreviewCurrent ? 'none' : (f.transition || 'fade');
+    } else if (i === 0) {
+      transitionVal = state.loopAd ? (f.transition || 'none') : 'none';
+    }
+
+    let durationVal = f.duration || 2;
+    if (isFirstOfPreviewCurrent) {
+      durationVal = Math.min(1.0, f.duration || 2);
+    }
+
     frameData.push({ 
       id: f.id, 
-      duration: f.duration || 2, 
+      duration: durationVal, 
       transition: transitionVal, 
       transitionDuration: f.transitionDuration || 0.5, 
       transitionFade: f.transitionFade,
@@ -1272,7 +1317,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
   }
 
   activeFrames.forEach((f, i) => {
-    if (i > 0 || (i === 0 && state.loopAd)) {
+    if (i > 0 || (i === 0 && state.loopAd) || (i === 0 && isPreviewCurrent)) {
       const kf = getFrameTransitionKeyframes(f, c);
       if (kf) {
         dynamicKeyframes += '\n' + kf;
@@ -1383,7 +1428,7 @@ ${elsTop}
   <script>
     var frames = ${JSON.stringify(frameData)};
     var currentFrame = 0;
-    var loopAd = ${state.loopAd === true};
+    var loopAd = ${isPreviewCurrent ? 'false' : (state.loopAd === true)};
 
     function updatePersistentLayersVisibility(frameIdx) {
       var exclude = !!frames[frameIdx].excludePersistent;

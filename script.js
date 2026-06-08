@@ -223,6 +223,7 @@ const state = {
   cropToCanvas: false,
   tempTopDuringDrag: false,
   loopAd: false,
+  previewCurrentOnly: false,
   guides: [],
   activeSmartGuides: null,
   showSafezones: false,
@@ -2475,6 +2476,16 @@ function renderFrameControls() {
     if (document.activeElement !== loopChk) loopChk.checked = state.loopAd === true;
     loopChk.onchange = (e) => {
       state.loopAd = e.target.checked;
+      pushHistory();
+      render();
+    };
+  }
+
+  const previewCurrentOnlyChk = document.getElementById('project-preview-current-only');
+  if (previewCurrentOnlyChk) {
+    if (document.activeElement !== previewCurrentOnlyChk) previewCurrentOnlyChk.checked = state.previewCurrentOnly === true;
+    previewCurrentOnlyChk.onchange = (e) => {
+      state.previewCurrentOnly = e.target.checked;
       pushHistory();
       render();
     };
