@@ -1453,12 +1453,21 @@ ${dynamicKeyframes}
     overflow: hidden;
     background: ${c.bgColor};
     font-family: Arial, Helvetica, sans-serif;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  #ad.ad-visible {
+    opacity: 1;
+  }
+  #ad.ad-loading * {
+    animation-play-state: paused !important;
+    -webkit-animation-play-state: paused !important;
   }
   .clickArea { cursor: pointer; background: transparent; }
 </style>
 </head>
 <body>
-  <div id="ad">
+  <div id="ad" class="ad-loading">
     <div id="layer-bot" style="position:absolute;inset:0;pointer-events:none;z-index:1;display:${initExclude ? 'block' : 'none'};">
 ${elsBot}
     </div>
@@ -1658,21 +1667,40 @@ ${elsTop}
       });
     }
 
-    window.addEventListener('load', function () {
+    function startAd() {
       adjustAutoSizes();
       updatePersistentLayersVisibility(0);
+      document.querySelectorAll('[data-bg-anim]').forEach(setupTextLineBgs);
+
+      var ad = document.getElementById('ad');
+      if (ad) {
+        ad.classList.remove('ad-loading');
+        ad.classList.add('ad-visible');
+      }
+
       if (frames.length > 1) {
         setTimeout(nextFrame, frames[0].duration * 1000);
       }
+    }
+
+    window.addEventListener('load', function () {
       document.querySelectorAll('.clickArea').forEach(function(el) {
         el.addEventListener('click', function () {
           window.open(clickTag);
         });
       });
-      // Per-line animated bg: wait one frame so fonts/layout settle before measuring.
-      requestAnimationFrame(function () {
-        document.querySelectorAll('[data-bg-anim]').forEach(setupTextLineBgs);
-      });
+
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function() {
+          requestAnimationFrame(function() {
+            setTimeout(startAd, 50);
+          });
+        }).catch(function() {
+          startAd();
+        });
+      } else {
+        startAd();
+      }
     });
   <\/script>
 </body>
