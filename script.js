@@ -342,11 +342,11 @@ function measureTextFits(el, text, fontSize) {
   span.style.lineHeight = lh;
   span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
   if (isButton) {
-    if (!el.wrapText) {
-      span.style.whiteSpace = 'nowrap';
-    } else {
-      span.style.wordBreak = 'normal';
-    }
+    // Auto-size buttons to fit on a SINGLE line: always measure the label
+    // unwrapped so the chosen font keeps it one line in the editor AND the
+    // export preview. Mirrors adjustAutoSizes() in export-pipeline.js.
+    span.style.whiteSpace = 'nowrap';
+    span.style.wordBreak = 'normal';
   } else {
     span.style.wordBreak = 'normal';
     span.style.overflowWrap = 'normal';
@@ -365,9 +365,18 @@ function measureTextFits(el, text, fontSize) {
   m.appendChild(textBlock);
   
   const rect = textBlock.getBoundingClientRect();
+  // Buttons require a 2px width safety margin (negative tolerance) so sub-pixel
+  // / display-scaling (DPR) differences between the editor and the export
+  // preview can't tip a single line into wrapping. Measure the unwrapped span's
+  // OWN width — textBlock.scrollWidth floors at the block width, so it can't see
+  // a genuinely-narrower fit and the negative margin would never pass. Text
+  // keeps the +1.5px leniency / block measurement. (2px mirrors BTN_FIT_MARGIN
+  // in export-pipeline.js's adjustAutoSizes so both sizers pick the same font.)
   const fitsHeight = rect.height <= (targetHeight + 1.5);
-  const fitsWidth = textBlock.scrollWidth <= (targetWidth + 1.5);
-  
+  const fitsWidth = isButton
+    ? (span.getBoundingClientRect().width <= (targetWidth - 2))
+    : (textBlock.scrollWidth <= (targetWidth + 1.5));
+
   return fitsHeight && fitsWidth;
 }
 
@@ -16423,7 +16432,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.18.6';
+  const currentVersion = 'v0.18.7';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -16638,7 +16647,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.18.6</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.18.7</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -19549,7 +19558,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.18.6';
+        verEl.textContent = 'v0.18.7';
         logoEl.appendChild(verEl);
       }
     }

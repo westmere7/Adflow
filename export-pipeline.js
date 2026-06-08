@@ -1471,18 +1471,45 @@ ${elsTop}
           parent = parent.parentElement;
         }
         
+        // Buttons render their text in a FIXED-height (height:100%) flex block
+        // with a max-width-clamped span, so the block's own scroll metrics are
+        // useless for fitting. We instead auto-size buttons to fit on a SINGLE
+        // line: measure the label UNWRAPPED and UNCLAMPED, and require a small
+        // width safety margin (BTN_FIT_MARGIN). The margin matters because the
+        // editor and this export preview can round text width differently at
+        // fractional display scaling (DPR) — without it the fitter picks a font
+        // whose one-line text is a hair too wide, which renders as one line in
+        // the editor but wraps to two here. Mirrors measureTextFits() in
+        // script.js. Text elements keep the auto-height block measurement (their
+        // inline span has no usable scroll metrics). Only buttons emit
+        // data-padding-lr, so it doubles as the discriminator.
+        var isButton = wrapper.hasAttribute('data-padding-lr');
+        var BTN_FIT_MARGIN = 2;
+
         var low = 4;
         var high = maxFontSize;
         var best = low;
-        
+
         while (low <= high) {
           var mid = Math.floor((low + high) / 2);
           block.style.fontSize = mid + 'px';
           span.style.fontSize = mid + 'px';
-          
-          var fitsHeight = (block.scrollHeight - padTB * 2) <= (targetHeight + 1.5);
-          var fitsWidth = (block.scrollWidth - padLR * 2) <= (targetWidth + 1.5);
-          
+
+          var fitsHeight, fitsWidth;
+          if (isButton) {
+            var _ws = span.style.whiteSpace, _mw = span.style.maxWidth;
+            span.style.whiteSpace = 'nowrap';
+            span.style.maxWidth = 'none';
+            var r = span.getBoundingClientRect();
+            fitsWidth = r.width <= (targetWidth - BTN_FIT_MARGIN);
+            fitsHeight = r.height <= (targetHeight + 1.5);
+            span.style.whiteSpace = _ws;
+            span.style.maxWidth = _mw;
+          } else {
+            fitsHeight = (block.scrollHeight - padTB * 2) <= (targetHeight + 1.5);
+            fitsWidth = (block.scrollWidth - padLR * 2) <= (targetWidth + 1.5);
+          }
+
           if (fitsHeight && fitsWidth) {
             best = mid;
             low = mid + 1;

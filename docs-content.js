@@ -661,6 +661,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.18.7',
+    date: 'June 2026 — Engine v2.18',
+    items: [
+      'Consistent Button Text Wrapping: Fixed auto-sized button labels wrapping to two lines in Preview/Export while staying on one line in the editor (with "Wrap" enabled). Auto-sized buttons now pick the largest font that fits the label on a single line — measured the same way, with a small safety margin, in both the editor and the export sizers. Previously the sizer could choose a font whose one-line text was a hair too wide; it rendered as one line in the editor but tipped into wrapping in the preview on displays with fractional scaling (DPR). The margin makes the result identical across editing, preview, and export on any display.'
+    ]
+  },
+  {
     version: 'v0.18.6',
     date: 'June 2026 — Engine v2.18',
     items: [
