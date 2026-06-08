@@ -11370,12 +11370,13 @@ function checkButtonFontSizeWarning(el) {
     });
     if (inp.type === 'number') {
       inp.addEventListener('wheel', (e) => {
+        if (!e.shiftKey) return;
         e.preventDefault();
-        // Use the input's step attribute as the base nudge (1 if unset). Shift = 10×.
+        // Use the input's step attribute as the base nudge (1 if unset). Shift+Alt = 10×.
         // Result is rounded to the step's decimal precision to avoid 0.30000000000004.
         const stepAttr = parseFloat(inp.step);
         const baseStep = (stepAttr && stepAttr > 0) ? stepAttr : 1;
-        const step = e.shiftKey ? baseStep * 10 : baseStep;
+        const step = e.altKey ? baseStep * 10 : baseStep;
         const delta = e.deltaY < 0 ? step : -step;
         const decimals = (String(inp.step).split('.')[1] || '').length;
         const next = Number(inp.value) + delta;
