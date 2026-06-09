@@ -7034,19 +7034,30 @@ function updateCanvasesHeaderStatus() {
 
   let html = '';
   if (errors > 0) {
-    html += `<span class="canvas-status-tag error" title="Ad compliance errors">${getWarningIcon('#ef4444', 10)} ${errors}</span>`;
+    html += `<span class="canvas-status-tag error" title="Ad compliance errors">${getWarningIcon('#ef4444', 12)} ${errors}</span>`;
   }
   if (warnings > 0) {
-    html += `<span class="canvas-status-tag warning" title="Validation warnings">${getWarningIcon('#f97316', 10)} ${warnings}</span>`;
+    html += `<span class="canvas-status-tag warning" title="Validation warnings">${getWarningIcon('#f97316', 12)} ${warnings}</span>`;
   }
   if (passed > 0) {
-    html += `<span class="canvas-status-tag pass" title="All checks passed">${getCheckIcon('#10b981', 10)} ${passed}</span>`;
+    html += `<span class="canvas-status-tag pass" title="All checks passed">${getCheckIcon('#10b981', 12)} ${passed}</span>`;
   }
   if (pending > 0) {
     html += `<span class="canvas-status-tag pending" title="Calculating validation status...">... ${pending}</span>`;
   }
 
   headerStatusEl.innerHTML = html;
+
+  // Make the tags clickable to open Validation & Audit, stopping propagation to avoid toggling the collapse state of the panel
+  headerStatusEl.querySelectorAll('.canvas-status-tag').forEach(tag => {
+    tag.onclick = (e) => {
+      e.stopPropagation();
+      const activeCanvas = getActiveCanvas() || (state.canvases && state.canvases[0]);
+      if (activeCanvas) {
+        openValidatorDetails(activeCanvas);
+      }
+    };
+  });
 
   const summaryParts = [];
   if (errors > 0) summaryParts.push(`${errors} Error${errors > 1 ? 's' : ''}`);
@@ -7056,7 +7067,6 @@ function updateCanvasesHeaderStatus() {
 
   headerStatusEl.title = `Canvases validation summary: ` + (summaryParts.join(', ') || 'No canvases');
 }
-
 
 document.getElementById('btn-validator-dashboard-trigger').addEventListener('click', () => {
   const activeCanvas = getActiveCanvas();

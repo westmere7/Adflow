@@ -5866,13 +5866,24 @@ body.theme-rmit .outline-color-hybrid {
 .canvas-status-tag {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 10px;
+  gap: 4px;
+  font-size: 11.5px;
   font-weight: 700;
-  padding: 1px 5px;
+  padding: 2px 7px;
   border-radius: 4px;
   line-height: 1;
   user-select: none;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.canvas-status-tag:hover {
+  filter: brightness(1.2);
+  transform: scale(1.04);
+}
+
+.canvas-status-tag:active {
+  transform: scale(0.96);
 }
 
 .canvas-status-tag svg {
