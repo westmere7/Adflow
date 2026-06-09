@@ -512,10 +512,14 @@
             </button>
           </div>
 
-          <!-- Canvases list panel section (pinned, non-collapsible) -->
+          <!-- Canvases list panel section (pinned, collapsible) -->
           <div class="panel-section" id="panel-section-canvases" data-permanent="true">
-            <h3 class="panel-header-collapsible" id="header-canvases" style="cursor: default; user-select: none;">
+            <h3 class="panel-header-collapsible" id="header-canvases" style="cursor: pointer; user-select: none;">
               <span>Canvases</span>
+              <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+              <div id="canvases-header-status" class="canvases-header-status"></div>
               <button id="btn-add-canvas" title="Add canvas">+</button>
             </h3>
             <div id="canvases-list"></div>

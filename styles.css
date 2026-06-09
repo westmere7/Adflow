@@ -5850,6 +5850,58 @@ body.theme-rmit .outline-color-hybrid {
   color: var(--accent-hover);
 }
 
+/* --- Collapsed Canvases Status Header Styling --- */
+.canvases-header-status {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 6px;
+}
+
+.panel-section.collapsed .canvases-header-status {
+  display: inline-flex;
+}
+
+.canvas-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  user-select: none;
+}
+
+.canvas-status-tag svg {
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.canvas-status-tag.error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.canvas-status-tag.warning {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+}
+
+.canvas-status-tag.pass {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.canvas-status-tag.pending {
+  background: rgba(90, 97, 120, 0.15);
+  color: var(--text-muted);
+}
+
+
 
 
 

@@ -917,6 +917,8 @@ function getDefaultSync(el) {
   const defaultSync = {};
   if (!cat) return defaultSync;
 
+  defaultSync.customName = true;
+
   const isRoleAssigned = el.role && el.role !== 'misc';
 
   if (cat === 'text') {
@@ -1099,6 +1101,21 @@ function getElementCategory(el) {
 function applyLinkSync(sourceEl, targetEl, group) {
   const cat = group.category;
   const sync = group.syncProperties || {};
+
+  if (sync.customName) {
+    if (sourceEl.customName !== undefined) {
+      const targetCanvas = state.canvases.find(c => c.elements.includes(targetEl));
+      const existingNames = targetCanvas
+        ? targetCanvas.elements
+            .filter(e => e.id !== targetEl.id)
+            .map(e => e.customName || baseLayerLabel(e))
+        : [];
+      targetEl.customName = uniqueName(sourceEl.customName, existingNames);
+    } else {
+      delete targetEl.customName;
+    }
+  }
+
   if (cat === 'text') {
     if (sync.text) targetEl.text = sourceEl.text;
     if (sync.font) {
@@ -1499,7 +1516,23 @@ function pushGroupChangesForId(gid, skipNotify = false) {
     });
   });
   if (elementsInGroup.length < 2) return;
-  const sourceEl = elementsInGroup[0];
+
+  // Find a source element in the active canvas if possible, otherwise default to elementsInGroup[0]
+  const activeCanvas = getActiveCanvas();
+  let sourceEl = null;
+  if (activeCanvas) {
+    sourceEl = elementsInGroup.find(el => {
+      const isSelected = state.layerSelection && state.layerSelection.includes(el.id);
+      return isSelected && activeCanvas.elements.includes(el);
+    });
+    if (!sourceEl) {
+      sourceEl = elementsInGroup.find(el => activeCanvas.elements.includes(el));
+    }
+  }
+  if (!sourceEl) {
+    sourceEl = elementsInGroup[0];
+  }
+
   state.canvases.forEach(c => {
     c.elements.forEach(targetEl => {
       if (targetEl.linkGroupId === gid && targetEl.id !== sourceEl.id) {
@@ -6969,7 +7002,61 @@ function renderCanvasesList() {
     });
     canvasesListEl.appendChild(div);
   });
+  updateCanvasesHeaderStatus();
 }
+
+function updateCanvasesHeaderStatus() {
+  const headerStatusEl = document.getElementById('canvases-header-status');
+  if (!headerStatusEl) return;
+
+  let passed = 0;
+  let warnings = 0;
+  let errors = 0;
+  let pending = 0;
+
+  state.canvases.forEach(c => {
+    if (!c._valKb) {
+      pending++;
+    } else {
+      const hasErrors = c._valErrors && c._valErrors.length > 0;
+      const hasA11y = c._valA11y && c._valA11y.length > 0;
+      const hasBrand = c._valBrand && c._valBrand.length > 0;
+
+      if (hasErrors) {
+        errors++;
+      } else if (hasA11y || hasBrand) {
+        warnings++;
+      } else {
+        passed++;
+      }
+    }
+  });
+
+  let html = '';
+  if (errors > 0) {
+    html += `<span class="canvas-status-tag error" title="Ad compliance errors">${getWarningIcon('#ef4444', 10)} ${errors}</span>`;
+  }
+  if (warnings > 0) {
+    html += `<span class="canvas-status-tag warning" title="Validation warnings">${getWarningIcon('#f97316', 10)} ${warnings}</span>`;
+  }
+  if (passed > 0) {
+    html += `<span class="canvas-status-tag pass" title="All checks passed">${getCheckIcon('#10b981', 10)} ${passed}</span>`;
+  }
+  if (pending > 0) {
+    html += `<span class="canvas-status-tag pending" title="Calculating validation status...">... ${pending}</span>`;
+  }
+
+  headerStatusEl.innerHTML = html;
+
+  const summaryParts = [];
+  if (errors > 0) summaryParts.push(`${errors} Error${errors > 1 ? 's' : ''}`);
+  if (warnings > 0) summaryParts.push(`${warnings} Warning${warnings > 1 ? 's' : ''}`);
+  if (passed > 0) summaryParts.push(`${passed} Passed`);
+  if (pending > 0) summaryParts.push(`${pending} Pending`);
+
+  headerStatusEl.title = `Canvases validation summary: ` + (summaryParts.join(', ') || 'No canvases');
+}
+
 
 document.getElementById('btn-validator-dashboard-trigger').addEventListener('click', () => {
   const activeCanvas = getActiveCanvas();
@@ -7186,6 +7273,8 @@ function renderLinkControl() {
           
           if (cat === 'text') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
+              <label title="Sync custom layer name across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="customName" ${sync.customName ? 'checked' : ''} /> Layer name</label>
+              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
               <label title="Sync text content across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} /> Text content</label>
               <label title="Sync font family and weight settings across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} /> Font settings</label>
               <label title="Sync font size across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="fontSize" ${(sync.fontSize !== undefined ? sync.fontSize : sync.font) ? 'checked' : ''} /> Font size</label>
@@ -7194,10 +7283,11 @@ function renderLinkControl() {
               <label title="Sync opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label title="Sync entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label title="Sync continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
-              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
             </div>`;
           } else if (cat === 'button') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
+              <label title="Sync custom layer name across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="customName" ${sync.customName ? 'checked' : ''} /> Layer name</label>
+              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
               <label title="Sync button label text across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="text" ${sync.text ? 'checked' : ''} /> Button text</label>
               <label title="Sync button text color across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="textColor" ${sync.textColor ? 'checked' : ''} /> Text color</label>
               <label title="Sync button font family, weight, alignment, and auto-scaling settings across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="font" ${sync.font ? 'checked' : ''} /> Font settings</label>
@@ -7208,10 +7298,11 @@ function renderLinkControl() {
               <label title="Sync button opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label title="Sync button entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label title="Sync button continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
-              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
             </div>`;
           } else if (cat === 'image') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
+              <label title="Sync custom layer name across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="customName" ${sync.customName ? 'checked' : ''} /> Layer name</label>
+              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
               <label title="Sync image asset across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="image" ${sync.image ? 'checked' : ''} /> Image asset</label>
               ${isRmitLogo ? `<label title="Sync logo variant across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="variant" ${sync.variant ? 'checked' : ''} /> Variant</label>` : ''}
               <label title="Sync image width and height across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Size (W+H)</label>
@@ -7219,10 +7310,11 @@ function renderLinkControl() {
               <label title="Sync image rotation angle across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="rotation" ${sync.rotation ? 'checked' : ''} /> Rotation</label>
               <label title="Sync image entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label title="Sync image continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
-              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
             </div>`;
           } else if (cat === 'shape') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
+              <label title="Sync custom layer name across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="customName" ${sync.customName ? 'checked' : ''} /> Layer name</label>
+              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
               <label title="Sync shape fill color across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="fill" ${sync.fill ? 'checked' : ''} /> Color</label>
               <label title="Sync shape stroke properties across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="stroke" ${sync.stroke ? 'checked' : ''} /> Stroke</label>
               <label title="Sync shape corner radius across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="radius" ${sync.radius ? 'checked' : ''} /> Corner radius</label>
@@ -7230,16 +7322,16 @@ function renderLinkControl() {
               <label title="Sync shape opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label title="Sync shape entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label title="Sync shape continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
-              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
             </div>`;
           } else if (cat === 'line') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
+              <label title="Sync custom layer name across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="customName" ${sync.customName ? 'checked' : ''} /> Layer name</label>
+              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
               <label title="Sync line color across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="color" ${sync.color ? 'checked' : ''} /> Color</label>
               <label title="Sync line thickness across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="thickness" ${sync.thickness ? 'checked' : ''} /> Thickness</label>
               <label title="Sync line opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label title="Sync line entry transition animation across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="inAnim" ${sync.inAnim ? 'checked' : ''} /> IN Animation</label>
               <label title="Sync line continuous effect across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="effect" ${sync.effect ? 'checked' : ''} /> Effects</label>
-              <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
             </div>`;
           }
           html += `</div>`;
@@ -7370,7 +7462,6 @@ function renderLinkControl() {
       state.autoLinkSelectedOnly = e.target.checked;
     };
   }
-
   panel.querySelectorAll('.lnk-sync-prop').forEach(cb => {
     cb.onchange = () => {
       const prop = cb.dataset.prop;
@@ -7379,7 +7470,12 @@ function renderLinkControl() {
         const group = state.linkGroups[groupIds[0]];
         if (group && group.syncProperties) {
           group.syncProperties[prop] = cb.checked;
-          pushHistory();
+          if (group.liveLink && cb.checked) {
+            pushGroupChangesForId(groupIds[0]);
+          } else {
+            pushHistory();
+            render();
+          }
         }
       }
     };
@@ -8667,7 +8763,6 @@ function renderLayers() {
         nameSpan.focus();
         const sel = window.getSelection();
         sel.selectAllChildren(nameSpan);
-
         const finishEdit = () => {
           nameSpan.contentEditable = 'false';
           div.draggable = true; // Restore dragging
@@ -8683,6 +8778,7 @@ function renderLayers() {
           el.customName = newName;
           nameSpan.innerHTML = layerLabel(el);
           pushHistory();
+          render();
         };
 
         nameSpan.addEventListener('blur', finishEdit, { once: true });
@@ -9967,21 +10063,80 @@ function renderProps() {
   // ---- Dynamic Data (data-merge / versioning) ----
   let dynamicHtml = '';
   if (typeof dmFieldsForType === 'function') {
-    const dmFields = el ? dmFieldsForType(el.type) : [];
-    if (state.layerSelection && state.layerSelection.length > 1) {
+    const selectedElements = (state.layerSelection && c) ? c.elements.filter(e => state.layerSelection.includes(e.id)) : [];
+    const isMulti = selectedElements.length > 1;
+    const isGroup = isMulti && selectedElements[0].groupId && selectedElements.every(e => e.groupId === selectedElements[0].groupId);
+
+    if (isMulti) {
+      const headerText = isGroup ? 'Group' : 'Multiple elements';
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
         <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
-          <span>Dynamic Data</span>
-          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+          <span class="dd-marquee" style="flex:1; min-width:0; overflow:hidden; white-space:nowrap;">Dynamic Data<span style="color:var(--text-main);">: ${headerText}</span></span>
+          <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="flex-shrink:0; transition: transform 0.2s ease;">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
-        </h3>
-        <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.4; margin-bottom:10px;">
-          <b style="color:var(--text-label);">Disabled for groups / multi-selection.</b><br>
-          Isolate the group (double-click) to configure dynamic data on individual elements.
-        </div>
-        <button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="width:100%;font-size:11px;">Data and Versions...</button>
-      </div>`;
+        </h3>`;
+      
+      const checkboxRows = [];
+      const dm = state.dataMerge;
+      
+      selectedElements.forEach(itemEl => {
+        if (itemEl.isMask) return; // Skip masks
+        const dmFields = dmFieldsForType(itemEl.type);
+        if (!dmFields || !dmFields.length) return;
+        
+        const sk = dmSlotKey(itemEl);
+        const itemLabel = layerLabelText(itemEl);
+        const fieldRows = [];
+        
+        dmFields.forEach(field => {
+          const on = !!(itemEl.dynamic && itemEl.dynamic[field]);
+          const id = `dm-chk-${field}-${itemEl.id}`;
+          const key = sk + '::' + field;
+          const currentMapping = (dm && dm.mappings) ? (dm.mappings[key] || '') : '';
+          const colOptions = ['<option value="">— none —</option>'].concat(
+            (dm && dm.columns ? dm.columns : []).map(colName => `<option value="${esc(colName)}" ${colName === currentMapping ? 'selected' : ''}>${esc(colName)}</option>`)
+          ).join('');
+          
+          const displayLabel = `${itemLabel} (${DM_FIELD_LABEL[field] || field})`;
+
+          fieldRows.push(`
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding-left:8px; box-sizing:border-box;">
+              <div class="checkbox-row" style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; margin-right:4px;">
+                <input type="checkbox" id="${id}" class="dm-control dm-field-chk" data-el-id="${itemEl.id}" data-dm-field="${field}" title="Toggle dynamic data binding for ${esc(displayLabel)}" ${on ? 'checked' : ''}/>
+                <label for="${id}" title="Toggle dynamic data binding for ${esc(displayLabel)}" style="cursor:pointer; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:500; color:var(--text-main); font-size:11px;">${esc(DM_FIELD_LABEL[field] || field)}</label>
+              </div>
+              <select class="dm-control dm-field-select" data-el-id="${itemEl.id}" data-dm-field="${field}" title="Column header map for ${esc(displayLabel)}" style="width:130px; flex-shrink:0; padding:3px 4px; font-size:11px; outline:none; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; font-family:inherit; transition:opacity 0.2s;" ${on ? '' : 'disabled'}>
+                ${colOptions}
+              </select>
+            </div>
+          `);
+        });
+
+        if (fieldRows.length > 0) {
+          checkboxRows.push(`
+            <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px; width:100%;">
+              <div style="font-size:10px; color:var(--text-muted); font-weight:600; line-height:1.2; text-transform:uppercase; letter-spacing:0.03em; padding-left:4px; word-break:break-word; overflow-wrap:anywhere;" title="${esc(itemLabel)}">${esc(itemLabel)}</div>
+              <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
+                ${fieldRows.join('')}
+              </div>
+            </div>
+          `);
+        }
+      });
+      
+      if (checkboxRows.length > 0) {
+        dynamicHtml += `<div class="prop-row" style="display:flex; flex-direction:column; gap:2px; margin-bottom:8px; width:100%;">${checkboxRows.join('')}</div>`;
+      } else {
+        dynamicHtml += `<div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.4; margin-bottom:10px;">No dynamic fields available for selected layers.</div>`;
+      }
+      
+      const anyLinked = selectedElements.some(e => e.linkGroupId);
+      if (anyLinked) {
+        dynamicHtml += `<div class="prop-row" style="font-size:10px;color:var(--text-accent);margin-top:4px;line-height:1.4;font-weight:500;">Linked element — these toggles apply to every size in the link group.</div>`;
+      }
+      dynamicHtml += `<button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="margin-top:10px;width:100%;font-size:11px;">Data and Versions...</button>`;
+      dynamicHtml += `</div>`;
     } else if (el && el.isMask) {
       // Masks don't participate in dynamic data — show a permanent notice.
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
@@ -9997,7 +10152,8 @@ function renderProps() {
         </div>
         <button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="width:100%;font-size:11px;">Data and Versions...</button>
       </div>`;
-    } else if (el && dmFields.length) {
+    } else if (el && dmFieldsForType(el.type).length) {
+      const dmFields = dmFieldsForType(el.type);
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
         <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
           <span class="dd-marquee" style="flex:1; min-width:0; overflow:hidden; white-space:nowrap;">Dynamic Data<span style="color:var(--text-main);">: ${esc(layerLabelText(el))}</span></span>
@@ -10020,10 +10176,10 @@ function renderProps() {
         checkboxRows.push(`
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; width:100%;">
             <div class="checkbox-row" style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; margin-right:4px;">
-              <input type="checkbox" id="${id}" class="dm-control dm-field-chk" data-dm-field="${field}" title="Toggle dynamic data binding for ${DM_FIELD_LABEL[field] || field}" ${on ? 'checked' : ''}/>
+              <input type="checkbox" id="${id}" class="dm-control dm-field-chk" data-el-id="${el.id}" data-dm-field="${field}" title="Toggle dynamic data binding for ${DM_FIELD_LABEL[field] || field}" ${on ? 'checked' : ''}/>
               <label for="${id}" title="Toggle dynamic data binding for ${DM_FIELD_LABEL[field] || field}" style="cursor:pointer; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:500;">${DM_FIELD_LABEL[field] || field}</label>
             </div>
-            <select class="dm-control dm-field-select" data-dm-field="${field}" title="Column header map for ${DM_FIELD_LABEL[field] || field}" style="width:130px; flex-shrink:0; padding:3px 4px; font-size:11px; outline:none; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; font-family:inherit; transition:opacity 0.2s;" ${on ? '' : 'disabled'}>
+            <select class="dm-control dm-field-select" data-el-id="${el.id}" data-dm-field="${field}" title="Column header map for ${DM_FIELD_LABEL[field] || field}" style="width:130px; flex-shrink:0; padding:3px 4px; font-size:11px; outline:none; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; font-family:inherit; transition:opacity 0.2s;" ${on ? '' : 'disabled'}>
               ${colOptions}
             </select>
           </div>
@@ -11520,8 +11676,10 @@ function checkButtonFontSizeWarning(el) {
   // element's link group so a logical slot stays consistent across all sizes.
   propsEl.querySelectorAll('.dm-field-chk').forEach((chk) => {
     chk.addEventListener('change', () => {
-      if (!el) return;
-      dmToggleField(el, chk.dataset.dmField, chk.checked);
+      const targetId = chk.dataset.elId;
+      const targetEl = (targetId && c) ? c.elements.find(e => e.id === targetId) : el;
+      if (!targetEl) return;
+      dmToggleField(targetEl, chk.dataset.dmField, chk.checked);
       pushHistory();
       renderProps();
       render(true);
@@ -11529,9 +11687,11 @@ function checkButtonFontSizeWarning(el) {
   });
   propsEl.querySelectorAll('.dm-field-select').forEach((sel) => {
     sel.addEventListener('change', () => {
-      if (!el) return;
+      const targetId = sel.dataset.elId;
+      const targetEl = (targetId && c) ? c.elements.find(e => e.id === targetId) : el;
+      if (!targetEl) return;
       const field = sel.dataset.dmField;
-      const k = dmSlotKey(el) + '::' + field;
+      const k = dmSlotKey(targetEl) + '::' + field;
       if (sel.value) {
         state.dataMerge.mappings[k] = sel.value;
       } else {
@@ -19854,10 +20014,9 @@ function initCollapsiblePanels() {
     
     const parentSection = header.closest('.panel-section');
     if (!parentSection) return;
-    
     const keyAttr = header.id || header.innerText.trim().toLowerCase().replace(/\s+/g, '-');
     const storageKey = `panel-collapsed-${keyAttr}`;
-    const isCollapsed = keyAttr === 'header-canvases' ? false : (localStorage.getItem(storageKey) === 'true');
+    const isCollapsed = localStorage.getItem(storageKey) === 'true';
 
     // Swap the chevron's polyline points instead of relying on a CSS
     // `transform: rotate()` on the <svg> root — that doesn't actually
@@ -19876,13 +20035,11 @@ function initCollapsiblePanels() {
     setChevronPoints(isCollapsed);
 
     header.addEventListener('click', (e) => {
-      if (keyAttr === 'header-canvases') return;
       if (e.target.closest('.panel-fullscreen-btn') || e.target.closest('.fav-filter-btn') || e.target.closest('#btn-add-canvas')) return;
       const currentlyCollapsed = parentSection.classList.toggle('collapsed');
       localStorage.setItem(storageKey, currentlyCollapsed ? 'true' : 'false');
       setChevronPoints(currentlyCollapsed);
     });
-
     // Exclude canvases and Dynamic Data
     const isExcluded = (keyAttr === 'header-dynamic-data' || keyAttr === 'header-canvases');
     if (!isExcluded) {
