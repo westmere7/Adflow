@@ -9390,7 +9390,7 @@ function customSelect(key, options, currentVal, title, isFrameTrans = false, fra
 
   return `
     <div class="custom-select-container ${isFrameTrans ? 'frame-trans-select' : ''}" ${dataKeyAttr} ${containerIdHtml} style="position: relative; width: 100%;">
-      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 5px; padding: 4px 8px; font-size: 12px; height: 28px; text-align: left; cursor: pointer; outline: none; min-width: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 6px; padding: 4px 8px; font-size: 12px; height: 28px; text-align: left; cursor: pointer; outline: none; min-width: 0;">
         <span class="custom-select-label" style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; flex: 1;">
           ${currentOpt.img ? `<img src="${currentOpt.img}" style="max-height: 16px; max-width: 36px; object-fit: contain; flex-shrink: 0; background: #475569; padding: 2px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15);" />` : ''}
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${currentOpt.label}</span>
@@ -9595,7 +9595,7 @@ function getFrameTransitionHtml(currentFrame) {
   }
 
   return `
-    <div id="frame-transition-preview-area" style="margin-bottom: 8px;">
+    <div id="frame-transition-preview-area" class="animation-sub-panel">
       <div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">FRAME TRANSITION</label></div>
       <div class="anim-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:12px;">
         ${presetButtons}
@@ -10946,7 +10946,7 @@ function renderProps() {
       </h3>
       <div class="panel-section-content">`);
 
-    f.push(`<div id="in-transition-preview-area" style="margin-bottom: 16px;">`);
+    f.push(`<div id="in-transition-preview-area" class="animation-sub-panel">`);
     f.push(`<div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">IN TRANSITIONS</label></div>`);
 
     const animOptions = [
@@ -11149,7 +11149,7 @@ function renderProps() {
     }
 
     f.push(`</div>`); // Close in-transition-preview-area
-    f.push(`<div id="effects-preview-area" style="margin-bottom: 16px;">`);
+    f.push(`<div id="effects-preview-area" class="animation-sub-panel">`);
     f.push(`<div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">CONTINUOUS EFFECT</label></div>`);
     const effectOptions = [
       { val: 'none', label: 'None' },
@@ -15130,7 +15130,7 @@ function openNewProjectDialog() {
             <span>Use template</span>
           </label>
           <div id="np-template-container" style="display:flex; gap:8px; align-items:center;">
-            <select id="np-startup-template-select" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
+            <select id="np-startup-template-select" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:6px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
               <!-- populated dynamically -->
             </select>
             <button class="btn" id="np-rescan-templates-btn" title="Re-scan Startup folder templates" style="padding:7px 10px; font-size:12px;">↻</button>
@@ -15146,13 +15146,13 @@ function openNewProjectDialog() {
 
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project name</label>
-          <input type="text" id="np-name" value="RMIT_ad" title="Enter the name for the new project" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+          <input type="text" id="np-name" value="RMIT_ad" title="Enter the name for the new project" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:6px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
 
         <div id="np-custom-config-container" style="display:flex; flex-direction:column; gap:16px; transition: opacity 0.2s;">
           <div>
             <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">ClickTag URL</label>
-            <input type="url" id="np-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" title="Default exit/landing page URL for all canvases" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+            <input type="url" id="np-clicktag" value="${(state.clickTag || 'https://www.rmit.edu.au/').replace(/"/g, '&quot;')}" title="Default exit/landing page URL for all canvases" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:6px; padding:7px 9px; font-size:12px; outline:none;" />
           </div>
           <div>
             <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:flex; justify-content:space-between; margin-bottom:6px;">
@@ -15164,13 +15164,13 @@ function openNewProjectDialog() {
           <div style="display:flex; gap:14px;">
             <div style="flex:1;">
               <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
-              <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / Ads Validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
+              <input type="number" id="np-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / Ads Validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:6px; padding:7px 9px; font-size:12px; outline:none;" />
             </div>
             <div style="flex:1;">
               <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Default background</label>
               <div style="display:flex; align-items:center; gap:8px;">
-                <input type="color" id="np-bg" value="${(state.defaultBg || '#0f172a')}" title="Choose default canvas background color" style="width:36px; height:32px; padding:0; border:1px solid var(--border-light); border-radius:4px; background:none; cursor:pointer;" />
-                <input type="text" id="np-bg-hex" value="${(state.defaultBg || '#0f172a').replace(/^#/, '').toUpperCase()}" maxlength="6" title="Hex color code for canvas background" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; text-transform:uppercase;" />
+                <button class="cp-trigger" data-k="np-bg" id="np-bg" title="Choose default canvas background color" style="width:36px; height:32px; padding:0; border:1px solid var(--border-light); border-radius:6px; background:${(state.defaultBg || '#0f172a')}; cursor:pointer; outline:none; flex-shrink:0;"></button>
+                <input type="text" id="np-bg-hex" data-k="np-bg" value="${(state.defaultBg || '#0f172a').replace(/^#/, '').toUpperCase()}" maxlength="6" title="Hex color code for canvas background" style="flex:1; min-width:0; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:6px; padding:7px 9px; font-size:12px; outline:none; text-transform:uppercase;" />
               </div>
             </div>
           </div>
@@ -15185,7 +15185,11 @@ function openNewProjectDialog() {
 
   document.body.appendChild(bg);
 
-  const closeFn = () => { bg.remove(); document.removeEventListener('keydown', escHandler); };
+  const closeFn = () => {
+    if (typeof closeColorPicker === 'function') closeColorPicker();
+    bg.remove();
+    document.removeEventListener('keydown', escHandler);
+  };
   const escHandler = (e) => { if (e.key === 'Escape') closeFn(); };
   document.addEventListener('keydown', escHandler);
   bg.querySelector('#np-close').onclick = closeFn;
@@ -15337,10 +15341,23 @@ function openNewProjectDialog() {
   // Keep the color swatch and hex field in sync.
   const colorInp = bg.querySelector('#np-bg');
   const hexInp = bg.querySelector('#np-bg-hex');
-  colorInp.addEventListener('input', () => { hexInp.value = colorInp.value.replace(/^#/, '').toUpperCase(); });
+
+  colorInp.onclick = (e) => {
+    e.preventDefault();
+    if (typeof openColorPicker === 'function') {
+      openColorPicker(colorInp, 'np-bg', '#' + hexInp.value);
+    }
+  };
+
   hexInp.addEventListener('input', () => {
     const v = hexInp.value.replace(/[^0-9a-fA-F]/g, '');
-    if (v.length === 6) colorInp.value = '#' + v;
+    if (v.length === 6) {
+      const colorVal = '#' + v;
+      colorInp.style.background = colorVal;
+      if (typeof iroPicker !== 'undefined' && iroPicker && currentCpKey === 'np-bg') {
+        try { iroPicker.color.set(colorVal); } catch (e) { }
+      }
+    }
   });
 
   bg.querySelector('#np-canvas-toggle').onclick = () => {

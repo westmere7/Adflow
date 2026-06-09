@@ -386,11 +386,11 @@ function dmRenderCustomSelect(container, options, activeVal, onSelect) {
   const currentOpt = options.find(o => o.val === activeVal) || options[0] || { label: '— none —', val: '' };
   
   container.innerHTML = `
-    <button class="custom-select-trigger" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 4px; padding: 4px 6px; font-size: 11px; height: 24px; text-align: left; cursor: pointer; outline: none;">
+    <button class="custom-select-trigger" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid ${activeVal !== '' ? 'var(--accent-base)' : 'var(--border-light)'}; color: var(--text-main); border-radius: 6px; padding: 4px 6px; font-size: 11px; height: 24px; text-align: left; cursor: pointer; outline: none;">
       <span class="custom-select-label" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; padding-right: 4px;">${dmEsc(currentOpt.label)}</span>
       <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="opacity: 0.7; pointer-events: none; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
-    <div class="custom-select-dropdown" style="display: none; position: absolute; top: 26px; left: 0; right: 0; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 4px; z-index: 10000; box-shadow: 0 8px 24px var(--shadow-medium); max-height: 440px; overflow-y: auto; padding: 4px 0;">
+    <div class="custom-select-dropdown" style="display: none; position: absolute; top: 26px; left: 0; right: 0; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 6px; z-index: 10000; box-shadow: 0 8px 24px var(--shadow-medium); max-height: 440px; overflow-y: auto; padding: 4px 0;">
       ${options.map(opt => `
         <div class="custom-select-item" data-value="${opt.val}" style="padding: 5px 8px; font-size: 11px; color: var(--text-main); cursor: pointer; transition: background 0.1s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${dmEsc(opt.label)}">
           ${dmEsc(opt.label)}
@@ -740,7 +740,7 @@ function dmRenderPanel(bg) {
   const dm = state.dataMerge;
   const dms = _dmState(bg);
   const slots = dmDiscoverSlots();
-  const selStyle = 'background:var(--bg-input);border:1px solid var(--border-light);color:var(--text-main);border-radius:4px;padding:5px 7px;font-size:11px;outline:none;font-family:inherit;width:100%;';
+  const selStyle = 'background:var(--bg-input);border:1px solid var(--border-light);color:var(--text-main);border-radius:6px;padding:5px 7px;font-size:11px;outline:none;font-family:inherit;width:100%;';
   const colOptions = (sel) => ['<option value="">— none —</option>'].concat(dm.columns.map(c => `<option value="${dmEsc(c)}" ${c === sel ? 'selected' : ''}>${dmEsc(c)}</option>`)).join('');
 
   // --- LEFT: controls + mapping ---

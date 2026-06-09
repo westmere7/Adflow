@@ -632,13 +632,12 @@ function emitColorUpdate() {
     val = iroPicker.color.hexString;
   }
 
-  const propsEl = document.getElementById('props');
-  const input = propsEl.querySelector(`input[type="text"][data-k="${currentCpKey}"]`);
+  const input = document.querySelector(`input[type="text"][data-k="${currentCpKey}"]`);
   if (input) {
     input.value = val.replace(/^#/, '');
     input.dispatchEvent(new Event('input'));
   }
-  const trigger = propsEl.querySelector(`.cp-trigger[data-k="${currentCpKey}"]`);
+  const trigger = document.querySelector(`.cp-trigger[data-k="${currentCpKey}"]`);
   if (trigger) {
     if (currentCpKey === 'strokeColor') {
       trigger.style.background = 'transparent';
@@ -657,7 +656,7 @@ function openColorPicker(btn, key, initialValue) {
 
   const gradientTab = document.querySelector('.cp-tab[data-tab="gradient"]');
   const gradPaletteSection = document.getElementById('cp-gradient-palette-section');
-  if (key === 'strokeColor') {
+  if (key === 'strokeColor' || key === 'np-bg') {
     gradientTab.style.display = 'none';
     if (gradPaletteSection) gradPaletteSection.style.display = 'none';
   } else {
@@ -665,7 +664,7 @@ function openColorPicker(btn, key, initialValue) {
     if (gradPaletteSection) gradPaletteSection.style.display = '';
   }
 
-  if (initialValue && initialValue.includes('gradient') && key !== 'strokeColor') {
+  if (initialValue && initialValue.includes('gradient') && key !== 'strokeColor' && key !== 'np-bg') {
     cpIsGradient = true;
     document.querySelector('.cp-tab[data-tab="gradient"]').click();
     const parsed = cpParseGradient(initialValue);
@@ -732,7 +731,7 @@ function syncColorPickerWithSelection(el, c) {
     modal.style.left = left + 'px';
   }
 
-  if (val && val.includes('gradient') && currentCpKey !== 'strokeColor') {
+  if (val && val.includes('gradient') && currentCpKey !== 'strokeColor' && currentCpKey !== 'np-bg') {
     cpIsGradient = true;
     document.querySelector('.cp-tab[data-tab="gradient"]').classList.add('active');
     document.querySelector('.cp-tab[data-tab="solid"]').classList.remove('active');

@@ -222,24 +222,22 @@ function renderAuthChip() {
   if (pushMenuItem) pushMenuItem.style.display = u ? '' : 'none';
   chip.style.display = '';
   if (!u) {
-    chip.innerHTML = `<button class="btn" id="auth-chip-signin" title="Sign in to push projects to the cloud" style="font-size:11px; padding:5px 12px;">Sign in</button>`;
-    chip.querySelector('#auth-chip-signin').addEventListener('click', () => openAuthModal('signin'));
+    chip.innerHTML = `
+      <button id="auth-chip-toggle-signin" title="Sign in to Adflow" style="width:28px; height:28px; border-radius:50%; background:var(--bg-btn); border:1px solid var(--border-light); color:var(--text-muted); display:flex; align-items:center; justify-content:center; cursor:pointer; outline:none; padding:0; flex-shrink:0; transition:color 0.12s, border-color 0.12s;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </button>`;
+    chip.querySelector('#auth-chip-toggle-signin').addEventListener('click', () => openAuthModal('signin'));
     return;
   }
   const initial = (u.email || '?').charAt(0).toUpperCase();
-  const emailPrefix = (u.email || '').split('@')[0];
-  const currentSpace = spacesState.currentSpace();
-  const spaceLabel = currentSpace
-    ? `<span style="display:flex; align-items:center; gap:5px; padding:0 8px; border-left:1px solid var(--border-light); margin-left:2px; color:var(--accent-base); font-size:11px; font-weight:600; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="Current space: ${(currentSpace.name || '').replace(/"/g,'&quot;')}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/><path d="M3 17l9 4 9-4"/></svg>${currentSpace.name}</span>`
-    : '';
   chip.innerHTML = `
-    <button id="auth-chip-toggle" title="${u.email}" style="display:flex; align-items:center; gap:6px; background:transparent; border:1px solid var(--border-light); padding:3px 8px 3px 3px; border-radius:999px; cursor:pointer; color:var(--text-bright);">
-      <span style="width:22px; height:22px; border-radius:50%; background:var(--accent-base); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0;">${initial}</span>
-      <span style="font-size:11px; color:var(--text-muted); max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${emailPrefix}</span>
-      ${spaceLabel}
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:2px;"><polyline points="6 9 12 15 18 9"/></svg>
+    <button id="auth-chip-toggle" title="${u.email}" style="width:28px; height:28px; border-radius:50%; background:var(--accent-base); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; border:none; cursor:pointer; outline:none; padding:0; flex-shrink:0;">
+      ${initial}
     </button>
-    <div id="auth-chip-menu" class="dropdown" style="display:none; position:absolute; top:calc(100% + 4px); right:0; min-width:240px; padding:6px 0; background:var(--bg-panel); border:1px solid var(--border-light); border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,.4); z-index:100000;"></div>`;
+    <div id="auth-chip-menu" class="dropdown" style="display:none; position:absolute; top:calc(100% + 4px); right:0; left:auto; min-width:240px; padding:6px 0; background:var(--bg-panel); border:1px solid var(--border-light); border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,.4); z-index:100000;"></div>`;
   const toggle = chip.querySelector('#auth-chip-toggle');
   const menu = chip.querySelector('#auth-chip-menu');
 

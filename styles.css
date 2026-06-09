@@ -1318,6 +1318,28 @@ body.theme-rmit-navy {
 
 
 
+    .animation-sub-panel {
+
+      border-top: 1px solid var(--border-light);
+
+      padding-top: 12px;
+
+      margin-top: 14px;
+
+    }
+
+    .animation-sub-panel:first-child {
+
+      border-top: none;
+
+      padding-top: 0;
+
+      margin-top: 0;
+
+    }
+
+
+
 
 
     .panel-section.highlighted {
@@ -2104,7 +2126,7 @@ body.theme-rmit-navy {
 
       color: var(--text-main);
 
-      border-radius: 4px;
+      border-radius: 6px;
 
       padding: 4px 6px;
 
@@ -2138,6 +2160,14 @@ body.theme-rmit-navy {
 
 
 
+    input[type="number"] {
+
+      padding-right: 0 !important;
+
+    }
+
+
+
     .prop-row input[type="color"] {
 
       width: 24px;
@@ -2148,7 +2178,7 @@ body.theme-rmit-navy {
 
       background: var(--bg-input);
 
-      border-radius: 4px;
+      border-radius: 6px;
 
       padding: 0;
 
@@ -2176,7 +2206,7 @@ body.theme-rmit-navy {
       gap: 6px;
       background: var(--bg-input);
       border: 1px solid var(--border-light);
-      border-radius: 4px;
+      border-radius: 6px;
       padding: 2px 6px;
       transition: border-color 0.15s ease-in-out;
       box-sizing: border-box;
@@ -2253,7 +2283,7 @@ body.theme-rmit-navy {
 
       color: var(--text-label);
 
-      border-radius: 4px;
+      border-radius: 6px;
 
       padding: 6px 0;
 
@@ -3670,7 +3700,7 @@ body.theme-rmit-navy {
 
       color: var(--text-main);
 
-      border-radius: 4px;
+      border-radius: 6px;
 
       padding: 6px 8px;
 
@@ -3692,7 +3722,7 @@ body.theme-rmit-navy {
 
       color: var(--text-main);
 
-      border-radius: 4px;
+      border-radius: 6px;
 
       padding: 6px 8px;
 
@@ -3729,7 +3759,7 @@ body.theme-rmit-navy {
 
       height: 24px;
 
-      border-radius: 4px;
+      border-radius: 6px;
 
       border: 1px solid var(--border-light);
 
