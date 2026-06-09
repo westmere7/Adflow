@@ -3341,7 +3341,7 @@ function getElementAnimationCSS(el, isImageExport) {
       const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
       const fadeOn = el.animFade !== false;
       const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
-      if (el.type !== 'text' || (animType !== 'typing' && animType !== 'fade-typing' && animType !== 'word-fade')) {
+      if ((el.type !== 'text' && el.type !== 'button') || (animType !== 'typing' && animType !== 'fade-typing' && animType !== 'word-fade')) {
         entryAnims.push(`anim-${animType}${suffix} ${el.animDuration || 1}s ${animType === 'typing' ? 'steps(30, end)' : 'ease-out'} ${el.animDelay || 0}s both`);
       }
     }
@@ -10957,10 +10957,8 @@ function renderProps() {
       { val: 'zoom', label: 'Zoom' },
       { val: 'split', label: 'Split' }
     ];
-    if (el.type === 'text') {
+    if (el.type === 'text' || el.type === 'button') {
       animOptions.push({ val: 'typing', label: 'Typing' });
-      animOptions.push({ val: 'fade-typing', label: 'Fade Typing' });
-      animOptions.push({ val: 'word-fade', label: 'Word Fade' });
     }
 
     let filteredOptions = animOptions;
@@ -11122,28 +11120,30 @@ function renderProps() {
           </div>
         </div>
       `);
-    }
-
-    if (el.type === 'text' && el.hasBg && (el.animType === 'typing' || el.animType === 'fade-typing' || el.animType === 'word-fade')) {
-      let animTextBgRow = '';
-      if (el.animateBg) {
-        animTextBgRow = `
-          <div class="checkbox-row" style="align-self: end; margin-bottom: 4px;">
-            <input type="checkbox" data-k="animateBg" id="prop-animate-bg" title="Animate text background block alongside typing animation" ${el.animateBg ? 'checked' : ''}/>
-            <label for="prop-animate-bg" title="Animate text background block alongside typing animation" style="cursor:pointer;">Animate text BG</label>
+    } else if (el.animType === 'typing' || el.animType === 'fade-typing' || el.animType === 'word-fade') {
+      const fadeBg = el.animFadeBg !== undefined ? el.animFadeBg : (el.type === 'button' ? true : !!el.animateBg);
+      f.push(`
+        <div class="prop-row" style="margin-bottom:8px;">
+          <div style="display:flex; flex-direction:row; gap:16px; align-items:center; height:24px;">
+            <div class="checkbox-row" style="margin:0;">
+              <input type="checkbox" data-k="animFadeLetters" id="prop-anim-fade-letters" title="Fade in characters one by one" ${el.animFadeLetters !== false ? 'checked' : ''}/>
+              <label for="prop-anim-fade-letters" title="Fade in characters one by one" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade letters</label>
+            </div>
+            <div class="checkbox-row" style="margin:0;">
+              <input type="checkbox" data-k="animFadeBg" id="prop-anim-fade-bg" title="Fade/Animate background block/container during transition" ${fadeBg ? 'checked' : ''}/>
+              <label for="prop-anim-fade-bg" title="Fade/Animate background block/container during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">${el.type === 'text' ? 'Animate BG' : 'Fade BG'}</label>
+            </div>
           </div>
-          ${secNum('bgOffset', 'Time Offset', 0)}
-        `;
-      } else {
-        animTextBgRow = `
-          <div class="checkbox-row" style="align-self: center; margin-top: 4px;">
-            <input type="checkbox" data-k="animateBg" id="prop-animate-bg" title="Animate text background block alongside typing animation" ${el.animateBg ? 'checked' : ''}/>
-            <label for="prop-animate-bg" title="Animate text background block alongside typing animation" style="cursor:pointer;">Animate text BG</label>
+        </div>
+        ${el.type === 'text' && el.hasBg && fadeBg ? `
+        <div class="prop-row" style="margin-bottom:8px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+            ${secNum('bgOffset', 'BG Offset', 0)}
+            <div></div>
           </div>
-          <div></div>
-        `;
-      }
-      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">${animTextBgRow}</div></div>`);
+        </div>
+        ` : ''}
+      `);
     }
 
     f.push(`</div>`); // Close in-transition-preview-area
@@ -11384,6 +11384,9 @@ function checkButtonFontSizeWarning(el) {
             delete selEl[k];
           } else {
             selEl[k] = val;
+            if (k === 'animFadeBg') {
+              selEl.animateBg = val;
+            }
             if (k === 'autoSize' && val === true) {
               selEl.autoHug = false;
             }
@@ -11440,6 +11443,9 @@ function checkButtonFontSizeWarning(el) {
           delete el[k];
         } else {
           el[k] = val;
+          if (k === 'animFadeBg') {
+            el.animateBg = val;
+          }
           if (k === 'autoSize' && val === true) {
             el.autoHug = false;
           }
@@ -11510,7 +11516,7 @@ function checkButtonFontSizeWarning(el) {
     });
     inp.addEventListener('change', () => {
       pushHistory();
-      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize') renderProps();
+      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize') renderProps();
     });
     if (inp.type === 'number') {
       inp.addEventListener('wheel', (e) => {
@@ -11669,6 +11675,12 @@ function checkButtonFontSizeWarning(el) {
           }
           ['origHtml', 'origStyle', 'bgInited', 'bgColor', 'bgPadL', 'bgPadV', 'bgCov', 'bgDelay', 'bgDuration', 'bgAnim'].forEach(k => delete target.dataset[k]);
         }
+        if (nodeEl.type === 'button') {
+          const fillBg = node.querySelector('div[style*="position: absolute"], div[style*="position:absolute"]');
+          if (fillBg) fillBg.style.animation = '';
+          const strokeSvg = node.querySelector('svg[style*="position: absolute"], svg[style*="position:absolute"]');
+          if (strokeSvg) strokeSvg.style.animation = '';
+        }
       });
 
       domNodes.forEach(node => { if (node) void node.offsetHeight; });
@@ -11688,7 +11700,7 @@ function checkButtonFontSizeWarning(el) {
           const del = Number(nodeEl.animDelay || 0);
           maxDur = Math.max(maxDur, dur + del);
 
-          if (nodeEl.type === 'text' && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade')) {
+          if ((nodeEl.type === 'text' || nodeEl.type === 'button') && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade')) {
             const target = node.querySelector('.editable') || node.querySelector('span');
             if (target) {
               target.dataset.origHtml = target.innerHTML;
@@ -11698,16 +11710,17 @@ function checkButtonFontSizeWarning(el) {
 
               if (previewVal === 'typing' || previewVal === 'fade-typing') {
                 const chars = [...(nodeEl.text || '')];
-                const charDur = previewVal === 'fade-typing' ? 0.3 : 0.01;
+                const fadeLetters = nodeEl.animFadeLetters !== false;
+                const charDur = fadeLetters ? 0.3 : 0.01;
                 const nonNewlines = chars.filter(c => c !== '\n').length;
                 const charDelay = totalDur / Math.max(1, nonNewlines);
                 let spanIdx = 0;
                 target.innerHTML = chars.map((c) => {
-                  if (c === '\n') return '<br/>';
-                  const del = (Number(baseDelay) + spanIdx * charDelay).toFixed(3);
-                  spanIdx++;
-                  const escC = c === ' ' ? ' ' : c.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-                  return `<span style="opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;">${escC}</span>`;
+                   if (c === '\n') return '<br/>';
+                   const del = (Number(baseDelay) + spanIdx * charDelay).toFixed(3);
+                   spanIdx++;
+                   const escC = c === ' ' ? ' ' : c.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                   return `<span style="opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;">${escC}</span>`;
                 }).join('');
               } else if (previewVal === 'word-fade') {
                 const words = (nodeEl.text || '').split(/(\s+)/);
@@ -11725,7 +11738,8 @@ function checkButtonFontSizeWarning(el) {
                 }).join('');
               }
 
-              if (nodeEl.hasBg && nodeEl.animateBg && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade')) {
+              const fadeBg = nodeEl.animFadeBg !== undefined ? nodeEl.animFadeBg : (nodeEl.type === 'button' ? true : !!nodeEl.animateBg);
+              if (nodeEl.type === 'text' && nodeEl.hasBg && fadeBg && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade')) {
                 const lr = nodeEl.bgPadL !== undefined ? nodeEl.bgPadL : 8;
                 const tb = nodeEl.bgPadV !== undefined ? nodeEl.bgPadV : 4;
                 const cov = nodeEl.bgCoverage !== undefined ? nodeEl.bgCoverage : 100;
@@ -11750,6 +11764,17 @@ function checkButtonFontSizeWarning(el) {
                 target.dataset.bgDelay = bgDelay;
                 target.dataset.bgDuration = totalDur;
                 requestAnimationFrame(() => setupTextLineBgs(target));
+              }
+
+              if (nodeEl.type === 'button' && fadeBg) {
+                const fillBg = node.querySelector('div[style*="position: absolute"], div[style*="position:absolute"]');
+                if (fillBg) {
+                  fillBg.style.animation = `anim-fade-in ${dur}s ease-out ${del}s both`;
+                }
+                const strokeSvg = node.querySelector('svg[style*="position: absolute"], svg[style*="position:absolute"]');
+                if (strokeSvg) {
+                  strokeSvg.style.animation = `anim-fade-in ${dur}s ease-out ${del}s both`;
+                }
               }
             }
           } else {

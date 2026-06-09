@@ -1022,7 +1022,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       if (animType === 'typing' || animType === 'fade-typing') {
         const chars = [...(el.text || '')];
         const totalDur = el.animDuration || 1;
-        const charDur = animType === 'fade-typing' ? 0.3 : 0.01;
+        const fadeLetters = el.animFadeLetters !== false;
+        const charDur = fadeLetters ? 0.3 : 0.01;
         const baseDelay = el.animDelay || 0;
         const nonNewlines = chars.filter(c => c !== '\n').length;
         const charDelay = totalDur / Math.max(1, nonNewlines);
@@ -1071,7 +1072,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       //     share of the typing duration.
       let bgStyle = '';
       let bgDataAttrs = '';
-      const useLineBgScript = el.hasBg && el.animateBg && !isImageExport && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade');
+      const fadeBg = el.animFadeBg !== undefined ? el.animFadeBg : (el.type === 'button' ? true : !!el.animateBg);
+      const useLineBgScript = el.hasBg && fadeBg && !isImageExport && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade');
       if (el.hasBg) {
         const lr = el.bgPadL !== undefined ? el.bgPadL : 8;
         const tb = el.bgPadV !== undefined ? el.bgPadV : 4;
@@ -1134,19 +1136,67 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       const jc = alignMap[el.textAlign || 'center'];
       const paddingTB = el.paddingTB !== undefined ? el.paddingTB : 0;
       const paddingLR = el.paddingLR !== undefined ? el.paddingLR : 16;
-      // Replace newlines with <br/> to ensure they are preserved in HTML
-      const btnContent = esc(el.text).replace(/\n/g, '<br/>');
+      
+      let btnContent = esc(el.text).replace(/\n/g, '<br/>');
+      if (animType === 'typing' || animType === 'fade-typing') {
+        const chars = [...(el.text || '')];
+        const totalDur = el.animDuration || 1;
+        const fadeLetters = el.animFadeLetters !== false;
+        const charDur = fadeLetters ? 0.3 : 0.01;
+        const baseDelay = el.animDelay || 0;
+        const nonNewlines = chars.filter(c => c !== '\n').length;
+        const charDelay = totalDur / Math.max(1, nonNewlines);
+
+        let spanIdx = 0;
+        btnContent = chars.map((c) => {
+          if (c === '\n') return '<br/>';
+          const del = (Number(baseDelay) + spanIdx * charDelay).toFixed(3);
+          spanIdx++;
+          const charContent = c === ' ' ? ' ' : esc(c);
+          const animStyle = isImageExport ? '' : `opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;`;
+          return `<span style="${animStyle}">${charContent}</span>`;
+        }).join('');
+      } else if (animType === 'word-fade') {
+        const words = (el.text || '').split(/(\s+)/);
+        const nonSpas = words.filter(w => /\S/.test(w));
+        const totalDur = el.animDuration || 1;
+        const wordDur = 0.3;
+        const baseDelay = el.animDelay || 0;
+        const wordDelay = totalDur / Math.max(1, nonSpas.length);
+
+        let wordIdx = 0;
+        btnContent = words.map(w => {
+          if (w === '\n') return '<br/>';
+          if (/\s+/.test(w)) return w.replace(/\n/g, '<br/>');
+          const del = (Number(baseDelay) + wordIdx * wordDelay).toFixed(3);
+          wordIdx++;
+          const wordContent = esc(w);
+          const animStyle = isImageExport ? '' : `opacity:0; display:inline-block; animation: anim-fade-in ${wordDur}s linear ${del}s both;`;
+          return `<span style="${animStyle}">${wordContent}</span>`;
+        }).join('');
+      }
       
       const spanStyle = el.wrapText
         ? `display:inline;word-break:normal;white-space:normal;max-width:100%;position:relative;`
         : `display:inline;white-space:nowrap;position:relative;`;
 
+      const fadeBg = el.animFadeBg !== undefined ? el.animFadeBg : (el.type === 'button' ? true : !!el.animateBg);
+      const bgAnimStyle = (!isImageExport && fadeBg && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade'))
+        ? `;animation:anim-fade-in ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both`
+        : '';
+
+      const strokeHtml = strokeOverlayHTML(el);
+      let animatedStrokeHtml = strokeHtml;
+      if (strokeHtml && !isImageExport && fadeBg && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade')) {
+        animatedStrokeHtml = strokeHtml.replace('style="position:absolute;inset:0;', `style="position:absolute;inset:0;animation:anim-fade-in ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both;`);
+      }
+
       if (el.autoSize) {
         const autoAttrs = ` class="auto-size-text" data-max-size="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" data-width="${el.width}" data-height="${el.height}" data-padding-lr="${paddingLR}" data-padding-tb="${paddingTB}" data-wrap="${el.wrapText ? '1' : '0'}" data-wrap-min="${el.wrapMinSize !== undefined ? el.wrapMinSize : 14}"`;
-        return `    <div ${wrapAttrs}${autoAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div class="auto-size-block" style="position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:normal;' : ''}"><span class="auto-size-span" style="${spanStyle}">${btnContent}</span></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+        return `    <div ${wrapAttrs}${autoAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity}${bgAnimStyle};"></div><div class="auto-size-block" style="position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;${el.wrapText ? 'word-break:normal;' : ''}"><span class="auto-size-span" style="${spanStyle}">${btnContent}</span></div>${animatedStrokeHtml}${closeDivs}</div>`;
       } else {
         const normalBlockStyle = `position:relative;width:100%;height:100%;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight || '600'};display:flex;align-items:center;justify-content:${jc};text-align:${el.textAlign || 'center'};font-family:${ff};cursor:pointer;padding:${paddingTB}px ${paddingLR}px;box-sizing:border-box;`;
-        return `    <div ${wrapAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity};"></div><div style="${normalBlockStyle}"><span style="${spanStyle}">${btnContent}</span></div>${strokeOverlayHTML(el)}${closeDivs}</div>`;
+        return `    <div ${wrapAttrs}>${openDivs}<div style="position:absolute;inset:0;background:${el.bg};border-radius:${el.radius || 0}px;opacity:${fillOpacity}${bgAnimStyle};"></div><div style="${normalBlockStyle}"><span style="${spanStyle}">${btnContent}</span></div>${animatedStrokeHtml}${closeDivs}</div>`;
       }
     }
     if (el.type === 'image' && el.assetId) {
