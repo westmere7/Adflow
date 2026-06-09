@@ -34,7 +34,7 @@ function dmEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
 
-const DM_FIELD_LABEL = { text: 'Text', color: 'Color', bg: 'Background', image: 'Image' };
+const DM_FIELD_LABEL = { text: 'Text', color: 'Color', bg: 'BG color', image: 'Image' };
 
 function dmFieldsForType(type) {
   switch (type) {
