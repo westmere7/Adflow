@@ -661,6 +661,35 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.4',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Preview & Export Moved to the Properties Panel: The "Preview" and "Export" buttons now live in a fixed header pinned to the top of the right-hand properties panel (above Dynamic Data), where they stay visible no matter how far you scroll. They\'ve been removed from the top bar, freeing up space there.'
+    ]
+  },
+  {
+    version: 'v0.19.3',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'New Projects Open Centered: When you create a new project, the whole canvas group is now centered on the workspace board rather than sitting in the top-left corner — so it opens with even space on every side for arranging canvases and temporarily parking elements.'
+    ]
+  },
+  {
+    version: 'v0.19.2',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Smaller, Tidier Workspace Board: Shrank the main workspace board — the pannable area behind your canvases — from 5000×5000 down to 3000×3000, and anchored canvases near the top-left instead of the middle. Previously most of the board was empty space, so it was easy to scroll off into the void and lose sight of your work. There\'s now a sensible work area with room to the side and below for temporarily parking elements while you design. Existing projects are automatically re-homed onto the smaller board when opened, so nothing is lost or clipped.'
+    ]
+  },
+  {
+    version: 'v0.19.1',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      '1366×768 Screen Support: Lowered the minimum supported screen size from 1920×900 down to 1366×768, so the editor now opens on standard laptop displays instead of showing the "get a bigger screen" overlay. The width is a hard floor (below 1366 the interface can\'t lay out without clipping); the height floor is forgiving because real 1366×768 monitors only leave ~600–660px of viewport once the browser and OS chrome are accounted for.',
+      'No Horizontal Clipping at 1366px: Reworked the three-column workspace and the topbar so everything fits at 1366px wide with nothing cut off on the right. The canvas area now shrinks to fit between the two side panels (instead of pushing the right panel off-screen), and the topbar spacing was tightened so the Preview and Export buttons stay fully reachable. Panels scroll vertically when the window is short — the layout never scrolls or clips horizontally.'
+    ]
+  },
+  {
     version: 'v0.19.0',
     date: 'June 2026 — Engine v2.19',
     items: [

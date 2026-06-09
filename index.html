@@ -9,7 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=cb4" />
   <style>
     /* Splash screen — shown on initial load, faded out by initApp.
        Inlined so it paints before styles.css finishes parsing. */
@@ -248,7 +248,7 @@
     <div class="app-splash-inner">
       <div class="app-splash-logo">
         <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo />
-        <span class="app-splash-version">v0.19.0</span>
+        <span class="app-splash-version">v0.19.4</span>
       </div>
       <div class="app-splash-status" id="app-splash-status">Warming up…</div>
       <div class="app-splash-bar"><div class="app-splash-bar-fill" id="app-splash-bar-fill"></div></div>
@@ -402,7 +402,7 @@
       </div>
       <div class="title" style="display:flex; align-items:center;">
         <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo style="height:24px; margin-right: 8px;" />
-        <div style="height:20px; width:1px; background-color:var(--border-light); margin: 0 12px; flex-shrink:0;"></div>
+        <div style="height:20px; width:1px; background-color:var(--border-light); margin: 0 8px; flex-shrink:0;"></div>
         <div id="project-meta-container" style="display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; border-radius:4px; padding:2px 6px; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.06)'" onmouseout="this.style.backgroundColor='transparent'" title="Click to open project settings / Double-click to rename">
           <span id="project-name-display" style="font-size:12px; font-weight:600; color:var(--text-bright); outline:none; white-space:nowrap;">RMIT_ad</span>
           <span id="project-save-status-dot" title="All changes saved">
@@ -413,10 +413,10 @@
             </svg>
           </span>
         </div>
-        <div style="height:20px; width:1px; background-color:var(--border-light); margin: 0 12px; flex-shrink:0;"></div>
+        <div style="height:20px; width:1px; background-color:var(--border-light); margin: 0 8px; flex-shrink:0;"></div>
       </div>
       <!-- Toolbar System (Select / Zoom / Text) -->
-      <div id="toolbar-container" style="display:flex; align-items:center; gap:4px; margin-right:16px; border-right:1px solid var(--border-light); padding-right:16px;">
+      <div id="toolbar-container" style="display:flex; align-items:center; gap:4px; margin-right:10px; border-right:1px solid var(--border-light); padding-right:10px;">
         <button class="btn ghost icon active" id="tool-select" title="Select Tool (V)" style="padding:4px 6px; display:flex; align-items:center; justify-content:center;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="3 3 10 21 13 13 21 10 3 3"></polygon>
@@ -438,8 +438,10 @@
           </svg>
         </button>
       </div>
+      <div id="frame-controls-wrap"
+        style="position:relative; display:flex; align-items:center; min-width:0; margin-right:12px; border-right:1px solid var(--border-light); padding-right:12px;">
       <div
-        style="display:flex;align-items:center;gap:6px;margin-right:24px;border-right:1px solid var(--border-light);padding-right:24px;"
+        style="display:flex;align-items:center;gap:4px;overflow-x:auto;min-width:0;"
         id="frame-controls-container">
         <label>Frame</label>
         <button class="btn ghost icon" id="btn-prev-frame" title="Previous Frame"
@@ -465,6 +467,7 @@
           <label for="project-preview-current-only" title="Preview only the currently selected frame and its transition if applied" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer; white-space:nowrap;">Preview current only</label>
         </div>
       </div>
+      </div>
       <div class="spacer"></div>
       <span id="version-switcher" style="display:none; align-items:center; gap:6px; margin-right:16px;">
         <label style="font-size:11px;color:var(--text-muted);">Version</label>
@@ -480,10 +483,7 @@
         </button>
       </span>
       <!-- Auth chip: shows "Sign in" when logged out, avatar + email + dropdown when logged in. -->
-      <div id="auth-chip" style="position:relative; margin-right:12px;"></div>
-
-      <button class="btn" id="btn-preview" title="Preview the interactive banner animation">Preview</button>
-      <button class="btn primary" id="btn-export-top" title="Export banner to HTML package">Export</button>
+      <div id="auth-chip" style="position:relative; margin-right:8px;"></div>
     </div>
 
     <!-- ============== WORKSPACES ============== -->
@@ -653,12 +653,18 @@
 
       <!-- RIGHT PANEL -->
       <div class="panel right">
+        <!-- Primary output actions, pinned above the scrolling props so they
+             stay visible regardless of scroll. Relocated here from the topbar. -->
+        <div class="panel-right-actions">
+          <button class="btn" id="btn-preview" title="Preview the interactive banner animation">Preview</button>
+          <button class="btn primary" id="btn-export-top" title="Export banner to HTML package">Export</button>
+        </div>
         <div class="panel-scroll" id="props">
           <div class="prop-empty">Select an element to edit its properties.</div>
         </div>
         <div class="workspace-footer" id="workspace-footer">
           <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
-          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.19.0</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.19.4</button>
         </div>
       </div>
     </div>
@@ -737,7 +743,7 @@
   <script src="data-merge.js"></script>
   <script src="export-pipeline.js"></script>
   <script src="color-picker.js"></script>
-  <script src="script.js"></script>
+  <script src="script.js?v=cb4"></script>
 </body>
 
 </html>

@@ -91,14 +91,23 @@ const PRESET_SIZES = [
   { name: 'Billboard', width: 970, height: 250 }
 ];
 
-// Initial layout positions in the all-sizes workspace
+// The pannable board is BOARD_SIZE×BOARD_SIZE px (kept in sync with the
+// `.workspace-canvas` width/height in styles.css). Canvases are placed at
+// absolute workspaceX/workspaceY coords on it. We anchor content near the
+// top-left (BOARD_MARGIN) rather than the old centre (~2050) so the board can
+// be small without users panning into empty void, while still leaving margin
+// on every side for temporarily parking elements.
+const BOARD_SIZE = 3000;
+const BOARD_MARGIN = 500;
+
+// Initial layout positions in the all-sizes workspace (anchored at BOARD_MARGIN)
 const INITIAL_LAYOUT = [
-  { x: 2040, y: 2040 },
-  { x: 2240, y: 2040 },
-  { x: 2580, y: 2040 },
-  { x: 2920, y: 2040 },
-  { x: 2920, y: 2210 },
-  { x: 2920, y: 2340 },
+  { x: 500, y: 500 },
+  { x: 700, y: 500 },
+  { x: 1040, y: 500 },
+  { x: 1380, y: 500 },
+  { x: 1380, y: 670 },
+  { x: 1380, y: 800 },
 ];
 
 function seedCanvas(preset, layoutIdx) {
@@ -109,8 +118,8 @@ function seedCanvas(preset, layoutIdx) {
     width: preset.width,
     height: preset.height,
     bgColor: '#0f172a',
-    workspaceX: INITIAL_LAYOUT[layoutIdx]?.x ?? (2050 + (layoutIdx || 0) * 30),
-    workspaceY: INITIAL_LAYOUT[layoutIdx]?.y ?? (2050 + (layoutIdx || 0) * 30),
+    workspaceX: INITIAL_LAYOUT[layoutIdx]?.x ?? (BOARD_MARGIN + (layoutIdx || 0) * 30),
+    workspaceY: INITIAL_LAYOUT[layoutIdx]?.y ?? (BOARD_MARGIN + (layoutIdx || 0) * 30),
     elements: defaultElements(preset),
   };
 }
@@ -833,7 +842,12 @@ async function restoreAutosave() {
       if (state.defaultCricosCode === undefined) {
         state.defaultCricosCode = '00122A';
       }
-      if (rec.history && Array.isArray(rec.history) && rec.history.length > 0) {
+      // Re-home legacy centre-anchored layouts onto the smaller board. If this
+      // moved anything, the autosaved history snapshots still hold the old
+      // off-board coords — drop them and re-baseline so undo can't jump back
+      // into the void.
+      const positionsMigrated = normalizeCanvasPositions();
+      if (!positionsMigrated && rec.history && Array.isArray(rec.history) && rec.history.length > 0) {
         history.length = 0;
         history.push(...rec.history);
         historyIndex = rec.historyIndex !== undefined ? rec.historyIndex : history.length - 1;
@@ -2084,8 +2098,8 @@ function render(skipProps = false) {
   const zoomDisp = document.getElementById('zoom-level-display');
   if (zoomDisp) zoomDisp.innerText = 'Zoom ' + Math.round(z * 100) + '%';
 
-  workspaceEl.style.width = '5000px';
-  workspaceEl.style.height = '5000px';
+  workspaceEl.style.width = BOARD_SIZE + 'px';
+  workspaceEl.style.height = BOARD_SIZE + 'px';
   workspaceEl.style.margin = '';
 
   // which canvases to render
@@ -2178,11 +2192,46 @@ function render(skipProps = false) {
   scheduleAutosave();
 }
 
+// One-time-per-load migration for the shrunken board. Older projects (and the
+// bundled startup templates) anchored canvases near the old ~2050 centre of a
+// 5000×5000 board; on the smaller BOARD_SIZE board that content would sit in
+// the bottom-right or hang off the edge. This slides the whole cluster so its
+// top-left corner lands at BOARD_MARGIN, preserving relative layout. It's
+// idempotent — once a project is anchored near the margin it no longer trips
+// the trigger — so it's safe to call on every load. Returns true if it moved
+// anything (callers drop stale history snapshots when so).
+function normalizeCanvasPositions() {
+  const cs = state.canvases;
+  if (!Array.isArray(cs) || cs.length === 0) return false;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  cs.forEach(c => {
+    const x = c.workspaceX || 0, y = c.workspaceY || 0;
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x + c.width > maxX) maxX = x + c.width;
+    if (y + c.height > maxY) maxY = y + c.height;
+  });
+  // Only re-home content that's actually off the smaller board — legacy
+  // projects authored on the old 5000 board can extend past 3000. Content
+  // that already fits (including deliberately centred new projects) is left
+  // alone, so this stays idempotent and never fights the new-project centring.
+  const needs = minX < 0 || minY < 0 || maxX > BOARD_SIZE || maxY > BOARD_SIZE;
+  if (!needs) return false;
+  const dx = BOARD_MARGIN - minX;
+  const dy = BOARD_MARGIN - minY;
+  if (dx === 0 && dy === 0) return false;
+  cs.forEach(c => {
+    c.workspaceX = Math.round((c.workspaceX || 0) + dx);
+    c.workspaceY = Math.round((c.workspaceY || 0) + dy);
+  });
+  return true;
+}
+
 function centerWorkspace(behavior = 'smooth') {
   const area = document.getElementById('canvas-area');
   if (!area) return;
   if (!state.canvases || state.canvases.length === 0) {
-    area.scrollTo({ left: 2000, top: 2000, behavior });
+    area.scrollTo({ left: BOARD_MARGIN, top: BOARD_MARGIN, behavior });
     return;
   }
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -2526,7 +2575,7 @@ function renderRulers() {
   canvasArea.insertBefore(rh, workspaceEl);
 
   const z = state.zoom || 1;
-  const w = 5000 * z, h = 5000 * z;
+  const w = BOARD_SIZE * z, h = BOARD_SIZE * z;
   rh.width = w; rh.height = 16;
   rh.style.width = w + 'px';
   rv.width = 16; rv.height = h;
@@ -2534,7 +2583,7 @@ function renderRulers() {
 
   const ctxH = rh.getContext('2d');
   ctxH.font = '9px sans-serif'; ctxH.fillStyle = '#9aa1b6'; ctxH.strokeStyle = '#5a6178';
-  for (let x = 0; x <= 5000; x += 100) {
+  for (let x = 0; x <= BOARD_SIZE; x += 100) {
     const px = x * z;
     ctxH.fillText(x.toString(), px + 4, 9);
     ctxH.beginPath(); ctxH.moveTo(px, 12); ctxH.lineTo(px, 16); ctxH.stroke();
@@ -2543,7 +2592,7 @@ function renderRulers() {
 
   const ctxV = rv.getContext('2d');
   ctxV.font = '9px sans-serif'; ctxV.fillStyle = '#9aa1b6'; ctxV.strokeStyle = '#5a6178';
-  for (let y = 0; y <= 5000; y += 100) {
+  for (let y = 0; y <= BOARD_SIZE; y += 100) {
     const py = y * z;
     ctxV.save(); ctxV.translate(8, py + 4); ctxV.rotate(-Math.PI / 2); ctxV.fillText(y.toString(), 0, 0); ctxV.restore();
     ctxV.beginPath(); ctxV.moveTo(12, py); ctxV.lineTo(16, py); ctxV.stroke();
@@ -6981,8 +7030,8 @@ document.getElementById('btn-add-canvas').addEventListener('click', (e) => {
         const c = seedCanvas(sz, idx % PRESET_SIZES.length);
         if (state.defaultBg) c.bgColor = state.defaultBg;
         if (idx >= PRESET_SIZES.length) {
-          c.workspaceX = 2060 + idx * 30;
-          c.workspaceY = 2060 + idx * 30;
+          c.workspaceX = BOARD_MARGIN + idx * 30;
+          c.workspaceY = BOARD_MARGIN + idx * 30;
         }
         state.canvases.push(c);
         state.activeCanvasId = c.id;
@@ -13996,6 +14045,43 @@ document.getElementById('btn-preview').addEventListener('click', () => {
   });
 });
 
+// ----------------------------------------------------------------------------
+// Frame controls — horizontal scroll + fade hints
+// ----------------------------------------------------------------------------
+// When the top bar is too narrow to show every frame control, the row scrolls
+// horizontally. Fade overlays on #frame-controls-wrap cue that there's more off
+// the left/right edge; they're toggled here from the scroll position. We also
+// translate a plain vertical mouse-wheel into horizontal scroll so mouse users
+// (no trackpad) can reach the off-screen controls.
+function updateFrameControlsFades() {
+  const sc = document.getElementById('frame-controls-container');
+  const wrap = document.getElementById('frame-controls-wrap');
+  if (!sc || !wrap) return;
+  const maxScroll = sc.scrollWidth - sc.clientWidth;
+  wrap.classList.toggle('fade-left', sc.scrollLeft > 1);
+  wrap.classList.toggle('fade-right', maxScroll > 1 && sc.scrollLeft < maxScroll - 1);
+}
+
+(function setupFrameControlsScroll() {
+  const sc = document.getElementById('frame-controls-container');
+  if (!sc) return;
+  sc.addEventListener('scroll', updateFrameControlsFades, { passive: true });
+  window.addEventListener('resize', updateFrameControlsFades);
+  // The row's own width changes when the top bar reflows (window resize, auth
+  // chip / version switcher toggling) — re-evaluate the fades when it does.
+  if (window.ResizeObserver) {
+    new ResizeObserver(updateFrameControlsFades).observe(sc);
+  }
+  // Vertical wheel → horizontal scroll, but only while the row actually overflows.
+  sc.addEventListener('wheel', (e) => {
+    const maxScroll = sc.scrollWidth - sc.clientWidth;
+    if (maxScroll <= 0 || e.deltaY === 0) return;
+    sc.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, { passive: false });
+  updateFrameControlsFades();
+})();
+
 // ============================================================================
 // Save / Load Project
 // ============================================================================
@@ -14401,11 +14487,14 @@ async function loadProjectFromState(loadedState) {
   Object.assign(state, JSON.parse(JSON.stringify(loadedState)));
   if (!state.projectId) state.projectId = uid('proj_');
 
+  // Re-home legacy centre-anchored layouts onto the smaller board.
+  const positionsMigrated = normalizeCanvasPositions();
+
   await syncRmitAssets();
   setLocalSaveStatus('saved');
   initializeCloudSaveStatus();
 
-  if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
+  if (!positionsMigrated && restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
     history.length = 0;
     history.push(...restoredHistory);
     historyIndex = restoredHistoryIndex !== undefined ? restoredHistoryIndex : history.length - 1;
@@ -14470,13 +14559,15 @@ async function loadProjectFromBlob(file, customProjectName) {
   state.zoom = 1.0;
   state.assets = newAssets || {};
   if (!state.projectId) state.projectId = uid('proj_');
+  // Re-home legacy centre-anchored layouts onto the smaller board.
+  const positionsMigrated = normalizeCanvasPositions();
   await syncRmitAssets();
   setLocalSaveStatus('saved');
   initializeCloudSaveStatus();
   _fileSaveStatus = 'saved';
   _lastFileSaveTime = new Date();
 
-  if (restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
+  if (!positionsMigrated && restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
     history.length = 0;
     history.push(...restoredHistory);
     historyIndex = restoredHistoryIndex !== undefined ? restoredHistoryIndex : history.length - 1;
@@ -14849,8 +14940,8 @@ async function syncRmitAssets() {
 async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, clickTag }) {
   const bg = bgColor || '#0f172a';
   
-  let currentX = 2050;
-  let currentY = 2050;
+  let currentX = BOARD_MARGIN;
+  let currentY = BOARD_MARGIN;
   let rowMaxHeight = 0;
   const maxRowWidth = 1400;
 
@@ -14867,8 +14958,8 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
     
     if (i < presetIndices.length - 1) {
       const nextPreset = PRESET_SIZES[presetIndices[i + 1]];
-      if (currentX + nextPreset.width - 2050 > maxRowWidth) {
-        currentX = 2050;
+      if (currentX + nextPreset.width - BOARD_MARGIN > maxRowWidth) {
+        currentX = BOARD_MARGIN;
         currentY += rowMaxHeight + 60;
         rowMaxHeight = 0;
       }
@@ -14943,6 +15034,22 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
     return c;
   });
 
+  // Center the whole canvas group on the board so a new project opens with
+  // even breathing room on every side, rather than pinned to the top-left
+  // margin where the layout was built.
+  if (canvases.length) {
+    let gMinX = Infinity, gMinY = Infinity, gMaxX = -Infinity, gMaxY = -Infinity;
+    canvases.forEach(c => {
+      if (c.workspaceX < gMinX) gMinX = c.workspaceX;
+      if (c.workspaceY < gMinY) gMinY = c.workspaceY;
+      if (c.workspaceX + c.width > gMaxX) gMaxX = c.workspaceX + c.width;
+      if (c.workspaceY + c.height > gMaxY) gMaxY = c.workspaceY + c.height;
+    });
+    const dx = Math.round(BOARD_SIZE / 2 - (gMinX + gMaxX) / 2);
+    const dy = Math.round(BOARD_SIZE / 2 - (gMinY + gMaxY) / 2);
+    canvases.forEach(c => { c.workspaceX += dx; c.workspaceY += dy; });
+  }
+
   state.projectName = (name || 'RMIT_ad').trim() || 'RMIT_ad';
   state.projectId = uid('proj_');
   state.clickTag = (clickTag || 'https://www.rmit.edu.au/').trim();
@@ -14990,7 +15097,7 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
       const targetScrollTop = Math.max(0, y * z - ca.clientHeight / 2);
       ca.scrollTo({ left: targetScrollLeft, top: targetScrollTop, behavior: 'instant' });
     } else if (ca && ca.scrollTo) {
-      ca.scrollTo({ left: 2000, top: 2000, behavior: 'instant' });
+      ca.scrollTo({ left: BOARD_MARGIN, top: BOARD_MARGIN, behavior: 'instant' });
     }
   }, 50);
 }
@@ -16786,7 +16893,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.19.0';
+  const currentVersion = 'v0.19.4';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -17001,7 +17108,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.19.0</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.4</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -19983,7 +20090,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.19.0';
+        verEl.textContent = 'v0.19.4';
         logoEl.appendChild(verEl);
       }
     }

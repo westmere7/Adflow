@@ -700,7 +700,11 @@ body.theme-rmit-navy {
 
       grid-template-rows: 48px 1fr;
 
+      grid-template-columns: minmax(0, 1fr);
+
       height: 100vh;
+
+      width: 100%;
 
     }
 
@@ -886,9 +890,9 @@ body.theme-rmit-navy {
 
       align-items: center;
 
-      gap: 10px;
+      gap: 6px;
 
-      padding: 0 16px;
+      padding: 0 12px;
 
       background: var(--bg-panel);
 
@@ -940,6 +944,45 @@ body.theme-rmit-navy {
       border-color: var(--accent-base);
 
     }
+
+    /* Frame controls: horizontally scrollable when the top bar runs out of
+       room, with fade hints cueing that more controls sit off the left/right
+       edge. The fades live on the non-scrolling wrapper (#frame-controls-wrap)
+       and are toggled by updateFrameControlsFades() based on scroll position. */
+    #frame-controls-container {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-btn) transparent;
+    }
+    #frame-controls-container::-webkit-scrollbar { height: 5px; }
+    #frame-controls-container::-webkit-scrollbar-track { background: transparent; }
+    #frame-controls-container::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+    #frame-controls-container::-webkit-scrollbar-thumb:hover { background: var(--border-btn); }
+    /* Keep each control its natural size so the row overflows (and scrolls)
+       instead of squashing when space is tight. */
+    #frame-controls-container > * { flex-shrink: 0; }
+
+    #frame-controls-wrap::before,
+    #frame-controls-wrap::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 28px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 2;
+    }
+    #frame-controls-wrap::before {
+      left: 0;
+      background: linear-gradient(to right, var(--bg-panel), transparent);
+    }
+    #frame-controls-wrap::after {
+      right: 13px; /* clear the 12px padding + 1px divider so the fade hugs the scroll area */
+      background: linear-gradient(to left, var(--bg-panel), transparent);
+    }
+    #frame-controls-wrap.fade-left::before { opacity: 1; }
+    #frame-controls-wrap.fade-right::after { opacity: 1; }
 
 
 
@@ -1113,7 +1156,7 @@ body.theme-rmit-navy {
 
       display: grid;
 
-      grid-template-columns: 290px 1fr 290px;
+      grid-template-columns: 290px minmax(0, 1fr) 290px;
 
       min-height: 0;
 
@@ -2321,9 +2364,12 @@ body.theme-rmit-navy {
 
       position: relative;
 
-      width: 5000px;
+      /* Board is BOARD_SIZE in script.js — keep these in sync. Trimmed from
+         5000 so users can't pan far off into empty void; canvases are anchored
+         near the top-left (~500px margin) leaving room for temporary parking. */
+      width: 3000px;
 
-      height: 5000px;
+      height: 3000px;
 
       margin-left: 16px;
 
@@ -3753,9 +3799,15 @@ body.theme-rmit-navy {
 
 
 
-    @media (max-width: 1919px),
+    /* Minimum supported screen is 1366×768. Width is a hard floor — below
+       1366 the chrome can't lay out without horizontal clipping, so we gate
+       it. Height is forgiving (panels scroll vertically): on a real 1366×768
+       monitor the browser/OS chrome leaves only ~600–660px of viewport, so
+       the height floor is set low enough that such machines still get the app
+       rather than the overlay. Touch-only devices are gated regardless. */
+    @media (max-width: 1365px),
 
-    (max-height: 899px),
+    (max-height: 600px),
 
     (pointer: coarse) and (hover: none) {
 
@@ -4758,6 +4810,24 @@ body.theme-light #dm-panel {
    holding the zoom and version pills (left + right). */
 .panel.right { position: relative; }
 .panel.right > .panel-scroll { flex: 1 1 0; min-height: 0; }
+/* Primary output actions (Preview / Export) pinned to the top of the right
+   panel, above the scrolling props so they stay visible at any scroll position. */
+.panel.right > .panel-right-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  /* 12px inset matches .panel-section so the buttons line up with the
+     section content below; no divider — spacing alone separates it. */
+  padding: 12px;
+  background: var(--bg-panel);
+}
+.panel.right > .panel-right-actions .btn {
+  flex: 1;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-weight: 600;
+  text-align: center;
+}
 .workspace-footer {
   flex: 0 0 auto;
   display: flex;
