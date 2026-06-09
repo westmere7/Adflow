@@ -744,7 +744,18 @@ function dmRenderPanel(bg) {
   const colOptions = (sel) => ['<option value="">— none —</option>'].concat(dm.columns.map(c => `<option value="${dmEsc(c)}" ${c === sel ? 'selected' : ''}>${dmEsc(c)}</option>`)).join('');
 
   // --- LEFT: controls + mapping ---
-  let mapRows = '';
+  let mapRows = `
+    <div style="display:flex; flex-direction:column; gap:4px; padding:8px 10px; border-radius:6px; background:color-mix(in srgb, var(--accent-base) 6%, transparent); border:1px solid color-mix(in srgb, var(--accent-base) 20%, transparent); margin-bottom:6px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; line-height:1.4;">
+        <div style="color:var(--text-main); font-weight:700; display:flex; align-items:center;">
+          <b style="color:var(--text-bright);">ClickTag</b>
+          <span style="color:var(--accent-base); font-size:8px; font-weight:700; background:color-mix(in srgb, var(--accent-base) 15%, transparent); padding:1px 4px; border-radius:3px; margin-left:6px; letter-spacing:0.04em; text-transform:uppercase;">Required</span>
+        </div>
+        <div style="color:var(--text-muted); font-weight:400; font-size:10px; text-align:right;">All frames · exit URL</div>
+      </div>
+      <div class="dm-map-container" data-mapkey="clicktag::url" style="position:relative;"></div>
+    </div>`;
+
   slots.forEach(s => s.fields.forEach(field => {
     const key = s.slotKey + '::' + field;
     const linkIcon = s.grouped ? `<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-left:4px; color:var(--text-accent);"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>` : '';
@@ -763,14 +774,6 @@ function dmRenderPanel(bg) {
         <div class="dm-map-container" data-mapkey="${key}" style="position:relative;"></div>
       </div>`;
   }));
-  mapRows += `
-    <div style="display:flex; flex-direction:column; gap:4px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; line-height:1.4;">
-        <div style="color:var(--text-main); font-weight:700;"><b>ClickTag</b></div>
-        <div style="color:var(--text-muted); font-weight:400; font-size:10px; text-align:right;">All frames · exit URL</div>
-      </div>
-      <div class="dm-map-container" data-mapkey="clicktag::url" style="position:relative;"></div>
-    </div>`;
 
   const slotHint = slots.length
     ? ''
@@ -953,7 +956,10 @@ function dmWirePanel(bg) {
   // Render slot mapping custom select dropdowns
   all('.dm-map-container').forEach(container => {
     const key = container.dataset.mapkey;
-    const options = [{ label: '— none —', val: '' }].concat(state.dataMerge.columns.map(c => ({ label: c, val: c })));
+    const defaultLabel = key === 'clicktag::url'
+      ? `— Default (${state.clickTag || 'https://www.rmit.edu.au/'}) —`
+      : '— none —';
+    const options = [{ label: defaultLabel, val: '' }].concat(state.dataMerge.columns.map(c => ({ label: c, val: c })));
 
     const updateSelect = () => {
       const activeVal = state.dataMerge.mappings[key] || '';

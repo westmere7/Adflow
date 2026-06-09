@@ -1,7 +1,12 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.4 (Current) - June 2026 — Engine v2.19
-- Preview & Export Moved to the Properties Panel: The "Preview" and "Export" buttons now live in a fixed header pinned to the top of the right-hand properties panel (above Dynamic Data), where they stay visible no matter how far you scroll. They've been removed from the top bar, freeing up space there.
+v0.19.5 (Current) - June 2026 — Engine v2.19
+- Refined Account Chip: The sign-in / account button in the top bar is now a cleaner 32px circle — no ring border, with subtle hover tints (muted grey when signed out, accent-tinted when signed in).
+- ClickTag Promoted in Dynamic Data: The ClickTag (exit URL) mapping is pinned to the top of the Dynamic Data mapping list and marked "Required", and its dropdown now shows the current default exit URL so it's clear what ships when no column is mapped.
+- Top Bar Polish: "Full preview" and "Export" are now equal-width buttons, and the dynamic-data indicator on the version switcher is slightly larger.
+
+v0.19.4 - June 2026 — Engine v2.19
+- Scrollable Frame Controls: When the top bar runs out of room, the frame controls (frame selector, Skip Frame, Duration, Loop, Preview-current-only) now scroll horizontally instead of being cut off — with soft fade hints on the left/right edges signalling there's more to see. A vertical mouse-wheel scrolls the row when it overflows.
 
 v0.19.3 - June 2026 — Engine v2.19
 - New Projects Open Centered: When you create a new project, the whole canvas group is now centered on the workspace board rather than sitting in the top-left corner — so it opens with even space on every side for arranging canvases and temporarily parking elements.

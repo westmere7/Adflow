@@ -9,7 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="styles.css?v=cb4" />
+  <link rel="stylesheet" href="styles.css" />
   <style>
     /* Splash screen — shown on initial load, faded out by initApp.
        Inlined so it paints before styles.css finishes parsing. */
@@ -248,7 +248,7 @@
     <div class="app-splash-inner">
       <div class="app-splash-logo">
         <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo />
-        <span class="app-splash-version">v0.19.4</span>
+        <span class="app-splash-version">v0.19.5</span>
       </div>
       <div class="app-splash-status" id="app-splash-status">Warming up…</div>
       <div class="app-splash-bar"><div class="app-splash-bar-fill" id="app-splash-bar-fill"></div></div>
@@ -469,7 +469,7 @@
       </div>
       </div>
       <span id="version-switcher" style="display:none; align-items:center; gap:6px; margin-right:12px; border-right:1px solid var(--border-light); padding-right:12px;">
-        <svg viewBox="0 0 24 24" width="12" height="12" style="flex-shrink:0;fill:var(--accent-base);" title="Contains dynamic data"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <svg viewBox="0 0 24 24" width="15" height="15" style="flex-shrink:0;fill:var(--accent-base);" title="Contains dynamic data"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         <label style="font-size:11px;color:var(--text-muted);">Version</label>
         <button class="btn ghost icon" id="btn-version-prev" title="Previous Version" style="padding:4px 6px;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -484,8 +484,8 @@
       </span>
       <div class="spacer"></div>
       <div style="display:flex; align-items:center; gap:8px; margin-right:12px;">
-        <button class="btn" id="btn-preview" title="Preview the interactive banner animation">Full preview</button>
-        <button class="btn primary" id="btn-export-top" title="Export banner to HTML package">Export</button>
+        <button class="btn" id="btn-preview" title="Preview the interactive banner animation" style="width:100px;">Full preview</button>
+        <button class="btn primary" id="btn-export-top" title="Export banner to HTML package" style="width:100px;">Export</button>
       </div>
       <!-- Auth chip: shows "Sign in" when logged out, avatar + email + dropdown when logged in. -->
       <div id="auth-chip" style="position:relative; margin-right:8px;"></div>
@@ -664,7 +664,7 @@
         </div>
         <div class="workspace-footer" id="workspace-footer">
           <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
-          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.19.4</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.19.5</button>
         </div>
       </div>
     </div>
@@ -743,7 +743,7 @@
   <script src="data-merge.js"></script>
   <script src="export-pipeline.js"></script>
   <script src="color-picker.js"></script>
-  <script src="script.js?v=cb4"></script>
+  <script src="script.js"></script>
 </body>
 
 </html>

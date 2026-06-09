@@ -223,8 +223,8 @@ function renderAuthChip() {
   chip.style.display = '';
   if (!u) {
     chip.innerHTML = `
-      <button id="auth-chip-toggle-signin" title="Sign in to Adflow" style="width:28px; height:28px; border-radius:50%; background:var(--bg-btn); border:1px solid var(--border-light); color:var(--text-muted); display:flex; align-items:center; justify-content:center; cursor:pointer; outline:none; padding:0; flex-shrink:0; transition:color 0.12s, border-color 0.12s;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <button id="auth-chip-toggle-signin" title="Sign in to Adflow" class="auth-chip-btn signed-out">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
@@ -234,7 +234,7 @@ function renderAuthChip() {
   }
   const initial = (u.email || '?').charAt(0).toUpperCase();
   chip.innerHTML = `
-    <button id="auth-chip-toggle" title="${u.email}" style="width:28px; height:28px; border-radius:50%; background:var(--accent-base); color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; border:none; cursor:pointer; outline:none; padding:0; flex-shrink:0;">
+    <button id="auth-chip-toggle" title="${u.email}" class="auth-chip-btn signed-in">
       ${initial}
     </button>
     <div id="auth-chip-menu" class="dropdown" style="display:none; position:absolute; top:calc(100% + 4px); right:0; left:auto; min-width:240px; padding:6px 0; background:var(--bg-panel); border:1px solid var(--border-light); border-radius:6px; box-shadow:0 10px 30px rgba(0,0,0,.4); z-index:100000;"></div>`;
