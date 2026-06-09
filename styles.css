@@ -1328,7 +1328,7 @@ body.theme-rmit-navy {
 
       border-radius: 8px;
 
-      margin: 12px 14px;
+      margin: 6px 14px;
 
       padding: 0 12px 12px;
 
@@ -4816,15 +4816,14 @@ body.theme-light #dm-panel {
   flex: 0 0 auto;
   display: flex;
   gap: 8px;
-  /* 12px inset matches .panel-section so the buttons line up with the
-     section content below; no divider — spacing alone separates it. */
-  padding: 12px;
+  /* 14px horizontal inset matches .panel-section and left sidebar top button container
+     so the buttons line up with the section content below; no divider — spacing alone separates it. */
+  padding: 12px 14px 2px 14px;
   background: var(--bg-panel);
 }
 .panel.right > .panel-right-actions .btn {
   flex: 1;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding: 6px 12px;
   font-weight: 600;
   text-align: center;
 }
