@@ -945,44 +945,56 @@ body.theme-rmit-navy {
 
     }
 
-    /* Frame controls: horizontally scrollable when the top bar runs out of
-       room, with fade hints cueing that more controls sit off the left/right
-       edge. The fades live on the non-scrolling wrapper (#frame-controls-wrap)
-       and are toggled by updateFrameControlsFades() based on scroll position. */
+    /* Frame controls: when the top bar runs out of room the row splits into
+       pages (like flipping frames) — no scrollbar, no free scrolling. Chevron
+       arrows on the wrapper (#frame-controls-wrap) appear at whichever edge has
+       more controls; clicking one pages to the next/previous set.
+       updateFrameControlsArrows() toggles them from the scroll position. */
     #frame-controls-container {
-      scrollbar-width: thin;
-      scrollbar-color: var(--border-btn) transparent;
+      /* overflow:hidden (set inline) hides the scrollbar and blocks free
+         scrolling, but still allows the programmatic scrollLeft that paging uses;
+         scroll-behavior makes each page change slide instead of jump. */
+      scroll-behavior: smooth;
     }
-    #frame-controls-container::-webkit-scrollbar { height: 5px; }
-    #frame-controls-container::-webkit-scrollbar-track { background: transparent; }
-    #frame-controls-container::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
-    #frame-controls-container::-webkit-scrollbar-thumb:hover { background: var(--border-btn); }
-    /* Keep each control its natural size so the row overflows (and scrolls)
+    /* Keep each control its natural size so the row overflows into pages
        instead of squashing when space is tight. */
     #frame-controls-container > * { flex-shrink: 0; }
 
-    #frame-controls-wrap::before,
-    #frame-controls-wrap::after {
-      content: '';
+    /* Edge chevrons: hidden until the row overflows in that direction, then
+       fade in over a panel-coloured gradient that masks the clipped controls. */
+    .frame-scroll-arrow {
       position: absolute;
       top: 0;
       bottom: 0;
-      width: 28px;
-      pointer-events: none;
+      width: 26px;
+      display: flex;
+      align-items: center;
+      border: none;
+      padding: 0;
+      margin: 0;
+      color: var(--text-muted);
+      cursor: pointer;
       opacity: 0;
-      transition: opacity 0.15s ease;
-      z-index: 2;
+      pointer-events: none;
+      transition: opacity 0.15s ease, color 0.15s ease;
+      z-index: 3;
     }
-    #frame-controls-wrap::before {
+    #frame-controls-arrow-left {
       left: 0;
-      background: linear-gradient(to right, var(--bg-panel), transparent);
+      justify-content: flex-start;
+      background: linear-gradient(to right, var(--bg-panel) 60%, transparent);
     }
-    #frame-controls-wrap::after {
-      right: 13px; /* clear the 12px padding + 1px divider so the fade hugs the scroll area */
-      background: linear-gradient(to left, var(--bg-panel), transparent);
+    #frame-controls-arrow-right {
+      right: 13px; /* clear the 12px padding + 1px divider so the chevron hugs the scroll area */
+      justify-content: flex-end;
+      background: linear-gradient(to left, var(--bg-panel) 60%, transparent);
     }
-    #frame-controls-wrap.fade-left::before { opacity: 1; }
-    #frame-controls-wrap.fade-right::after { opacity: 1; }
+    .frame-scroll-arrow:hover { color: var(--accent-base); }
+    #frame-controls-wrap.overflow-left #frame-controls-arrow-left,
+    #frame-controls-wrap.overflow-right #frame-controls-arrow-right {
+      opacity: 1;
+      pointer-events: auto;
+    }
 
 
 

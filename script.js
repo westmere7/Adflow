@@ -14046,38 +14046,61 @@ document.getElementById('btn-preview').addEventListener('click', () => {
 // ----------------------------------------------------------------------------
 // Frame controls — horizontal scroll + fade hints
 // ----------------------------------------------------------------------------
-// When the top bar is too narrow to show every frame control, the row scrolls
-// horizontally. Fade overlays on #frame-controls-wrap cue that there's more off
-// the left/right edge; they're toggled here from the scroll position. We also
-// translate a plain vertical mouse-wheel into horizontal scroll so mouse users
-// (no trackpad) can reach the off-screen controls.
-function updateFrameControlsFades() {
+// When the top bar is too narrow to show every frame control, the row splits
+// into pages (like flipping frames) — there's no scrollbar and no free
+// scrolling. Chevron arrows on #frame-controls-wrap appear at whichever edge has
+// more controls; clicking one pages to the next/previous set, snapping to a
+// control boundary so each page starts on a whole control.
+function updateFrameControlsArrows() {
   const sc = document.getElementById('frame-controls-container');
   const wrap = document.getElementById('frame-controls-wrap');
   if (!sc || !wrap) return;
   const maxScroll = sc.scrollWidth - sc.clientWidth;
-  wrap.classList.toggle('fade-left', sc.scrollLeft > 1);
-  wrap.classList.toggle('fade-right', maxScroll > 1 && sc.scrollLeft < maxScroll - 1);
+  wrap.classList.toggle('overflow-left', sc.scrollLeft > 1);
+  wrap.classList.toggle('overflow-right', maxScroll > 1 && sc.scrollLeft < maxScroll - 1);
 }
 
-(function setupFrameControlsScroll() {
+(function setupFrameControlsPaging() {
   const sc = document.getElementById('frame-controls-container');
   if (!sc) return;
-  sc.addEventListener('scroll', updateFrameControlsFades, { passive: true });
-  window.addEventListener('resize', updateFrameControlsFades);
+  // The scroll event fires during the programmatic page slide too, keeping the
+  // arrow visibility in sync as the row moves.
+  sc.addEventListener('scroll', updateFrameControlsArrows, { passive: true });
+  window.addEventListener('resize', updateFrameControlsArrows);
   // The row's own width changes when the top bar reflows (window resize, auth
-  // chip / version switcher toggling) — re-evaluate the fades when it does.
+  // chip / version switcher toggling) — re-evaluate the arrows when it does.
   if (window.ResizeObserver) {
-    new ResizeObserver(updateFrameControlsFades).observe(sc);
+    new ResizeObserver(updateFrameControlsArrows).observe(sc);
   }
-  // Vertical wheel → horizontal scroll, but only while the row actually overflows.
-  sc.addEventListener('wheel', (e) => {
-    const maxScroll = sc.scrollWidth - sc.clientWidth;
-    if (maxScroll <= 0 || e.deltaY === 0) return;
-    sc.scrollLeft += e.deltaY;
-    e.preventDefault();
-  }, { passive: false });
-  updateFrameControlsFades();
+  // Page the row by one viewport toward the off-screen controls, snapping to a
+  // control boundary so the new page starts on a whole control (not mid-button).
+  const page = (dir) => {
+    const scLeft = sc.getBoundingClientRect().left;
+    const view = sc.clientWidth;
+    const cur = sc.scrollLeft;
+    const edges = [...sc.children]
+      .filter((k) => k.nodeType === 1)
+      .map((k) => {
+        const left = k.getBoundingClientRect().left - scLeft + cur;
+        return { left, right: left + k.offsetWidth };
+      });
+    let target = cur;
+    if (dir > 0) {
+      // First control whose right edge spills past this page → next page start.
+      const next = edges.find((e) => e.right > cur + view + 1);
+      if (next) target = next.left;
+    } else {
+      // Land so the controls ending at the current left edge fill one page.
+      const first = edges.find((e) => cur - e.left <= view);
+      target = first ? first.left : 0;
+    }
+    sc.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+  };
+  const arrowLeft = document.getElementById('frame-controls-arrow-left');
+  const arrowRight = document.getElementById('frame-controls-arrow-right');
+  if (arrowLeft) arrowLeft.addEventListener('click', () => page(-1));
+  if (arrowRight) arrowRight.addEventListener('click', () => page(1));
+  updateFrameControlsArrows();
 })();
 
 // ============================================================================
@@ -16908,7 +16931,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.19.5';
+  const currentVersion = 'v0.19.6';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -17123,7 +17146,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.19.5</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.6</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -20105,7 +20128,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.19.5';
+        verEl.textContent = 'v0.19.6';
         logoEl.appendChild(verEl);
       }
     }

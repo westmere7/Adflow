@@ -661,6 +661,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.6',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Frame Control Pages: When the top bar is too narrow for every frame control, the row now splits into pages instead of scrolling — no scrollbar at all. A clickable arrow appears at whichever edge has more controls (Skip Frame, Duration, Loop, Preview-current-only); clicking it flips to the next or previous page, like changing frames.'
+    ]
+  },
+  {
     version: 'v0.19.5',
     date: 'June 2026 — Engine v2.19',
     items: [

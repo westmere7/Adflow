@@ -248,7 +248,7 @@
     <div class="app-splash-inner">
       <div class="app-splash-logo">
         <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo />
-        <span class="app-splash-version">v0.19.5</span>
+        <span class="app-splash-version">v0.19.6</span>
       </div>
       <div class="app-splash-status" id="app-splash-status">Warming up…</div>
       <div class="app-splash-bar"><div class="app-splash-bar-fill" id="app-splash-bar-fill"></div></div>
@@ -440,8 +440,11 @@
       </div>
       <div id="frame-controls-wrap"
         style="position:relative; display:flex; align-items:center; min-width:0; margin-right:12px; border-right:1px solid var(--border-light); padding-right:12px;">
+      <button class="frame-scroll-arrow" id="frame-controls-arrow-left" type="button" title="More controls" aria-label="Scroll controls left">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </button>
       <div
-        style="display:flex;align-items:center;gap:4px;overflow-x:auto;min-width:0;"
+        style="display:flex;align-items:center;gap:4px;overflow:hidden;min-width:0;"
         id="frame-controls-container">
         <label>Frame</label>
         <button class="btn ghost icon" id="btn-prev-frame" title="Previous Frame"
@@ -467,6 +470,9 @@
           <label for="project-preview-current-only" title="Preview only the currently selected frame and its transition if applied" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer; white-space:nowrap;">Preview current only</label>
         </div>
       </div>
+      <button class="frame-scroll-arrow" id="frame-controls-arrow-right" type="button" title="More controls" aria-label="Scroll controls right">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
       </div>
       <span id="version-switcher" style="display:none; align-items:center; gap:6px; margin-right:12px; border-right:1px solid var(--border-light); padding-right:12px;">
         <svg viewBox="0 0 24 24" width="15" height="15" style="flex-shrink:0;fill:var(--accent-base);" title="Contains dynamic data"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -664,7 +670,7 @@
         </div>
         <div class="workspace-footer" id="workspace-footer">
           <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
-          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.19.5</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.19.6</button>
         </div>
       </div>
     </div>

@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.5 (Current) - June 2026 — Engine v2.19
+v0.19.6 (Current) - June 2026 — Engine v2.19
+- Frame Control Pages: When the top bar is too narrow for every frame control, the row now splits into pages instead of scrolling — no scrollbar at all. A clickable arrow appears at whichever edge has more controls (Skip Frame, Duration, Loop, Preview-current-only); clicking it flips to the next or previous page, like changing frames.
+
+v0.19.5 - June 2026 — Engine v2.19
 - Clearer Animation Sections: The In Transitions, Continuous Effect, and Frame Transition groups in the Animation panel now read as distinct cards with bolder, accent-marked headings, so they're easy to tell apart even with every setting expanded.
 - Refined Account Chip: The sign-in / account button in the top bar is now a cleaner 32px circle — no ring border, with subtle hover tints (muted grey when signed out, accent-tinted when signed in).
 - ClickTag Promoted in Dynamic Data: The ClickTag (exit URL) mapping is pinned to the top of the Dynamic Data mapping list and marked "Required", and its dropdown now shows the current default exit URL so it's clear what ships when no column is mapped.
