@@ -10122,10 +10122,9 @@ function renderProps() {
             </div>
           `);
         });
-
         if (fieldRows.length > 0) {
           checkboxRows.push(`
-            <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px; width:100%;">
+            <div class="dd-layer-group" data-el-id="${itemEl.id}" style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px; width:100%;">
               <div style="font-size:10px; color:var(--text-muted); font-weight:600; line-height:1.2; text-transform:uppercase; letter-spacing:0.03em; padding-left:4px; word-break:break-word; overflow-wrap:anywhere;" title="${esc(itemLabel)}">${esc(itemLabel)}</div>
               <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
                 ${fieldRows.join('')}
@@ -11695,6 +11694,7 @@ function checkButtonFontSizeWarning(el) {
       render(true);
     });
   });
+
   propsEl.querySelectorAll('.dm-field-select').forEach((sel) => {
     sel.addEventListener('change', () => {
       const targetId = sel.dataset.elId;
@@ -11712,6 +11712,37 @@ function checkButtonFontSizeWarning(el) {
       renderProps();
     });
   });
+
+  // Highlight active canvas layer on mouseenter / mouseleave of the layer groups in dynamic data multiple-selection view
+  propsEl.querySelectorAll('.dd-layer-group').forEach((groupEl) => {
+    const targetId = groupEl.dataset.elId;
+    const targetEl = (targetId && c) ? c.elements.find(e => e.id === targetId) : null;
+    if (!targetEl) return;
+
+    groupEl.onmouseenter = () => {
+      const activeCanvasNode = document.querySelector(`.canvas-frame[data-canvas-id="${state.activeCanvasId}"] .canvas`);
+      if (activeCanvasNode) {
+        activeCanvasNode.querySelectorAll('.layer-hover-outline').forEach(n => n.remove());
+        const hoverOutline = document.createElement('div');
+        hoverOutline.className = 'layer-hover-outline';
+        hoverOutline.style.left = (targetEl.x - 1.5) + 'px';
+        hoverOutline.style.top = (targetEl.y - 1.5) + 'px';
+        hoverOutline.style.width = (targetEl.width + 3) + 'px';
+        hoverOutline.style.height = (targetEl.height + 3) + 'px';
+        hoverOutline.style.transform = `rotate(${targetEl.rotation || 0}deg)`;
+        hoverOutline.style.transformOrigin = 'center';
+        activeCanvasNode.appendChild(hoverOutline);
+      }
+    };
+
+    groupEl.onmouseleave = () => {
+      const activeCanvasNode = document.querySelector(`.canvas-frame[data-canvas-id="${state.activeCanvasId}"] .canvas`);
+      if (activeCanvasNode) {
+        activeCanvasNode.querySelectorAll('.layer-hover-outline').forEach(n => n.remove());
+      }
+    };
+  });
+
   const dmOpenBtn = propsEl.querySelector('#dm-open-from-props');
   if (dmOpenBtn) dmOpenBtn.addEventListener('click', () => openDataPanel());
 
