@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.6 (Current) - June 2026 — Engine v2.19
+v0.19.7 (Current) - June 2026 — Engine v2.19
+- Fixed Button Text Under Zoom: Button labels no longer grow and shift in preview and export when the button has a Zoom in-animation that starts below 100%. The auto-fit was measuring the label while the zoom still had it scaled down, so it overshot the font size; it now divides the live zoom scale back out, so the preview/export label matches the editor.
+
+v0.19.6 - June 2026 — Engine v2.19
 - Frame Control Pages: When the top bar is too narrow for every frame control, the row now splits into pages instead of scrolling — no scrollbar at all. A clickable arrow appears at whichever edge has more controls (Skip Frame, Duration, Loop, Preview-current-only); clicking it flips to the next or previous page, like changing frames.
 
 v0.19.5 - June 2026 — Engine v2.19

@@ -661,6 +661,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.7',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Fixed Button Text Under Zoom: Button labels no longer grow and shift in preview and export when the button has a Zoom in-animation that starts below 100%. The auto-fit was measuring the label while the zoom still had it scaled down, so it overshot the font size; it now divides the live zoom scale back out, so the preview/export label matches the editor.'
+    ]
+  },
+  {
     version: 'v0.19.6',
     date: 'June 2026 — Engine v2.19',
     items: [

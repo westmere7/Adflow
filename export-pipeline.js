@@ -1600,6 +1600,17 @@ ${elsTop}
         var wrapMin = parseFloat(wrapper.getAttribute('data-wrap-min'));
         if (isNaN(wrapMin)) wrapMin = 14;
 
+        // A scale animation on an ancestor (e.g. a Zoom in-transition with
+        // "from" < 100%) makes getBoundingClientRect report a *scaled* text size.
+        // The button branches below measure the label that way, so capture the
+        // live scale here and divide it back out — otherwise the fitter overshoots
+        // the font and the label visibly shifts once the zoom settles. offsetWidth
+        // is layout-only (transform-immune); the block's rect width is not, so
+        // their ratio is the current scale. (Text elements fit via scroll metrics,
+        // which are already transform-immune, so they don't need this.)
+        var fitScale = (block.offsetWidth > 0) ? (block.getBoundingClientRect().width / block.offsetWidth) : 1;
+        if (!(fitScale > 0.01) || Math.abs(fitScale - 1) < 0.01) fitScale = 1;
+
         // Does the label fit at the given size? For buttons, wrapMode=false tests a
         // single line (unwrapped + unclamped, with a safety margin so display
         // scaling can't tip one line into two); wrapMode=true tests a wrapped
@@ -1611,7 +1622,8 @@ ${elsTop}
             var _ws = span.style.whiteSpace, _mw = span.style.maxWidth;
             span.style.whiteSpace = 'nowrap'; span.style.maxWidth = 'none';
             var r = span.getBoundingClientRect();
-            var ok = (r.width <= (targetWidth - BTN_FIT_MARGIN)) && (r.height <= (targetHeight + 1.5));
+            // Divide out any ancestor zoom so a "from < 100%" scale can't inflate the fit.
+            var ok = ((r.width / fitScale) <= (targetWidth - BTN_FIT_MARGIN)) && ((r.height / fitScale) <= (targetHeight + 1.5));
             span.style.whiteSpace = _ws; span.style.maxWidth = _mw;
             return ok;
           }
@@ -1619,7 +1631,8 @@ ${elsTop}
             var _ws2 = span.style.whiteSpace;
             span.style.whiteSpace = 'normal';
             var rr = span.getBoundingClientRect();
-            var okWrap = (span.scrollWidth <= (targetWidth + 1.5)) && (rr.height <= (targetHeight + 1.5));
+            // scrollWidth is layout-only (immune to the zoom), but rr.height is scaled.
+            var okWrap = (span.scrollWidth <= (targetWidth + 1.5)) && ((rr.height / fitScale) <= (targetHeight + 1.5));
             span.style.whiteSpace = _ws2;
             return okWrap;
           }
