@@ -1318,25 +1318,61 @@ body.theme-rmit-navy {
 
 
 
+    /* Each animation sub-panel (In Transitions / Continuous Effect / Frame
+       Transition) reads as a distinct recessed card so the three are easy to
+       tell apart even when every setting is expanded. */
     .animation-sub-panel {
 
-      border-top: 1px solid var(--border-light);
+      background: var(--bg-body);
 
-      padding-top: 12px;
+      border: none;
 
-      margin-top: 14px;
+      border-radius: 8px;
 
+      padding: 12px;
+
+      margin-top: 10px;
+
+    }
+
+    .animation-sub-panel > :last-child {
+      margin-bottom: 0 !important;
     }
 
     .animation-sub-panel:first-child {
 
-      border-top: none;
-
-      padding-top: 0;
-
-      margin-top: 0;
+      margin-top: 4px;
 
     }
+
+    /* Sub-panel heading: brighter + bolder than a plain label, led by a short
+       accent bar so each section's start is easy to spot in a dense panel. */
+    .animation-sub-panel .anim-sub-head {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 7px;
+
+      font-size: 10.5px;
+
+      font-weight: 700;
+
+      letter-spacing: 0.07em;
+
+      text-transform: uppercase;
+
+      color: var(--text-label);
+      margin-bottom: 0;
+    }
+
+    .animation-sub-panel .anim-sub-head svg {
+      width: 11px;
+      height: 11px;
+    }
+
+
 
 
 
@@ -2136,6 +2172,15 @@ body.theme-rmit-navy {
 
       outline: none;
 
+      box-sizing: border-box;
+
+    }
+
+    .prop-row input[type="text"],
+    .prop-row input[type="number"],
+    .prop-row input[type="url"],
+    .prop-row select {
+      height: 24px;
     }
 
     .prop-row input:disabled,

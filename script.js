@@ -9379,7 +9379,7 @@ function stopFrameTransitionPreview() {
 function customSelect(key, options, currentVal, title, isFrameTrans = false, frameTransId = '') {
   const currentOpt = options.find(o => o.val === currentVal) || options[0];
   const dropdownItems = options.map(opt => `
-    <div class="custom-select-item" data-value="${opt.val}" style="padding: 6px 10px; font-size: 12px; color: var(--text-main); cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 8px;" title="${opt.label}">
+    <div class="custom-select-item" data-value="${opt.val}" style="padding: 5px 8px; font-size: 11px; color: var(--text-main); cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 8px;" title="${opt.label}">
       ${opt.img ? `<img src="${opt.img}" style="max-height: 18px; max-width: 40px; object-fit: contain; flex-shrink: 0; background: #475569; padding: 2px 4px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15);" />` : ''}
       <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${opt.label}</span>
     </div>
@@ -9390,14 +9390,14 @@ function customSelect(key, options, currentVal, title, isFrameTrans = false, fra
 
   return `
     <div class="custom-select-container ${isFrameTrans ? 'frame-trans-select' : ''}" ${dataKeyAttr} ${containerIdHtml} style="position: relative; width: 100%;">
-      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 6px; padding: 4px 8px; font-size: 12px; height: 28px; text-align: left; cursor: pointer; outline: none; min-width: 0;">
+      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 6px; padding: 4px 6px; font-size: 11px; height: 24px; text-align: left; cursor: pointer; outline: none; min-width: 0;">
         <span class="custom-select-label" style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; flex: 1;">
           ${currentOpt.img ? `<img src="${currentOpt.img}" style="max-height: 16px; max-width: 36px; object-fit: contain; flex-shrink: 0; background: #475569; padding: 2px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15);" />` : ''}
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${currentOpt.label}</span>
         </span>
         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left: 4px; opacity: 0.7; pointer-events: none; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
-      <div class="custom-select-dropdown" style="display: none; position: absolute; top: 30px; left: 0; right: 0; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 6px; z-index: 10000; box-shadow: 0 8px 24px var(--shadow-medium); max-height: 200px; overflow-y: auto; padding: 4px 0;">
+      <div class="custom-select-dropdown" style="display: none; position: absolute; top: 26px; left: 0; right: 0; background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 6px; z-index: 10000; box-shadow: 0 8px 24px var(--shadow-medium); max-height: 200px; overflow-y: auto; padding: 4px 0;">
         ${dropdownItems}
       </div>
     </div>
@@ -9596,7 +9596,7 @@ function getFrameTransitionHtml(currentFrame) {
 
   return `
     <div id="frame-transition-preview-area" class="animation-sub-panel">
-      <div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">FRAME TRANSITION</label></div>
+      <div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_11908101" width="12" height="12" viewBox="0 0 48 48" style="color: var(--accent-base); flex-shrink: 0;" fill="currentColor"><g transform="translate(-504 -648)"><g transform="scale(1.5)"><g id="SOLID" transform="scale(.667)"><g><path d="m511.861 693.334c-.902.713-2.133.848-3.168.347s-1.693-1.55-1.693-2.7v-37.963c0-1.15.657-2.199 1.693-2.7 1.035-.501 2.265-.366 3.167.347l24.005 18.976c.719.569 1.139 1.436 1.139 2.353 0 .918-.419 1.785-1.139 2.354z"></path></g><g><path d="m546 694h-3c-1.657 0-3-1.343-3-3v-38c0-1.657 1.343-3 3-3h3c1.657 0 3 1.343 3 3v38c0 1.657-1.343 3-3 3z"></path></g></g></g></g></svg>FRAME TRANSITION</label></div>
       <div class="anim-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:12px;">
         ${presetButtons}
         ${favMessageHtml}
@@ -10947,7 +10947,7 @@ function renderProps() {
       <div class="panel-section-content">`);
 
     f.push(`<div id="in-transition-preview-area" class="animation-sub-panel">`);
-    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">IN TRANSITIONS</label></div>`);
+    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>IN TRANSITIONS</label></div>`);
 
     const animOptions = [
       { val: 'none', label: 'None' },
@@ -11046,21 +11046,19 @@ function renderProps() {
       const currentDirection = el.animDirection || (el.animType.startsWith('slide-') ? el.animType.replace('slide-', '') : 'up');
       f.push(`
         <div class="prop-row" style="margin-bottom:8px;">
-          <div style="display:flex; align-items:flex-end; gap:8px; width:100%;">
-            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
+          <div class="prop-grid-2">
+            <div style="display:flex; flex-direction:column; gap:6px; justify-content:center;">
               <div class="checkbox-row" style="margin:0;">
                 <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
                 <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
               </div>
-            </div>
-            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
               <div class="checkbox-row" style="margin:0;">
                 <input type="checkbox" data-k="animBounce" id="prop-anim-bounce" title="Elastic bounce at the end of slide transition" ${el.animBounce ? 'checked' : ''}/>
                 <label for="prop-anim-bounce" title="Elastic bounce at the end of slide transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Bounce</label>
               </div>
             </div>
-            <div style="width:115px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
-              <label style="white-space:nowrap; text-align:right;">Direction</label>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <label>Direction</label>
               ${customSelect('animDirection', [
                 { val: 'up', label: 'Up' },
                 { val: 'down', label: 'Down' },
@@ -11088,15 +11086,15 @@ function renderProps() {
       const currentDirection = el.animType.replace('swipe-', '');
       f.push(`
         <div class="prop-row" style="margin-bottom:8px;">
-          <div style="display:flex; align-items:flex-end; gap:12px; width:100%;">
-            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
+          <div class="prop-grid-2">
+            <div style="display:flex; align-items:center; margin-top:14px;">
               <div class="checkbox-row" style="margin:0;">
                 <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
                 <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
               </div>
             </div>
-            <div style="width:80px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
-              <label style="white-space:nowrap; text-align:right;">Direction</label>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <label>Direction</label>
               ${customSelect('animDirection', [
                 { val: 'up', label: 'Up' },
                 { val: 'down', label: 'Down' },
@@ -11110,15 +11108,15 @@ function renderProps() {
     } else if (isSplit) {
       f.push(`
         <div class="prop-row" style="margin-bottom:8px;">
-          <div style="display:flex; align-items:flex-end; gap:12px; width:100%;">
-            <div style="display:flex; align-items:center; height:24px; margin-bottom:2px;">
+          <div class="prop-grid-2">
+            <div style="display:flex; align-items:center; margin-top:14px;">
               <div class="checkbox-row" style="margin:0;">
                 <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
                 <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
               </div>
             </div>
-            <div style="width:80px; display:flex; flex-direction:column; gap:4px; margin-left:auto;">
-              <label style="white-space:nowrap; text-align:right;">Angle (°)</label>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <label>Angle (°)</label>
               <input type="number" data-k="animAngle" value="${el.animAngle !== undefined ? el.animAngle : 0}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none; text-align:right;" title="Split reveal angle in degrees" />
             </div>
           </div>
@@ -11150,7 +11148,7 @@ function renderProps() {
 
     f.push(`</div>`); // Close in-transition-preview-area
     f.push(`<div id="effects-preview-area" class="animation-sub-panel">`);
-    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label style="font-size:10px; letter-spacing:0.05em; color:var(--text-muted);">CONTINUOUS EFFECT</label></div>`);
+    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18489086" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;"><g fill="currentColor"><path d="m62.9545441 6.8181796v17.2727323h-60.4545455v17.2727203h95.0000014z"></path><path d="m37.0454559 75.9090881h60.4545441v-17.2727203h-95.0000014l34.5454573 34.5454559z"></path></g></svg>CONTINUOUS EFFECT</label></div>`);
     const effectOptions = [
       { val: 'none', label: 'None' },
       { val: 'pulse', label: 'Pulse' },

@@ -1,6 +1,7 @@
 RMIT Adflow - Version & Changelog History
 
 v0.19.5 (Current) - June 2026 — Engine v2.19
+- Clearer Animation Sections: The In Transitions, Continuous Effect, and Frame Transition groups in the Animation panel now read as distinct cards with bolder, accent-marked headings, so they're easy to tell apart even with every setting expanded.
 - Refined Account Chip: The sign-in / account button in the top bar is now a cleaner 32px circle — no ring border, with subtle hover tints (muted grey when signed out, accent-tinted when signed in).
 - ClickTag Promoted in Dynamic Data: The ClickTag (exit URL) mapping is pinned to the top of the Dynamic Data mapping list and marked "Required", and its dropdown now shows the current default exit URL so it's clear what ships when no column is mapped.
 - Top Bar Polish: "Full preview" and "Export" are now equal-width buttons, and the dynamic-data indicator on the version switcher is slightly larger.
