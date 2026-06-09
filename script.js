@@ -2142,38 +2142,8 @@ function render(skipProps = false) {
 
   if (state.isPreviewMode) {
     document.body.classList.add('preview-active');
-    let exitBtn = document.getElementById('exit-preview-btn');
-    if (!exitBtn) {
-      exitBtn = document.createElement('button');
-      exitBtn.id = 'exit-preview-btn';
-      exitBtn.className = 'btn primary';
-      exitBtn.style.position = 'fixed';
-      exitBtn.style.bottom = '30px';
-      exitBtn.style.left = '50%';
-      exitBtn.style.transform = 'translateX(-50%)';
-      exitBtn.style.zIndex = '999999';
-      exitBtn.style.boxShadow = '0 8px 24px rgba(0,0,0,0.6)';
-      exitBtn.style.padding = '12px 24px';
-      exitBtn.style.fontSize = '14px';
-      exitBtn.innerText = 'Exit Preview (ESC)';
-      exitBtn.onclick = () => {
-        state.isPreviewMode = false;
-        if (state.prePreviewZoom) state.zoom = state.prePreviewZoom;
-        render();
-        setTimeout(() => {
-          const area = document.getElementById('canvas-area');
-          if (state.prePreviewScrollLeft !== undefined) {
-            area.scrollTo({ left: state.prePreviewScrollLeft, top: state.prePreviewScrollTop, behavior: 'instant' });
-          }
-        }, 10);
-      };
-      document.body.appendChild(exitBtn);
-    }
-    exitBtn.style.display = 'block';
   } else {
     document.body.classList.remove('preview-active');
-    const exitBtn = document.getElementById('exit-preview-btn');
-    if (exitBtn) exitBtn.style.display = 'none';
   }
 
   // (View/Snap/Theme menu items moved into the Settings panel — no menu ticks here.)
@@ -8499,20 +8469,25 @@ function renderLayers() {
     [...elements].reverse().forEach((el) => {
       const div = document.createElement('div');
       const isSel = state.selectedElementId === el.id || state.layerSelection?.includes(el.id);
-      // Mask-link decoration: if this element is a mask sitting directly
-      // above its image (or an image sitting directly below its mask),
-      // mark it so CSS can draw a thin connector line between the two
-      // adjacent layer rows in the panel.
-      let maskLink = '';
-      if (isActiveMask(el) && findImageBeneath(c, el)) {
-        // Mask shape — connector extends DOWN to the image row (which
-        // renders directly below in the reverse-sorted layers list).
-        maskLink = ' mask-link-down';
-      } else if (el.type === 'image' && findMaskAbove(c, el) && isActiveMask(findMaskAbove(c, el))) {
-        // Masked image — connector extends UP to the mask row above.
-        maskLink = ' mask-link-up';
+      // Mask group highlighting: if a member of a mask group is selected,
+      // show a lighter vertical indicator on the other group member.
+      let siblingSelectedClass = '';
+      if (!isSel) {
+        if (isActiveMask(el)) {
+          const imgBeneath = findImageBeneath(c, el);
+          if (imgBeneath) {
+            const partnerSel = state.selectedElementId === imgBeneath.id || state.layerSelection?.includes(imgBeneath.id);
+            if (partnerSel) siblingSelectedClass = ' mask-group-sibling-selected';
+          }
+        } else if (el.type === 'image') {
+          const maskAbove = findMaskAbove(c, el);
+          if (maskAbove && isActiveMask(maskAbove)) {
+            const partnerSel = state.selectedElementId === maskAbove.id || state.layerSelection?.includes(maskAbove.id);
+            if (partnerSel) siblingSelectedClass = ' mask-group-sibling-selected';
+          }
+        }
       }
-      div.className = 'layer' + (isSel ? ' selected' : '') + maskLink;
+      div.className = 'layer' + (isSel ? ' selected' : '') + siblingSelectedClass;
       div.draggable = true;
       div.dataset.id = el.id;
       const isRmitLogo = el.role === 'rmit-logo' || (el.customName && el.customName.toLowerCase().includes('rmit') && el.customName.toLowerCase().includes('logo'));
@@ -11708,8 +11683,11 @@ function checkButtonFontSizeWarning(el) {
               const totalDur = nodeEl.animDuration || 1;
               const baseDelay = nodeEl.animDelay || 0;
 
+              const overrides = typeof dmDisplay === 'function' ? dmDisplay(nodeEl) : {};
+              const displayText = overrides.text !== undefined ? overrides.text : (nodeEl.text || '');
+
               if (previewVal === 'typing' || previewVal === 'fade-typing') {
-                const chars = [...(nodeEl.text || '')];
+                const chars = [...displayText];
                 const fadeLetters = nodeEl.animFadeLetters !== false;
                 const charDur = fadeLetters ? 0.3 : 0.01;
                 const nonNewlines = chars.filter(c => c !== '\n').length;
@@ -11723,7 +11701,7 @@ function checkButtonFontSizeWarning(el) {
                    return `<span style="opacity:0; animation: anim-fade-in ${charDur}s linear ${del}s both;">${escC}</span>`;
                 }).join('');
               } else if (previewVal === 'word-fade') {
-                const words = (nodeEl.text || '').split(/(\s+)/);
+                const words = displayText.split(/(\s+)/);
                 const nonSpas = words.filter(w => /\S/.test(w));
                 const wordDur = 0.3;
                 const wordDelay = totalDur / Math.max(1, nonSpas.length);

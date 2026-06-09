@@ -464,28 +464,75 @@ function renderVersionSwitcher() {
 function renderPreviewVersionBar() {
   const dm = state.dataMerge;
   const inPreview = !!(state.isPreviewMode || state.singlePreviewId);
+  const showVersions = !!(dm && dm.enabled && dm.rows.length);
+  const showCurrentOnlyBtn = !!(state.previewCurrentOnly && state.isPreviewMode);
+
   let bar = document.getElementById('preview-version-bar');
-  const show = inPreview && dm && dm.enabled && dm.rows.length;
-  if (!show) { if (bar) bar.style.display = 'none'; return; }
+  if (!inPreview) { if (bar) bar.style.display = 'none'; return; }
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'preview-version-bar';
-    bar.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1000000;display:flex;align-items:center;gap:8px;background:#15171f;border:1px solid #2a2f3e;border-radius:8px;padding:8px 12px;box-shadow:0 8px 24px rgba(0,0,0,.55);';
-    bar.innerHTML = '<span style="font-size:11px;color:#9aa1b6;font-weight:600;">Version</span>' +
-      '<div id="preview-version-select-container" style="position:relative; width:200px; z-index:1000001;"></div>';
+    bar.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1000000;display:flex;align-items:center;gap:12px;background:#15171f;border:1px solid #2a2f3e;border-radius:8px;padding:8px 12px;box-shadow:0 8px 24px rgba(0,0,0,.55);';
     document.body.appendChild(bar);
   }
   bar.style.display = 'flex';
-  const container = bar.querySelector('#preview-version-select-container');
-  const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
-  const options = [{ label: 'No version', val: '' }].concat(
-    dm.rows.map((r, i) => {
-      const name = r[keyCol] || ('Row ' + (i + 1));
-      return { label: `${i + 1}. ${name}`, val: String(i) };
-    })
-  );
-  const activeVal = dm.activeVersion == null ? '' : String(dm.activeVersion);
-  dmRenderCustomSelect(container, options, activeVal, (val) => dmSetActiveVersion(val));
+
+  let inner = '';
+  if (showVersions) {
+    inner += '<span style="font-size:11px;color:#9aa1b6;font-weight:600;white-space:nowrap;">Version</span>' +
+      '<div id="preview-version-select-container" style="position:relative; width:200px; z-index:1000001; margin-right:4px;"></div>';
+  }
+  if (showCurrentOnlyBtn) {
+    inner += '<button id="preview-switch-all-btn" class="btn primary" style="padding: 4px 10px; font-size: 11px; height: 24px; white-space: nowrap; line-height: 1.2;">Current frame only. Switch to all?</button>';
+  }
+  // Prominent exit button inside the bar
+  inner += '<button id="preview-exit-btn" class="btn" style="padding: 4px 12px; font-size: 11px; height: 24px; white-space: nowrap; line-height: 1.2; background: #dc2626; color: #ffffff; border: 1px solid #dc2626; font-weight: 600; transition: background 0.15s, border-color 0.15s;">Exit Preview</button>';
+
+  bar.innerHTML = inner;
+
+  if (showVersions) {
+    const container = bar.querySelector('#preview-version-select-container');
+    const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
+    const options = [{ label: 'No version', val: '' }].concat(
+      dm.rows.map((r, i) => {
+        const name = r[keyCol] || ('Row ' + (i + 1));
+        return { label: `${i + 1}. ${name}`, val: String(i) };
+      })
+    );
+    const activeVal = dm.activeVersion == null ? '' : String(dm.activeVersion);
+    dmRenderCustomSelect(container, options, activeVal, (val) => dmSetActiveVersion(val));
+  }
+
+  if (showCurrentOnlyBtn) {
+    const switchBtn = bar.querySelector('#preview-switch-all-btn');
+    if (switchBtn) {
+      switchBtn.onclick = () => {
+        state.previewCurrentOnly = false;
+        const chk = document.getElementById('project-preview-current-only');
+        if (chk) chk.checked = false;
+        pushHistory();
+        render();
+      };
+    }
+  }
+
+  const exitBtn = bar.querySelector('#preview-exit-btn');
+  if (exitBtn) {
+    exitBtn.onclick = () => {
+      state.isPreviewMode = false;
+      state.singlePreviewId = null;
+      if (state.prePreviewZoom) state.zoom = state.prePreviewZoom;
+      render();
+      setTimeout(() => {
+        const area = document.getElementById('canvas-area');
+        if (state.prePreviewScrollLeft !== undefined) {
+          area.scrollTo({ left: state.prePreviewScrollLeft, top: state.prePreviewScrollTop, behavior: 'instant' });
+        }
+      }, 10);
+    };
+    exitBtn.onmouseover = () => { exitBtn.style.background = '#ef4444'; exitBtn.style.borderColor = '#ef4444'; };
+    exitBtn.onmouseout = () => { exitBtn.style.background = '#dc2626'; exitBtn.style.borderColor = '#dc2626'; };
+  }
 }
 
 // Temporarily bake a row's values into elements (+clickTag) for export; returns a

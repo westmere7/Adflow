@@ -1810,35 +1810,11 @@ body.theme-rmit-navy {
        fills the small gap between adjacent icons and nothing more. A
        gentle fade at the icon-side end keeps it from butting up
        against the icon glyph. */
-    .layer.mask-link-down::before,
-    .layer.mask-link-up::before {
-      content: '';
-      position: absolute;
-      left: 12px;
-      width: 2px;
-      pointer-events: none;
-    }
-    .layer.mask-link-down::before {
-      /* below the mask icon to the row bottom edge plus the margin gap */
-      top: calc(50% + 7px);
-      bottom: -4px;
-      background: linear-gradient(
-        to bottom,
-        transparent 0%,
-        var(--accent-base) 70%,
-        var(--accent-base) 100%
-      );
-    }
-    .layer.mask-link-up::before {
-      /* row top edge to just above the image icon */
-      top: 0;
-      bottom: calc(50% + 7px);
-      background: linear-gradient(
-        to bottom,
-        var(--accent-base) 0%,
-        var(--accent-base) 30%,
-        transparent 100%
-      );
+    .layer.mask-group-sibling-selected {
+      border-left: 3px solid color-mix(in srgb, var(--text-accent) 35%, transparent);
+      padding-left: 3px;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
     }
 
 
