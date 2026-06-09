@@ -11129,8 +11129,8 @@ function renderProps() {
               <input type="checkbox" data-k="animFadeLetters" id="prop-anim-fade-letters" title="Fade in characters one by one" ${el.animFadeLetters !== false ? 'checked' : ''}/>
               <label for="prop-anim-fade-letters" title="Fade in characters one by one" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade letters</label>
             </div>
-            <div class="checkbox-row" style="margin:0;">
-              <input type="checkbox" data-k="animFadeBg" id="prop-anim-fade-bg" title="Fade/Animate background block/container during transition" ${fadeBg ? 'checked' : ''}/>
+            <div class="checkbox-row" style="margin:0; ${el.type === 'text' && !el.hasBg ? 'opacity:0.5; pointer-events:none;' : ''}">
+              <input type="checkbox" data-k="animFadeBg" id="prop-anim-fade-bg" title="Fade/Animate background block/container during transition" ${fadeBg ? 'checked' : ''} ${el.type === 'text' && !el.hasBg ? 'disabled' : ''}/>
               <label for="prop-anim-fade-bg" title="Fade/Animate background block/container during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">${el.type === 'text' ? 'Animate BG' : 'Fade BG'}</label>
             </div>
           </div>
@@ -20061,41 +20061,41 @@ const SPLASH_QUIPS = [
   'Calibrating Design Hub\'s glass discs…',
   'Walking up the endless Building 80 stairs…',
   'Waiting for the Swanston Street tram…',
-  'Consulting the RMIT Design Archive…',
-  'Aligning coordinates to the RMIT Melbourne Campus…',
+  'Consulting the Design Archive…',
+  'Aligning coordinates to Bowen Street…',
   'Syncing with the SGS Saigon South campus…',
   'Hunting for the secret elevators in Building 80…',
-  'Double-checking RMIT accessibility compliance…',
+  'Double-checking accessibility compliance…',
   'Inhaling Brunswick campus creative vibes…',
   'Waking up the Bundoora wind tunnel…',
   'Rendering the colorful facade of Building 80…',
-  'Applying the RMIT Creative brand guidelines…',
-  'Waiting for RMIT Student Wi-Fi to authenticate…',
-  'Optimizing assets for RMIT Online courses…',
+  'Applying the RMIT brand guidelines…',
+  'Waiting for student Wi-Fi to authenticate…',
+  'Optimizing assets for online courses…',
   'Tuning the Capitol Theatre acoustics…',
-  'Chasing the RMIT Red Pixel across the canvas…',
+  'Chasing the Red Pixel across the canvas…',
   'Drafting building plans in Design Hub…',
   'Sourcing Melbourne coffee for the render loop…',
-  'Translating the RMIT Style Guide…',
-  'Polishing the RMIT brand assets…',
+  'Translating the brand style guide…',
+  'Polishing the brand library…',
   'Aligning columns to the Swanston Street grid…',
-  'Exporting RMIT Marketing campaign versions…',
-  'Reticulating RMIT logo variants…',
-  'Checking RMIT Pixel alignment constraints…',
+  'Exporting marketing campaign versions…',
+  'Reticulating logo variants…',
+  'Checking pixel alignment constraints…',
   'Waiting for Melbourne Central crossing traffic…',
-  'Defragmenting RMIT Creative assets library…',
-  'Calibrating RMIT brand red HSL values…',
+  'Defragmenting the creative assets library…',
+  'Calibrating brand red HSL values…',
   'Downloading Melbourne city creative energy…',
-  'Checking in at the RMIT SGS Hanoi campus…',
+  'Checking in at the SGS Hanoi campus…',
   'Tracing the pathways of Bowen Street…',
-  'Consulting the RMIT Brand Hub guidelines…',
-  'Loading RMIT Visual Identity Assets…',
+  'Consulting the Brand Hub guidelines…',
+  'Loading visual identity assets…',
   'Simulating the walk from Central Station to Bowen Street…',
-  'Refining RMIT pixel-level details…',
-  'Syncing RMIT colors with corporate guidelines…',
+  'Refining pixel-level details…',
+  'Syncing brand colors with corporate guidelines…',
   'Searching for Bowen Street food trucks…',
-  'Wrangling RMIT font typography weights…',
-  'Putting the RMIT Red Pixel in place…'
+  'Wrangling brand typography weights…',
+  'Putting the Red Pixel in place…'
 ];
 
 const appSplash = (() => {
