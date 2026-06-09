@@ -6679,6 +6679,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
         const val = e.target.value;
         const vidx = val === '' ? null : Number(val);
         
+        versionSelect.blur();
         if (typeof dmSetActiveVersion === 'function') {
           dmSetActiveVersion(vidx);
         } else {
