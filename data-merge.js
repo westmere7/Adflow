@@ -404,7 +404,6 @@ function dmRenderCustomSelect(container, options, activeVal, onSelect) {
 
   trigger.onclick = (e) => {
     e.stopPropagation();
-    trigger.blur();
     const isOpen = dropdown.style.display === 'block';
     document.querySelectorAll('.custom-select-dropdown').forEach(d => {
       if (d !== dropdown) d.style.display = 'none';
@@ -1285,18 +1284,9 @@ function cycleVersion(dir) {
 
 document.getElementById('menu-file-data')?.addEventListener('click', openDataPanel);
 document.getElementById('btn-open-data')?.addEventListener('click', openDataPanel);
-document.getElementById('btn-version-prev')?.addEventListener('click', (e) => {
-  e.currentTarget.blur();
-  cycleVersion('prev');
-});
-document.getElementById('btn-version-next')?.addEventListener('click', (e) => {
-  e.currentTarget.blur();
-  cycleVersion('next');
-});
-document.getElementById('btn-data-lock')?.addEventListener('click', (e) => {
-  e.currentTarget.blur();
-  dmToggleLock();
-});
+document.getElementById('btn-version-prev')?.addEventListener('click', () => cycleVersion('prev'));
+document.getElementById('btn-version-next')?.addEventListener('click', () => cycleVersion('next'));
+document.getElementById('btn-data-lock')?.addEventListener('click', dmToggleLock);
 document.getElementById('props')?.addEventListener('click', (e) => {
   const lockedRow = e.target.closest('[data-locked-field="true"]');
   if (lockedRow) {
