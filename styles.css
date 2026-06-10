@@ -1330,7 +1330,7 @@ body.theme-rmit-navy {
 
 
 
-    /* Each animation sub-panel (In Transitions / Continuous Effect / Frame
+    /* Each animation sub-panel (In Animations / Continuous Effect / Frame
        Transition) reads as a distinct recessed card so the three are easy to
        tell apart even when every setting is expanded. */
     .animation-sub-panel {

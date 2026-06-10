@@ -7308,7 +7308,21 @@ function renderLinkControl() {
         const group = state.linkGroups[gid];
         if (group) {
           const sync = group.syncProperties || {};
-          const anyChecked = Object.values(sync).some(Boolean);
+          let keys = [];
+          if (cat === 'text') keys = ['customName', 'visibility', 'text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'button') keys = ['customName', 'visibility', 'text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'image') {
+            keys = ['customName', 'visibility', 'image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
+            if (isRmitLogo) keys.push('variant');
+          }
+          else if (cat === 'shape') keys = ['customName', 'visibility', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'line') keys = ['customName', 'visibility', 'color', 'thickness', 'opacity', 'inAnim', 'effect'];
+
+          const anyChecked = keys.some(k => {
+            if (k === 'fontSize') return !!(sync.fontSize !== undefined ? sync.fontSize : sync.font);
+            if (k === 'background') return !!(sync.background !== undefined ? sync.background : sync.color);
+            return !!sync[k];
+          });
 
           html += `<div style="padding-top:4px;">`;
           html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
@@ -7467,22 +7481,32 @@ function renderLinkControl() {
         const group = state.linkGroups[gid];
         if (group) {
           if (!group.syncProperties) group.syncProperties = {};
-          const anyChecked = Object.values(group.syncProperties).some(Boolean);
-          const targetVal = !anyChecked;
-          
+          const sync = group.syncProperties;
           const cat = group.category;
+          
           let keys = [];
-          if (cat === 'text') keys = ['text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect', 'visibility'];
-          else if (cat === 'button') keys = ['text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect', 'visibility'];
+          if (cat === 'text') keys = ['customName', 'visibility', 'text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'button') keys = ['customName', 'visibility', 'text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'image') {
-            keys = ['image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect', 'visibility'];
+            keys = ['customName', 'visibility', 'image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
             if (isRmitLogo) keys.push('variant');
           }
-          else if (cat === 'shape') keys = ['fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect', 'visibility'];
-          else if (cat === 'line') keys = ['color', 'thickness', 'opacity', 'inAnim', 'effect', 'visibility'];
+          else if (cat === 'shape') keys = ['customName', 'visibility', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'line') keys = ['customName', 'visibility', 'color', 'thickness', 'opacity', 'inAnim', 'effect'];
+
+          const anyChecked = keys.some(k => {
+            if (k === 'fontSize') return !!(sync.fontSize !== undefined ? sync.fontSize : sync.font);
+            if (k === 'background') return !!(sync.background !== undefined ? sync.background : sync.color);
+            return !!sync[k];
+          });
+          const targetVal = !anyChecked;
           
           keys.forEach(k => {
-            group.syncProperties[k] = targetVal;
+            sync[k] = targetVal;
+            if (!targetVal) {
+              if (k === 'fontSize') sync.fontSize = false;
+              if (k === 'background') sync.background = false;
+            }
           });
           
           pushHistory();
@@ -9151,6 +9175,7 @@ function startFrameTransitionPreview(type) {
     overlay.style.zIndex = '1000';
     overlay.style.pointerEvents = 'none';
     overlay.style.overflow = 'hidden';
+    overlay.style.perspective = '1200px';
 
     const excludePers = !!currentFrame.excludePersistent;
 
@@ -9441,6 +9466,51 @@ function startFrameTransitionPreview(type) {
           from { clip-path: ${fromClip}; ${fade ? 'opacity: 0;' : ''} }
           to { clip-path: ${toClip}; ${fade ? 'opacity: 1;' : ''} }
         }`;
+      } else if (type === 'corner-fold') {
+        const corner = dir || 'bottom-right';
+        let origin = '100% 100%';
+        let rotateAxis = '1, 1, 0';
+        let shadowOffset = '-15px -15px 40px';
+        let startClip = 'polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%)';
+
+        if (corner === 'bottom-left') {
+          origin = '0% 100%';
+          rotateAxis = '-1, 1, 0';
+          shadowOffset = '15px -15px 40px';
+          startClip = 'polygon(0% 100%, 0% 100%, 0% 100%, 0% 100%)';
+        } else if (corner === 'top-right') {
+          origin = '100% 0%';
+          rotateAxis = '1, -1, 0';
+          shadowOffset = '-15px 15px 40px';
+          startClip = 'polygon(100% 0%, 100% 0%, 100% 0%, 100% 0%)';
+        } else if (corner === 'top-left') {
+          origin = '0% 0%';
+          rotateAxis = '-1, -1, 0';
+          shadowOffset = '15px 15px 40px';
+          startClip = 'polygon(0% 0%, 0% 0%, 0% 0%, 0% 0%)';
+        }
+
+        keyframes = `@keyframes ${animName} {
+          0% {
+            transform-origin: ${origin};
+            clip-path: ${startClip};
+            transform: rotate3d(${rotateAxis}, 45deg);
+            box-shadow: 0 0 0 rgba(0,0,0,0);
+            ${fade ? 'opacity: 0;' : ''}
+          }
+          40% {
+            transform-origin: ${origin};
+            box-shadow: ${shadowOffset} rgba(0,0,0,0.3);
+            ${fade ? 'opacity: 1;' : ''}
+          }
+          100% {
+            transform-origin: ${origin};
+            clip-path: polygon(-50% -50%, 150% -50%, 150% 150%, -50% 150%);
+            transform: rotate3d(0, 0, 0, 0deg);
+            box-shadow: 0 0 0 rgba(0,0,0,0);
+            ${fade ? 'opacity: 1;' : ''}
+          }
+        }`;
       }
 
       let styleEl = document.getElementById('frame-transition-preview-styles');
@@ -9531,6 +9601,7 @@ function getFrameTransitionHtml(currentFrame) {
   else if (tType === 'split') activePreset = 'split';
   else if (tType === 'iris') activePreset = 'iris';
   else if (tType === 'blur') activePreset = 'blur';
+  else if (tType === 'corner-fold') activePreset = 'corner-fold';
 
   const presets = [
     { val: 'none', label: 'None' },
@@ -9541,7 +9612,8 @@ function getFrameTransitionHtml(currentFrame) {
     { val: 'zoom', label: 'Zoom' },
     { val: 'split', label: 'Split' },
     { val: 'iris', label: 'Iris' },
-    { val: 'blur', label: 'Blur' }
+    { val: 'blur', label: 'Blur' },
+    { val: 'corner-fold', label: 'Corner Fold' }
   ];
 
   let filteredPresets = presets;
@@ -9565,7 +9637,7 @@ function getFrameTransitionHtml(currentFrame) {
   const durVal = currentFrame.transitionDuration !== undefined ? currentFrame.transitionDuration : 0.5;
   const durHtml = `<div class="prop-row" style="margin:0;"><label>Duration (s)</label><input type="number" step="0.1" id="frame-trans-duration" value="${durVal}" min="0.1" /></div>`;
 
-  const showFade = ['slide', 'push', 'swipe', 'zoom', 'split', 'iris', 'blur'].includes(activePreset);
+  const showFade = ['slide', 'push', 'swipe', 'zoom', 'split', 'iris', 'blur', 'corner-fold'].includes(activePreset);
   const showFeather = activePreset === 'swipe';
   let fadeToggleHtml = '';
   let featherToggleHtml = '';
@@ -9708,6 +9780,21 @@ function getFrameTransitionHtml(currentFrame) {
         </div>
       </div>
     `;
+  } else if (activePreset === 'corner-fold') {
+    const currentDir = currentFrame.transitionDirection || 'bottom-right';
+    conditionalControls = `
+      <div class="prop-row" style="margin-bottom:8px;">
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <label>Corner</label>
+          ${customSelect('direction', [
+            { val: 'bottom-right', label: 'Bottom-Right' },
+            { val: 'bottom-left', label: 'Bottom-Left' },
+            { val: 'top-right', label: 'Top-Right' },
+            { val: 'top-left', label: 'Top-Left' }
+          ], currentDir, 'Fold Corner', true, 'frame-trans-direction')}
+        </div>
+      </div>
+    `;
   }
 
   return `
@@ -9732,6 +9819,9 @@ function wireFrameTransitionEvents() {
       currentFrame.transition = val;
       if (val === 'slide' || val === 'push' || val === 'swipe' || val === 'split') {
         if (!currentFrame.transitionDirection) currentFrame.transitionDirection = 'left';
+      }
+      if (val === 'corner-fold') {
+        if (!currentFrame.transitionDirection) currentFrame.transitionDirection = 'bottom-right';
       }
       if (val === 'zoom') {
         if (currentFrame.transitionZoomFrom === undefined) currentFrame.transitionZoomFrom = 80;
@@ -11122,7 +11212,7 @@ function renderProps() {
       <div class="panel-section-content">`);
 
     f.push(`<div id="in-transition-preview-area" class="animation-sub-panel">`);
-    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>IN TRANSITIONS</label></div>`);
+    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>IN ANIMATIONS</label></div>`);
 
     const animOptions = [
       { val: 'none', label: 'None' },

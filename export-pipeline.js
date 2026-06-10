@@ -456,6 +456,51 @@ function getFrameTransitionKeyframes(f, c) {
       from { clip-path: ${fromClip}; ${fade ? 'opacity: 0;' : ''} }
       to { clip-path: ${toClip}; ${fade ? 'opacity: 1;' : ''} }
     }`;
+  } else if (t === 'corner-fold') {
+    const corner = dir || 'bottom-right';
+    let origin = '100% 100%';
+    let rotateAxis = '1, 1, 0';
+    let shadowOffset = '-15px -15px 40px';
+    let startClip = 'polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%)';
+
+    if (corner === 'bottom-left') {
+      origin = '0% 100%';
+      rotateAxis = '-1, 1, 0';
+      shadowOffset = '15px -15px 40px';
+      startClip = 'polygon(0% 100%, 0% 100%, 0% 100%, 0% 100%)';
+    } else if (corner === 'top-right') {
+      origin = '100% 0%';
+      rotateAxis = '1, -1, 0';
+      shadowOffset = '-15px 15px 40px';
+      startClip = 'polygon(100% 0%, 100% 0%, 100% 0%, 100% 0%)';
+    } else if (corner === 'top-left') {
+      origin = '0% 0%';
+      rotateAxis = '-1, -1, 0';
+      shadowOffset = '15px 15px 40px';
+      startClip = 'polygon(0% 0%, 0% 0%, 0% 0%, 0% 0%)';
+    }
+
+    keyframes = `@keyframes ${animName} {
+      0% {
+        transform-origin: ${origin};
+        clip-path: ${startClip};
+        transform: rotate3d(${rotateAxis}, 45deg);
+        box-shadow: 0 0 0 rgba(0,0,0,0);
+        ${fade ? 'opacity: 0;' : ''}
+      }
+      40% {
+        transform-origin: ${origin};
+        box-shadow: ${shadowOffset} rgba(0,0,0,0.3);
+        ${fade ? 'opacity: 1;' : ''}
+      }
+      100% {
+        transform-origin: ${origin};
+        clip-path: polygon(-50% -50%, 150% -50%, 150% 150%, -50% 150%);
+        transform: rotate3d(0, 0, 0, 0deg);
+        box-shadow: 0 0 0 rgba(0,0,0,0);
+        ${fade ? 'opacity: 1;' : ''}
+      }
+    }`;
   }
 
   return keyframes;
@@ -1555,7 +1600,7 @@ ${dynamicKeyframes}
     <div id="layer-bot" style="position:absolute;inset:0;pointer-events:none;z-index:1;display:${initExclude ? 'block' : 'none'};">
 ${elsBot}
     </div>
-    <div id="layer-frames" style="position:absolute;inset:0;pointer-events:none;z-index:2;">
+    <div id="layer-frames" style="position:absolute;inset:0;pointer-events:none;z-index:2;perspective:1200px;">
 ${framesHTML}
     </div>
     <div id="layer-top" style="position:absolute;inset:0;pointer-events:none;z-index:3;display:${initExclude ? 'block' : 'none'};">
