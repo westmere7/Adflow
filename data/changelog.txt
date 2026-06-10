@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.10 (Current) - June 2026 — Engine v2.19
+v0.19.11 (Current) - June 2026 — Engine v2.19
+- Template Sanitization & Preference Protection: Fixed issues where projects created from templates carried isTemplate: true metadata permanently in autosaves, cloud saves, and exported .flow packages. The runtime state now deletes this flag upon load. Stripped personal workspace preferences, favorite animations, and custom asset folders/libraries from template exports to avoid polluting user environments, and protected active user settings from being overridden when importing a template. Reset active data-merge versioning states (version pointers, locks, and sort keys) during template export and loading.
+- Template Naming Convention: Implemented a dedicated template naming convention (<project-name>.template.flow) for exported template files.
+- Restored Resume View Toast: Restored and corrected the "Resume previous view" toast notification on project startup and file loading, enabling users to jump back to their last saved scroll/zoom positions when opening a project (bypassed entirely for templates).
+
+v0.19.10 - June 2026 — Engine v2.19
 - Preview Current Only Disabled for Single-Frame Ads: The "Preview current only" checkbox in the top bar is now greyed out and disabled when only one playable frame exists — either a one-frame project, or a two-frame project with one frame marked Skip. If it was checked when the frame count drops to one (e.g. by skipping a frame), it is automatically unchecked, so a stale "current only" preview can't linger with the control locked.
 
 v0.19.9 - June 2026 — Engine v2.19

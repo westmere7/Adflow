@@ -2312,7 +2312,25 @@ function checkCanvasesInView() {
 // Show a toast offering to jump back to the user's last saved scroll position.
 // Called on startup and on Open Project, after we've already centered the view.
 function offerResumeView(savedScrollLeft, savedScrollTop, savedZoom) {
-  // Toast removed
+  if (savedScrollLeft === undefined || savedScrollTop === undefined) return;
+  if (savedScrollLeft === 0 && savedScrollTop === 0) return;
+  const area = document.getElementById('canvas-area');
+  if (!area) return;
+  
+  if (Math.abs(area.scrollLeft - savedScrollLeft) < 5 && Math.abs(area.scrollTop - savedScrollTop) < 5) return;
+
+  showCanvasNotification('Jump back to where you left off in this project?', {
+    type: 'info',
+    button: {
+      text: 'Resume View',
+      onClick: () => {
+        const targetZoom = savedZoom !== undefined ? savedZoom : (state.zoom || 1.0);
+        const focusX = (savedScrollLeft + area.clientWidth / 2) / targetZoom;
+        const focusY = (savedScrollTop + area.clientHeight / 2) / targetZoom;
+        animateViewTo(targetZoom, focusX, focusY);
+      }
+    }
+  });
 }
 
 // Smooth view transition: animate zoom + scroll together with rAF, no intermediate
@@ -14330,6 +14348,7 @@ async function buildFlowBlob(isTemplate = false) {
 
   const zip = new JSZip();
   const exportState = JSON.parse(JSON.stringify(state));
+  delete exportState.isTemplate;
 
   if (isTemplate) {
     exportState.isTemplate = true;
@@ -14352,6 +14371,32 @@ async function buildFlowBlob(isTemplate = false) {
     exportState.viewScrollLeft = 0;
     exportState.viewScrollTop = 0;
     exportState.zoom = 0.6;
+
+    // Fix workspace preferences riding along
+    delete exportState.favoriteAnimations;
+    exportState.showRulers = true;
+    exportState.showSafezones = false;
+    exportState.snapEnabled = true;
+    exportState.snapToElements = true;
+    exportState.snapToCanvas = true;
+    exportState.snapToGuides = true;
+    exportState.cropToCanvas = false;
+    exportState.loopAd = false;
+    exportState.previewCurrentOnly = false;
+    exportState.guides = [];
+    exportState.activeSmartGuides = null;
+    exportState.autosaveInterval = 10;
+    exportState.savedHistoryLimit = 50;
+    exportState.activeTool = 'select';
+    exportState.assetLibrary = [];
+    exportState.assetFolders = [];
+
+    // Reset data-merge active state
+    if (exportState.dataMerge) {
+      exportState.dataMerge.activeVersion = null;
+      exportState.dataMerge.locked = false;
+      delete exportState.dataMerge.sort;
+    }
   } else {
     exportState.editingElementId = null;
     if (document.getElementById('canvas-area')) {
@@ -14406,7 +14451,10 @@ async function buildFlowBlob(isTemplate = false) {
   const blob = await zip.generateAsync({ type: 'blob' });
   const projName = (state.projectName || 'RMIT_ad').replace(/[^a-zA-Z0-9_-]/g, '_');
   const datePart = savedAt.slice(0, 10);
-  return { blob, exportState, savedAt, suggestedName: `${projName}-${datePart}.flow` };
+  const suggestedName = isTemplate 
+    ? `${projName}.template.flow` 
+    : `${projName}-${datePart}.flow`;
+  return { blob, exportState, savedAt, suggestedName };
 }
 
 async function saveProjectAsFlow() {
@@ -14722,7 +14770,11 @@ async function loadProjectFromState(loadedState) {
     delete loadedState.historyIndex;
   }
 
-  Object.assign(state, JSON.parse(JSON.stringify(loadedState)));
+  loadedState = JSON.parse(JSON.stringify(loadedState));
+  delete loadedState.isTemplate;
+
+  Object.assign(state, loadedState);
+  delete state.isTemplate;
   if (!state.projectId) state.projectId = uid('proj_');
 
   // Re-home legacy centre-anchored layouts onto the smaller board.
@@ -14767,6 +14819,52 @@ async function loadProjectFromBlob(file, customProjectName) {
     delete loadedState.historyIndex;
   }
 
+  // Check if this file is a template
+  let isTemplateFile = false;
+  if (loadedState.isTemplate === true) {
+    isTemplateFile = true;
+  } else {
+    const metaFile = zip.file('meta.json');
+    if (metaFile) {
+      try {
+        const metaStr = await metaFile.async('string');
+        const meta = JSON.parse(metaStr);
+        if (meta.isTemplate === true) {
+          isTemplateFile = true;
+        }
+      } catch (e) {
+        console.warn('Failed to parse meta.json in loadProjectFromBlob:', e);
+      }
+    }
+  }
+
+  // Clean template-related state and environment preferences from loadedState
+  if (isTemplateFile) {
+    delete loadedState.isTemplate;
+    delete loadedState.favoriteAnimations;
+    delete loadedState.showRulers;
+    delete loadedState.showSafezones;
+    delete loadedState.snapEnabled;
+    delete loadedState.snapToElements;
+    delete loadedState.snapToCanvas;
+    delete loadedState.snapToGuides;
+    delete loadedState.cropToCanvas;
+    delete loadedState.loopAd;
+    delete loadedState.previewCurrentOnly;
+    delete loadedState.guides;
+    delete loadedState.activeSmartGuides;
+    delete loadedState.autosaveInterval;
+    delete loadedState.savedHistoryLimit;
+    delete loadedState.activeTool;
+    delete loadedState.assetLibrary;
+    delete loadedState.assetFolders;
+    if (loadedState.dataMerge) {
+      loadedState.dataMerge.activeVersion = null;
+      loadedState.dataMerge.locked = false;
+      delete loadedState.dataMerge.sort;
+    }
+  }
+
   const newAssets = {};
   if (loadedState.assets) {
     for (const [assetId, path] of Object.entries(loadedState.assets)) {
@@ -14783,15 +14881,17 @@ async function loadProjectFromBlob(file, customProjectName) {
       }
     }
   }
-  const savedLeft = loadedState.viewScrollLeft;
-  const savedTop = loadedState.viewScrollTop;
-  const savedZoom = loadedState.zoom;
+  const savedLeft = isTemplateFile ? undefined : loadedState.viewScrollLeft;
+  const savedTop = isTemplateFile ? undefined : loadedState.viewScrollTop;
+  const savedZoom = isTemplateFile ? undefined : loadedState.zoom;
 
   Object.assign(state, loadedState);
+  delete state.isTemplate; // Always ensure isTemplate is removed at runtime
+
   if (customProjectName) {
     state.projectName = customProjectName;
   }
-  if (state.favoriteAnimations) {
+  if (!isTemplateFile && state.favoriteAnimations) {
     localStorage.setItem('favoriteAnimations', JSON.stringify(state.favoriteAnimations));
   }
   state.zoom = 1.0;
@@ -17148,7 +17248,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.19.10';
+  const currentVersion = 'v0.19.11';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -17363,7 +17463,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.19.10</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.11</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -20336,7 +20436,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.19.10';
+        verEl.textContent = 'v0.19.11';
         logoEl.appendChild(verEl);
       }
     }

@@ -661,6 +661,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.11',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Template Sanitization & Preference Protection: Fixed issues where projects created from templates carried isTemplate: true metadata permanently in autosaves, cloud saves, and exported .flow packages. The runtime state now deletes this flag upon load. Stripped personal workspace preferences, favorite animations, and custom asset folders/libraries from template exports to avoid polluting user environments, and protected active user settings from being overridden when importing a template. Reset active data-merge versioning states (version pointers, locks, and sort keys) during template export and loading.',
+      'Template Naming Convention: Implemented a dedicated template naming convention (<project-name>.template.flow) for exported template files.',
+      'Restored Resume View Toast: Restored and corrected the "Resume previous view" toast notification on project startup and file loading, enabling users to jump back to their last saved scroll/zoom positions when opening a project (bypassed entirely for templates).'
+    ]
+  },
+  {
     version: 'v0.19.10',
     date: 'June 2026 — Engine v2.19',
     items: [
