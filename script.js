@@ -1208,6 +1208,10 @@ function applyLinkSync(sourceEl, targetEl, group) {
       targetEl.customName = sourceEl.customName;
       if (sourceEl.name !== undefined) targetEl.name = sourceEl.name;
     }
+    if (sync.radius) {
+      if (sourceEl.radius !== undefined) targetEl.radius = sourceEl.radius;
+      else delete targetEl.radius;
+    }
     if (sync.transform) {
       targetEl.width = sourceEl.width;
       targetEl.height = sourceEl.height;
@@ -4153,6 +4157,8 @@ function elementNode(el, canvasCtx) {
     if (stroke) d.appendChild(stroke);
   } else if (el.type === 'image') {
     d.classList.add('image');
+    d.style.borderRadius = (el.radius || 0) + 'px';
+    d.style.overflow = 'hidden';
     if (dAssetId) {
       const img = document.createElement('img');
       img.src = state.assets[dAssetId] || dAssetId;
@@ -4958,7 +4964,7 @@ function selectionOverlay(el) {
   rot.addEventListener('mousedown', (e) => onRotateMouseDown(e, el));
   w.appendChild(rot);
 
-  if (['rect', 'button'].includes(el.type)) {
+  if (['rect', 'button', 'image'].includes(el.type)) {
     const radHandle = document.createElement('div');
     radHandle.className = 'handle radius';
     radHandle.title = 'Corner Radius';
@@ -7312,7 +7318,7 @@ function renderLinkControl() {
           if (cat === 'text') keys = ['customName', 'visibility', 'text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'button') keys = ['customName', 'visibility', 'text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'image') {
-            keys = ['customName', 'visibility', 'image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
+            keys = ['customName', 'visibility', 'image', 'radius', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
             if (isRmitLogo) keys.push('variant');
           }
           else if (cat === 'shape') keys = ['customName', 'visibility', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
@@ -7364,6 +7370,7 @@ function renderLinkControl() {
               <label title="Sync layer visibility across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="visibility" ${sync.visibility ? 'checked' : ''} /> Layer visibility</label>
               <label title="Sync image asset across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="image" ${sync.image ? 'checked' : ''} /> Image asset</label>
               ${isRmitLogo ? `<label title="Sync logo variant across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="variant" ${sync.variant ? 'checked' : ''} /> Variant</label>` : ''}
+              <label title="Sync image corner radius across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="radius" ${sync.radius ? 'checked' : ''} /> Corner radius</label>
               <label title="Sync image width and height across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="transform" ${sync.transform ? 'checked' : ''} /> Size (W+H)</label>
               <label title="Sync image opacity across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="opacity" ${sync.opacity ? 'checked' : ''} /> Opacity</label>
               <label title="Sync image rotation angle across linked elements" style="display:flex; align-items:center; gap:5px; font-size:10px; font-weight:500; color:var(--text-muted); cursor:pointer; user-select:none; white-space:nowrap;"><input type="checkbox" class="lnk-sync-prop" data-prop="rotation" ${sync.rotation ? 'checked' : ''} /> Rotation</label>
@@ -7488,7 +7495,7 @@ function renderLinkControl() {
           if (cat === 'text') keys = ['customName', 'visibility', 'text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'button') keys = ['customName', 'visibility', 'text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
           else if (cat === 'image') {
-            keys = ['customName', 'visibility', 'image', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
+            keys = ['customName', 'visibility', 'image', 'radius', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
             if (isRmitLogo) keys.push('variant');
           }
           else if (cat === 'shape') keys = ['customName', 'visibility', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
@@ -11149,7 +11156,7 @@ function renderProps() {
       }
     }
 
-    // Sizing (Fit) and Opacity inline side-by-side
+    // Sizing (Fit), Radius, and Opacity inline side-by-side
     f.push(`<div class="prop-row" style="display:flex; gap:6px;">
       <div style="flex:1; min-width:0;">
         <label for="prop-object-fit">Fit</label>
@@ -11158,6 +11165,10 @@ function renderProps() {
           <option value="contain" ${el.objectFit === 'contain' || !el.objectFit ? 'selected' : ''}>Fit</option>
           <option value="fill" ${el.objectFit === 'fill' ? 'selected' : ''}>Stretch</option>
         </select>
+      </div>
+      <div style="flex:1; min-width:0;">
+        <label for="prop-radius">Radius</label>
+        <input type="number" data-k="radius" id="prop-radius" value="${el.radius !== undefined ? el.radius : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Corner radius in pixels" />
       </div>
       <div style="flex:1; min-width:0;">
         <label for="prop-opacity">Opacity %</label>

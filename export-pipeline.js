@@ -1355,7 +1355,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
           maskCss += `animation:${animations.join(', ')};`;
         }
       }
-      return `    <div data-id="${el.id}" style="${wrapStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};${maskImgStyle}" alt="${esc(el.altText || '')}" />${closeDivs}</div>`;
+      const radiusStyle = el.radius ? `border-radius:${el.radius}px;overflow:hidden;` : '';
+      return `    <div data-id="${el.id}" style="${wrapStyle}${radiusStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};${maskImgStyle}" alt="${esc(el.altText || '')}" />${closeDivs}</div>`;
     }
     return '';
   };
