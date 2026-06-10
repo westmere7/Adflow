@@ -78,9 +78,17 @@ function getPanCurveKeyframes(el) {
   const opStart = el.panFade ? 0 : 1;
   const animName = `eff-pan-${el.id}`;
 
+  const angle = (el.rotation || 0) * Math.PI / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const ease = el.effEase !== false;
+
   let steps = [];
   for (let i = 0; i <= 20; i++) {
-    const t = i / 20;
+    let t = i / 20;
+    if (ease) {
+      t = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
     const pct = i * 5;
     const mt = 1 - t;
     const bx = mt * mt * px + 2 * mt * t * mx;
@@ -88,7 +96,10 @@ function getPanCurveKeyframes(el) {
     const r = mt * rot;
     const o = mt * opStart + t * 1.0;
 
-    steps.push(`      ${pct}% { translate: ${bx.toFixed(1)}px ${by.toFixed(1)}px; rotate: ${r.toFixed(1)}deg; opacity: ${o.toFixed(2)}; }`);
+    const bxLocal = bx * cos + by * sin;
+    const byLocal = -bx * sin + by * cos;
+
+    steps.push(`      ${pct}% { translate: ${bxLocal.toFixed(1)}px ${byLocal.toFixed(1)}px; rotate: ${r.toFixed(1)}deg; opacity: ${o.toFixed(2)}; }`);
   }
 
   return `@keyframes ${animName} {\n${steps.join('\n')}\n    }`;
@@ -1355,8 +1366,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
           maskCss += `animation:${animations.join(', ')};`;
         }
       }
-      const radiusStyle = el.radius ? `border-radius:${el.radius}px;overflow:hidden;` : '';
-      return `    <div data-id="${el.id}" style="${wrapStyle}${radiusStyle}${maskCss}">${openDivs}<img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};${maskImgStyle}" alt="${esc(el.altText || '')}" />${closeDivs}</div>`;
+      const innerRadiusStyle = el.radius ? `border-radius:${el.radius}px;overflow:hidden;` : '';
+      return `    <div data-id="${el.id}" style="${wrapStyle}${maskCss}">${openDivs}<div style="width:100%;height:100%;${innerRadiusStyle}"><img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};${maskImgStyle}" alt="${esc(el.altText || '')}" /></div>${closeDivs}</div>`;
     }
     return '';
   };
@@ -1379,16 +1390,18 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     if (f) {
       const allActive = state.frames.filter(frame => includeSkipped || !frame.skip);
       const idx = allActive.findIndex(frame => frame.id === f.id);
-      if (idx > 0) {
+      const hasTransition = f.transition && f.transition !== 'none';
+      if (hasTransition && idx > 0) {
         const prevFrameForCurrent = allActive[idx - 1];
         activeFrames = [prevFrameForCurrent, f];
         isCurrentWithPrev = true;
-      } else if (idx === 0 && state.loopAd && allActive.length > 1) {
+      } else if (hasTransition && idx === 0 && state.loopAd && allActive.length > 1) {
         const prevFrameForCurrent = allActive[allActive.length - 1];
         activeFrames = [prevFrameForCurrent, f];
         isCurrentWithPrev = true;
       } else {
         activeFrames = [f];
+        isCurrentWithPrev = false;
       }
     } else {
       activeFrames = state.frames.filter(frame => includeSkipped || !frame.skip);
@@ -1430,7 +1443,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     const isSecondOfPreviewCurrent = isPreviewCurrent && isCurrentWithPrev && i === 1;
     
     const displayStyleVal = isPreviewCurrent
-      ? (isFirstOfPreviewCurrent ? 'block' : 'none')
+      ? (isCurrentWithPrev ? (isFirstOfPreviewCurrent ? 'block' : 'none') : 'block')
       : displayStyle;
 
     const frameBg = _frameBgOf(f.id);
@@ -1616,7 +1629,7 @@ ${elsTop}
   <script>
     var frames = ${JSON.stringify(frameData)};
     var currentFrame = 0;
-    var loopAd = ${isPreviewCurrent ? 'false' : (state.loopAd === true)};
+    var loopAd = ${state.loopAd === true};
 
     function updatePersistentLayersVisibility(frameIdx) {
       var exclude = !!frames[frameIdx].excludePersistent;
