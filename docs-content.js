@@ -661,6 +661,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.9',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Letter Spacing Now Exports: Fixed exported ads (HTML5 ZIP, Full Preview, and PNG fallbacks) silently dropping the Letter spacing set on text and buttons — the editor rendered it but the export markup never emitted the CSS property. Exported text now matches the editor\'s tracking exactly, and the export\'s auto-size fitter now measures with letter spacing too, so auto-sized text and buttons pick the same font size and wrap point in the editor, preview, and export.'
+    ]
+  },
+  {
     version: 'v0.19.8',
     date: 'June 2026 — Engine v2.19',
     items: [

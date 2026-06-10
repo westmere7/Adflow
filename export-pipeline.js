@@ -1017,6 +1017,10 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
 
     if (el.type === 'text') {
       const ff = el.fontFamily ? el.fontFamily + ',sans-serif' : 'Arial,Helvetica,sans-serif';
+      // Mirrors the editor span (script.js text builder) — without this, tracked
+      // text renders narrower/wider in export than designed, and the runtime
+      // auto-size fitter measures a different width than measureTextFits().
+      const lsStyle = el.letterSpacing ? `letter-spacing:${el.letterSpacing}px;` : '';
       let content = esc(el.text).replace(/\n/g, '<br/>');
 
       if (animType === 'typing' || animType === 'fade-typing') {
@@ -1106,8 +1110,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
 
 
       const innerSpan = el.hasBg
-        ? `<span${bgDataAttrs}${spanClass} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:normal;overflow-wrap:normal;${bgStyle}">${content}</span>`
-        : `<span${spanClass} style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};word-break:normal;overflow-wrap:normal;">${content}</span>`;
+        ? `<span${bgDataAttrs}${spanClass} style="color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};${lsStyle}word-break:normal;overflow-wrap:normal;${bgStyle}">${content}</span>`
+        : `<span${spanClass} style="display:inline;color:${el.color};font-size:${el.fontSize}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};${lsStyle}word-break:normal;overflow-wrap:normal;">${content}</span>`;
       // font-size + line-height on the wrapper div eliminates the inherited body strut
       // (browser default ~16px * normal) which would push small-font text downward.
       const inner = `<div${blockClass} style="text-align:${ta};width:100%;font-size:${el.fontSize}px;line-height:${resolvedLH};">${innerSpan}</div>`;
@@ -1132,6 +1136,9 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     }
     if (el.type === 'button') {
       const ff = el.fontFamily ? el.fontFamily + ',sans-serif' : 'Arial,Helvetica,sans-serif';
+      // Mirrors the editor label span — keeps the runtime auto-size fitter's
+      // width measurement consistent with measureTextFits() in script.js.
+      const lsStyle = el.letterSpacing ? `letter-spacing:${el.letterSpacing}px;` : '';
       const alignMap = { left: 'flex-start', center: 'center', right: 'flex-end', justify: 'space-between' };
       const jc = alignMap[el.textAlign || 'center'];
       const paddingTB = el.paddingTB !== undefined ? el.paddingTB : 0;
@@ -1177,8 +1184,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       }
       
       const spanStyle = el.wrapText
-        ? `display:inline;word-break:normal;white-space:normal;max-width:100%;position:relative;`
-        : `display:inline;white-space:nowrap;position:relative;`;
+        ? `display:inline;word-break:normal;white-space:normal;max-width:100%;position:relative;${lsStyle}`
+        : `display:inline;white-space:nowrap;position:relative;${lsStyle}`;
 
       const fadeBg = el.animFadeBg !== undefined ? el.animFadeBg : (el.type === 'button' ? true : !!el.animateBg);
       const bgAnimStyle = (!isImageExport && fadeBg && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade'))

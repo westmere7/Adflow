@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.8 (Current) - June 2026 — Engine v2.19
+v0.19.9 (Current) - June 2026 — Engine v2.19
+- Letter Spacing Now Exports: Fixed exported ads (HTML5 ZIP, Full Preview, and PNG fallbacks) silently dropping the Letter spacing set on text and buttons — the editor rendered it but the export markup never emitted the CSS property. Exported text now matches the editor's tracking exactly, including per-character Typing/Word-fade spans (which inherit it). Because the export's runtime auto-size fitter measures the live label, it now also measures with letter spacing — so auto-sized text and buttons with tracking pick the same font size and wrap point in the editor, preview, and export (previously negative tracking could make a one-line label wrap to two lines in the shipped ad, and positive tracking could make it export at a larger font than designed).
+
+v0.19.8 - June 2026 — Engine v2.19
 - Complete Link Group Animation Sync: Fixed "Fade letters" (Typing preset) and "Fade BG" toggles not propagating across linked elements — they were missing from the IN Animation sync list in applyLinkSync. The same audit closed further sync gaps: Letter spacing and Auto line height now sync under Font settings (the list previously referenced obsolete property names that no longer exist), text background Cover % and Opacity now sync under Background, and stroke Dash / Gap / Opacity now sync under Stroke for buttons and shapes. "Reset Settings" on an animation preset now also clears the two fade toggles.
 - Restored Startup Templates: Regenerated Startup/registry.json, which still pointed at template files that no longer exist — the startup templates (RMIT_Blank_2026, RMIT_Blank_Red) now load again instead of failing silently.
 
