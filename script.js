@@ -1263,7 +1263,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     else delete targetEl.hidden;
   }
   if (sync.inAnim) {
-    const inAnimProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor'];
+    const inAnimProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor', 'animStaggerText'];
     inAnimProps.forEach(p => {
       if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
       else delete targetEl[p];
@@ -3365,8 +3365,12 @@ function getElementAnimationCSS(el, isImageExport) {
     if (animType === 'split') {
       entryAnims.push(`anim-split-${el.id} ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both`);
     } else if (animType === 'zoom' || animType === 'pop-in' || animType === 'zoom-in') {
-      const timing = el.animBounce ? 'linear' : 'ease-out';
-      entryAnims.push(`anim-zoom-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both`);
+      if (el.type === 'button' && el.animStaggerText) {
+        // Skip wrapper zoom animation to avoid double-scaling
+      } else {
+        const timing = el.animBounce ? 'linear' : 'ease-out';
+        entryAnims.push(`anim-zoom-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both`);
+      }
     } else if (animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right') {
       const timing = el.animBounce ? 'linear' : 'ease-out';
       entryAnims.push(`anim-slide-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both`);
@@ -11167,14 +11171,14 @@ function renderProps() {
     if (isZoomLike) {
       const defaultZoomFrom = el.animType === 'pop-in' ? 80 : (el.animType === 'zoom-in' ? 110 : 80);
       f.push(`<div class="prop-row" style="margin-bottom:8px;"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
-        ${secNum('animDuration', 'Duration (s)')}
-        ${secNum('animDelay', 'Delay (s)')}
+        ${secNum('animDuration', 'Duration (s)', 1)}
+        ${secNum('animDelay', 'Delay (s)', 0)}
         ${secNum('zoomFrom', 'From (%)', defaultZoomFrom)}
       </div></div>`);
     } else {
       f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
-        ${secNum('animDuration', 'Duration (s)')}
-        ${secNum('animDelay', 'Delay (s)')}
+        ${secNum('animDuration', 'Duration (s)', 1)}
+        ${secNum('animDelay', 'Delay (s)', 0)}
       </div></div>`);
     }
 
@@ -11199,7 +11203,7 @@ function renderProps() {
           </div>
           
           <!-- Right: Checkboxes -->
-          <div style="display:flex; align-items:center; gap:16px;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             <div class="checkbox-row" style="margin:0;">
               <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
               <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
@@ -11208,6 +11212,12 @@ function renderProps() {
               <input type="checkbox" data-k="animBounce" id="prop-anim-bounce" title="Elastic bounce at the end of zoom transition" ${el.animBounce ? 'checked' : ''}/>
               <label for="prop-anim-bounce" title="Elastic bounce at the end of zoom transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Bounce</label>
             </div>
+            ${el.type === 'button' ? `
+            <div class="checkbox-row" style="margin:0;">
+              <input type="checkbox" data-k="animStaggerText" id="prop-anim-stagger-text" title="Stagger animation between button and text" ${el.animStaggerText ? 'checked' : ''}/>
+              <label for="prop-anim-stagger-text" title="Stagger animation between button and text" style="cursor:pointer; font-size:11px; white-space:nowrap;">Stagger</label>
+            </div>
+            ` : ''}
           </div>
         </div>
       `);
@@ -11687,7 +11697,7 @@ function checkButtonFontSizeWarning(el) {
     });
     inp.addEventListener('change', () => {
       pushHistory();
-      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize') renderProps();
+      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize' || inp.dataset.k === 'animStaggerText') renderProps();
     });
     if (inp.type === 'number') {
       inp.addEventListener('wheel', (e) => {
@@ -11884,9 +11894,15 @@ function checkButtonFontSizeWarning(el) {
         }
         if (nodeEl.type === 'button') {
           const fillBg = node.querySelector('div[style*="position: absolute"], div[style*="position:absolute"]');
-          if (fillBg) fillBg.style.animation = '';
+          if (fillBg) {
+            fillBg.style.animation = '';
+            fillBg.style.transformOrigin = '';
+          }
           const strokeSvg = node.querySelector('svg[style*="position: absolute"], svg[style*="position:absolute"]');
-          if (strokeSvg) strokeSvg.style.animation = '';
+          if (strokeSvg) {
+            strokeSvg.style.animation = '';
+            strokeSvg.style.transformOrigin = '';
+          }
         }
       });
 
@@ -12034,8 +12050,32 @@ function checkButtonFontSizeWarning(el) {
               const regex = new RegExp(`@keyframes\\s+anim-zoom-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
               styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
               const timing = tempEl.animBounce ? 'linear' : 'ease-out';
-              targetNode.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
-              targetNode.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
+              if (nodeEl.type === 'button' && nodeEl.animStaggerText) {
+                // Background fill
+                const fillBg = node.querySelector('div[style*="position: absolute"], div[style*="position:absolute"]');
+                if (fillBg) {
+                  fillBg.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
+                  fillBg.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
+                }
+                // Stroke SVG
+                const strokeSvg = node.querySelector('svg[style*="position: absolute"], svg[style*="position:absolute"]');
+                if (strokeSvg) {
+                  strokeSvg.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
+                  strokeSvg.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
+                }
+                // Text child
+                const target = node.querySelector('.editable') || node.querySelector('span');
+                if (target) {
+                  target.dataset.origStyle = target.getAttribute('style') || '';
+                  target.dataset.origHtml = target.innerHTML;
+                  target.style.display = 'inline-block';
+                  target.style.transformOrigin = 'center';
+                  target.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0.15s both`;
+                }
+              } else {
+                targetNode.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
+                targetNode.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
+              }
             } else if (previewVal === 'slide' || previewVal === 'slide-up' || previewVal === 'slide-down' || previewVal === 'slide-left' || previewVal === 'slide-right') {
               const tempEl = { ...nodeEl };
               if (previewVal === 'slide-up') { tempEl.animDirection = 'up'; tempEl.animDistance = 20; }
@@ -12124,6 +12164,18 @@ function checkButtonFontSizeWarning(el) {
               const styleTag = document.getElementById('dynamic-mask-styles');
               if (styleTag) styleTag.textContent = '';
             }
+          }
+        }
+        if (nodeEl.type === 'button') {
+          const fillBg = node.querySelector('div[style*="position: absolute"], div[style*="position:absolute"]');
+          if (fillBg) {
+            fillBg.style.animation = '';
+            fillBg.style.transformOrigin = '';
+          }
+          const strokeSvg = node.querySelector('svg[style*="position: absolute"], svg[style*="position:absolute"]');
+          if (strokeSvg) {
+            strokeSvg.style.animation = '';
+            strokeSvg.style.transformOrigin = '';
           }
         }
         const target = node.querySelector('.editable') || node.querySelector('span');
@@ -17248,7 +17300,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.19.11';
+  const currentVersion = 'v0.19.12';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -17463,7 +17515,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.19.11</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.12</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -19433,7 +19485,7 @@ document.addEventListener('contextmenu', (e) => {
         const activeC = getActiveCanvas();
         const el = activeC ? activeC.elements.find(x => x.id === state.selectedElementId) : null;
         if (animBtn && el) {
-          const inAnimProps = ['animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor'];
+          const inAnimProps = ['animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor', 'animStaggerText'];
           inAnimProps.forEach(p => delete el[p]);
         } else if (effBtn && el) {
           const effectProps = ['effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
@@ -20436,7 +20488,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.19.11';
+        verEl.textContent = 'v0.19.12';
         logoEl.appendChild(verEl);
       }
     }

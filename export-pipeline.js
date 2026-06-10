@@ -818,6 +818,18 @@ async function exportCanvasAsPng(c, options = {}) {
     
     // Clone the active ad structure
     const activeAd = recorderIframe.contentDocument.querySelector('#ad');
+    if (activeAd) {
+      activeAd.classList.remove('ad-loading');
+      activeAd.classList.add('ad-visible');
+    }
+    const activeFrame = state.frames.find(f => f.id === state.activeFrameId);
+    if (activeFrame) {
+      const exclude = !!activeFrame.excludePersistent;
+      const botLayer = recorderIframe.contentDocument.getElementById('layer-bot');
+      const topLayer = recorderIframe.contentDocument.getElementById('layer-top');
+      if (botLayer) botLayer.style.display = exclude ? 'block' : 'none';
+      if (topLayer) topLayer.style.display = exclude ? 'block' : 'none';
+    }
     const activeAdXml = new XMLSerializer().serializeToString(activeAd);
     
     cnv = document.createElement('canvas');
@@ -1183,19 +1195,34 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         }).join('');
       }
       
+      let staggerStyle = '';
+      if (!isImageExport && animType === 'zoom' && el.animStaggerText) {
+        const timing = el.animBounce ? 'linear' : 'ease-out';
+        staggerStyle = `display:inline-block;transform-origin:center;animation:anim-zoom-${el.id} ${el.animDuration || 1}s ${timing} ${(el.animDelay || 0) + 0.15}s both;`;
+      }
+
       const spanStyle = el.wrapText
-        ? `display:inline;word-break:normal;white-space:normal;max-width:100%;position:relative;${lsStyle}`
-        : `display:inline;white-space:nowrap;position:relative;${lsStyle}`;
+        ? `${staggerStyle || 'display:inline;'}word-break:normal;white-space:normal;max-width:100%;position:relative;${lsStyle}`
+        : `${staggerStyle || 'display:inline;'}white-space:nowrap;position:relative;${lsStyle}`;
 
       const fadeBg = el.animFadeBg !== undefined ? el.animFadeBg : (el.type === 'button' ? true : !!el.animateBg);
-      const bgAnimStyle = (!isImageExport && fadeBg && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade'))
+      let bgAnimStyle = (!isImageExport && fadeBg && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade'))
         ? `;animation:anim-fade-in ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both`
         : '';
+      if (!isImageExport && animType === 'zoom' && el.animStaggerText) {
+        const timing = el.animBounce ? 'linear' : 'ease-out';
+        bgAnimStyle = `;animation:anim-zoom-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both;transform-origin:${getTransformOriginValue(el.zoomAnchor || 'center')}`;
+      }
 
       const strokeHtml = strokeOverlayHTML(el);
       let animatedStrokeHtml = strokeHtml;
-      if (strokeHtml && !isImageExport && fadeBg && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade')) {
-        animatedStrokeHtml = strokeHtml.replace('style="position:absolute;inset:0;', `style="position:absolute;inset:0;animation:anim-fade-in ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both;`);
+      if (strokeHtml && !isImageExport) {
+        if (fadeBg && (animType === 'typing' || animType === 'fade-typing' || animType === 'word-fade')) {
+          animatedStrokeHtml = strokeHtml.replace('style="position:absolute;inset:0;', `style="position:absolute;inset:0;animation:anim-fade-in ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both;`);
+        } else if (animType === 'zoom' && el.animStaggerText) {
+          const timing = el.animBounce ? 'linear' : 'ease-out';
+          animatedStrokeHtml = strokeHtml.replace('style="position:absolute;inset:0;', `style="position:absolute;inset:0;animation:anim-zoom-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both;transform-origin:${getTransformOriginValue(el.zoomAnchor || 'center')};`);
+        }
       }
 
       if (el.autoSize) {
@@ -1621,6 +1648,21 @@ ${elsTop}
         var span = wrapper.querySelector('.auto-size-span');
         if (!block || !span) return;
         
+        // Temporarily clear animation and transform to get accurate, scale-free measurements
+        var oldWrapperAnim = wrapper.style.animation || '';
+        var oldWrapperTrans = wrapper.style.transform || '';
+        var oldBlockAnim = block.style.animation || '';
+        var oldBlockTrans = block.style.transform || '';
+        var oldSpanAnim = span.style.animation || '';
+        var oldSpanTrans = span.style.transform || '';
+
+        wrapper.style.animation = 'none';
+        wrapper.style.transform = 'none';
+        block.style.animation = 'none';
+        block.style.transform = 'none';
+        span.style.animation = 'none';
+        span.style.transform = 'none';
+
         var hiddenAncestors = [];
         var parent = wrapper.parentElement;
         while (parent && parent !== document.body) {
@@ -1716,6 +1758,14 @@ ${elsTop}
         
         block.style.fontSize = best + 'px';
         span.style.fontSize = best + 'px';
+
+        // Restore animations and transforms
+        wrapper.style.animation = oldWrapperAnim;
+        wrapper.style.transform = oldWrapperTrans;
+        block.style.animation = oldBlockAnim;
+        block.style.transform = oldBlockTrans;
+        span.style.animation = oldSpanAnim;
+        span.style.transform = oldSpanTrans;
         
         hiddenAncestors.forEach(function(item) {
           if (item.prevDisplay) {

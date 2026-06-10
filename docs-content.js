@@ -661,6 +661,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.12',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Button Zoom Animation Stagger: Added a toggle to stagger the entrance animation for button elements when their transition is set to "zoom". This configuration animates the background container/stroke immediately, followed shortly (0.15s offset) by a staggered fade-in/zoom of the button\'s text, providing a premium feel. The stagger setting is synchronizable across linked canvases.'
+    ]
+  },
+  {
     version: 'v0.19.11',
     date: 'June 2026 — Engine v2.19',
     items: [
