@@ -14852,128 +14852,149 @@ async function loadProjectFromState(loadedState) {
 
 // Shared inflater used by the menu Open dialog AND the drag-drop overlay. Both
 // formats — modern .flow and legacy .cook/.zip — share the same internal structure.
-async function loadProjectFromBlob(file, customProjectName) {
-  if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
-  const zip = await JSZip.loadAsync(file);
-  const projFile = zip.file('project.json');
-  if (!projFile) throw new Error('Invalid project file (missing project.json)');
-
-  const jsonStr = await projFile.async('string');
-  const loadedState = JSON.parse(jsonStr);
-
-  // Extract history data and clean loadedState to prevent polluting global state
-  let restoredHistory = null;
-  let restoredHistoryIndex = -1;
-  if (loadedState.history) {
-    restoredHistory = loadedState.history;
-    restoredHistoryIndex = loadedState.historyIndex;
-    delete loadedState.history;
-    delete loadedState.historyIndex;
-  }
-
-  // Check if this file is a template
-  let isTemplateFile = false;
-  if (loadedState.isTemplate === true) {
-    isTemplateFile = true;
-  } else {
-    const metaFile = zip.file('meta.json');
-    if (metaFile) {
-      try {
-        const metaStr = await metaFile.async('string');
-        const meta = JSON.parse(metaStr);
-        if (meta.isTemplate === true) {
-          isTemplateFile = true;
+async function loadProjectFromBlob(file, customProjectName, existingProgress = null) {
+  const progress = existingProgress || showLoadingProgress('Opening Project...');
+  try {
+    progress.setProgress(10, 'Reading file structure...');
+    if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
+    const zip = await JSZip.loadAsync(file);
+    
+    progress.setProgress(20, 'Reading configuration...');
+    const projFile = zip.file('project.json');
+    if (!projFile) throw new Error('Invalid project file (missing project.json)');
+  
+    const jsonStr = await projFile.async('string');
+    const loadedState = JSON.parse(jsonStr);
+  
+    // Extract history data and clean loadedState to prevent polluting global state
+    let restoredHistory = null;
+    let restoredHistoryIndex = -1;
+    if (loadedState.history) {
+      restoredHistory = loadedState.history;
+      restoredHistoryIndex = loadedState.historyIndex;
+      delete loadedState.history;
+      delete loadedState.historyIndex;
+    }
+  
+    // Check if this file is a template
+    let isTemplateFile = false;
+    if (loadedState.isTemplate === true) {
+      isTemplateFile = true;
+    } else {
+      const metaFile = zip.file('meta.json');
+      if (metaFile) {
+        try {
+          const metaStr = await metaFile.async('string');
+          const meta = JSON.parse(metaStr);
+          if (meta.isTemplate === true) {
+            isTemplateFile = true;
+          }
+        } catch (e) {
+          console.warn('Failed to parse meta.json in loadProjectFromBlob:', e);
         }
-      } catch (e) {
-        console.warn('Failed to parse meta.json in loadProjectFromBlob:', e);
       }
     }
-  }
-
-  // Clean template-related state and environment preferences from loadedState
-  if (isTemplateFile) {
-    delete loadedState.isTemplate;
-    delete loadedState.favoriteAnimations;
-    delete loadedState.showRulers;
-    delete loadedState.showSafezones;
-    delete loadedState.snapEnabled;
-    delete loadedState.snapToElements;
-    delete loadedState.snapToCanvas;
-    delete loadedState.snapToGuides;
-    delete loadedState.cropToCanvas;
-    delete loadedState.loopAd;
-    delete loadedState.previewCurrentOnly;
-    delete loadedState.guides;
-    delete loadedState.activeSmartGuides;
-    delete loadedState.autosaveInterval;
-    delete loadedState.savedHistoryLimit;
-    delete loadedState.activeTool;
-    delete loadedState.assetLibrary;
-    delete loadedState.assetFolders;
-    if (loadedState.dataMerge) {
-      loadedState.dataMerge.activeVersion = null;
-      loadedState.dataMerge.locked = false;
-      delete loadedState.dataMerge.sort;
-    }
-  }
-
-  const newAssets = {};
-  if (loadedState.assets) {
-    for (const [assetId, path] of Object.entries(loadedState.assets)) {
-      if (path.startsWith('images/')) {
-        const imgFile = zip.file(path);
-        if (imgFile) {
-          const base64 = await imgFile.async('base64');
-          const ext = path.split('.').pop();
-          const mime = ext === 'jpg' ? 'jpeg' : (ext === 'svg' ? 'svg+xml' : ext);
-          newAssets[assetId] = `data:image/${mime};base64,${base64}`;
-        }
-      } else {
-        newAssets[assetId] = path;
+  
+    // Clean template-related state and environment preferences from loadedState
+    if (isTemplateFile) {
+      delete loadedState.isTemplate;
+      delete loadedState.favoriteAnimations;
+      delete loadedState.showRulers;
+      delete loadedState.showSafezones;
+      delete loadedState.snapEnabled;
+      delete loadedState.snapToElements;
+      delete loadedState.snapToCanvas;
+      delete loadedState.snapToGuides;
+      delete loadedState.cropToCanvas;
+      delete loadedState.loopAd;
+      delete loadedState.previewCurrentOnly;
+      delete loadedState.guides;
+      delete loadedState.activeSmartGuides;
+      delete loadedState.autosaveInterval;
+      delete loadedState.savedHistoryLimit;
+      delete loadedState.activeTool;
+      delete loadedState.assetLibrary;
+      delete loadedState.assetFolders;
+      if (loadedState.dataMerge) {
+        loadedState.dataMerge.activeVersion = null;
+        loadedState.dataMerge.locked = false;
+        delete loadedState.dataMerge.sort;
       }
     }
+  
+    const newAssets = {};
+    if (loadedState.assets) {
+      const entries = Object.entries(loadedState.assets);
+      const total = entries.length;
+      let count = 0;
+      for (const [assetId, path] of entries) {
+        count++;
+        const percent = 30 + Math.round((count / total) * 60);
+        progress.setProgress(percent, `Extracting asset ${count} of ${total}...`);
+        if (path.startsWith('images/')) {
+          const imgFile = zip.file(path);
+          if (imgFile) {
+            const base64 = await imgFile.async('base64');
+            const ext = path.split('.').pop();
+            const mime = ext === 'jpg' ? 'jpeg' : (ext === 'svg' ? 'svg+xml' : ext);
+            newAssets[assetId] = `data:image/${mime};base64,${base64}`;
+          }
+        } else {
+          newAssets[assetId] = path;
+        }
+      }
+    }
+    const savedLeft = isTemplateFile ? undefined : loadedState.viewScrollLeft;
+    const savedTop = isTemplateFile ? undefined : loadedState.viewScrollTop;
+    const savedZoom = isTemplateFile ? undefined : loadedState.zoom;
+  
+    progress.setProgress(95, 'Syncing application assets...');
+    Object.assign(state, loadedState);
+    delete state.isTemplate; // Always ensure isTemplate is removed at runtime
+  
+    if (customProjectName) {
+      state.projectName = customProjectName;
+    }
+    if (!isTemplateFile && state.favoriteAnimations) {
+      localStorage.setItem('favoriteAnimations', JSON.stringify(state.favoriteAnimations));
+    }
+    state.zoom = 1.0;
+    state.assets = newAssets || {};
+    if (!state.projectId) state.projectId = uid('proj_');
+    // Re-home legacy centre-anchored layouts onto the smaller board.
+    const positionsMigrated = normalizeCanvasPositions();
+    await syncRmitAssets();
+    setLocalSaveStatus('saved');
+    initializeCloudSaveStatus();
+    _fileSaveStatus = 'saved';
+    _lastFileSaveTime = new Date();
+  
+    if (!positionsMigrated && restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
+      history.length = 0;
+      history.push(...restoredHistory);
+      historyIndex = restoredHistoryIndex !== undefined ? restoredHistoryIndex : history.length - 1;
+    } else {
+      history.length = 0;
+      historyIndex = -1;
+      pushHistory();
+    }
+  
+    render();
+    progress.setProgress(100, 'Done!');
+    setTimeout(() => {
+      progress.close();
+    }, 300);
+  
+    // Open Project: drop into the canvas-centered view, then offer to restore
+    // wherever the user last left off.
+    setTimeout(() => {
+      centerWorkspace('instant');
+      offerResumeView(savedLeft, savedTop, savedZoom);
+    }, 10);
+  } catch (err) {
+    progress.close();
+    throw err;
   }
-  const savedLeft = isTemplateFile ? undefined : loadedState.viewScrollLeft;
-  const savedTop = isTemplateFile ? undefined : loadedState.viewScrollTop;
-  const savedZoom = isTemplateFile ? undefined : loadedState.zoom;
-
-  Object.assign(state, loadedState);
-  delete state.isTemplate; // Always ensure isTemplate is removed at runtime
-
-  if (customProjectName) {
-    state.projectName = customProjectName;
-  }
-  if (!isTemplateFile && state.favoriteAnimations) {
-    localStorage.setItem('favoriteAnimations', JSON.stringify(state.favoriteAnimations));
-  }
-  state.zoom = 1.0;
-  state.assets = newAssets || {};
-  if (!state.projectId) state.projectId = uid('proj_');
-  // Re-home legacy centre-anchored layouts onto the smaller board.
-  const positionsMigrated = normalizeCanvasPositions();
-  await syncRmitAssets();
-  setLocalSaveStatus('saved');
-  initializeCloudSaveStatus();
-  _fileSaveStatus = 'saved';
-  _lastFileSaveTime = new Date();
-
-  if (!positionsMigrated && restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
-    history.length = 0;
-    history.push(...restoredHistory);
-    historyIndex = restoredHistoryIndex !== undefined ? restoredHistoryIndex : history.length - 1;
-  } else {
-    history.length = 0;
-    historyIndex = -1;
-    pushHistory();
-  }
-
-  render();
-  // Open Project: drop into the canvas-centered view, then offer to restore
-  // wherever the user last left off.
-  setTimeout(() => {
-    centerWorkspace('instant');
-    offerResumeView(savedLeft, savedTop, savedZoom);
-  }, 10);
 }
 
 async function openProjectFromZip() {
@@ -17300,7 +17321,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.19.12';
+  const currentVersion = 'v0.19.13';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -17515,7 +17536,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.19.12</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.13</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -17924,6 +17945,45 @@ function openSettings() {
     showCanvasNotification('Settings saved.', { type: 'success' });
   });
 }
+
+function showLoadingProgress(title) {
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg loading-progress-bg';
+  bg.style.cssText = 'position:fixed; inset:0; background:rgba(0, 0, 0, 0.75); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:110000; pointer-events:all; user-select:none;';
+  
+  bg.innerHTML = `
+    <div class="modal loading-progress-modal" style="width:340px; padding:24px; background:var(--bg-panel); border:1px solid var(--border-light); border-radius:8px; box-shadow:0 20px 50px rgba(0,0,0,0.5); text-align:center; display:flex; flex-direction:column; gap:16px;">
+      <div style="font-size:15px; font-weight:600; color:var(--text-bright);" class="loading-title">${title || 'Loading Project...'}</div>
+      <div style="width:100%; height:6px; background:var(--bg-input); border-radius:3px; overflow:hidden; border:1px solid var(--border-light);">
+        <div class="loading-bar" style="width:0%; height:100%; background:var(--accent-base); box-shadow:0 0 8px var(--accent-base); transition:width 0.15s ease-out;"></div>
+      </div>
+      <div style="font-size:11px; color:var(--text-muted);" class="loading-status">Preparing...</div>
+    </div>
+  `;
+  document.body.appendChild(bg);
+  
+  const stopEsc = (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
+  window.addEventListener('keydown', stopEsc, true);
+  
+  return {
+    setProgress: (percent, statusText) => {
+      const bar = bg.querySelector('.loading-bar');
+      const status = bg.querySelector('.loading-status');
+      if (bar) bar.style.width = percent + '%';
+      if (status && statusText) status.textContent = statusText;
+    },
+    close: () => {
+      bg.remove();
+      window.removeEventListener('keydown', stopEsc, true);
+    }
+  };
+}
+window.showLoadingProgress = showLoadingProgress;
 
 // ============================================================================
 // Modal
@@ -20488,7 +20548,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.19.12';
+        verEl.textContent = 'v0.19.13';
         logoEl.appendChild(verEl);
       }
     }
@@ -20600,12 +20660,15 @@ async function scanStartupTemplates() {
 }
 
 async function loadStartupTemplate(fileName, customProjectName) {
+  const progress = showLoadingProgress('Creating Project from Template...');
   try {
+    progress.setProgress(10, 'Fetching template...');
     const fileToFetch = fileName || 'Adflow_startup.flow';
     const response = await fetch(`Startup/${fileToFetch}?t=${Date.now()}`);
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const blob = await response.blob();
 
+    progress.setProgress(20, 'Reading template structure...');
     if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
     const zip = await JSZip.loadAsync(blob);
     let isTemplate = false;
@@ -20626,16 +20689,18 @@ async function loadStartupTemplate(fileName, customProjectName) {
     }
 
     if (!isTemplate) {
+      progress.close();
       showCanvasNotification('Selected startup file is not a valid template.', { type: 'error' });
       return false;
     }
 
-    await loadProjectFromBlob(blob, customProjectName);
+    await loadProjectFromBlob(blob, customProjectName, progress);
     if (typeof writeAutosave === 'function') {
       await writeAutosave();
     }
     return true;
   } catch (e) {
+    progress.close();
     console.error('Failed to load startup template:', e);
     showCanvasNotification('Failed to load startup template. Starting fresh instead.', { type: 'warning' });
     return false;

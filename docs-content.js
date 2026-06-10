@@ -661,6 +661,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.13',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'File Loading Progress Dialogue: Added a blocking modal progress dialogue that displays when opening a project from a local file, template, or cloud storage. The modal disables Escape key navigation, backdrop clicks, and has no close button, preventing user interaction during load. Displays a smooth progress bar and detailed status text (downloading, reading structure, extracting assets 1-by-1, rendering workspace).'
+    ]
+  },
+  {
     version: 'v0.19.12',
     date: 'June 2026 — Engine v2.19',
     items: [

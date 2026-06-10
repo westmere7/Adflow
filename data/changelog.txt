@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.12 (Current) - June 2026 — Engine v2.19
+v0.19.13 (Current) - June 2026 — Engine v2.19
+- File Loading Progress Dialogue: Added a blocking modal progress dialogue that displays when opening a project from a local file, template, or cloud storage. The modal disables Escape key navigation, backdrop clicks, and has no close button, preventing user interaction during load. Displays a smooth progress bar and detailed status text (downloading, reading structure, extracting assets 1-by-1, rendering workspace).
+
+v0.19.12 - June 2026 — Engine v2.19
 - Button Zoom Animation Stagger: Added a toggle to stagger the entrance animation for button elements when their transition is set to "zoom". This configuration animates the background container/stroke immediately, followed shortly (0.15s offset) by a staggered fade-in/zoom of the button's text, providing a premium feel. The stagger setting is synchronizable across linked canvases.
 
 v0.19.11 - June 2026 — Engine v2.19

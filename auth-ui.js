@@ -683,16 +683,25 @@ async function pushCurrentProjectToCloud(opts = {}) {
 }
 
 async function pullCloudProject(row) {
-  const { data, error } = await sb.storage.from('projects').download(row.storage_path);
-  if (error) throw error;
-  await loadProjectFromBlob(data);
-  state.projectId = row.id;
-  // Align the active space with the project's home so subsequent pushes stay in the same context.
-  if (row.space_id) spacesState.setCurrent(row.space_id);
-  else spacesState.setCurrent(null);
-  const bg = document.querySelector('.modal-bg');
-  if (bg) bg.remove();
-  showCanvasNotification(`Opened "${row.name}" from cloud`, { type: 'success' });
+  const progress = (typeof window.showLoadingProgress === 'function') 
+    ? window.showLoadingProgress(`Opening "${row.name}"...`) 
+    : null;
+  if (progress) progress.setProgress(5, 'Downloading project from cloud...');
+  try {
+    const { data, error } = await sb.storage.from('projects').download(row.storage_path);
+    if (error) throw error;
+    await loadProjectFromBlob(data, null, progress);
+    state.projectId = row.id;
+    // Align the active space with the project's home so subsequent pushes stay in the same context.
+    if (row.space_id) spacesState.setCurrent(row.space_id);
+    else spacesState.setCurrent(null);
+    const bg = document.querySelector('.modal-bg');
+    if (bg) bg.remove();
+    showCanvasNotification(`Opened "${row.name}" from cloud`, { type: 'success' });
+  } catch (err) {
+    if (progress) progress.close();
+    throw err;
+  }
 }
 
 // Wire chip + menu items once at boot. Both auth changes and space changes
