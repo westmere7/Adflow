@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.9 (Current) - June 2026 — Engine v2.19
+v0.19.10 (Current) - June 2026 — Engine v2.19
+- Preview Current Only Disabled for Single-Frame Ads: The "Preview current only" checkbox in the top bar is now greyed out and disabled when only one playable frame exists — either a one-frame project, or a two-frame project with one frame marked Skip. If it was checked when the frame count drops to one (e.g. by skipping a frame), it is automatically unchecked, so a stale "current only" preview can't linger with the control locked.
+
+v0.19.9 - June 2026 — Engine v2.19
 - Letter Spacing Now Exports: Fixed exported ads (HTML5 ZIP, Full Preview, and PNG fallbacks) silently dropping the Letter spacing set on text and buttons — the editor rendered it but the export markup never emitted the CSS property. Exported text now matches the editor's tracking exactly, including per-character Typing/Word-fade spans (which inherit it). Because the export's runtime auto-size fitter measures the live label, it now also measures with letter spacing — so auto-sized text and buttons with tracking pick the same font size and wrap point in the editor, preview, and export (previously negative tracking could make a one-line label wrap to two lines in the shipped ad, and positive tracking could make it export at a larger font than designed).
 
 v0.19.8 - June 2026 — Engine v2.19

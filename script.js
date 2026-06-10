@@ -2535,6 +2535,19 @@ function renderFrameControls() {
 
   const previewCurrentOnlyChk = document.getElementById('project-preview-current-only');
   if (previewCurrentOnlyChk) {
+    // "Preview current only" is meaningless with a single playable frame —
+    // disable it when 0–1 non-skipped frames exist (covers both a 1-frame
+    // project and a 2-frame project with one frame marked Skip). Also clear
+    // the flag itself: otherwise skipping a frame while it's on would leave
+    // it active (e.g. previewing the skipped frame) with no way to uncheck.
+    const singlePlayable = state.frames.filter(f => !f.skip).length <= 1;
+    if (singlePlayable && state.previewCurrentOnly) state.previewCurrentOnly = false;
+    previewCurrentOnlyChk.disabled = singlePlayable;
+    const pcoRow = previewCurrentOnlyChk.closest('.checkbox-row');
+    if (pcoRow) {
+      pcoRow.style.opacity = singlePlayable ? '0.4' : '1';
+      pcoRow.style.pointerEvents = singlePlayable ? 'none' : '';
+    }
     if (document.activeElement !== previewCurrentOnlyChk) previewCurrentOnlyChk.checked = state.previewCurrentOnly === true;
     previewCurrentOnlyChk.onchange = (e) => {
       state.previewCurrentOnly = e.target.checked;
@@ -17135,7 +17148,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.19.9';
+  const currentVersion = 'v0.19.10';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -17350,7 +17363,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.19.9</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.10</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -20323,7 +20336,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.19.9';
+        verEl.textContent = 'v0.19.10';
         logoEl.appendChild(verEl);
       }
     }

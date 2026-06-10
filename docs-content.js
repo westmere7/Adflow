@@ -661,6 +661,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.10',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Preview Current Only Disabled for Single-Frame Ads: The "Preview current only" checkbox in the top bar is now greyed out and disabled when only one playable frame exists — either a one-frame project, or a two-frame project with one frame marked Skip. If it was checked when the frame count drops to one, it is automatically unchecked, so a stale "current only" preview can\'t linger with the control locked.'
+    ]
+  },
+  {
     version: 'v0.19.9',
     date: 'June 2026 — Engine v2.19',
     items: [
