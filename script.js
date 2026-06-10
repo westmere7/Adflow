@@ -1121,7 +1121,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     if (sync.font) {
       // Font family/weight/spacing/alignment — NOT fontSize (handled separately so a
       // group can sync typeface but keep per-canvas sizes, as auto-resize needs).
-      const fontProps = ['fontFamily', 'weight', 'lineHeight', 'lineSpacing', 'leading', 'tracking', 'textAlign', 'verticalAlign'];
+      const fontProps = ['fontFamily', 'weight', 'lineHeight', 'lineHeightAuto', 'letterSpacing', 'textAlign', 'verticalAlign'];
       const isBrand = (targetEl.role === 'rmit-logo' || targetEl.role === 'rfwn' || targetEl.role === 'cricos');
       fontProps.forEach(p => {
         if (isBrand && (p === 'textAlign' || p === 'verticalAlign')) {
@@ -1147,7 +1147,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     }
     const syncBackground = sync.background !== undefined ? sync.background : sync.color;
     if (syncBackground) {
-      const bgProps = ['bg', 'hasBg', 'textBgColor', 'animateBg', 'timeOffset', 'bgPadL', 'bgPadV'];
+      const bgProps = ['bg', 'hasBg', 'animateBg', 'bgPadL', 'bgPadV', 'bgCoverage', 'bgOpacity'];
       bgProps.forEach(p => {
         if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
         else delete targetEl[p];
@@ -1160,7 +1160,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
       else delete targetEl.color;
     }
     if (sync.font) {
-      const fontProps = ['fontFamily', 'weight', 'fontSize', 'autoSize', 'maxFontSize', 'paddingLR', 'paddingTB', 'textAlign', 'verticalAlign', 'wrapText', 'wrapMinSize'];
+      const fontProps = ['fontFamily', 'weight', 'fontSize', 'autoSize', 'maxFontSize', 'letterSpacing', 'paddingLR', 'paddingTB', 'textAlign', 'verticalAlign', 'wrapText', 'wrapMinSize'];
       fontProps.forEach(p => {
         if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
         else delete targetEl[p];
@@ -1174,7 +1174,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
       else delete targetEl.bg;
     }
     if (sync.stroke) {
-      const strokeProps = ['strokeColor', 'strokeWidth'];
+      const strokeProps = ['strokeColor', 'strokeWidth', 'strokeOpacity', 'strokeDash', 'strokeGap'];
       strokeProps.forEach(p => {
         if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
         else delete targetEl[p];
@@ -1226,7 +1226,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
       else delete targetEl.color;
     }
     if (sync.stroke) {
-      const strokeProps = ['strokeColor', 'strokeWidth'];
+      const strokeProps = ['strokeColor', 'strokeWidth', 'strokeOpacity', 'strokeDash', 'strokeGap'];
       strokeProps.forEach(p => {
         if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
         else delete targetEl[p];
@@ -1263,7 +1263,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     else delete targetEl.hidden;
   }
   if (sync.inAnim) {
-    const inAnimProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor'];
+    const inAnimProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor'];
     inAnimProps.forEach(p => {
       if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
       else delete targetEl[p];
@@ -17135,7 +17135,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.19.7';
+  const currentVersion = 'v0.19.8';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -17350,7 +17350,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.19.7</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.8</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -19320,7 +19320,7 @@ document.addEventListener('contextmenu', (e) => {
         const activeC = getActiveCanvas();
         const el = activeC ? activeC.elements.find(x => x.id === state.selectedElementId) : null;
         if (animBtn && el) {
-          const inAnimProps = ['animDuration', 'animDelay', 'animFade', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor'];
+          const inAnimProps = ['animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor'];
           inAnimProps.forEach(p => delete el[p]);
         } else if (effBtn && el) {
           const effectProps = ['effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
@@ -20323,7 +20323,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.19.7';
+        verEl.textContent = 'v0.19.8';
         logoEl.appendChild(verEl);
       }
     }

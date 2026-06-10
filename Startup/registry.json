@@ -1,14 +1,10 @@
 [
   {
-    "fileName": "Adflow_blank.flow",
-    "projectName": "RMIT_ad"
+    "fileName": "RMIT_Blank_2026.flow",
+    "projectName": "RMIT_Blank"
   },
   {
-    "fileName": "Adflow_startup.flow",
+    "fileName": "RMIT_Blank_Red.flow",
     "projectName": "RMIT_ad"
-  },
-  {
-    "fileName": "RMIT_generic_ad-2026-05-29.flow",
-    "projectName": "RMIT_generic_ad"
   }
 ]

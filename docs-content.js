@@ -661,6 +661,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.8',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Complete Link Group Animation Sync: Fixed "Fade letters" (Typing preset) and "Fade BG" toggles not propagating across linked elements — they were missing from the IN Animation sync list. The same audit closed further sync gaps: Letter spacing and Auto line height now sync under Font settings, text background Cover % and Opacity now sync under Background, and stroke Dash / Gap / Opacity now sync under Stroke for buttons and shapes. "Reset Settings" on an animation preset now also clears the two fade toggles.',
+      'Restored Startup Templates: Regenerated the startup template registry, which still pointed at template files that no longer exist — the startup templates now load again instead of failing silently.'
+    ]
+  },
+  {
     version: 'v0.19.7',
     date: 'June 2026 — Engine v2.19',
     items: [

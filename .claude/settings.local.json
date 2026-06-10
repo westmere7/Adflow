@@ -17,7 +17,11 @@
       "Bash(node --check export-pipeline.js)",
       "Bash(node --check docs-content.js)",
       "Bash(curl -s \"http://localhost:8123/script.js?nocache=$\\(date +%s\\)\")",
-      "Bash(powershell -NoProfile -Command \"Start-Sleep -Seconds 6; Write-Output done\")"
+      "Bash(powershell -NoProfile -Command \"Start-Sleep -Seconds 6; Write-Output done\")",
+      "Bash(node scripts/build-startup-registry.js)",
+      "Bash(grep -v \"//\")",
+      "Bash(sed -n '3950,3970p;4070,4090p' script.js)",
+      "Bash(awk 'NR>=10700 && NR<=10780 && \\(/el\\\\.type/ || /letterSpacing|lineHeight/\\)' script.js)"
     ]
   }
 }
