@@ -180,7 +180,7 @@ function makeElement(type) {
   try { fId = state.activeFrameId || 1; } catch (e) { }
   const base = { id: uid(), x: 20, y: 20, width: 120, height: 40, animType: 'none', animDuration: 1.0, animDelay: 0.0, effectType: 'none', frameId: fId, persistent: false };
   switch (type) {
-    case 'text': return { ...base, type, text: 'Your headline', fontSize: 22, color: '#ffffff', weight: '700', fontFamily: 'Arial', width: 220, height: 32 };
+    case 'text': return { ...base, type, text: 'Your headline', fontSize: 22, color: '#ffffff', weight: '400', fontFamily: 'Helvetica Neue LT Pro', width: 220, height: 32 };
     case 'rect': return { ...base, type, color: '#7c5cff', width: 120, height: 80, radius: 8 };
     case 'circle': return { ...base, type, color: '#22d3ee', width: 80, height: 80 };
     case 'line': return { ...base, type, color: '#ffffff', width: 160, height: 3, opacity: 100 };
@@ -250,6 +250,7 @@ const state = {
   nudgeShift: 10,           // Shift + arrow key nudge delta in pixels
   exportFormat: 'png',      // export image format preference: png, jpeg, webp
   exportQuality: 80,        // image quality compression factor % (for jpeg/webp)
+  compressFormat: 'jpeg',   // auto-compression output: 'jpeg' (PNG for transparency — ad-server safe) or 'webp'
   subheadingAutoHide: true, // allow Auto-Hide Subheading setting override
   defaultCricosCode: '00122A', // RMIT default compliance CRICOS code
   clipboard: null,

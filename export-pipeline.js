@@ -1422,6 +1422,11 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
 
   let framesHTML = '';
   const frameData = [];
+  // Bg of the frame that is initially display:block. #ad paints this (not
+  // c.bgColor): with fractional devicePixelRatio the frame layer's edges get
+  // antialiased, and a differently-coloured #ad beneath bleeds through as
+  // 1px hairlines around the ad. Same-colour beneath = invisible blend.
+  let initialAdBg = null;
   activeFrames.forEach((f, i) => {
     const excludePers = !!f.excludePersistent;
     const frameElsList = [];
@@ -1447,6 +1452,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       : displayStyle;
 
     const frameBg = _frameBgOf(f.id);
+    if (displayStyleVal === 'block' && initialAdBg === null) initialAdBg = frameBg;
     framesHTML += `<div class="frame" id="frame-${f.id}" style="display:${displayStyleVal};width:100%;height:100%;position:absolute;inset:0;background:${frameBg};">\n${frameEls}\n</div>\n`;
 
     let transitionVal = f.transition || 'fade';
@@ -1594,7 +1600,7 @@ ${dynamicKeyframes}
     height: ${c.height}px;
     position: relative;
     overflow: hidden;
-    background: ${c.bgColor};
+    background: ${initialAdBg || c.bgColor};
     font-family: Arial, Helvetica, sans-serif;
     opacity: 0;
     transition: opacity 0.12s ease;
@@ -1669,6 +1675,11 @@ ${elsTop}
         prevFrameEl.style.animation = animOut + ' ' + td + ' ease both';
       }
       
+      // Once the transition settles: also clear the INCOMING frame's animation
+      // (its 'both' fill keeps it on a composited layer whose antialiased edges
+      // show 1px hairlines under fractional devicePixelRatio) and repaint #ad's
+      // own bg to match the now-active frame so any edge blend is same-colour.
+      var adEl = document.getElementById('ad');
       if (anim) {
         var transDurationMs = (frames[currentFrame].transitionDuration || 0.5) * 1000;
         setTimeout(function() {
@@ -1676,12 +1687,15 @@ ${elsTop}
           prevFrameEl.style.animation = '';
           prevFrameEl.style.zIndex = '';
           nextFrameEl.style.zIndex = '';
+          nextFrameEl.style.animation = '';
+          if (adEl) adEl.style.background = nextFrameEl.style.background;
         }, transDurationMs);
       } else {
         prevFrameEl.style.display = 'none';
         prevFrameEl.style.animation = '';
         prevFrameEl.style.zIndex = '';
         nextFrameEl.style.zIndex = '';
+        if (adEl) adEl.style.background = nextFrameEl.style.background;
       }
       
       if (!loopAd && currentFrame === frames.length - 1) {
