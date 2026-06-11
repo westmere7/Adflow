@@ -144,6 +144,18 @@ function getZoomKeyframes(el) {
   }
 }
 
+// Helper to calculate the keyframes for a blur transition
+function getBlurKeyframes(el) {
+  const blurAmount = el.animBlurAmount !== undefined ? el.animBlurAmount : 20;
+  const fade = el.animFade !== false;
+  const animName = `anim-blur-${el.id}`;
+  
+  return `@keyframes ${animName} {
+    from { filter: blur(${blurAmount}px); ${fade ? 'opacity: 0;' : ''} }
+    to { filter: blur(0px); ${fade ? 'opacity: 1;' : ''} }
+  }`;
+}
+
 // Helper to calculate the keyframes for a slide transition (with optional elastic bounce, custom distance, and rotation offset)
 function getSlideKeyframes(el) {
   let dir = el.animDirection || 'up';
@@ -1059,6 +1071,9 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
         tempEl.animFade = true;
       }
       dynamicKeyframes += '\n' + getZoomKeyframes(tempEl);
+    }
+    if (animType === 'blur' && !isImageExport) {
+      dynamicKeyframes += '\n' + getBlurKeyframes(el);
     }
     const isSlideLike = animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right';
     if (isSlideLike && !isImageExport) {

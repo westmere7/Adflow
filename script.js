@@ -2103,6 +2103,8 @@ function render(skipProps = false) {
           tempEl.animFade = true;
         }
         dynamicStyles += '\n' + getZoomKeyframes(tempEl);
+      } else if (animType === 'blur') {
+        dynamicStyles += '\n' + getBlurKeyframes(el);
       } else if (animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right') {
         const tempEl = { ...el };
         if (animType === 'slide-up') { tempEl.animDirection = 'up'; tempEl.animDistance = 20; }
@@ -3589,6 +3591,8 @@ function getElementAnimationCSS(el, isImageExport) {
         const timing = el.animBounce ? 'linear' : 'ease-out';
         entryAnims.push(`anim-zoom-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both`);
       }
+    } else if (animType === 'blur') {
+      entryAnims.push(`anim-blur-${el.id} ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both`);
     } else if (animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right') {
       const timing = el.animBounce ? 'linear' : 'ease-out';
       entryAnims.push(`anim-slide-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both`);
@@ -11503,7 +11507,8 @@ function renderProps() {
       { val: 'slide', label: 'Slide' },
       { val: 'swipe', label: 'Swipe' },
       { val: 'zoom', label: 'Zoom' },
-      { val: 'split', label: 'Split' }
+      { val: 'split', label: 'Split' },
+      { val: 'blur', label: 'Blur' }
     ];
     if (el.type === 'text' || el.type === 'button') {
       animOptions.push({ val: 'typing', label: 'Typing' });
@@ -11537,6 +11542,7 @@ function renderProps() {
     const secNum = (key, label, def = '') => `<div class="prop-row" style="margin:0;"><label>${label}</label><input type="number" step="0.1" data-k="${key}" value="${el[key] !== undefined ? el[key] : def}" /></div>`;
 
     const isZoomLike = el.animType === 'zoom' || el.animType === 'zoom-in' || el.animType === 'pop-in';
+    const isBlur = el.animType === 'blur';
     const isSlideLike = el.animType === 'slide' || el.animType === 'slide-up' || el.animType === 'slide-down' || el.animType === 'slide-left' || el.animType === 'slide-right';
     const isSwipeLike = (el.animType || 'none').startsWith('swipe-');
     const isSplit = el.animType === 'split';
@@ -11591,6 +11597,23 @@ function renderProps() {
               <label for="prop-anim-stagger-text" title="Stagger animation between button and text" style="cursor:pointer; font-size:11px; white-space:nowrap;">Stagger</label>
             </div>
             ` : ''}
+          </div>
+        </div>
+      `);
+    } else if (isBlur) {
+      f.push(`
+        <div class="prop-row" style="margin-bottom:8px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <label>Blur (px)</label>
+              <input type="number" min="1" max="100" data-k="animBlurAmount" value="${el.animBlurAmount !== undefined ? el.animBlurAmount : 20}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Animation blur amount in pixels" />
+            </div>
+            <div style="display:flex; align-items:center; margin-top:14px;">
+              <div class="checkbox-row" style="margin:0;">
+                <input type="checkbox" data-k="animFade" id="prop-anim-fade" title="Fade in element during transition" ${el.animFade !== false ? 'checked' : ''}/>
+                <label for="prop-anim-fade" title="Fade in element during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
+              </div>
+            </div>
           </div>
         </div>
       `);
@@ -12455,6 +12478,18 @@ function checkButtonFontSizeWarning(el) {
                 targetNode.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
                 targetNode.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
               }
+            } else if (previewVal === 'blur') {
+              let styleTag = document.getElementById('dynamic-anim-styles');
+              if (!styleTag) {
+                styleTag = document.createElement('style');
+                styleTag.id = 'dynamic-anim-styles';
+                document.head.appendChild(styleTag);
+              }
+              const keyframesRule = getBlurKeyframes(nodeEl);
+              const regex = new RegExp(`@keyframes\\s+anim-blur-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+              styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
+              targetNode.style.animation = `anim-blur-${nodeEl.id} ${nodeEl.animDuration || 1}s ease-out 0s both`;
+              targetNode.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
             } else if (previewVal === 'slide' || previewVal === 'slide-up' || previewVal === 'slide-down' || previewVal === 'slide-left' || previewVal === 'slide-right') {
               const tempEl = { ...nodeEl };
               if (previewVal === 'slide-up') { tempEl.animDirection = 'up'; tempEl.animDistance = 20; }
@@ -12602,20 +12637,26 @@ function checkButtonFontSizeWarning(el) {
       let styleTag = document.getElementById('dynamic-anim-styles');
       if (styleTag) {
         const tempEl = { ...el };
-        if (el.animType === 'pop-in') {
-          tempEl.zoomFrom = 80;
-          tempEl.animFade = true;
-        } else if (el.animType === 'zoom-in') {
-          tempEl.zoomFrom = 110;
-          tempEl.animFade = true;
+        if (el.animType === 'blur') {
+          const keyframesRule = getBlurKeyframes(tempEl);
+          const regex = new RegExp(`@keyframes\\s+anim-blur-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+          styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
         } else {
-          if (tempEl.zoomFrom === undefined) {
+          if (el.animType === 'pop-in') {
             tempEl.zoomFrom = 80;
+            tempEl.animFade = true;
+          } else if (el.animType === 'zoom-in') {
+            tempEl.zoomFrom = 110;
+            tempEl.animFade = true;
+          } else {
+            if (tempEl.zoomFrom === undefined) {
+              tempEl.zoomFrom = 80;
+            }
           }
+          const keyframesRule = getZoomKeyframes(tempEl);
+          const regex = new RegExp(`@keyframes\\s+anim-zoom-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+          styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
         }
-        const keyframesRule = getZoomKeyframes(tempEl);
-        const regex = new RegExp(`@keyframes\\s+anim-zoom-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
-        styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
       }
       
       const domNode = document.querySelector(`.el[data-id="${el.id}"]`);
@@ -12637,20 +12678,26 @@ function checkButtonFontSizeWarning(el) {
         let styleTag = document.getElementById('dynamic-anim-styles');
         if (styleTag) {
           const tempEl = { ...el };
-          if (el.animType === 'pop-in') {
-            tempEl.zoomFrom = 80;
-            tempEl.animFade = true;
-          } else if (el.animType === 'zoom-in') {
-            tempEl.zoomFrom = 110;
-            tempEl.animFade = true;
+          if (el.animType === 'blur') {
+            const keyframesRule = getBlurKeyframes(tempEl);
+            const regex = new RegExp(`@keyframes\\s+anim-blur-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+            styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
           } else {
-            if (tempEl.zoomFrom === undefined) {
+            if (el.animType === 'pop-in') {
               tempEl.zoomFrom = 80;
+              tempEl.animFade = true;
+            } else if (el.animType === 'zoom-in') {
+              tempEl.zoomFrom = 110;
+              tempEl.animFade = true;
+            } else {
+              if (tempEl.zoomFrom === undefined) {
+                tempEl.zoomFrom = 80;
+              }
             }
+            const keyframesRule = getZoomKeyframes(tempEl);
+            const regex = new RegExp(`@keyframes\\s+anim-zoom-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+            styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
           }
-          const keyframesRule = getZoomKeyframes(tempEl);
-          const regex = new RegExp(`@keyframes\\s+anim-zoom-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
-          styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
         }
         const domNode = document.querySelector(`.el[data-id="${el.id}"]`);
         if (domNode) {
