@@ -11097,6 +11097,24 @@ function renderProps() {
     'Helvetica Neue LT Pro': ['300', '400', '500']
   };
   const getWeightsForFont = (fnt) => fontWeights[fnt] || ['100', '200', '300', '400', '500', '600', '700', '800', '900'];
+  // When a font is switched to one that lacks the element's current weight, the
+  // stored weight stays out-of-range: the dropdown can't select it (so it shows
+  // the first option) while the browser renders the nearest available face — the
+  // UI and the canvas disagree. Snap the stored weight to the nearest available
+  // one so the value, the dropdown, and the rendered glyphs all agree.
+  const reconcileWeightForFont = (targetEl) => {
+    if (!targetEl || (targetEl.type !== 'text' && targetEl.type !== 'button')) return;
+    const avail = getWeightsForFont(targetEl.fontFamily || 'Arial');
+    const cur = String(targetEl.weight ?? '');
+    if (avail.includes(cur)) return;
+    const curNum = parseInt(cur, 10);
+    let nearest = avail[0];
+    if (!Number.isNaN(curNum)) {
+      nearest = avail.reduce((best, w) =>
+        Math.abs(parseInt(w, 10) - curNum) < Math.abs(parseInt(best, 10) - curNum) ? w : best, avail[0]);
+    }
+    targetEl.weight = nearest;
+  };
 
   if (el.type === 'text') {
     const textDisabled = isFieldDisabled('text');
@@ -11115,7 +11133,7 @@ function renderProps() {
         </div>
         <div class="prop-row" style="margin:0"><label>Weight</label>
           <select data-k="weight" title="Font Weight">
-            ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${w === el.weight ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
+            ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${String(w) === String(el.weight) ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -11255,7 +11273,7 @@ function renderProps() {
         </div>
         <div class="prop-row" style="margin:0"><label>Weight</label>
           <select data-k="weight" title="Button Font Weight">
-            ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${w === el.weight ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
+            ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${String(w) === String(el.weight) ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -11999,6 +12017,12 @@ function checkButtonFontSizeWarning(el) {
       if (el.type === 'button' && el.autoHug) {
         el.width = measureButtonWidth(el);
       }
+    }
+    if (k === 'fontFamily') {
+      const affected = (state.layerSelection && state.layerSelection.length > 1 && c)
+        ? c.elements.filter(e => state.layerSelection.includes(e.id))
+        : [el];
+      affected.forEach(reconcileWeightForFont);
     }
     if ((k === 'width' || k === 'height') && (el.type === 'button' || (state.layerSelection && state.layerSelection.length > 1 && c && c.elements.filter(e => state.layerSelection.includes(e.id)).some(selEl => selEl.type === 'button')))) {
       const autoHugInp = propsEl.querySelector('input[data-k="autoHug"]');
