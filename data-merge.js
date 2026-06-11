@@ -39,7 +39,7 @@ const DM_FIELD_LABEL = { text: 'Text', color: 'Color', bg: 'BG color', image: 'I
 function dmFieldsForType(type) {
   switch (type) {
     case 'text': return ['text', 'color'];
-    case 'button': return ['text', 'color', 'bg'];
+    case 'button': return ['text', 'color'];
     case 'image': return ['image'];
     case 'rect': case 'circle': case 'pixel': return ['color'];
     case 'line': return [];
@@ -215,6 +215,26 @@ function dmToggleField(el, field, on) {
   if (!on && state.dataMerge && state.dataMerge.mappings) {
     const key = dmSlotKey(el) + '::' + field;
     delete state.dataMerge.mappings[key];
+  }
+
+  // Force-sync link group property when dynamic data is enabled
+  if (el.linkGroupId && state.linkGroups && state.linkGroups[el.linkGroupId]) {
+    const lg = state.linkGroups[el.linkGroupId];
+    if (!lg.syncProperties) lg.syncProperties = {};
+    if (on) {
+      let prop = null;
+      if (field === 'text') prop = 'text';
+      else if (field === 'image') prop = 'image';
+      else if (field === 'bg') prop = 'fill';
+      else if (field === 'color') {
+        if (el.type === 'button') prop = 'textColor';
+        else if (el.type === 'text') prop = 'color';
+        else prop = 'fill';
+      }
+      if (prop) {
+        lg.syncProperties[prop] = true;
+      }
+    }
   }
 }
 

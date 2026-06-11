@@ -259,15 +259,14 @@ const DOCS_SECTIONS = [
       { id: 'dynamic-slots', title: 'Marking dynamic slots', body: `
         <p>Select an element, open the <b>Dynamic Data</b> section of the Properties panel, and tick fields to make dynamic:</p>
         <ul>
-          <li><b>Text</b> + <b>Color</b> on text.</li>
-          <li><b>Background</b> on buttons.</li>
+          <li><b>Text</b> + <b>Color</b> on text and buttons.</li>
           <li><b>Image</b> on images.</li>
           <li>Fill <b>Color</b> on shapes.</li>
         </ul>
         <p>A small dot marks dynamic elements on the canvas. Unmarked elements are never touched by the merge.</p>
       `},
       { id: 'slots-link-groups', title: 'Slots × Link Groups', body: `
-        <p>A dynamic field becomes a <b>slot</b>. If the element is in a Link Group, the slot covers the whole group — so one binding fills that element on every size at once. Toggling a dynamic field on a linked element applies it to all siblings automatically, and your link-group sync settings are never altered.</p>
+        <p>A dynamic field becomes a <b>slot</b>. If the element is in a Link Group, the slot covers the whole group — so one binding fills that element on every size at once. Toggling a dynamic field on a linked element applies it to all siblings automatically, and the corresponding sync properties (e.g. Text, Color, Image) are forced active and locked from deselection in the Link Groups panel UI to guarantee absolute synchronization consistency.</p>
       `},
       { id: 'loading-data', title: 'Loading data', body: `
         <p>Open <b>File → Data &amp; Versions</b> (or the <b>Data</b> button). <b>Import CSV</b>, or add columns/rows by hand. Map each column to a slot's field, pick the <b>★ version name</b> column (names the exported folders), and optionally bind a column to <b>ClickTag</b>.</p>
@@ -665,6 +664,7 @@ const CHANGELOG_DATA = [
     date: 'June 2026 — Engine v2.19',
     items: [
       'Multi-Format Image Auto-Compression Settings: Added a new "Auto-compression Format" preference under Project Settings. Users can choose between "JPEG / PNG (auto — ad-server safe)" (default) and "WebP (smallest files)". The default setting automatically resolves output images to PNG if they use transparency (preserving alpha channels) or JPEG otherwise (preventing issues with DSPs like CM360, Google Ads, and Adobe DSP that reject WebP).',
+      'Link Group Sync Lock: Implemented automatic synchronization enforcement for properties bound to active dynamic data slots on elements within a link group. Corresponding checkboxes (Text, Color, Image) in the Link Groups panel UI are replaced by a bolt icon and locked from deselection to ensure absolute consistency across layouts without reducing text readability (no graying out).',
       'Blur Entrance Animation: Added a new customizable "Blur" IN animation preset for layers, allowing adjustable blur radius (1-100px) and optional fade-in.',
       'Ad Frame Boundary Hairline Fix: Resolved thin hairline colored lines bleeding along the borders of active ad frame containers on high-DPI (fractional scaling) displays by dynamically triggering repaint routines on frame transitions.'
     ]

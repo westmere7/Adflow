@@ -212,6 +212,9 @@ Maps columns to dynamic element slots to batch generate banners.
 - **Edit-in-place**: Direct canvas edits write back to the active version row cell unless Data Lock is on.
 - **Worker Exporter**: Compresses and streams ZIP files using a background thread via direct File System streaming, bypassing main-thread lockups.
 
+### Link Group Sync Locking
+When elements in a link group are configured with active dynamic data slots (e.g. dynamic text, color, or image), the corresponding synchronization properties (such as `text`, `textColor`, `color`, or `image`) are automatically forced to `true`. In the Link Groups settings panel, these checkboxes are replaced by a bolt icon and locked from deselection, preventing accidental deselection without graying out or reducing text legibility. This enforcement is propagated dynamically in `applyLinkSync` and when toggling fields via `dmToggleField` to maintain absolute structural integrity and layout consistency across all canvases.
+
 ### Multi-Format Image Auto-Compression Settings
 Adflow supports configurable compression preferences (`state.compressFormat`). The default option `jpeg` (ad-server safe) resolves to WebP only when explicitly chosen. For ad-server compatibility (avoiding WebP rejection in CM360, Google Ads, and Adobe DSP), the default setting evaluates alpha channels: if an image contains transparency, it is compressed to PNG; otherwise, it is compressed to JPEG.
 
