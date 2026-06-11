@@ -660,6 +660,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.16',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Font Subsetting & Embedding on Export: Exported ads no longer contain font files. Each required brand font is automatically subset to the characters the ad actually uses (cutting font weight by typically 60-80%) and embedded directly into index.html as base64. This makes bundles compatible with ad servers that reject font files (Google Ads, Adobe DSP) while keeping text fully editable/animatable (typing, word-fade), preserves kerning, and frees significant headroom in the IAB KB budget — the image auto-compressor now lands on higher image quality automatically. All live size readouts measure the subsetted output, and the Ad Size Breakdown shows real subset font sizes instead of fixed estimates. If subsetting is unavailable, exports gracefully fall back to packing the full .woff2 files as before.',
+      'Stale Script Cache Fix: Application scripts are now version-pinned (?v=) so browsers and local servers always load the current release after an update.'
+    ]
+  },
+  {
     version: 'v0.19.15',
     date: 'June 2026 — Engine v2.19',
     items: [

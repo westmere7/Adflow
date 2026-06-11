@@ -248,7 +248,7 @@
     <div class="app-splash-inner">
       <div class="app-splash-logo">
         <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo />
-        <span class="app-splash-version">v0.19.15</span>
+        <span class="app-splash-version">v0.19.16</span>
       </div>
       <div class="app-splash-status" id="app-splash-status">Warming up…</div>
       <div class="app-splash-bar"><div class="app-splash-bar-fill" id="app-splash-bar-fill"></div></div>
@@ -674,7 +674,7 @@
         </div>
         <div class="workspace-footer" id="workspace-footer">
           <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
-          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.19.15</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.19.16</button>
         </div>
       </div>
     </div>
@@ -746,14 +746,17 @@
     </div>
   </div>
 
-  <script src="auto-resize-engine.js"></script>
-  <script src="auto-arrange-config.js"></script>
-  <script src="docs-content.js"></script>
-  <script src="auth-ui.js"></script>
-  <script src="data-merge.js"></script>
-  <script src="export-pipeline.js?cb=verify3"></script>
-  <script src="color-picker.js"></script>
-  <script src="script.js?cb=verify3"></script>
+  <!-- ?v= is bumped with each release (part of the version/changelog workflow)
+       so browsers and the local python server never serve stale JS. -->
+  <script src="auto-resize-engine.js?v=0.19.16"></script>
+  <script src="auto-arrange-config.js?v=0.19.16"></script>
+  <script src="docs-content.js?v=0.19.16"></script>
+  <script src="auth-ui.js?v=0.19.16"></script>
+  <script src="data-merge.js?v=0.19.16"></script>
+  <script src="font-subset.js?v=0.19.16"></script>
+  <script src="export-pipeline.js?v=0.19.16"></script>
+  <script src="color-picker.js?v=0.19.16"></script>
+  <script src="script.js?v=0.19.16"></script>
 </body>
 
 </html>

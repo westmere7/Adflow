@@ -595,7 +595,28 @@ async function addCanvasAssetsToZip(c, zip) {
     }
   }
 
-  // 2. Pack font assets (only those actually used by active text/button elements)
+  // 2. Fonts: subset to the canvas's character set and warm the cache so the
+  // (synchronous) generateExportHTML can embed them as base64 data URIs — no
+  // font files in the zip. Per-font fallback on subset failure: pack the full
+  // .woff2 like before (generateExportHTML's peek() misses and emits its URL).
+  const fontSpecs = (typeof collectFontSubsetSpecs === 'function') ? collectFontSubsetSpecs(c) : null;
+  if (fontSpecs) {
+    for (const spec of fontSpecs) {
+      let entry = null;
+      try { entry = await fontSubsetter.ensure(spec); } catch (err) { entry = null; }
+      if (!entry) {
+        try {
+          const resp = await fetch(`data/fonts/${spec.woff2}`);
+          if (resp.ok) zip.file(`assets/${spec.woff2}`, await resp.blob());
+        } catch (err) {
+          console.error('Failed to prefetch font asset', spec.woff2, err);
+        }
+      }
+    }
+    return;
+  }
+
+  // Legacy path (font-subset.js not loaded): pack full .woff2 files
   const req = getRequiredFonts(c);
   const fontsToFetch = [];
 
@@ -1503,29 +1524,43 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
     }
   }
 
-  // Only include @font-face rules for fonts and weights actually used in this canvas
-  const req = getRequiredFonts(c);
+  // Only include @font-face rules for fonts and weights actually used in this
+  // canvas. Preferred source: the subset font cached by addCanvasAssetsToZip
+  // (base64 data URI, no font file in the zip). Cache miss → legacy file URL:
+  // either the .woff2 that addCanvasAssetsToZip packed on subset failure, or
+  // data/fonts/ for the zipless preview-iframe path before any size calc.
   const fontFaceRules = [];
   const fontPrefix = zipRef ? 'assets/' : 'data/fonts/';
+  const fontSpecs = (typeof collectFontSubsetSpecs === 'function') ? collectFontSubsetSpecs(c) : null;
 
-  if (req.museo.has(300)) {
-    fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo300-Regular.woff2') format('woff2'); font-weight: 300; }`);
-  }
-  if (req.museo.has(500)) {
-    fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo500-Regular.woff2') format('woff2'); font-weight: 500; }`);
-  }
-  if (req.museo.has(700)) {
-    fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo700-Regular.woff2') format('woff2'); font-weight: 700; }`);
-  }
-
-  if (req.helvetica.has(300)) {
-    fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro_lt.woff2') format('woff2'); font-weight: 300; }`);
-  }
-  if (req.helvetica.has(400)) {
-    fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro_roman.woff2') format('woff2'); font-weight: 400; }`);
-  }
-  if (req.helvetica.has(500)) {
-    fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro.woff2') format('woff2'); font-weight: 500; }`);
+  if (fontSpecs) {
+    fontSpecs.forEach(spec => {
+      const entry = (typeof fontSubsetter !== 'undefined') ? fontSubsetter.peek(spec) : null;
+      const src = entry
+        ? `url('${entry.dataUrl}') format('opentype')`
+        : `url('${fontPrefix}${spec.woff2}') format('woff2')`;
+      fontFaceRules.push(`  @font-face { font-family: '${spec.family}'; src: ${src}; font-weight: ${spec.weight}; }`);
+    });
+  } else {
+    const req = getRequiredFonts(c);
+    if (req.museo.has(300)) {
+      fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo300-Regular.woff2') format('woff2'); font-weight: 300; }`);
+    }
+    if (req.museo.has(500)) {
+      fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo500-Regular.woff2') format('woff2'); font-weight: 500; }`);
+    }
+    if (req.museo.has(700)) {
+      fontFaceRules.push(`  @font-face { font-family: 'Museo'; src: url('${fontPrefix}Museo700-Regular.woff2') format('woff2'); font-weight: 700; }`);
+    }
+    if (req.helvetica.has(300)) {
+      fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro_lt.woff2') format('woff2'); font-weight: 300; }`);
+    }
+    if (req.helvetica.has(400)) {
+      fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro_roman.woff2') format('woff2'); font-weight: 400; }`);
+    }
+    if (req.helvetica.has(500)) {
+      fontFaceRules.push(`  @font-face { font-family: 'Helvetica Neue LT Pro'; src: url('${fontPrefix}helveticaneueltpro.woff2') format('woff2'); font-weight: 500; }`);
+    }
   }
 
   activeFrames.forEach((f, i) => {

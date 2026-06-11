@@ -6612,12 +6612,23 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
     const req = getRequiredFonts(focusedCanvas);
     const fontDetails = [];
     let fontKbSum = 0;
-    if (req.museo.has(300)) { fontDetails.push({ name: 'Museo 300', size: 32 }); fontKbSum += 32; }
-    if (req.museo.has(500)) { fontDetails.push({ name: 'Museo 500', size: 33 }); fontKbSum += 33; }
-    if (req.museo.has(700)) { fontDetails.push({ name: 'Museo 700', size: 33 }); fontKbSum += 33; }
-    if (req.helvetica.has(300)) { fontDetails.push({ name: 'Helvetica Neue Lt Pro 300', size: 38 }); fontKbSum += 38; }
-    if (req.helvetica.has(400)) { fontDetails.push({ name: 'Helvetica Neue Lt Pro 400', size: 39 }); fontKbSum += 39; }
-    if (req.helvetica.has(500)) { fontDetails.push({ name: 'Helvetica Neue Lt Pro 500', size: 38 }); fontKbSum += 38; }
+    // Fonts are subset + embedded at export (font-subset.js); show the actual
+    // subset size when one has been computed, else the full-file estimate.
+    const _fontKb = (base, fullKb) => {
+      const kb = (typeof fontSubsetter !== 'undefined') ? fontSubsetter.lastKnownKb(base) : null;
+      return kb !== null ? { size: Math.round(kb * 10) / 10, subset: true } : { size: fullKb, subset: false };
+    };
+    const _addFont = (label, base, fullKb) => {
+      const f = _fontKb(base, fullKb);
+      fontDetails.push({ name: label + (f.subset ? ' (subset)' : ''), size: f.size });
+      fontKbSum += f.size;
+    };
+    if (req.museo.has(300)) _addFont('Museo 300', 'Museo300-Regular', 32);
+    if (req.museo.has(500)) _addFont('Museo 500', 'Museo500-Regular', 33);
+    if (req.museo.has(700)) _addFont('Museo 700', 'Museo700-Regular', 33);
+    if (req.helvetica.has(300)) _addFont('Helvetica Neue Lt Pro 300', 'helveticaneueltpro_lt', 38);
+    if (req.helvetica.has(400)) _addFont('Helvetica Neue Lt Pro 400', 'helveticaneueltpro_roman', 39);
+    if (req.helvetica.has(500)) _addFont('Helvetica Neue Lt Pro 500', 'helveticaneueltpro', 38);
 
     // Calculate images
     const imageDetails = [];
@@ -17509,7 +17520,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.19.15';
+  const currentVersion = 'v0.19.16';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -17724,7 +17735,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.19.15</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.16</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -20761,7 +20772,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.19.15';
+        verEl.textContent = 'v0.19.16';
         logoEl.appendChild(verEl);
       }
     }
