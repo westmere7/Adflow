@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.13 (Current) - June 2026 — Engine v2.19
+v0.19.14 (Current) - June 2026 — Engine v2.19
+- Animation Hover Previews Stop Reliably: Fixed an issue in edit mode where animation, effect, or frame-transition hover previews could keep playing after moving the mouse away from the animation panels. Previews now stop as soon as the cursor leaves the three animation sub-panels (Animation, Effects, Frame Transition), even when the panel content was re-rendered under the cursor.
+- Animation Direction Preview Fixed: Fixed the entrance-animation Direction dropdown, which previously threw an error and showed no preview when hovered. Hovering the Direction control and its options now correctly previews the animation in the chosen direction.
+
+v0.19.13 - June 2026 — Engine v2.19
 - File Loading Progress Dialogue: Added a blocking modal progress dialogue that displays when opening a project from a local file, template, or cloud storage. The modal disables Escape key navigation, backdrop clicks, and has no close button, preventing user interaction during load. Displays a smooth progress bar and detailed status text (downloading, reading structure, extracting assets 1-by-1, rendering workspace).
 
 v0.19.12 - June 2026 — Engine v2.19

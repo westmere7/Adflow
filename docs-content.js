@@ -661,6 +661,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.14',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Animation Hover Previews Stop Reliably: Fixed an issue in edit mode where animation, effect, or frame-transition hover previews could keep playing after moving the mouse away from the animation panels. Previews now stop as soon as the cursor leaves the three animation sub-panels (Animation, Effects, Frame Transition), even when the panel content was re-rendered under the cursor.',
+      'Animation Direction Preview Fixed: Fixed the entrance-animation Direction dropdown, which previously threw an error and showed no preview when hovered. Hovering the Direction control and its options now correctly previews the animation in the chosen direction.'
+    ]
+  },
+  {
     version: 'v0.19.13',
     date: 'June 2026 — Engine v2.19',
     items: [

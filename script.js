@@ -9348,6 +9348,33 @@ function insertAtGroupEnd(arr, el) {
 let activeFramePreviewType = null;
 let framePreviewTimeoutId = null;
 
+// Registered by the props-panel wiring each render; lets a global guard stop
+// previews even after the panel DOM was rebuilt (which swallows mouseleave).
+let stopElementAnimPreviewFn = null;
+let stopElementEffectPreviewFn = null;
+// startPreviewLoop is a closure inside renderProps(); register it so the
+// top-level wireCustomSelects() (animDirection dropdown) can drive the preview.
+let startElementAnimPreviewFn = null;
+// Set when a hover-driven effect preview starts via the global startEffectPreview
+// (panDir custom select), which bypasses the panel closure's activeEffectVal.
+let hoverEffectPreviewActive = false;
+
+function stopAllAnimationPreviews() {
+  if (stopElementAnimPreviewFn) stopElementAnimPreviewFn();
+  if (stopElementEffectPreviewFn) stopElementEffectPreviewFn();
+  if (activeFramePreviewType || framePreviewTimeoutId) stopFrameTransitionPreview();
+}
+
+// Per-panel mouseleave can be missed when renderProps() rebuilds the panel under
+// the cursor, leaving a preview running forever. This document-level guard stops
+// every preview as soon as the pointer hovers anything outside the 3 sub-panels.
+document.addEventListener('mouseover', (e) => {
+  const t = e.target;
+  if (t && t.closest && t.closest('#in-transition-preview-area, #effects-preview-area, #frame-transition-preview-area')) return;
+  stopAllAnimationPreviews();
+});
+document.addEventListener('mouseleave', () => stopAllAnimationPreviews());
+
 function startFrameTransitionPreview(type) {
   if (framePreviewTimeoutId) {
     clearTimeout(framePreviewTimeoutId);
@@ -10285,8 +10312,9 @@ function wireCustomSelects(el, updateProp) {
       } else {
         if (el) {
           if (key === 'animDirection') {
-            startPreviewLoop(el.animType || 'none');
+            if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
           } else if (key === 'panDir') {
+            hoverEffectPreviewActive = true;
             startEffectPreview(el);
           }
         }
@@ -10331,8 +10359,9 @@ function wireCustomSelects(el, updateProp) {
           pushHistory();
           renderProps();
           if (key === 'animDirection') {
-            startPreviewLoop(el.animType || 'none');
+            if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
           } else if (key === 'panDir') {
+            hoverEffectPreviewActive = true;
             startEffectPreview(el);
           }
         }
@@ -10373,9 +10402,10 @@ function wireCustomSelects(el, updateProp) {
             } else {
               el.animDirection = val;
             }
-            startPreviewLoop(el.animType || 'none');
+            if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
           } else if (key === 'panDir') {
             el.panDir = val;
+            hoverEffectPreviewActive = true;
             startEffectPreview(el);
           }
 
@@ -10384,8 +10414,9 @@ function wireCustomSelects(el, updateProp) {
             el.animDirection = origDirection;
             el.panDir = origPanDir;
             if (key === 'animDirection') {
-              startPreviewLoop(el.animType || 'none');
+              if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
             } else if (key === 'panDir') {
+              hoverEffectPreviewActive = true;
               startEffectPreview(el);
             }
           };
@@ -12616,16 +12647,21 @@ function checkButtonFontSizeWarning(el) {
     });
   });
 
+  const stopAnimPreviewLoop = () => {
+    if (activePreviewVal === null && !state.previewTimeoutId) return;
+    activePreviewVal = null;
+    if (state.previewTimeoutId) {
+      clearTimeout(state.previewTimeoutId);
+      state.previewTimeoutId = null;
+    }
+    resetPreviewNodes();
+  };
+  stopElementAnimPreviewFn = stopAnimPreviewLoop;
+  startElementAnimPreviewFn = startPreviewLoop;
+
   const transitionArea = propsEl.querySelector('#in-transition-preview-area');
   if (transitionArea) {
-    transitionArea.addEventListener('mouseleave', () => {
-      activePreviewVal = null;
-      if (state.previewTimeoutId) {
-        clearTimeout(state.previewTimeoutId);
-        state.previewTimeoutId = null;
-      }
-      resetPreviewNodes();
-    });
+    transitionArea.addEventListener('mouseleave', stopAnimPreviewLoop);
 
     transitionArea.querySelectorAll('input, select').forEach(input => {
       input.addEventListener('mouseenter', () => {
@@ -12779,12 +12815,17 @@ function checkButtonFontSizeWarning(el) {
     });
   });
 
+  const stopEffectPreviewLoop = () => {
+    if (activeEffectVal === null && !hoverEffectPreviewActive) return;
+    activeEffectVal = null;
+    hoverEffectPreviewActive = false;
+    resetEffectPreviewNodes();
+  };
+  stopElementEffectPreviewFn = stopEffectPreviewLoop;
+
   const effectsArea = propsEl.querySelector('#effects-preview-area');
   if (effectsArea) {
-    effectsArea.addEventListener('mouseleave', () => {
-      activeEffectVal = null;
-      resetEffectPreviewNodes();
-    });
+    effectsArea.addEventListener('mouseleave', stopEffectPreviewLoop);
 
     effectsArea.querySelectorAll('input, select').forEach(input => {
       input.addEventListener('mouseenter', () => {
@@ -17456,7 +17497,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.19.13';
+  const currentVersion = 'v0.19.14';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -17671,7 +17712,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.19.13</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.14</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>
@@ -20683,7 +20724,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.19.13';
+        verEl.textContent = 'v0.19.14';
         logoEl.appendChild(verEl);
       }
     }
