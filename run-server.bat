@@ -3,6 +3,14 @@ setlocal EnableDelayedExpansion
 set PORT=8080
 set URL=http://localhost:%PORT%/
 
+where node >nul 2>&1
+if !errorlevel! equ 0 (
+  echo.
+  echo   Rebuilding local assets and startup registry templates...
+  node scripts/build-asset-manifest.js
+  node scripts/build-startup-registry.js
+)
+
 echo.
 echo   RMIT Adflow - local dev server
 echo   %URL%

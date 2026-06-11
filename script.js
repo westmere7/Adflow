@@ -6535,7 +6535,7 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
             <span style="font-size:12px; opacity:0.8;">The compressed package must be under ${limitKb}KB. Current: ${focusedCanvas._valKb ? focusedCanvas._valKb + 'KB' : 'Calculating...'}</span>
             ${sizeExceeded && imageElements.length > 0 ? `
               <div style="margin-top: 8px;">
-                <button id="val-criteria-auto-compress" class="btn primary" style="background:#10b981; color:#fff; border:none; padding:5px 12px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; height:24px; line-height:1;" title="Automatically compress all images on this canvas to WebP to fit size limit">
+                <button id="val-criteria-auto-compress" class="btn primary" style="background:#10b981; color:#fff; border:none; padding:5px 12px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; height:24px; line-height:1;" title="Automatically compress all images on this canvas to fit size limit">
                   Auto Compress Images to Fit Limit
                 </button>
               </div>
@@ -6570,13 +6570,6 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
           <span style="color:${isMissingPassed ? '#10b981' : '#ef4444'}; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">${isMissingPassed ? '✓ Pass' : '✗ Fail'}</span>
         </div>
 
-        <div style="display:flex; align-items:start; justify-content:space-between; gap:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
-          <div style="flex:1; min-width:0;">
-            <span style="font-weight:600; color:var(--text-main); display:block; font-size:13px;">File Type/Count</span>
-            <span style="font-size:12px; opacity:0.8;">Ensures all files contained in the zip bundle are supported.</span>
-          </div>
-          <span style="color:#10b981; font-weight:bold; font-size:14px; flex-shrink:0; white-space:nowrap;">✓ Pass</span>
-        </div>
       </div>
     `;
     
@@ -11405,10 +11398,10 @@ function renderProps() {
 
         f.push(`<div class="prop-row" style="margin-top:4px; margin-bottom:6px; display:flex; gap:6px; width:100%;">
           <div style="display:flex; gap:4px; flex:1;">
-            <button id="btn-webp-compress" class="btn" title="Auto-compress image to WebP format to reduce file size at suggested level" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; ${compressBtnStyle}" ${imgDisabled ? 'disabled' : ''}>
+            <button id="btn-webp-compress" class="btn" title="Auto-compress image to reduce file size at suggested level" style="flex:1; padding:6px 8px; font-size:11px; border-radius:4px; transition:opacity 0.2s; font-weight:600; ${compressBtnStyle}" ${imgDisabled ? 'disabled' : ''}>
               ${el.isCompressed ? '✓ Auto-compress' : 'Auto-compress'}
             </button>
-            <button id="btn-webp-settings" class="btn" title="Open WebP compression settings dialog" style="border-radius:4px; transition:opacity 0.2s; ${gearBtnStyle}" ${imgDisabled ? 'disabled' : ''}>
+            <button id="btn-webp-settings" class="btn" title="Open compression settings dialog" style="border-radius:4px; transition:opacity 0.2s; ${gearBtnStyle}" ${imgDisabled ? 'disabled' : ''}>
               ${GEAR_ICON}
             </button>
           </div>
@@ -16420,7 +16413,8 @@ async function autoCompressCanvasImages(canvasId) {
         activeAssetId,
         originalDataUrl,
         originalSizeKB: sizeKB,
-        newId: 'img_' + uid()
+        newId: 'img_' + uid(),
+        fmt: await resolveAutoCompressFormat(originalDataUrl)
       });
     }
   }
@@ -16437,7 +16431,7 @@ async function autoCompressCanvasImages(canvasId) {
     try {
       let compSumKB = 0;
       for (const task of imageTasks) {
-        const compressed = await compressImage(task.originalDataUrl, 'image/webp', q / 100);
+        const compressed = await compressImage(task.originalDataUrl, task.fmt.format, q / 100);
         const compSizeStr = await getImageSizeKB(compressed);
         const compSizeKB = parseFloat(compSizeStr) || 0;
         compSumKB += compSizeKB;
@@ -16459,14 +16453,14 @@ async function autoCompressCanvasImages(canvasId) {
   let finalZipSize = Infinity;
   while (optimalQuality >= 10 && attempts < 3) {
     for (const task of imageTasks) {
-      const finalCompressed = await compressImage(task.originalDataUrl, 'image/webp', optimalQuality / 100);
+      const finalCompressed = await compressImage(task.originalDataUrl, task.fmt.format, optimalQuality / 100);
       
       if (!state.assets) state.assets = {};
       state.assets[task.newId] = finalCompressed;
 
       if (!state.assetNames) state.assetNames = {};
       const origName = state.assetNames && state.assetNames[task.activeAssetId] ? state.assetNames[task.activeAssetId] : (task.el.name || 'image');
-      state.assetNames[task.newId] = origName.replace(/\.[a-z0-9]+$/i, '') + '.webp';
+      state.assetNames[task.newId] = origName.replace(/\.[a-z0-9]+$/i, '') + task.fmt.ext;
 
       const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(task.el, 'image');
       if (!_imgDyn) {
@@ -16478,7 +16472,7 @@ async function autoCompressCanvasImages(canvasId) {
 
       task.el.isCompressed = true;
       task.el.webpQuality = optimalQuality;
-      task.el.compressionFormat = 'image/webp';
+      task.el.compressionFormat = task.fmt.format;
     }
 
     // Verify ZIP size
@@ -16499,7 +16493,7 @@ async function autoCompressCanvasImages(canvasId) {
     attempts++;
   }
 
-  showCanvasNotification(`Compressed ${imageTasks.length} images to WebP at ${optimalQuality}% quality.`, { type: 'success' });
+  showCanvasNotification(`Compressed ${imageTasks.length} images at ${optimalQuality}% quality.`, { type: 'success' });
   await updateCanvasSizeSync(canvas);
   render();
 }
@@ -17676,6 +17670,7 @@ function openSettings() {
     savedHistoryLimit: state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50,
     autosaveInterval: state.autosaveInterval !== undefined ? state.autosaveInterval : 10,
     adSizeLimit: state.adSizeLimit !== undefined ? state.adSizeLimit : 150,
+    compressFormat: state.compressFormat === 'webp' ? 'webp' : 'jpeg',
     validationSettings: {
       textSize: state.validationSettings?.textSize !== false,
       contrast: state.validationSettings?.contrast !== false,
@@ -17864,6 +17859,20 @@ function openSettings() {
                   </div>
                 </section>
 
+                <section style="display:flex; flex-direction:column; gap:10px; border-top:1px solid var(--border-light); padding-top:14px;">
+                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Image Compression</h3>
+                  <label style="display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text-main); cursor:pointer;">
+                    <span style="flex:1;">Auto-compression output format:</span>
+                    <select id="set-compress-format" style="width:240px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 8px; font-family:inherit; font-size:12px; outline:none; cursor:pointer;">
+                      <option value="jpeg" ${tempSettings.compressFormat !== 'webp' ? 'selected' : ''}>JPEG / PNG (auto — ad-server safe)</option>
+                      <option value="webp" ${tempSettings.compressFormat === 'webp' ? 'selected' : ''}>WebP (smallest files)</option>
+                    </select>
+                  </label>
+                  <div style="font-size:10px; color:var(--text-muted); line-height:1.4;">
+                    Used by the Auto-compress button, the validation panel's Auto Compress, and Batch Compression. JPEG / PNG picks JPEG for flat images and switches to PNG automatically when an image uses transparency. WebP produces the smallest files but is rejected by Campaign Manager 360, Google Ads, and Adobe Advertising DSP.
+                  </div>
+                </section>
+
                 <div style="font-size:10px; color:#f59e0b; line-height:1.4; display:flex; align-items:flex-start; gap:6px; border-top:1px solid var(--border-light); padding-top:14px; margin-top:4px;">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0; margin-top:1px;">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -17908,6 +17917,7 @@ function openSettings() {
       state.savedHistoryLimit = tempSettings.savedHistoryLimit;
       state.autosaveInterval = tempSettings.autosaveInterval;
       state.adSizeLimit = tempSettings.adSizeLimit;
+      state.compressFormat = tempSettings.compressFormat;
 
       if (!state.validationSettings) state.validationSettings = {};
       Object.assign(state.validationSettings, tempSettings.validationSettings);
@@ -17941,6 +17951,7 @@ function openSettings() {
     state.savedHistoryLimit = initialSettings.savedHistoryLimit;
     state.autosaveInterval = initialSettings.autosaveInterval;
     state.adSizeLimit = initialSettings.adSizeLimit;
+    state.compressFormat = initialSettings.compressFormat;
 
     if (!state.validationSettings) state.validationSettings = {};
     state.validationSettings = JSON.parse(JSON.stringify(initialSettings.validationSettings));
@@ -18087,6 +18098,14 @@ function openSettings() {
     });
   }
 
+  const selectCompressFormat = bg.querySelector('#set-compress-format');
+  if (selectCompressFormat) {
+    selectCompressFormat.addEventListener('change', (e) => {
+      tempSettings.compressFormat = e.target.value;
+      applyPreview();
+    });
+  }
+
   bg.querySelectorAll('.settings-theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       tempSettings.theme = btn.dataset.theme;
@@ -18116,6 +18135,7 @@ function openSettings() {
     state.savedHistoryLimit = tempSettings.savedHistoryLimit;
     state.autosaveInterval = tempSettings.autosaveInterval;
     state.adSizeLimit = tempSettings.adSizeLimit;
+    state.compressFormat = tempSettings.compressFormat;
 
     if (!state.validationSettings) state.validationSettings = {};
     Object.assign(state.validationSettings, tempSettings.validationSettings);
@@ -18410,7 +18430,23 @@ function getElementSizeKB(el) {
   return 0;
 }
 
-// WebP Image Compression Utilities
+// Image Compression Utilities
+// Resolves the output format for auto-compression from the Settings preference
+// (state.compressFormat). 'webp' → always WebP. 'jpeg' (default, ad-server
+// safe) → PNG when the image actually uses transparency (JPEG would flatten
+// it onto white), JPEG otherwise. WebP assets are rejected by CM360, Google
+// Ads and Adobe DSP HTML5 bundles — hence the JPEG/PNG default.
+async function resolveAutoCompressFormat(dataUrl) {
+  if (state.compressFormat === 'webp') return { format: 'image/webp', ext: '.webp' };
+  const hasAlpha = await new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(checkTransparency(img));
+    img.onerror = () => resolve(false);
+    img.src = dataUrl;
+  });
+  return hasAlpha ? { format: 'image/png', ext: '.png' } : { format: 'image/jpeg', ext: '.jpg' };
+}
+
 async function getImageSizeKB(url) {
   if (!url || typeof url !== 'string') return '0.0';
   if (url.startsWith('data:')) {
@@ -18511,6 +18547,10 @@ async function openWebpCompressionModal(el) {
 
   const escapeHtml = (s) => String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const warningDisplay = el.isCompressed ? 'block' : 'none';
+
+  // Pre-select per the Settings auto-compression preference (already
+  // transparency-aware: JPEG pref resolves to PNG for images with alpha).
+  const initialModalFormat = (await resolveAutoCompressFormat(originalDataUrl)).format;
 
   const activeC = getActiveCanvas();
   const limitKb = state.adSizeLimit || 150;
@@ -18656,9 +18696,13 @@ async function openWebpCompressionModal(el) {
           <div style="display:flex; flex-direction:column; gap:6px;">
             <label style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Output Format</label>
             <div style="display:flex; background:var(--bg-input); padding:2px; border-radius:6px; border:1px solid var(--border-light);">
-              <button class="btn format-opt active" data-format="image/webp" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:var(--accent-base); color:var(--text-on-accent, var(--text-bright)); transition:all 0.15s ease;">WebP</button>
-              <button class="btn format-opt" data-format="image/jpeg" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:var(--text-muted); transition:all 0.15s ease;">JPEG</button>
-              <button class="btn format-opt" data-format="image/png" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:var(--text-muted); transition:all 0.15s ease;">PNG</button>
+              ${['image/webp', 'image/jpeg', 'image/png'].map(f => {
+                const isActive = f === initialModalFormat;
+                const label = f === 'image/webp' ? 'WebP' : (f === 'image/jpeg' ? 'JPEG' : 'PNG');
+                const activeStyle = 'background:var(--accent-base); color:var(--text-on-accent, var(--text-bright));';
+                const idleStyle = 'background:transparent; color:var(--text-muted);';
+                return `<button class="btn format-opt${isActive ? ' active' : ''}" data-format="${f}" style="flex:1; padding:6px 12px; font-size:11px; font-weight:600; border:none; border-radius:4px; cursor:pointer; ${isActive ? activeStyle : idleStyle} transition:all 0.15s ease;">${label}</button>`;
+              }).join('')}
             </div>
           </div>
 
@@ -18708,7 +18752,7 @@ async function openWebpCompressionModal(el) {
       </div>
       <div class="modal-foot" style="justify-content:flex-end; gap: 8px; display: flex; border-top: 1px solid var(--border-light); padding-top:12px; margin-top:4px;">
         <button class="btn" id="webp-btn-cancel" title="Cancel image compression">Cancel</button>
-        <button class="btn primary" id="webp-btn-apply" title="Apply compression and replace image with WebP version">Apply Compression</button>
+        <button class="btn primary" id="webp-btn-apply" title="Apply compression and replace image with the compressed version">Apply Compression</button>
       </div>
     </div>`;
   
@@ -18730,7 +18774,7 @@ async function openWebpCompressionModal(el) {
   const btnZoomReset = bg.querySelector('#webp-zoom-reset');
   const zoomDisplay = bg.querySelector('#webp-zoom-display');
 
-  let selectedFormat = 'image/webp';
+  let selectedFormat = initialModalFormat;
   let originalHasTransparency = false;
 
   const formatButtons = bg.querySelectorAll('.format-opt');
@@ -19149,6 +19193,7 @@ async function autoCompressImage(el) {
   const originalDataUrl = (activeAssetId && state.assets && state.assets[activeAssetId]) || activeAssetId;
   if (!originalDataUrl) return;
 
+  const fmt = await resolveAutoCompressFormat(originalDataUrl);
   const activeC = getActiveCanvas();
   const limitKb = state.adSizeLimit || 150;
 
@@ -19184,7 +19229,7 @@ async function autoCompressImage(el) {
 
   const scanPromises = qualities.map(async (q) => {
     try {
-      const compressed = await compressImage(originalDataUrl, 'image/webp', q / 100);
+      const compressed = await compressImage(originalDataUrl, fmt.format, q / 100);
       const compSizeStr = await getImageSizeKB(compressed);
       const compSize = parseFloat(compSizeStr) || 0;
       const estAdSize = currentAdSize - originalImageSizeKB + compSize;
@@ -19217,7 +19262,7 @@ async function autoCompressImage(el) {
 
       if (!state.assetNames) state.assetNames = {};
       const origName = state.assetNames && state.assetNames[activeAssetId] ? state.assetNames[activeAssetId] : (el.name || 'image');
-      state.assetNames[newId] = origName.replace(/\.[a-z0-9]+$/i, '') + '.webp';
+      state.assetNames[newId] = origName.replace(/\.[a-z0-9]+$/i, '') + fmt.ext;
 
       const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
       if (!_imgDyn) {
@@ -19229,7 +19274,7 @@ async function autoCompressImage(el) {
 
       el.isCompressed = true;
       el.webpQuality = optimalQuality;
-      el.compressionFormat = 'image/webp';
+      el.compressionFormat = fmt.format;
 
       // Verify ZIP size
       if (!activeC) break;
@@ -19250,7 +19295,7 @@ async function autoCompressImage(el) {
       attempts++;
       if (optimalQuality >= 10) {
         try {
-          currentDataUrl = await compressImage(originalDataUrl, 'image/webp', optimalQuality / 100);
+          currentDataUrl = await compressImage(originalDataUrl, fmt.format, optimalQuality / 100);
         } catch (e) {
           break;
         }

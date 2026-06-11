@@ -1,10 +1,10 @@
 [
   {
-    "fileName": "RMIT_Blank_2026.flow",
-    "projectName": "RMIT_Blank"
+    "fileName": "RMIT_Red_Blank.flow",
+    "projectName": "RMIT_red_blank"
   },
   {
-    "fileName": "RMIT_Blank_Red.flow",
+    "fileName": "RMIT_Red_Brandset.template.flow",
     "projectName": "RMIT_ad"
   }
 ]

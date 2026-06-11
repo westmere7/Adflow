@@ -2051,13 +2051,13 @@ function openExportModal() {
           All Versions Validator
         </button>
         ` : ''}
-        <button class="btn btn-val-green-export" id="btn-export-batch-webp" title="Compress image assets of oversized canvases to WebP format across selected canvases and versions">
+        <button class="btn btn-val-green-export" id="btn-export-batch-webp" title="Compress image assets of oversized canvases across selected canvases and versions">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
             <line x1="12" y1="22.08" x2="12" y2="12"></line>
           </svg>
-          Batch WebP Compression
+          Batch Compression
         </button>
       </div>
       <button class="btn primary" id="btn-export-selected" title="Export the selected canvases in the chosen format using the filename above. Honors version export settings.">Export Selected</button>
@@ -2352,9 +2352,9 @@ function openExportModal() {
             <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
             <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
           </svg>
-          Batch WebP Compression
+          Batch Compression
         </div>
-        <div style="font-size:12px; color:var(--text-muted); line-height:1.5;">Automatically finding and compressing oversized canvases to WebP. Please keep this modal open.</div>
+        <div style="font-size:12px; color:var(--text-muted); line-height:1.5;">Automatically finding and compressing oversized canvases. Please keep this modal open.</div>
         
         <!-- Progress Bar -->
         <div style="height:8px; background:var(--bg-input); border-radius:4px; overflow:hidden; margin-top:8px; position:relative; width:100%;">
