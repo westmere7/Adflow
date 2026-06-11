@@ -1282,7 +1282,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     });
   }
   if (sync.effect) {
-    const effectProps = ['effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
+    const effectProps = ['effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panTowards', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
     effectProps.forEach(p => {
       if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
       else delete targetEl[p];
@@ -4819,12 +4819,7 @@ function moveGuideOverlay(el, c) {
   const px = cx + dx;
   const py = cy + dy;
 
-  const mx = el.panMidX !== undefined ? el.panMidX : dx / 2;
-  const my = el.panMidY !== undefined ? el.panMidY : dy / 2;
-  const mpx = cx + mx;
-  const mpy = cy + my;
-
-  // 1. Create SVG curved path
+  // 1. Create SVG path (straight line since Curve inputs are removed)
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.style.position = 'absolute';
   svg.style.inset = '0';
@@ -4832,14 +4827,30 @@ function moveGuideOverlay(el, c) {
   svg.style.height = '100%';
   svg.style.pointerEvents = 'none';
 
+  const towards = !!el.panTowards;
+  const xStart = towards ? cx : px;
+  const yStart = towards ? cy : py;
+  const xEnd = towards ? px : cx;
+  const yEnd = towards ? py : cy;
+  const xMid = (xStart + xEnd) / 2;
+  const yMid = (yStart + yEnd) / 2;
+  const angleRad = Math.atan2(yEnd - yStart, xEnd - xStart);
+  const angleDeg = angleRad * 180 / Math.PI;
+
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', `M ${px} ${py} Q ${mpx} ${mpy} ${cx} ${cy}`);
+  path.setAttribute('d', `M ${xStart} ${yStart} L ${xEnd} ${yEnd}`);
   path.setAttribute('stroke', 'var(--accent-base)');
   path.setAttribute('stroke-width', '1.5');
   path.setAttribute('stroke-dasharray', '4,4');
   path.setAttribute('fill', 'none');
 
+  const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  arrow.setAttribute('d', 'M -5 -3.5 L 5 0 L -5 3.5 Z');
+  arrow.setAttribute('fill', 'var(--accent-base)');
+  arrow.setAttribute('transform', `translate(${xMid}, ${yMid}) rotate(${angleDeg})`);
+
   svg.appendChild(path);
+  svg.appendChild(arrow);
   container.appendChild(svg);
 
   // 2. Create start circle handle
@@ -4857,26 +4868,11 @@ function moveGuideOverlay(el, c) {
   handle.style.cursor = 'move';
   handle.style.pointerEvents = 'all';
   handle.style.boxShadow = '0 2px 6px rgba(0,0,0,0.5)';
-  handle.title = 'Drag to change starting location for Move effect';
+  handle.title = towards
+    ? 'Drag to change target location for Move effect'
+    : 'Drag to change starting location for Move effect';
 
-  // 3. Create midpoint circle handle
-  const midHandle = document.createElement('div');
-  midHandle.className = 'move-guide-mid-handle';
-  midHandle.style.position = 'absolute';
-  midHandle.style.left = mpx + 'px';
-  midHandle.style.top = mpy + 'px';
-  midHandle.style.width = '9px';
-  midHandle.style.height = '9px';
-  midHandle.style.borderRadius = '50%';
-  midHandle.style.background = 'var(--accent-light)';
-  midHandle.style.border = '1.5px solid var(--text-bright)';
-  midHandle.style.transform = 'translate(-50%, -50%)';
-  midHandle.style.cursor = 'move';
-  midHandle.style.pointerEvents = 'all';
-  midHandle.style.boxShadow = '0 1px 4px rgba(0,0,0,0.5)';
-  midHandle.title = 'Drag to curve the Move motion path';
-
-  // 4. Add drag listeners for start handle
+  // 3. Add drag listeners for start handle
   handle.addEventListener('mousedown', (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -4907,17 +4903,18 @@ function moveGuideOverlay(el, c) {
       const px = cx + newDx;
       const py = cy + newDy;
 
-      // Update midpoint if it tracks the start handle automatically
-      const mx = el.panMidX !== undefined ? el.panMidX : newDx / 2;
-      const my = el.panMidY !== undefined ? el.panMidY : newDy / 2;
-      const mpx = cx + mx;
-      const mpy = cy + my;
+      // Update SVG path and centered arrow
+      const xStart = towards ? cx : px;
+      const yStart = towards ? cy : py;
+      const xEnd = towards ? px : cx;
+      const yEnd = towards ? py : cy;
+      const xMid = (xStart + xEnd) / 2;
+      const yMid = (yStart + yEnd) / 2;
+      const angleRad = Math.atan2(yEnd - yStart, xEnd - xStart);
+      const angleDeg = angleRad * 180 / Math.PI;
 
-      midHandle.style.left = mpx + 'px';
-      midHandle.style.top = mpy + 'px';
-
-      // Update SVG path
-      path.setAttribute('d', `M ${px} ${py} Q ${mpx} ${mpy} ${cx} ${cy}`);
+      path.setAttribute('d', `M ${xStart} ${yStart} L ${xEnd} ${yEnd}`);
+      arrow.setAttribute('transform', `translate(${xMid}, ${yMid}) rotate(${angleDeg})`);
 
       // Update handle position
       handle.style.left = px + 'px';
@@ -4928,11 +4925,6 @@ function moveGuideOverlay(el, c) {
       const fromYInput = document.getElementById('prop-pan-from-y');
       if (fromXInput) fromXInput.value = newDx;
       if (fromYInput) fromYInput.value = newDy;
-
-      const midXInput = document.getElementById('prop-pan-mid-x');
-      const midYInput = document.getElementById('prop-pan-mid-y');
-      if (midXInput && el.panMidX === undefined) midXInput.value = Math.round(newDx / 2);
-      if (midYInput && el.panMidY === undefined) midYInput.value = Math.round(newDy / 2);
 
       // Trigger temporary preview update during drag
       startEffectPreview(el);
@@ -4953,74 +4945,7 @@ function moveGuideOverlay(el, c) {
     window.addEventListener('mouseup', onUp);
   });
 
-  // 5. Add drag listeners for midpoint handle
-  midHandle.addEventListener('mousedown', (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const z = state.zoom || 1;
-    const canvasDom = e.target.closest('.canvas');
-    const canvasRect = canvasDom.getBoundingClientRect();
-    const startMx = el.panMidX !== undefined ? el.panMidX : el.panFromX / 2;
-    const startMy = el.panMidY !== undefined ? el.panMidY : el.panFromY / 2;
-
-    const onMoveMid = (ev) => {
-      const mouseCanvasX = (ev.clientX - canvasRect.left) / z;
-      const mouseCanvasY = (ev.clientY - canvasRect.top) / z;
-      let newMx = Math.round(mouseCanvasX - cx);
-      let newMy = Math.round(mouseCanvasY - cy);
-
-      if (ev.shiftKey) {
-        const dist = Math.hypot(newMx, newMy);
-        let ang = Math.atan2(newMy, newMx);
-        const snapStep = Math.PI / 4; // 45 degrees
-        ang = Math.round(ang / snapStep) * snapStep;
-        newMx = Math.round(dist * Math.cos(ang));
-        newMy = Math.round(dist * Math.sin(ang));
-      }
-
-      el.panMidX = newMx;
-      el.panMidY = newMy;
-
-      const mpx = cx + newMx;
-      const mpy = cy + newMy;
-
-      const px = cx + el.panFromX;
-      const py = cy + el.panFromY;
-
-      // Update SVG path
-      path.setAttribute('d', `M ${px} ${py} Q ${mpx} ${mpy} ${cx} ${cy}`);
-
-      // Update midHandle position
-      midHandle.style.left = mpx + 'px';
-      midHandle.style.top = mpy + 'px';
-
-      // Update inputs in sidebar if visible
-      const midXInput = document.getElementById('prop-pan-mid-x');
-      const midYInput = document.getElementById('prop-pan-mid-y');
-      if (midXInput) midXInput.value = newMx;
-      if (midYInput) midYInput.value = newMy;
-
-      // Trigger temporary preview update during drag
-      startEffectPreview(el);
-    };
-
-    const onUpMid = () => {
-      window.removeEventListener('mousemove', onMoveMid);
-      window.removeEventListener('mouseup', onUpMid);
-      if (el.panMidX !== startMx || el.panMidY !== startMy) {
-        pushHistory();
-        renderProps();
-      }
-      render(true);
-      startEffectPreview(el);
-    };
-
-    window.addEventListener('mousemove', onMoveMid);
-    window.addEventListener('mouseup', onUpMid);
-  });
-
   container.appendChild(handle);
-  container.appendChild(midHandle);
   return container;
 }
 
@@ -11844,21 +11769,18 @@ function renderProps() {
         }
         const px_val = el.panFromX !== undefined ? el.panFromX : 0;
         const py_val = el.panFromY !== undefined ? el.panFromY : -50;
-        const mx_val = el.panMidX !== undefined ? el.panMidX : Math.round(px_val / 2);
-        const my_val = el.panMidY !== undefined ? el.panMidY : Math.round(py_val / 2);
         f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
         ${num('effDuration', 'Duration (s)', 5)}
         ${num('effDelay', 'Delay (s)', 0)}
         <div class="prop-row"><label>From X (px)</label><input type="number" data-k="panFromX" id="prop-pan-from-x" value="${px_val}" title="X offset for starting position of Move effect" /></div>
         <div class="prop-row"><label>From Y (px)</label><input type="number" data-k="panFromY" id="prop-pan-from-y" value="${py_val}" title="Y offset for starting position of Move effect" /></div>
         <div class="prop-row"><label>Rot. Offset (°)</label><input type="number" data-k="panRotate" id="prop-pan-rotate" value="${el.panRotate !== undefined ? el.panRotate : 0}" title="Rotational offset angle in degrees" /></div>
-        <div class="prop-row"><label>Curve X (px)</label><input type="number" data-k="panMidX" id="prop-pan-mid-x" value="${mx_val}" title="X offset for path control point of Move effect" /></div>
-        <div class="prop-row"><label>Curve Y (px)</label><input type="number" data-k="panMidY" id="prop-pan-mid-y" value="${my_val}" title="Y offset for path control point of Move effect" /></div>
       </div>
       <div style="display:flex; gap:16px; margin-top:8px; flex-wrap:wrap;">
         <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>
         <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once" title="Run the effect cycle only once" ${el.effOnce !== false ? 'checked' : ''}/><label for="prop-eff-once" title="Run the effect cycle only once" style="cursor:pointer;">Perform once</label></div>
         <div class="checkbox-row"><input type="checkbox" data-k="panFade" id="prop-pan-fade" title="Fade opacity from 0 to 1 during movement" ${el.panFade ? 'checked' : ''}/><label for="prop-pan-fade" title="Fade opacity from 0 to 1 during movement" style="cursor:pointer;">Fade</label></div>
+        <div class="checkbox-row"><input type="checkbox" data-k="panTowards" id="prop-pan-towards" title="Move towards target layout position instead of away from layout position" ${el.panTowards ? 'checked' : ''}/><label for="prop-pan-towards" title="Move towards target layout position instead of away from layout position" style="cursor:pointer;">Towards target</label></div>
       </div>
       </div>`);
       } else if (el.effectType === 'zoom') {
@@ -19849,7 +19771,7 @@ document.addEventListener('contextmenu', (e) => {
           const inAnimProps = ['animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor', 'animStaggerText'];
           inAnimProps.forEach(p => delete el[p]);
         } else if (effBtn && el) {
-          const effectProps = ['effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
+          const effectProps = ['effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panTowards', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
           effectProps.forEach(p => delete el[p]);
         } else if (frameTransBtn) {
           const currentFrame = state.frames.find(f => f.id === state.activeFrameId);

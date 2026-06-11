@@ -72,8 +72,6 @@ function getSplitClipPath(angleDeg) {
 function getPanCurveKeyframes(el) {
   const px = el.panFromX !== undefined ? el.panFromX : 0;
   const py = el.panFromY !== undefined ? el.panFromY : -50;
-  const mx = el.panMidX !== undefined ? el.panMidX : px / 2;
-  const my = el.panMidY !== undefined ? el.panMidY : py / 2;
   const rot = el.panRotate !== undefined ? el.panRotate : 0;
   const opStart = el.panFade ? 0 : 1;
   const animName = `eff-pan-${el.id}`;
@@ -82,6 +80,7 @@ function getPanCurveKeyframes(el) {
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
   const ease = el.effEase !== false;
+  const towards = !!el.panTowards;
 
   let steps = [];
   for (let i = 0; i <= 20; i++) {
@@ -90,11 +89,11 @@ function getPanCurveKeyframes(el) {
       t = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     }
     const pct = i * 5;
-    const mt = 1 - t;
-    const bx = mt * mt * px + 2 * mt * t * mx;
-    const by = mt * mt * py + 2 * mt * t * my;
-    const r = mt * rot;
-    const o = mt * opStart + t * 1.0;
+    const factor = towards ? t : (1 - t);
+    const bx = factor * px;
+    const by = factor * py;
+    const r = (1 - t) * rot;
+    const o = (1 - t) * opStart + t * 1.0;
 
     const bxLocal = bx * cos + by * sin;
     const byLocal = -bx * sin + by * cos;
@@ -1084,7 +1083,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
       else if (animType === 'slide-right') { tempEl.animDirection = 'right'; tempEl.animDistance = 20; }
       dynamicKeyframes += '\n' + getSlideKeyframes(tempEl);
     }
-    if (el.effectType === 'pan' && el.panMidX !== undefined && el.panMidY !== undefined && !isImageExport) {
+    if (el.effectType === 'pan' && !isImageExport) {
       dynamicKeyframes += '\n' + getPanCurveKeyframes(el);
     }
     const { entryConfig, entryVars, effConfig, effVars } = getElementAnimationCSS(el, isImageExport);

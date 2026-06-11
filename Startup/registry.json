@@ -6,5 +6,9 @@
   {
     "fileName": "RMIT_Red_Brandset.template.flow",
     "projectName": "RMIT_ad"
+  },
+  {
+    "fileName": "RMIT_TEST.flow",
+    "projectName": "RMIT_ad"
   }
 ]

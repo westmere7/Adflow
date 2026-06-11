@@ -221,6 +221,13 @@ Adflow supports configurable compression preferences (`state.compressFormat`). T
 ### Blur Entrance Animation
 The **Blur** IN animation applies a CSS blur filter and optional opacity fade. It dynamically generates custom `@keyframes anim-blur-[id]` specifying the blur amount (1-100px) and fade properties.
 
+### Move FX Towards Target & Straight-Line Motion
+To enforce clean, predictable motion paths, the Move effect has been simplified by removing curved motion path configurations (Curve X/Y properties, midpoint drag handles, and Quadratic Bezier keyframes). The effect is now restricted to straight-line translations.
+Additionally, a "Towards target" checkbox toggle determines the direction of the translation:
+- **Towards target (checked)**: The element starts at its designed layout position `(0,0)` and animates towards the configured offset target `(panFromX, panFromY)`.
+- **Away from target (unchecked)**: The element starts at the configured offset start `(panFromX, panFromY)` and animates back to its designed layout position `(0,0)`.
+The keyframe calculations are dynamically baked into `@keyframes eff-pan-[id]` to prevent composition layout artifacts.
+
 ### High-DPI Edge Antialiasing Hairline Fix
 To prevent 1px edge hairline bleeding caused by fractional device pixel ratios on high-DPI displays, the ad container (`#ad`) repaints its background to match the active frame's background color. The system clears the INCOMING frame's animation rule upon transition completion to prevent composition layout artifacts.
 
