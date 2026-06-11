@@ -5912,6 +5912,16 @@ body.theme-rmit .outline-color-hybrid {
   color: var(--text-muted);
 }
 
+/* Move FX Guide Overlay Animations */
+.move-guide-path-anim {
+  animation: move-guide-dashed 0.8s linear infinite;
+}
+@keyframes move-guide-dashed {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
 
 
 

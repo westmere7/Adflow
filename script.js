@@ -4843,14 +4843,9 @@ function moveGuideOverlay(el, c) {
   path.setAttribute('stroke-width', '1.5');
   path.setAttribute('stroke-dasharray', '4,4');
   path.setAttribute('fill', 'none');
-
-  const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  arrow.setAttribute('d', 'M -5 -3.5 L 5 0 L -5 3.5 Z');
-  arrow.setAttribute('fill', 'var(--accent-base)');
-  arrow.setAttribute('transform', `translate(${xMid}, ${yMid}) rotate(${angleDeg})`);
+  path.setAttribute('class', 'move-guide-path-anim');
 
   svg.appendChild(path);
-  svg.appendChild(arrow);
   container.appendChild(svg);
 
   // 2. Create start circle handle
@@ -4903,18 +4898,13 @@ function moveGuideOverlay(el, c) {
       const px = cx + newDx;
       const py = cy + newDy;
 
-      // Update SVG path and centered arrow
+      // Update SVG path
       const xStart = towards ? cx : px;
       const yStart = towards ? cy : py;
       const xEnd = towards ? px : cx;
       const yEnd = towards ? py : cy;
-      const xMid = (xStart + xEnd) / 2;
-      const yMid = (yStart + yEnd) / 2;
-      const angleRad = Math.atan2(yEnd - yStart, xEnd - xStart);
-      const angleDeg = angleRad * 180 / Math.PI;
 
       path.setAttribute('d', `M ${xStart} ${yStart} L ${xEnd} ${yEnd}`);
-      arrow.setAttribute('transform', `translate(${xMid}, ${yMid}) rotate(${angleDeg})`);
 
       // Update handle position
       handle.style.left = px + 'px';
