@@ -15046,7 +15046,7 @@ async function loadProjectFromState(loadedState) {
 
 // Shared inflater used by the menu Open dialog AND the drag-drop overlay. Both
 // formats — modern .flow and legacy .cook/.zip — share the same internal structure.
-async function loadProjectFromBlob(file, customProjectName, existingProgress = null) {
+async function loadProjectFromBlob(file, customProjectName, existingProgress = null, customCompressFormat = null) {
   const progress = existingProgress || showLoadingProgress('Opening Project...');
   try {
     progress.setProgress(10, 'Reading file structure...');
@@ -15146,6 +15146,9 @@ async function loadProjectFromBlob(file, customProjectName, existingProgress = n
     Object.assign(state, loadedState);
     delete state.isTemplate; // Always ensure isTemplate is removed at runtime
   
+    if (customCompressFormat) {
+      state.compressFormat = customCompressFormat;
+    }
     if (customProjectName) {
       state.projectName = customProjectName;
     }
@@ -15542,7 +15545,7 @@ async function syncRmitAssets() {
 // Builds a fresh project from picked canvas presets (all checked by default),
 // a name, an ad-size limit (KB) and a default canvas background. Replaces the
 // working state and lets the normal autosave persist it.
-async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, clickTag }) {
+async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, clickTag, compressFormat }) {
   const bg = bgColor || '#0f172a';
   
   let currentX = BOARD_MARGIN;
@@ -15570,71 +15573,7 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
       }
     }
     
-    // Start clean: keep only the persistent brand layers (RMIT logo + compliance),
-    // drop the demo "Summer sale" content.
-    c.elements = c.elements.filter(el => el.persistent === 'top' || el.persistent === 'bottom');
-    
-    // Add Heading and Subheading inside the main layer group (frame-dependent)
-    const w = preset.width;
-    const h = preset.height;
-    const isWide = w > h * 3;
-    const fsHeading = Math.max(14, Math.min(40, Math.round(Math.min(w, h) * 0.12)));
-    const fsSubheading = Math.max(11, Math.round(fsHeading * 0.55));
-    const pad = Math.max(10, Math.round(Math.min(w, h) * 0.06));
-    
-    const heading = Object.assign(makeElement('text'), {
-      customName: 'Heading',
-      x: pad,
-      y: pad,
-      text: 'Heading Text',
-      fontSize: fsHeading,
-      fontFamily: 'Museo',
-      weight: '700',
-      color: '#ffffff',
-      width: Math.max(120, w - pad * 2 - (w * 0.25)),
-      height: Math.round(fsHeading * 1.3),
-      persistent: false
-    });
-    
-    const subheading = Object.assign(makeElement('text'), {
-      customName: 'Subheading',
-      x: pad,
-      y: pad + Math.round(fsHeading * 1.3) + 8,
-      text: 'Subheading Text',
-      fontSize: fsSubheading,
-      fontFamily: 'Helvetica Neue LT Pro',
-      weight: '400',
-      color: '#c7ccdb',
-      width: w - pad * 2,
-      height: Math.round(fsSubheading * 1.3),
-      persistent: false
-    });
-    
-    c.elements.push(heading);
-    if (!isWide || w > 600) {
-      c.elements.push(subheading);
-    }
-    
-    // Add default button on top of the main layer group
-    const btnW = Math.min(140, Math.round(w * 0.35));
-    const btnH = Math.max(24, Math.min(48, Math.round(h * 0.12)));
-    const button = Object.assign(makeElement('button'), {
-      customName: 'Button',
-      x: pad,
-      y: h - btnH - pad,
-      text: 'Learn more',
-      bg: '#7c5cff',
-      color: '#ffffff',
-      fontSize: Math.max(11, Math.round(btnH * 0.42)),
-      radius: 6,
-      width: btnW,
-      height: btnH,
-      isClickArea: true,
-      fontFamily: 'Museo',
-      weight: '700',
-      persistent: false
-    });
-    c.elements.push(button);
+    c.elements = [];
     
     return c;
   });
@@ -15660,6 +15599,9 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
   state.clickTag = (clickTag || 'https://www.rmit.edu.au/').trim();
   state.adSizeLimit = Math.max(1, parseInt(sizeLimitKb, 10) || 150);
   state.defaultBg = bg;
+  if (compressFormat) {
+    state.compressFormat = compressFormat;
+  }
   state.canvases = canvases;
   state.activeCanvasId = canvases[0] ? canvases[0].id : null;
   state.frames = [{ id: 1, duration: 2 }];
@@ -15752,6 +15694,14 @@ function openNewProjectDialog() {
         <div>
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Project name</label>
           <input type="text" id="np-name" value="RMIT_ad" title="Enter the name for the new project" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:6px; padding:7px 9px; font-size:12px; outline:none;" />
+        </div>
+
+        <div>
+          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Auto-compression Format</label>
+          <select id="np-compress-format" title="Auto-compression output format: JPEG/PNG (ad-server safe) or WebP" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:6px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
+            <option value="jpeg" ${state.compressFormat !== 'webp' ? 'selected' : ''}>JPEG / PNG (auto — ad-server safe)</option>
+            <option value="webp" ${state.compressFormat === 'webp' ? 'selected' : ''}>WebP (smallest files)</option>
+          </select>
         </div>
 
         <div id="np-custom-config-container" style="display:flex; flex-direction:column; gap:16px; transition: opacity 0.2s;">
@@ -15974,6 +15924,7 @@ function openNewProjectDialog() {
   bg.querySelector('#np-create').onclick = async () => {
     const useStartup = chkUseStartup.checked;
     const name = bg.querySelector('#np-name').value;
+    const chosenCompressFormat = bg.querySelector('#np-compress-format').value;
 
     const btn = bg.querySelector('#np-create');
     const cancelBtn = bg.querySelector('#np-cancel');
@@ -16003,14 +15954,14 @@ function openNewProjectDialog() {
     try {
       if (useStartup) {
         if (selectedLocalTemplateBlob) {
-          await loadProjectFromBlob(selectedLocalTemplateBlob, name);
+          await loadProjectFromBlob(selectedLocalTemplateBlob, name, null, chosenCompressFormat);
           closeFn();
           showCanvasNotification('Loaded local template.', { type: 'success' });
           return;
         }
 
         const chosenTemplate = selectTemplate.value;
-        const ok = await loadStartupTemplate(chosenTemplate, name);
+        const ok = await loadStartupTemplate(chosenTemplate, name, chosenCompressFormat);
         if (ok) {
           closeFn();
           showCanvasNotification('Loaded startup template.', { type: 'success' });
@@ -16033,6 +15984,7 @@ function openNewProjectDialog() {
         sizeLimitKb: bg.querySelector('#np-size-limit').value,
         bgColor: hex,
         clickTag: bg.querySelector('#np-clicktag').value,
+        compressFormat: chosenCompressFormat,
       });
       closeFn();
     } catch (err) {
@@ -16108,6 +16060,13 @@ function openProjectSettingsDialog() {
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Max ad size (KB)</label>
           <input type="number" id="ps-size-limit" value="${state.adSizeLimit || 150}" min="1" title="Target file size limit for export warning / Ads Validator (KB)" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none;" />
         </div>
+        <div>
+          <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Auto-compression Format</label>
+          <select id="ps-compress-format" title="Auto-compression output format: JPEG/PNG (ad-server safe) or WebP" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:7px 9px; font-size:12px; outline:none; cursor:pointer;">
+            <option value="jpeg" ${state.compressFormat !== 'webp' ? 'selected' : ''}>JPEG / PNG (auto — ad-server safe)</option>
+            <option value="webp" ${state.compressFormat === 'webp' ? 'selected' : ''}>WebP (smallest files)</option>
+          </select>
+        </div>
         <div style="margin-top:4px;">
           <label style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600; display:block; margin-bottom:6px;">Save &amp; Sync Status</label>
           <div style="background:var(--bg-body, #0b0c0f); border:1px solid var(--border-light); border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px;">
@@ -16147,10 +16106,12 @@ function openProjectSettingsDialog() {
     const newName = bg.querySelector('#ps-name').value.trim() || 'RMIT_ad';
     const newClickTag = bg.querySelector('#ps-clicktag').value.trim();
     const newSizeLimit = Math.max(1, parseInt(bg.querySelector('#ps-size-limit').value, 10) || 150);
+    const newCompressFormat = bg.querySelector('#ps-compress-format').value;
 
     state.projectName = newName;
     state.clickTag = newClickTag;
     state.adSizeLimit = newSizeLimit;
+    state.compressFormat = newCompressFormat;
 
     pushHistory();
     render();
@@ -17670,7 +17631,6 @@ function openSettings() {
     savedHistoryLimit: state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50,
     autosaveInterval: state.autosaveInterval !== undefined ? state.autosaveInterval : 10,
     adSizeLimit: state.adSizeLimit !== undefined ? state.adSizeLimit : 150,
-    compressFormat: state.compressFormat === 'webp' ? 'webp' : 'jpeg',
     validationSettings: {
       textSize: state.validationSettings?.textSize !== false,
       contrast: state.validationSettings?.contrast !== false,
@@ -17859,20 +17819,6 @@ function openSettings() {
                   </div>
                 </section>
 
-                <section style="display:flex; flex-direction:column; gap:10px; border-top:1px solid var(--border-light); padding-top:14px;">
-                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Image Compression</h3>
-                  <label style="display:flex; align-items:center; gap:12px; font-size:12px; color:var(--text-main); cursor:pointer;">
-                    <span style="flex:1;">Auto-compression output format:</span>
-                    <select id="set-compress-format" style="width:240px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 8px; font-family:inherit; font-size:12px; outline:none; cursor:pointer;">
-                      <option value="jpeg" ${tempSettings.compressFormat !== 'webp' ? 'selected' : ''}>JPEG / PNG (auto — ad-server safe)</option>
-                      <option value="webp" ${tempSettings.compressFormat === 'webp' ? 'selected' : ''}>WebP (smallest files)</option>
-                    </select>
-                  </label>
-                  <div style="font-size:10px; color:var(--text-muted); line-height:1.4;">
-                    Used by the Auto-compress button, the validation panel's Auto Compress, and Batch Compression. JPEG / PNG picks JPEG for flat images and switches to PNG automatically when an image uses transparency. WebP produces the smallest files but is rejected by Campaign Manager 360, Google Ads, and Adobe Advertising DSP.
-                  </div>
-                </section>
-
                 <div style="font-size:10px; color:#f59e0b; line-height:1.4; display:flex; align-items:flex-start; gap:6px; border-top:1px solid var(--border-light); padding-top:14px; margin-top:4px;">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0; margin-top:1px;">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -17917,7 +17863,6 @@ function openSettings() {
       state.savedHistoryLimit = tempSettings.savedHistoryLimit;
       state.autosaveInterval = tempSettings.autosaveInterval;
       state.adSizeLimit = tempSettings.adSizeLimit;
-      state.compressFormat = tempSettings.compressFormat;
 
       if (!state.validationSettings) state.validationSettings = {};
       Object.assign(state.validationSettings, tempSettings.validationSettings);
@@ -17951,7 +17896,6 @@ function openSettings() {
     state.savedHistoryLimit = initialSettings.savedHistoryLimit;
     state.autosaveInterval = initialSettings.autosaveInterval;
     state.adSizeLimit = initialSettings.adSizeLimit;
-    state.compressFormat = initialSettings.compressFormat;
 
     if (!state.validationSettings) state.validationSettings = {};
     state.validationSettings = JSON.parse(JSON.stringify(initialSettings.validationSettings));
@@ -18098,14 +18042,6 @@ function openSettings() {
     });
   }
 
-  const selectCompressFormat = bg.querySelector('#set-compress-format');
-  if (selectCompressFormat) {
-    selectCompressFormat.addEventListener('change', (e) => {
-      tempSettings.compressFormat = e.target.value;
-      applyPreview();
-    });
-  }
-
   bg.querySelectorAll('.settings-theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       tempSettings.theme = btn.dataset.theme;
@@ -18135,7 +18071,6 @@ function openSettings() {
     state.savedHistoryLimit = tempSettings.savedHistoryLimit;
     state.autosaveInterval = tempSettings.autosaveInterval;
     state.adSizeLimit = tempSettings.adSizeLimit;
-    state.compressFormat = tempSettings.compressFormat;
 
     if (!state.validationSettings) state.validationSettings = {};
     Object.assign(state.validationSettings, tempSettings.validationSettings);
@@ -20905,7 +20840,7 @@ async function scanStartupTemplates() {
   }
 }
 
-async function loadStartupTemplate(fileName, customProjectName) {
+async function loadStartupTemplate(fileName, customProjectName, customCompressFormat = null) {
   const progress = showLoadingProgress('Creating Project from Template...');
   try {
     progress.setProgress(10, 'Fetching template...');
@@ -20940,7 +20875,7 @@ async function loadStartupTemplate(fileName, customProjectName) {
       return false;
     }
 
-    await loadProjectFromBlob(blob, customProjectName, progress);
+    await loadProjectFromBlob(blob, customProjectName, progress, customCompressFormat);
     if (typeof writeAutosave === 'function') {
       await writeAutosave();
     }
