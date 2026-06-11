@@ -43,7 +43,7 @@ const DOCS_SECTIONS = [
           <li style="margin-bottom: 8px;"><b>Live-Link Groups</b>: Bidirectionally sync copy, styles, typography, and background treatments across canvases in real-time, or choose specific properties to sync/unlink.</li>
           <li style="margin-bottom: 8px;"><b>Spreadsheet Data Merge</b>: Build version sheets inline or upload CSV files. Map column headers directly to dynamic slot-bound canvas layers to auto-generate version variations.</li>
           <li style="margin-bottom: 8px;"><b>Frame-Based Animations</b>: Sequence multi-frame banners and apply entering transitions or continuous looping presets without manual timeline keyframing complexity.</li>
-          <li style="margin-bottom: 8px;"><b>Built-in WebP Compressor</b>: Compress and convert JPEG/PNG assets to WebP directly inside the canvas panel to meet strict ad network weight targets (150 KB standard).</li>
+          <li style="margin-bottom: 8px;"><b>Built-in Image Compressor</b>: Compress and convert JPEG/PNG assets to WebP, JPEG, or PNG depending on project configuration to meet strict ad network weight targets (150 KB standard).</li>
           <li style="margin-bottom: 8px;"><b>Layer-Based Vector Masking</b>: Use any vector shape layer (rectangles, circles, custom brand SVG pixels) to non-destructively mask images below using clean CSS clip-path logic.</li>
           <li style="margin-bottom: 8px;"><b>Supabase Team Spaces</b>: Collaborate with teammates, organize work in folders, and manage project backups with full Row-Level Security and invitation URLs.</li>
           <li style="margin-bottom: 8px;"><b>Pre-Flight Audit & Export</b>: Package ready-to-run compliant ZIP bundles. Adflow validates clicktags and asset constraints automatically.</li>
@@ -121,7 +121,7 @@ const DOCS_SECTIONS = [
       { id: 'designing-intro', title: 'Introduction', body: `
         <p>Designing elements in Adflow enables you to construct layout layers using a combination of text blocks, call-to-action buttons, vector shapes, pre-approved brand graphics, and compressed raster image layers. Each element's style, fill, stroke, rotation, and opacity can be adjusted inside the right-hand Properties panel.</p>
         <p>Adflow includes a pre-loaded library of approved brand elements, such as logo marks and compliance components, which can be placed instantly onto any focused canvas. Additionally, the workspace includes custom utilities like a non-destructive Crop & Level tool and layer-based image masking to support custom framing workflows.</p>
-        <p><b>Adflow's Advantage:</b> Standard layout editors require tedious manual asset management and yield bloated output packages. Adflow bundles assets natively, optimizes text measurements automatically, and includes an active WebP image compressor to convert and downsize files directly in the browser to fit network weight limits.</p>
+        <p><b>Adflow's Advantage:</b> Standard layout editors require tedious manual asset management and yield bloated output packages. Adflow bundles assets natively, optimizes text measurements automatically, and includes an active multi-format image compressor to convert and downsize files directly in the browser to fit network weight limits.</p>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Save customized layers or group templates directly into the Assets panel to reuse them across other projects. When cropping uploaded graphics, use the Crop & Level slider: the rotation is baked directly into the output crop image, which leaves the layer's primary transform handles clean and aligned.</div>
       `},
       { id: 'text-typography', title: 'Text & typography', body: `
@@ -137,7 +137,7 @@ const DOCS_SECTIONS = [
       `},
       { id: 'images-svg', title: 'Images & SVG', body: `
         <p>Drop image files anywhere onto the workspace or insert via the Add panel. Aspect ratio is locked by default — hold <span class="kbd">Shift</span> while resizing to stretch.</p>
-        <p><b>WebP compression:</b> Adflow includes a built-in compressor for PNG/JPEG uploads — quality slider (10–100%), live KB preview, helps you stay under the ad weight limit.</p>
+        <p><b>Image compression:</b> Adflow includes a built-in multi-format compressor for PNG/JPEG uploads, supporting WebP, JPEG, or PNG formats depending on Project Settings and image transparency. Features a quality slider (10–100%) and live KB preview to help you stay under the ad weight limit.</p>
       `},
       { id: 'shapes', title: 'Shapes & Image Masking', body: `
         <p>Rectangles, circles, and lines from the Add panel. Adjust fill, stroke, corner radius from the Properties panel.</p>
@@ -178,7 +178,7 @@ const DOCS_SECTIONS = [
         <p>Set how each frame enters: <b>Fade</b>, <b>Slide</b> (4 directions), <b>Swipe</b> (4 directions — a directional wipe that reveals the next frame). Slide and Swipe also offer an <b>Add Fade</b> toggle and adjustable duration.</p>
       `},
       { id: 'entrance-animations', title: 'Entrance animations', body: `
-        <p>Per-element IN animations played when a frame begins: Pop-in, Fade, Slide, Typing. Each has duration, delay, and an optional fade. Stagger them by adjusting delays.</p>
+        <p>Per-element IN animations played when a frame begins: Pop-in, Fade, Slide, Blur, Typing. Each has duration, delay, and configuration settings (such as blur radius or fade toggle depending on the preset). Stagger them by adjusting delays.</p>
       `},
       { id: 'continuous-effects', title: 'Continuous effects', body: `
         <p>Looping, non-destructive effects that overlay on top of the frame state: Pan, Zoom, Float, Pulse, Wiggle, Spin, Heartbeat, Flash. Toggle <b>Perform once</b> to play a single cycle instead of looping.</p>
@@ -364,7 +364,7 @@ const DOCS_SECTIONS = [
         <p>Export & Validation audits ad specifications and packs layouts into final HTML5 display ads. It verifies layout compliance rules and bundles code for publishing on ad delivery networks.</p>
         <p>The panel runs validation checks in real time, alerting designers about missing ClickTag exit links, external assets, or total ad weights. The exporter generates self-contained ZIP packages containing final index files and media assets, as well as static PNG fallbacks.</p>
         <p><b>Adflow's Advantage:</b> Traditional editors produce bloated code that fails ad network filters. Adflow packages code cleanly, automatically fetching and embedding vector brand graphics, inlining brand stylesheets, and auditing file weight limits prior to downloading.</p>
-        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Always review the validation panel on the left before exporting. If any canvas exceeds the 150 KB limit, run WebP image compression or remove unneeded frames from your sequence.</div>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Always review the validation panel on the left before exporting. If any canvas exceeds the 150 KB limit, run image compression or remove unneeded frames from your sequence.</div>
       `},
       { id: 'clicktag', title: 'ClickTag', body: `
         <p>The exit URL used when someone clicks the banner. Set globally per project, or override per canvas. Can also be bound to a CSV column in Data & Versions for per-row click destinations.</p>
@@ -491,12 +491,12 @@ const DOCS_SECTIONS = [
       `},
       { id: 'faq-weight', title: 'Ad weight limits', body: `
         <p><b>Question:</b> What should I do if my ad canvas exceeds the 150 KB weight limit?</p>
-        <p><b>Answer:</b> Uncompressed image assets are the main cause of weight flags. Use the WebP compressor:</p>
+        <p><b>Answer:</b> Uncompressed image assets are the main cause of weight flags. Use the built-in Image Compressor:</p>
         <ol>
           <li>Select the heavy image on your canvas.</li>
-          <li>In the right-hand panel, find the WebP Compressor tool next to the file name.</li>
+          <li>In the right-hand panel, find the Image Compressor tool next to the file name.</li>
           <li>Adjust the quality slider (e.g., 70% or 80%) to see a live preview of the estimated KB weight.</li>
-          <li>Click Compress to overwrite the original image with a lightweight WebP version.</li>
+          <li>Click Compress to overwrite the original image with the compressed version. The output format is determined by Project Settings and automatically preserves transparency by outputting PNG when necessary, or JPEG/WebP otherwise.</li>
         </ol>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Avoid uploading large, complex SVGs as elements. Embed simple vector shapes or compress assets beforehand to ensure network compliance.</div>
       `},
@@ -660,6 +660,15 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.19.15',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Multi-Format Image Auto-Compression Settings: Added a new "Auto-compression Format" preference under Project Settings. Users can choose between "JPEG / PNG (auto — ad-server safe)" (default) and "WebP (smallest files)". The default setting automatically resolves output images to PNG if they use transparency (preserving alpha channels) or JPEG otherwise (preventing issues with DSPs like CM360, Google Ads, and Adobe DSP that reject WebP).',
+      'Blur Entrance Animation: Added a new customizable "Blur" IN animation preset for layers, allowing adjustable blur radius (1-100px) and optional fade-in.',
+      'Ad Frame Boundary Hairline Fix: Resolved thin hairline colored lines bleeding along the borders of active ad frame containers on high-DPI (fractional scaling) displays by dynamically triggering repaint routines on frame transitions.'
+    ]
+  },
   {
     version: 'v0.19.14',
     date: 'June 2026 — Engine v2.19',

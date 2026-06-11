@@ -1,4 +1,4 @@
-# RMIT Adflow — Technical App Breakdown (Updated v0.17.0, Engine v2.16)
+# RMIT Adflow — Technical App Breakdown (Updated v0.19.15, Engine v2.19)
 
 This document is the official context dump for agents picking up the codebase. It covers the current architecture, state schemas, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), cloud backend, and workflow rules. **Read this in full before making non-trivial changes.**
 
@@ -194,7 +194,7 @@ interface LinkGroup {
 
 ## 4. Subsystems Detail
 
-### Auto-Resize Engine (v2.16) & Auto-Arrange Configurations
+### Auto-Resize Engine (v2.19) & Auto-Arrange Configurations
 Deterministic, rule-based layout generator. Takes a source canvas and targets, recalculates relative sizes, crops, and wrapping.
 - **Geometries & Parameters**: Canvas-specific placement specifications, safezones, maximum font-sizes, and brand element (Logo, Tagline, CRICOS) quadrant coordinates are managed in [auto-arrange-config.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auto-arrange-config.js).
 - **Roles**: Positions are determined by priority (`rmit-logo` -> `cta-button` -> `heading` etc.).
@@ -211,6 +211,15 @@ Mask shapes (rectangles, circles, and custom brand SVGs) use inline CSS `clip-pa
 Maps columns to dynamic element slots to batch generate banners.
 - **Edit-in-place**: Direct canvas edits write back to the active version row cell unless Data Lock is on.
 - **Worker Exporter**: Compresses and streams ZIP files using a background thread via direct File System streaming, bypassing main-thread lockups.
+
+### Multi-Format Image Auto-Compression Settings
+Adflow supports configurable compression preferences (`state.compressFormat`). The default option `jpeg` (ad-server safe) resolves to WebP only when explicitly chosen. For ad-server compatibility (avoiding WebP rejection in CM360, Google Ads, and Adobe DSP), the default setting evaluates alpha channels: if an image contains transparency, it is compressed to PNG; otherwise, it is compressed to JPEG.
+
+### Blur Entrance Animation
+The **Blur** IN animation applies a CSS blur filter and optional opacity fade. It dynamically generates custom `@keyframes anim-blur-[id]` specifying the blur amount (1-100px) and fade properties.
+
+### High-DPI Edge Antialiasing Hairline Fix
+To prevent 1px edge hairline bleeding caused by fractional device pixel ratios on high-DPI displays, the ad container (`#ad`) repaints its background to match the active frame's background color. The system clears the INCOMING frame's animation rule upon transition completion to prevent composition layout artifacts.
 
 ---
 

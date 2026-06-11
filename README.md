@@ -90,7 +90,7 @@ Optional Supabase-backed cloud sync, layered on top of the local-first model. An
 - **Supported Entities** — Text, Images, SVGs, Rectangles, Circles, Pixel shapes, Lines, and Buttons.
 - **Typography Integration** — Embedded RMIT brand fonts (Museo, Helvetica Neue) and precise text controls (line-height, letter-spacing, leading, tracking, autoSize cap).
 - **Brand Element Library** — Built-in repository of pre-approved SVG assets (logos, Cricos text, brand pixel) that bypass manual file management and dynamically bundle on export.
-- **WebP Compression Tool** — Built-in visual image compressor for converting and compressing PNG/JPEG to WebP. Custom quality (10–100%) with real-time output-size preview to fit ad weight constraints.
+- **Image Compression Tool** — Built-in visual image compressor for converting and compressing PNG/JPEG assets to WebP, JPEG, or PNG formats. Supports real-time size preview and custom quality (10–100%) options to help you stay under ad weight constraints.
 - **Layer Persistence** — every element belongs to one of three layer sections: **Always Top** (persistent above every frame — typical for logos), **Main Layers (Frame N)** (only on the active frame), or **Always Bottom** (persistent below — typical for backgrounds). Drag-and-drop between sections.
 - **Role-Tag Icon Column** — every layer row carries a role indicator next to the lock + visibility eyes. Grey when the role was auto-detected, accent purple when manually locked. Click to open the picker covering all 10 auto-resize roles + reset-to-auto.
 - **Layer-Based Image Masking** — right-click a shape layer (rectangle, circle, pixel) and pick "Use as mask" to clip the image directly beneath it. Mask carries its own independent animation, survives auto-resize via the mask post-pass, and exports identically to the editor preview.
@@ -99,7 +99,7 @@ Optional Supabase-backed cloud sync, layered on top of the local-first model. An
 - **Frame-Based Sequencing** — define sequences with per-frame durations (seconds).
 - **Frame Transitions** — per-frame entering transitions: Fade, Slide (Up/Down/Left/Right), Swipe (a directional reveal), Zoom-in / Zoom-out. Optional "Add Fade" toggle and adjustable duration per frame.
 - **Frame Skip** — toggle frame.skip to remove a frame from the export pipeline (still editable in the sequence). Mutually exclusive — only one frame skipped at a time.
-- **Element Entrance Animations** — Fade In, Slide Up/Down/Left/Right, Swipe, Pop In, Zoom Out, Typing, Fade Typing.
+- **Element Entrance Animations** — Fade In, Slide Up/Down/Left/Right, Blur, Swipe, Pop In, Zoom Out, Typing, Fade Typing.
 - **Continuous Effects** — Pulse, Float, Flash, Wiggle, Spin, Heartbeat, Pan, Zoom. Loop infinitely or perform once.
 
 ### Advanced Styling & Color
@@ -183,7 +183,7 @@ Adflow comes packed with a comprehensive, professional feature set designed to o
 - **Live-Link Groups**: Bidirectionally sync copy, styles, typography, and background treatments across canvases in real-time, or choose specific properties to sync/unlink.
 - **Spreadsheet Data Merge**: Build version sheets inline or upload CSV files. Map column headers directly to dynamic slot-bound canvas layers to auto-generate version variations.
 - **Frame-Based Animations**: Sequence multi-frame banners and apply entering transitions or continuous looping presets without manual timeline keyframing complexity.
-- **Built-in WebP Compressor**: Compress and convert JPEG/PNG assets to WebP directly inside the canvas panel to meet strict ad network weight targets (150 KB standard).
+- **Built-in Image Compressor**: Compress and convert JPEG/PNG assets to WebP, JPEG, or PNG depending on project configuration to meet strict ad network weight targets (150 KB standard).
 - **Layer-Based Vector Masking**: Use any vector shape layer (rectangles, circles, custom brand SVG pixels) to non-destructively mask images below using clean CSS clip-path logic.
 - **Supabase Team Spaces**: Collaborate with teammates, organize work in folders, and manage project backups with full Row-Level Security and single-use invitation tokens.
 - **Pre-Flight Audit & Export**: Package ready-to-run Google Ads-compliant ZIP bundles. Adflow validates clicktags and asset constraints automatically.
@@ -284,11 +284,11 @@ If you need to make custom overrides on one canvas size without propagating chan
 *Note: If you want to keep the copy linked but separate styling, open the Link Groups panel and uncheck specific properties (like Font Size or Fill Color) for the group.*
 
 ### 6. What should I do if my ad canvas exceeds the 150 KB weight limit?
-Uncompressed image assets are the main cause of weight flags. Use the built-in WebP compressor:
+Uncompressed image assets are the main cause of weight flags. Use the built-in Image Compressor:
 1. Select the heavy image on your canvas.
-2. In the right-hand panel, find the WebP Compressor tool next to the file name.
+2. In the right-hand panel, find the Image Compressor tool next to the file name.
 3. Adjust the quality slider (e.g., 70% or 80%) to see a live preview of the estimated KB weight.
-4. Click **Compress** to overwrite the original image with a lightweight WebP version.
+4. Click **Compress** to overwrite the original image with the compressed version. Output format is determined by Project Settings and automatically preserves transparency (saving as PNG) or uses JPEG/WebP otherwise.
 
 ### 7. Can I use Adflow completely offline without signing in?
 Yes! Adflow is local-first:

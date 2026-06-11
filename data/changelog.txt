@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.14 (Current) - June 2026 — Engine v2.19
+v0.19.15 (Current) - June 2026 — Engine v2.19
+- Multi-Format Image Auto-Compression Settings: Added a new "Auto-compression Format" preference under Project Settings. Users can choose between "JPEG / PNG (auto — ad-server safe)" (default) and "WebP (smallest files)". The default setting automatically resolves output images to PNG if they use transparency (preserving alpha channels) or JPEG otherwise (preventing issues with DSPs like CM360, Google Ads, and Adobe DSP that reject WebP).
+- Blur Entrance Animation: Added a new customizable "Blur" IN animation preset for layers, allowing adjustable blur radius (1-100px) and optional fade-in.
+- Ad Frame Boundary Hairline Fix: Resolved thin hairline colored lines bleeding along the borders of active ad frame containers on high-DPI (fractional scaling) displays by dynamically triggering repaint routines on frame transitions.
+
+v0.19.14 - June 2026 — Engine v2.19
 - Animation Hover Previews Stop Reliably: Fixed an issue in edit mode where animation, effect, or frame-transition hover previews could keep playing after moving the mouse away from the animation panels. Previews now stop as soon as the cursor leaves the three animation sub-panels (Animation, Effects, Frame Transition), even when the panel content was re-rendered under the cursor.
 - Animation Direction Preview Fixed: Fixed the entrance-animation Direction dropdown, which previously threw an error and showed no preview when hovered. Hovering the Direction control and its options now correctly previews the animation in the chosen direction.
 - Font Weight Sync on Font Change: Fixed the Weight dropdown showing the wrong value (and silently rendering a different weight) after switching to a font with fewer available weights. For example, switching a 700-weight layer to Helvetica Neue LT Pro (which offers 300/400/500) now snaps the weight to the nearest available option (500) so the dropdown, the stored value, and the on-screen text all match.
