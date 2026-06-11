@@ -2120,7 +2120,7 @@ function render(skipProps = false) {
         else if (animType === 'slide-right') { tempEl.animDirection = 'right'; tempEl.animDistance = 20; }
         dynamicStyles += '\n' + getSlideKeyframes(tempEl);
       }
-      if (el.effectType === 'pan' && el.panMidX !== undefined && el.panMidY !== undefined) {
+      if (el.effectType === 'pan' && (el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined))) {
         dynamicStyles += '\n' + getPanCurveKeyframes(el);
       }
     });
@@ -3394,7 +3394,7 @@ function startEffectPreview(el, tempVal) {
         else px = dist;
       }
       let animName = 'eff-pan';
-      if (el.panMidX !== undefined && el.panMidY !== undefined) {
+      if (el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined)) {
         animName = `eff-pan-${el.id}`;
         let styleTag = document.getElementById('dynamic-anim-styles');
         if (!styleTag) {
@@ -3418,7 +3418,7 @@ function startEffectPreview(el, tempVal) {
       tNode.style.setProperty('--pan-rotate', rot + 'deg');
       tNode.style.setProperty('--pan-opacity-start', opStart);
       let ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-      if (el.panMidX !== undefined && el.panMidY !== undefined) {
+      if (el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined)) {
         ease = 'linear';
       }
       const fill = el.effOnce ? 'forwards' : 'infinite';
@@ -3634,7 +3634,7 @@ function getElementAnimationCSS(el, isImageExport) {
       }
       let animName = 'eff-pan';
       let ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-      if (el.panMidX !== undefined && el.panMidY !== undefined) {
+      if (el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined)) {
         animName = `eff-pan-${el.id}`;
         ease = 'linear';
       }
