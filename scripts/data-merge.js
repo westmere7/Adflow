@@ -505,6 +505,26 @@ function renderPreviewVersionBar() {
   if (showCurrentOnlyBtn) {
     inner += '<button id="preview-switch-all-btn" class="btn primary" style="padding: 4px 10px; font-size: 11px; height: 24px; white-space: nowrap; line-height: 1.2;">Current frame only. Switch to all?</button>';
   }
+
+  // Full-preview-only controls: frame selector (jump-and-play), replay all,
+  // download all, plus live runtime stats. Hidden in single-canvas preview and
+  // when "current frame only" is active (frame stepping is meaningless there).
+  const showFullControls = !!state.isPreviewMode && !showCurrentOnlyBtn;
+  if (showFullControls) {
+    const playable = (state.frames || []).filter(f => !f.skip);
+    const totalDur = playable.reduce((s, f) => s + (f.duration != null ? f.duration : 2), 0);
+    const fmtDur = (n) => { const r = Math.round(n * 10) / 10; return (Number.isInteger(r) ? r : r.toFixed(1)) + 's'; };
+    let frameOpts = '<option value="">All frames</option>';
+    playable.forEach((f, i) => { frameOpts += `<option value="${i}">Frame ${i + 1}</option>`; });
+    inner +=
+      '<span style="width:1px; height:20px; background:#2a2f3e;"></span>' +
+      `<select id="preview-frame-select" title="Jump to a frame and play from there (all sizes)" style="padding:3px 6px; font-size:11px; height:24px; background:#0f1117; color:#e7e9f0; border:1px solid #2a2f3e; border-radius:5px; outline:none; cursor:pointer;">${frameOpts}</select>` +
+      '<button id="preview-replay-all" class="btn" title="Restart every size from the first frame" style="padding:4px 10px; font-size:11px; height:24px; white-space:nowrap; line-height:1.2;">Replay all</button>' +
+      '<button id="preview-download-all" class="btn" title="Download every size as an HTML5 zip" style="padding:4px 10px; font-size:11px; height:24px; white-space:nowrap; line-height:1.2;">Download all</button>' +
+      `<span id="preview-runtime-stat" data-total="${totalDur}" style="font-size:11px; color:#9aa1b6; font-weight:600; white-space:nowrap;">Runtime ${fmtDur(totalDur)}${state.loopAd ? ' ↻' : ''}</span>` +
+      '<span style="width:1px; height:20px; background:#2a2f3e;"></span>';
+  }
+
   // Prominent exit button inside the bar
   inner += '<button id="preview-exit-btn" class="btn" style="padding: 4px 12px; font-size: 11px; height: 24px; white-space: nowrap; line-height: 1.2; background: #dc2626; color: #ffffff; border: 1px solid #dc2626; font-weight: 600; transition: background 0.15s, border-color 0.15s;">Exit Preview</button>';
 
@@ -532,6 +552,67 @@ function renderPreviewVersionBar() {
         if (chk) chk.checked = false;
         pushHistory();
         render();
+      };
+    }
+  }
+
+  if (showFullControls) {
+    const playable = (state.frames || []).filter(f => !f.skip);
+    const fmtDur = (n) => { const r = Math.round(n * 10) / 10; return (Number.isInteger(r) ? r : r.toFixed(1)) + 's'; };
+    const frameSel = bar.querySelector('#preview-frame-select');
+    const statEl = bar.querySelector('#preview-runtime-stat');
+    const previewIframes = () => document.querySelectorAll('.canvas-frame iframe.preview-iframe');
+    const reloadAll = () => previewIframes().forEach(f => { f.srcdoc = f.srcdoc; });
+    const jumpAll = (idx) => previewIframes().forEach(f => {
+      try { f.contentWindow && f.contentWindow.postMessage({ adflow: 'jump', frame: idx }, '*'); } catch (e) {}
+    });
+    const showTotalStat = () => {
+      if (!statEl) return;
+      const t = parseFloat(statEl.dataset.total) || 0;
+      statEl.textContent = `Runtime ${fmtDur(t)}${state.loopAd ? ' ↻' : ''}`;
+    };
+
+    if (frameSel) {
+      frameSel.onchange = () => {
+        const v = frameSel.value;
+        if (v === '') {
+          // "All frames" — reload each iframe for a clean full restart from frame 0.
+          reloadAll();
+          showTotalStat();
+        } else {
+          const idx = parseInt(v, 10);
+          jumpAll(idx);
+          const f = playable[idx];
+          if (statEl && f) statEl.textContent = `Frame ${idx + 1} · ${fmtDur(f.duration != null ? f.duration : 2)}`;
+        }
+      };
+    }
+
+    const replayBtn = bar.querySelector('#preview-replay-all');
+    if (replayBtn) {
+      replayBtn.onclick = () => {
+        if (frameSel) frameSel.value = '';
+        reloadAll();
+        showTotalStat();
+      };
+    }
+
+    const dlBtn = bar.querySelector('#preview-download-all');
+    if (dlBtn) {
+      dlBtn.onclick = async () => {
+        if (dlBtn.disabled) return;
+        const orig = dlBtn.textContent;
+        dlBtn.disabled = true;
+        dlBtn.textContent = 'Preparing…';
+        try {
+          for (const c of state.canvases) { await exportCanvasAsZip(c); }
+        } catch (err) {
+          console.error('Download all failed:', err);
+          if (typeof showAdflowAlert === 'function') showAdflowAlert('Download failed: ' + (err.message || err));
+        } finally {
+          dlBtn.disabled = false;
+          dlBtn.textContent = orig;
+        }
       };
     }
   }

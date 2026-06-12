@@ -660,6 +660,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.21.0',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Full Preview Controls: The full-preview bar gained a control cluster. A frame selector lets you jump to any frame and play forward from there across every size at once; "Replay all" restarts every size from the first frame; and "Download all" packages each size as an HTML5 zip in one click.',
+      'Live Runtime Readout: The preview bar now shows the ad\'s total runtime (the sum of all playable frame durations, with a ↻ when looping). Picking a specific frame switches the readout to that frame\'s own duration. Exported ad files are unchanged — the new controls live only in the editor\'s preview.'
+    ]
+  },
+  {
     version: 'v0.20.4',
     date: 'June 2026 — Engine v2.19',
     items: [

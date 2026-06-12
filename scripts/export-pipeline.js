@@ -1324,12 +1324,12 @@ function clearCanvasFrame(c) {
 // This is synchronous and self-balancing: dmBakeRow saves whatever is currently on the
 // element and restores it, so it nests safely inside an export that already baked the
 // same row (dmRunExport sets activeVersion to the row it's exporting).
-function generateExportHTML(targetCanvas, zipRef, isImageExport = false) {
+function generateExportHTML(targetCanvas, zipRef, isImageExport = false, options = {}) {
   const dm = state.dataMerge;
   const idx = (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
-  if (idx == null) return _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport);
+  if (idx == null) return _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport, options);
   const restore = dmBakeRow(idx);
-  try { return _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport); }
+  try { return _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport, options); }
   finally { restore(); }
 }
 function getExportFilename(el, ext) {
@@ -1365,7 +1365,7 @@ function getExportFilename(el, ext) {
   return `${el.assetId}.${ext}`;
 }
 
-function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false) {
+function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, options = {}) {
   const c = targetCanvas || getActiveCanvas();
   if (!c) return '';
   const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -2001,6 +2001,7 @@ ${elsTop}
     var frames = ${JSON.stringify(frameData)};
     var currentFrame = 0;
     var loopAd = ${state.loopAd === true};
+    var frameTimer = null;
 
     function updatePersistentLayersVisibility(frameIdx) {
       var exclude = !!frames[frameIdx].excludePersistent;
@@ -2067,7 +2068,7 @@ ${elsTop}
       if (!loopAd && currentFrame === frames.length - 1) {
         return;
       }
-      setTimeout(nextFrame, frames[currentFrame].duration * 1000);
+      frameTimer = setTimeout(nextFrame, frames[currentFrame].duration * 1000);
     }
     
     ${setupTextLineBgs.toString()}
@@ -2238,7 +2239,7 @@ ${elsTop}
       }
 
       if (frames.length > 1) {
-        setTimeout(nextFrame, frames[0].duration * 1000);
+        frameTimer = setTimeout(nextFrame, frames[0].duration * 1000);
       }
     }
 
@@ -2261,6 +2262,41 @@ ${elsTop}
         startAd();
       }
     });
+${options.previewControls ? `
+    // Preview-only timeline driver (full-preview bar). Not emitted in exported
+    // ad files — it only listens for postMessage from the editor's preview bar.
+    // 'jump' restarts the timeline at an arbitrary frame and plays forward; the
+    // hide-all → reflow → show sequence makes the target frame's CSS entrance
+    // animations fire fresh (same display:none→block trigger nextFrame relies on).
+    function adflowPlayFrom(idx) {
+      if (frameTimer) { clearTimeout(frameTimer); frameTimer = null; }
+      if (!frames.length) return;
+      idx = idx % frames.length; if (idx < 0) idx += frames.length;
+      for (var i = 0; i < frames.length; i++) {
+        var fe = document.getElementById('frame-' + frames[i].id);
+        if (fe) { fe.style.display = 'none'; fe.style.animation = ''; fe.style.zIndex = ''; }
+      }
+      void document.documentElement.offsetHeight;
+      currentFrame = idx;
+      var cur = document.getElementById('frame-' + frames[currentFrame].id);
+      if (cur) {
+        cur.style.display = 'block';
+        var adEl = document.getElementById('ad');
+        if (adEl) adEl.style.background = cur.style.background;
+        cur.querySelectorAll('[data-bg-anim]').forEach(setupTextLineBgs);
+      }
+      updatePersistentLayersVisibility(currentFrame);
+      if (frames.length > 1 && !(!loopAd && currentFrame === frames.length - 1)) {
+        frameTimer = setTimeout(nextFrame, frames[currentFrame].duration * 1000);
+      }
+    }
+    window.addEventListener('message', function (e) {
+      var d = e.data;
+      if (!d || typeof d !== 'object') return;
+      if (d.adflow === 'jump') adflowPlayFrom(d.frame | 0);
+      else if (d.adflow === 'replay') adflowPlayFrom(0);
+    });
+` : ''}
   <\/script>
 </body>
 </html>`;

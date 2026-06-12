@@ -714,7 +714,7 @@ function previewFrameNode(c) {
   frame.style.left = c.workspaceX + 'px';
   frame.style.top = c.workspaceY + 'px';
 
-  const html = generateExportHTML(c);
+  const html = generateExportHTML(c, null, false, { previewControls: true });
   const kb = (new Blob([html]).size / 1024).toFixed(1);
 
   const header = document.createElement('div');
