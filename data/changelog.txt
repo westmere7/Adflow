@@ -1,6 +1,14 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.16 (Current) - June 2026 — Engine v2.19
+v0.19.18 (Current) - June 2026 — Engine v2.19
+- Per-Version clickTag Validation: The Validation & Audit checks now validate the clickTag of the currently active data version (the URL bound from the spreadsheet column), not just the project default. An invalid URL in a version row (e.g. a stray "-" before "https://") now flags the canvases immediately, matching what the Export panel reports.
+- Project Settings Menu Fix: Fixed "Project settings..." in the File menu not opening, and the project name not responding to clicks/double-clicks (a script load-order regression).
+
+v0.19.17 - June 2026 — Engine v2.19
+- Live clickTag URL Validation: Fixed the Validation & Audit status not re-checking the clickTag URL after editing it in Project Settings. Canvas validation badges now update in real time when the URL becomes invalid or is fixed again, without needing to open the Export panel first. The same fix applies to changes to the ad weight (KB) limit.
+- Validation Refresh on Undo/Redo: clickTag URL and ad weight limit changes are now part of the undo history, and undo/redo re-runs validation so the canvas badges always reflect the restored state.
+
+v0.19.16 - June 2026 — Engine v2.19
 - Font Subsetting & Embedding on Export: Exported ads no longer contain font files. Each required brand font is automatically subset to the characters the ad actually uses (cutting font weight by typically 60-80%) and embedded directly into index.html as base64. This makes bundles compatible with ad servers that reject font files (Google Ads, Adobe DSP) while keeping text fully editable/animatable (typing, word-fade), preserves kerning, and frees significant headroom in the IAB KB budget — the image auto-compressor now lands on higher image quality automatically. All live size readouts (canvas headers, validation panel, compression modals, export table) measure the subsetted output, and the Ad Size Breakdown shows real subset font sizes instead of fixed estimates. If subsetting is unavailable, exports gracefully fall back to packing the full .woff2 files as before.
 - Stale Script Cache Fix: Application scripts are now version-pinned (?v=) so browsers and local servers always load the current release after an update.
 

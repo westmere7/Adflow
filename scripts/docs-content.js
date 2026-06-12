@@ -660,6 +660,22 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.19.18',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Per-Version clickTag Validation: The Validation & Audit checks now validate the clickTag of the currently active data version (the URL bound from the spreadsheet column), not just the project default. An invalid URL in a version row (e.g. a stray "-" before "https://") now flags the canvases immediately, matching what the Export panel reports.',
+      'Project Settings Menu Fix: Fixed "Project settings..." in the File menu not opening, and the project name not responding to clicks/double-clicks (a script load-order regression).'
+    ]
+  },
+  {
+    version: 'v0.19.17',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Live clickTag URL Validation: Fixed the Validation & Audit status not re-checking the clickTag URL after editing it in Project Settings. Canvas validation badges now update in real time when the URL becomes invalid or is fixed again, without needing to open the Export panel first. The same fix applies to changes to the ad weight (KB) limit.',
+      'Validation Refresh on Undo/Redo: clickTag URL and ad weight limit changes are now part of the undo history, and undo/redo re-runs validation so the canvas badges always reflect the restored state.'
+    ]
+  },
+  {
     version: 'v0.19.16',
     date: 'June 2026 — Engine v2.19',
     items: [

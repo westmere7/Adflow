@@ -1164,24 +1164,11 @@ async function openValidatorDetails(initialCanvas, initialTab = 'specs') {
     const limitKb = state.adSizeLimit || 150;
     
     const sizeExceeded = focusedCanvas._valKb && parseFloat(focusedCanvas._valKb) > limitKb;
-    const clickTagValue = state.clickTag ? state.clickTag.trim() : '';
-    let clickTagValid = false;
-    let clickTagMsg = 'Missing clickTag URL';
-    if (clickTagValue) {
-      try {
-        const url = new URL(clickTagValue);
-        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-          clickTagMsg = 'Must start with http:// or https://';
-        } else if (!url.hostname.includes('.') || url.hostname.split('.').pop().length < 2) {
-          clickTagMsg = 'Must have a valid domain extension';
-        } else {
-          clickTagValid = true;
-          clickTagMsg = clickTagValue;
-        }
-      } catch (e) {
-        clickTagMsg = 'Invalid URL format';
-      }
-    }
+    // Effective clickTag: active data-merge version override or project default.
+    const clickTagValue = getEffectiveClickTag();
+    const clickTagErr = validateClickTagUrl(clickTagValue);
+    const clickTagValid = !clickTagErr;
+    const clickTagMsg = clickTagValid ? clickTagValue : clickTagErr;
     
     let imageElements = focusedCanvas.elements.filter(el => el.type === 'image');
     let missingAssets = [];

@@ -586,21 +586,10 @@ function queueSizeUpdate() {
   sizeUpdateTimeout = setTimeout(async () => {
     for (const c of state.canvases) {
       let errors = [];
-      if (!state.clickTag || state.clickTag.trim() === '') {
-        errors.push('Missing clickTag URL');
-      } else {
-        try {
-          const urlStr = state.clickTag.trim();
-          const url = new URL(urlStr);
-          if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-            errors.push('clickTag URL must start with http:// or https://');
-          } else if (!url.hostname.includes('.') || url.hostname.split('.').pop().length < 2) {
-            errors.push('clickTag URL must be a valid website name with domain');
-          }
-        } catch (e) {
-          errors.push('clickTag URL format is invalid (e.g. https://example.com)');
-        }
-      }
+      // Validate the active version's effective clickTag (data-merge override
+      // or project default) so badges match what the export panel reports.
+      const ctErr = validateClickTagUrl(getEffectiveClickTag());
+      if (ctErr) errors.push(ctErr);
 
       let hasMissing = false;
       let hasExt = false;
@@ -650,21 +639,8 @@ function queueSizeUpdate() {
 async function updateCanvasSizeSync(c) {
   if (typeof JSZip === 'undefined') return;
   let errors = [];
-  if (!state.clickTag || state.clickTag.trim() === '') {
-    errors.push('Missing clickTag URL');
-  } else {
-    try {
-      const urlStr = state.clickTag.trim();
-      const url = new URL(urlStr);
-      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        errors.push('clickTag URL must start with http:// or https://');
-      } else if (!url.hostname.includes('.') || url.hostname.split('.').pop().length < 2) {
-        errors.push('clickTag URL must be a valid website name with domain');
-      }
-    } catch (e) {
-      errors.push('clickTag URL format is invalid (e.g. https://example.com)');
-    }
-  }
+  const ctErr = validateClickTagUrl(getEffectiveClickTag());
+  if (ctErr) errors.push(ctErr);
 
   let hasMissing = false;
   let hasExt = false;
@@ -1936,7 +1912,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.19.16';
+  const currentVersion = 'v0.19.18';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -2151,7 +2127,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.19.16</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.19.18</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

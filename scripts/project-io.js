@@ -727,8 +727,11 @@ document.getElementById('menu-file-save-browser').addEventListener('click', asyn
 });
 document.getElementById('menu-file-save-file').addEventListener('click', saveProjectToZip);
 document.getElementById('menu-file-save-template').addEventListener('click', saveTemplateAsFlow);
-document.getElementById('menu-file-new').addEventListener('click', openNewProjectDialog);
-document.getElementById('menu-project-settings').addEventListener('click', openProjectSettingsDialog);
+// Arrow wrappers: these two live in project-dialogs.js which loads AFTER this
+// file — referencing them directly here throws at load time and kills all the
+// wiring below (Open Recent, project rename). Resolve them at click time.
+document.getElementById('menu-file-new').addEventListener('click', () => openNewProjectDialog());
+document.getElementById('menu-project-settings').addEventListener('click', () => openProjectSettingsDialog());
 
 const _clearRecentBtn = document.getElementById('menu-file-clear-recent');
 if (_clearRecentBtn) {

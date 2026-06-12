@@ -443,7 +443,12 @@ function pushHistory() {
     linkGroups:        state.linkGroups,
     dataMerge:         state.dataMerge,
     projectName:       state.projectName,
-    validationSettings: state.validationSettings
+    validationSettings: state.validationSettings,
+    // Validation inputs — must be in the snapshot, or the duplicate-skip below
+    // returns early and queueSizeUpdate() never re-runs the clickTag/size checks
+    // (stale _valErrors until the export panel recomputes them).
+    clickTag:          state.clickTag,
+    adSizeLimit:       state.adSizeLimit
   });
   // Skip exact duplicates (e.g. a no-op drag).
   if (historyIndex >= 0 && history[historyIndex] === snapshot) return;
@@ -458,7 +463,10 @@ function pushHistory() {
     history.shift();
     historyIndex--;
   }
-  queueSizeUpdate();
+  // typeof guard: the very first pushHistory() fires at load time from
+  // autosave.js, before project-dialogs.js (which defines queueSizeUpdate)
+  // has loaded. Boot-time validation is queued by app-boot.js instead.
+  if (typeof queueSizeUpdate === 'function') queueSizeUpdate();
   scheduleAutosave();
 }
 
@@ -489,5 +497,38 @@ function getCappedHistory(limit) {
     history: slicedHistory,
     historyIndex: newIndex
   };
+}
+
+// The clickTag the viewer is actually looking at: the active data-merge
+// version's bound column value when one is set, else the project default.
+// Mirrors the per-row resolution in export-pipeline.js so the editor
+// validation badges agree with what the export panel reports.
+function getEffectiveClickTag() {
+  const dm = state.dataMerge;
+  if (dm && dm.enabled && dm.activeVersion != null && dm.mappings) {
+    const ctCol = dm.mappings['clicktag::url'];
+    const row = dm.rows && dm.rows[dm.activeVersion];
+    if (ctCol && row && row[ctCol] != null && String(row[ctCol]).trim() !== '') {
+      return String(row[ctCol]).trim();
+    }
+  }
+  return state.clickTag ? state.clickTag.trim() : '';
+}
+
+// Returns null when the URL is a valid clickTag, else the error message.
+function validateClickTagUrl(urlStr) {
+  if (!urlStr) return 'Missing clickTag URL';
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return 'clickTag URL must start with http:// or https://';
+    }
+    if (!url.hostname.includes('.') || url.hostname.split('.').pop().length < 2) {
+      return 'clickTag URL must be a valid website name with domain';
+    }
+    return null;
+  } catch (e) {
+    return 'clickTag URL format is invalid (e.g. https://example.com)';
+  }
 }
 

@@ -402,8 +402,13 @@ function restoreSnapshot(snapStr) {
     if (snap.dataMerge     !== undefined) state.dataMerge     = snap.dataMerge;
     if (snap.projectName   !== undefined) state.projectName   = snap.projectName;
     if (snap.validationSettings !== undefined) state.validationSettings = snap.validationSettings;
+    if (snap.clickTag      !== undefined) state.clickTag      = snap.clickTag;
+    if (snap.adSizeLimit   !== undefined) state.adSizeLimit   = snap.adSizeLimit;
     state.editingElementId = null;
     render();
+    // Undo/redo bypasses pushHistory, so re-queue validation explicitly —
+    // otherwise the canvases-list badges keep the pre-undo _valErrors.
+    queueSizeUpdate();
   } finally {
     _restoringHistory = false;
   }
