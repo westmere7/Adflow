@@ -308,18 +308,12 @@
       flex: 1;
       overflow: auto;
       padding: 24px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 24px;
-      align-content: start;
-    }
-    
-    .canvas-grid.list-view {
-      grid-template-columns: 1fr;
+      position: relative;
     }
     
     /* Card Styles */
     .card {
+      position: absolute;
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       border-radius: 8px;
@@ -327,7 +321,7 @@
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
       display: flex;
       flex-direction: column;
-      transition: background 0.3s ease, border-color 0.3s ease;
+      transition: background 0.3s ease, border-color 0.3s ease, left 0.4s cubic-bezier(0.16, 1, 0.3, 1), top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
     
     .card-header {
@@ -552,14 +546,14 @@
       <!-- TIMELINE CONTROLS -->
       <div class="control-group">
         <div class="control-label">Playback Controls</div>
-        <div class="playback-row">
-          <button class="btn primary" id="btn-play-pause" title="Play/Pause animations">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            <span id="play-pause-label">Pause</span>
-          </button>
-          <button class="btn" id="btn-replay" title="Restart timeline">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            <span>Restart</span>
+        <div class="playback-row" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; gap:8px; width:100%;">
+            <button class="btn primary" id="btn-play" style="flex:1;" title="Play banner animations">Play</button>
+            <button class="btn" id="btn-static" style="flex:1;" title="Freeze animations as static images">Static only</button>
+          </div>
+          <button class="btn" id="btn-replay" style="width:100%;" title="Restart timeline">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <span>Restart Timeline</span>
           </button>
         </div>
       </div>
@@ -569,17 +563,6 @@
         <div class="control-label">Frame Select</div>
         <select id="select-frame">
           <option value="play" selected>Auto Loop Banners</option>
-        </select>
-      </div>
-      
-      <!-- PLAYBACK SPEED -->
-      <div class="control-group">
-        <div class="control-label">Playback Speed</div>
-        <select id="select-speed">
-          <option value="0.5">0.5x (Slow)</option>
-          <option value="1" selected>1.0x (Normal)</option>
-          <option value="1.5">1.5x (Fast)</option>
-          <option value="2">2.0x (Double)</option>
         </select>
       </div>
       
@@ -626,7 +609,11 @@
   <div class="main-viewport">
     <div class="main-header">
       <div class="project-name-title" id="project-name">No Project Loaded</div>
-      <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px;">
+      <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 12px;">
+        <button class="btn primary" id="btn-update-preview" style="display: none; padding: 4px 10px; font-size: 11px; height: 26px; gap: 4px; flex-shrink: 0; align-items: center; justify-content: center; cursor: pointer;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span>Update Preview</span>
+        </button>
         <span id="ad-count">0 sizes</span>
         <span>&bull;</span>
         <button class="btn-link" id="btn-drag-trigger" style="font-size: 12px;">Load Local File...</button>
@@ -678,6 +665,516 @@
       console.log('Adflow Portal Notice:', msg, opts);
     }
     
+    function _maskRotPt(x, y, cx, cy, rotDeg) {
+      if (!rotDeg) return [x, y];
+      const rad = rotDeg * Math.PI / 180;
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+      const dx = x - cx, dy = y - cy;
+      return [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos];
+    }
+    
+    function _fmtMask(v) {
+      if (Math.abs(v) < 0.001) return 0;
+      return Math.round(v * 1000) / 1000;
+    }
+    
+    function _buildPixelClipPath(sx, sy, tx, ty, rot, cx, cy) {
+      const f = _fmtMask;
+      if (!rot) {
+        return [
+          `M${f(290.78 * sx + tx)},${f(0 * sy + ty)}`,
+          `h${f(-74.15 * sx)}`,
+          `v${f(60.23 * sy)}`,
+          `h${f(-123.75 * sx)}`,
+          `v${f(125.78 * sy)}`,
+          `H${f(0 * sx + tx)}`,
+          `v${f(184.74 * sy)}`,
+          `h${f(92.88 * sx)}`,
+          `v${f(125.78 * sy)}`,
+          `h${f(123.5 * sx)}`,
+          `v${f(60.23 * sy)}`,
+          `h${f(65.55 * sx)}`,
+          `c${f(152.85 * sx)},${f(0)},${f(287.74 * sx)},${f(-123.5 * sy)},${f(287.74 * sx)},${f(-277.62 * sy)}`,
+          `S${f(444.14 * sx + tx)},${f(0 * sy + ty)},${f(290.78 * sx + tx)},${f(0 * sy + ty)}`,
+          `Z`
+        ].join(' ');
+      }
+      let x = 290.78 * sx + tx, y = 0 * sy + ty;
+      const out = [];
+      const rot1 = (px, py) => _maskRotPt(px, py, cx, cy, rot);
+      const emitL = (nx, ny) => {
+        x = nx; y = ny;
+        const [rx, ry] = rot1(x, y);
+        out.push(`L${f(rx)},${f(ry)}`);
+      };
+      const [m0x, m0y] = rot1(x, y);
+      out.push(`M${f(m0x)},${f(m0y)}`);
+      emitL(x + -74.15 * sx, y);
+      emitL(x, y + 60.23 * sy);
+      emitL(x + -123.75 * sx, y);
+      emitL(x, y + 125.78 * sy);
+      emitL(0 * sx + tx, y);
+      emitL(x, y + 184.74 * sy);
+      emitL(x + 92.88 * sx, y);
+      emitL(x, y + 125.78 * sy);
+      emitL(x + 123.5 * sx, y);
+      emitL(x, y + 60.23 * sy);
+      emitL(x + 65.55 * sx, y);
+      const cp1 = rot1(x + 152.85 * sx, y + 0 * sy);
+      const cp2 = rot1(x + 287.74 * sx, y + -123.5 * sy);
+      const endC = rot1(x + 287.74 * sx, y + -277.62 * sy);
+      x += 287.74 * sx; y += -277.62 * sy;
+      out.push(`C${f(cp1[0])},${f(cp1[1])},${f(cp2[0])},${f(cp2[1])},${f(endC[0])},${f(endC[1])}`);
+      const cp1S = [2 * endC[0] - cp2[0], 2 * endC[1] - cp2[1]];
+      const cp2S = rot1(444.14 * sx + tx, 0 * sy + ty);
+      const endS = rot1(290.78 * sx + tx, 0 * sy + ty);
+      out.push(`C${f(cp1S[0])},${f(cp1S[1])},${f(cp2S[0])},${f(cp2S[1])},${f(endS[0])},${f(endS[1])}`);
+      out.push('Z');
+      return out.join(' ');
+    }
+    
+    function buildMaskClipPath(mask, image) {
+      const relX = (mask.x + mask.width / 2) - (image.x + image.width / 2);
+      const relY = (mask.y + mask.height / 2) - (image.y + image.height / 2);
+      const mw = Math.max(1, mask.width);
+      const mh = Math.max(1, mask.height);
+      const tx = relX + image.width / 2 - mw / 2;
+      const ty = relY + image.height / 2 - mh / 2;
+      const rot = mask.rotation || 0;
+      const cx = tx + mw / 2;
+      const cy = ty + mh / 2;
+      const f = _fmtMask;
+    
+      if (mask.type === 'rect') {
+        const r = mask.radius || 0;
+        if (rot === 0) {
+          const right = image.width - tx - mw;
+          const bottom = image.height - ty - mh;
+          return `inset(${f(ty)}px ${f(right)}px ${f(bottom)}px ${f(tx)}px round ${f(r)}px)`;
+        }
+        const c = [
+          _maskRotPt(tx, ty, cx, cy, rot),
+          _maskRotPt(tx + mw, ty, cx, cy, rot),
+          _maskRotPt(tx + mw, ty + mh, cx, cy, rot),
+          _maskRotPt(tx, ty + mh, cx, cy, rot)
+        ];
+        return `polygon(${c.map(p => `${f(p[0])}px ${f(p[1])}px`).join(', ')})`;
+      }
+    
+      if (mask.type === 'circle') {
+        if (rot === 0 || mw === mh) {
+          return `ellipse(${f(mw/2)}px ${f(mh/2)}px at ${f(cx)}px ${f(cy)}px)`;
+        }
+        const N = 36;
+        const pts = [];
+        for (let i = 0; i < N; i++) {
+          const t = (i / N) * 2 * Math.PI;
+          const px = cx + (mw/2) * Math.cos(t);
+          const py = cy + (mh/2) * Math.sin(t);
+          pts.push(_maskRotPt(px, py, cx, cy, rot));
+        }
+        return `polygon(${pts.map(p => `${f(p[0])}px ${f(p[1])}px`).join(', ')})`;
+      }
+    
+      if (mask.type === 'pixel') {
+        const sx = mw / 578.52;
+        const sy = mh / 556.76;
+        return `path('${_buildPixelClipPath(sx, sy, tx, ty, rot, cx, cy)}')`;
+      }
+    
+      return 'none';
+    }
+    
+    function generateMaskClipPathKeyframes(mask, image, presetOverride) {
+      const animType = presetOverride || mask.animType || 'none';
+      if (animType === 'none') return null;
+    
+      const isSlideLike = ['slide', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in', 'zoom'].includes(animType);
+      if (!isSlideLike) return null;
+    
+      const fromMask = JSON.parse(JSON.stringify(mask));
+      
+      let zf = 0.8;
+      if (animType === 'pop-in') {
+        zf = 0.8;
+      } else if (animType === 'zoom-in') {
+        zf = 1.1;
+      } else if (animType === 'zoom') {
+        zf = mask.zoomFrom !== undefined ? mask.zoomFrom / 100 : 0.8;
+      }
+    
+      const isSlide = animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right';
+      let slideDir = 'up';
+      if (isSlide) {
+        slideDir = mask.animDirection || 'up';
+        if (slideDir === 'closest') {
+          let parentCanvas = null;
+          if (typeof state !== 'undefined' && state.canvases) {
+            parentCanvas = state.canvases.find(c => c.elements && c.elements.some(e => e.id === mask.id));
+          }
+          if (parentCanvas) {
+            const w = mask.width || 0;
+            const h = mask.height || 0;
+            const cx = mask.x + w / 2;
+            const cy = mask.y + h / 2;
+            const distLeft = cx;
+            const distRight = parentCanvas.width - cx;
+            const distTop = cy;
+            const distBottom = parentCanvas.height - cy;
+            const minDist = Math.min(distLeft, distRight, distTop, distBottom);
+            if (minDist === distLeft) slideDir = 'right';
+            else if (minDist === distRight) slideDir = 'left';
+            else if (minDist === distTop) slideDir = 'down';
+            else slideDir = 'up';
+          } else {
+            slideDir = 'up';
+          }
+        }
+      }
+    
+      if (isSlide) {
+        const dir = slideDir;
+        const dist = mask.animDistance !== undefined ? mask.animDistance : (animType.startsWith('slide-') ? 20 : 100);
+        const rOffset = mask.animRotateOffset !== undefined ? mask.animRotateOffset : 0;
+        if (dir === 'up') fromMask.y += dist;
+        else if (dir === 'down') fromMask.y -= dist;
+        else if (dir === 'left') fromMask.x += dist;
+        else if (dir === 'right') fromMask.x -= dist;
+        fromMask.rotation = (fromMask.rotation || 0) + rOffset;
+      } else if (animType === 'zoom' || animType === 'pop-in' || animType === 'zoom-in') {
+        const cx = mask.x + mask.width / 2;
+        const cy = mask.y + mask.height / 2;
+        fromMask.width = Math.max(1, fromMask.width * zf);
+        fromMask.height = Math.max(1, fromMask.height * zf);
+        fromMask.x = cx - fromMask.width / 2;
+        fromMask.y = cy - fromMask.height / 2;
+        if (fromMask.radius) fromMask.radius *= zf;
+      }
+    
+      const animName = `mask-anim-${mask.id}-${animType}`;
+      const dur = mask.animDuration || 1;
+      const del = mask.animDelay || 0;
+      const timing = mask.animBounce ? 'linear' : 'ease-out';
+    
+      if (isSlide && mask.animBounce) {
+        const dir = slideDir;
+        const dist = mask.animDistance !== undefined ? mask.animDistance : (animType.startsWith('slide-') ? 20 : 100);
+        const rOffset = mask.animRotateOffset !== undefined ? mask.animRotateOffset : 0;
+        const d = 4.0; // damping
+        const f = 2.0; // frequency
+        let keyframeSteps = [];
+        
+        for (let pct = 0; pct <= 100; pct += 5) {
+          const t = pct / 100;
+          const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * f * t);
+          const currentDist = dist * x;
+          const currentRot = rOffset * x;
+          
+          const stepMask = JSON.parse(JSON.stringify(mask));
+          if (dir === 'up') stepMask.y += currentDist;
+          else if (dir === 'down') stepMask.y -= currentDist;
+          else if (dir === 'left') stepMask.x += currentDist;
+          else if (dir === 'right') stepMask.x -= currentDist;
+          stepMask.rotation = (stepMask.rotation || 0) + currentRot;
+          
+          const cp = buildMaskClipPath(stepMask, image);
+          keyframeSteps.push(`      ${pct}% { clip-path: ${cp}; -webkit-clip-path: ${cp}; }`);
+        }
+    
+        return {
+          name: animName,
+          keyframes: `@keyframes ${animName} {\n${keyframeSteps.join('\n')}\n    }`,
+          animationCss: `${animName} ${dur}s ${timing} ${del}s both`
+        };
+      }
+    
+      if ((animType === 'zoom' || animType === 'pop-in' || animType === 'zoom-in') && mask.animBounce) {
+        const d = 4.0; // damping
+        const f = 2.0; // frequency
+        let keyframeSteps = [];
+        
+        for (let pct = 0; pct <= 100; pct += 5) {
+          const t = pct / 100;
+          const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * f * t);
+          const s = (1.0 + (zf - 1.0) * x);
+          
+          const stepMask = JSON.parse(JSON.stringify(mask));
+          const cx = mask.x + mask.width / 2;
+          const cy = mask.y + mask.height / 2;
+          stepMask.width = Math.max(1, stepMask.width * s);
+          stepMask.height = Math.max(1, stepMask.height * s);
+          stepMask.x = cx - stepMask.width / 2;
+          stepMask.y = cy - stepMask.height / 2;
+          if (stepMask.radius) stepMask.radius *= s;
+          const cp = buildMaskClipPath(stepMask, image);
+          keyframeSteps.push(`      ${pct}% { clip-path: ${cp}; -webkit-clip-path: ${cp}; }`);
+        }
+    
+        return {
+          name: animName,
+          keyframes: `@keyframes ${animName} {\n${keyframeSteps.join('\n')}\n    }`,
+          animationCss: `${animName} ${dur}s ${timing} ${del}s both`
+        };
+      } else {
+        const cpFrom = buildMaskClipPath(fromMask, image);
+        const cpTo = buildMaskClipPath(mask, image);
+        return {
+          name: animName,
+          keyframes: `@keyframes ${animName} { from { clip-path: ${cpFrom}; -webkit-clip-path: ${cpFrom}; } to { clip-path: ${cpTo}; -webkit-clip-path: ${cpTo}; } }`,
+          animationCss: `${animName} ${dur}s ${timing} ${del}s both`
+        };
+      }
+    }
+    
+    function isLineHeightAuto(el) {
+      if (el.lineHeightAuto !== undefined) return !!el.lineHeightAuto;
+      return el.lineHeight === undefined;
+    }
+    
+    function getResolvedLineHeight(el) {
+      if (isLineHeightAuto(el)) return 'normal';
+      const val = el.lineHeight;
+      if (val === undefined || val === null || val === '') return '1.2';
+      const str = String(val);
+      if (str.includes('px') || str.includes('em') || str.includes('%')) return str;
+      const num = Number(val);
+      if (Number.isNaN(num)) return '1.2';
+      if (num <= 3.5) return String(num);
+      return num + 'px';
+    }
+    
+    function strokeOverlayHTML(el) {
+      const sw = el.strokeWidth !== undefined ? el.strokeWidth : 0;
+      if (sw <= 0) return '';
+      const W = el.width;
+      const H = el.height;
+      const opa = (el.strokeOpacity !== undefined ? el.strokeOpacity : 100) / 100;
+      const color = hexToRgba(el.strokeColor || '#ffffff', opa);
+      const dash = Number(el.strokeDash) || 0;
+      const gap = Number(el.strokeGap) || 0;
+      const dashAttr = (dash > 0 && gap > 0) ? ` stroke-dasharray="${dash},${gap}"` : '';
+      let shape;
+      if (el.type === 'circle') {
+        shape = `<ellipse cx="${W / 2}" cy="${H / 2}" rx="${Math.max(0, W / 2 - sw / 2)}" ry="${Math.max(0, H / 2 - sw / 2)}" fill="none" stroke="${color}" stroke-width="${sw}"${dashAttr} />`;
+      } else if (el.type === 'pixel') {
+        return `<svg width="${W}" height="${H}" viewBox="0 0 578.52 556.76" preserveAspectRatio="none" style="position:absolute;inset:0;pointer-events:none;overflow:visible;"><path d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0" fill="none" stroke="${color}" stroke-width="${sw}"${dashAttr} vector-effect="non-scaling-stroke"/></svg>`;
+      } else {
+        const r = Math.max(0, (el.radius || 0) - sw / 2);
+        shape = `<rect x="${sw / 2}" y="${sw / 2}" width="${Math.max(0, W - sw)}" height="${Math.max(0, H - sw)}" rx="${r}" ry="${r}" fill="none" stroke="${color}" stroke-width="${sw}"${dashAttr} />`;
+      }
+      return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="position:absolute;inset:0;pointer-events:none;overflow:visible;">${shape}</svg>`;
+    }
+    
+    function getElementAnimationCSS(el, isImageExport) {
+      const animType = el.animType || 'none';
+      const effType = el.effectType || 'none';
+    
+      let entryAnims = [];
+      let entryVars = '';
+      const isZoomLike = animType === 'zoom' || animType === 'zoom-in' || animType === 'pop-in';
+      if (animType !== 'none' && !isImageExport) {
+        if (animType === 'split') {
+          entryAnims.push(`anim-split-${el.id} ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both`);
+        } else if (animType === 'zoom' || animType === 'pop-in' || animType === 'zoom-in') {
+          if (el.type === 'button' && el.animStaggerText) {
+            // Skip wrapper zoom animation to avoid double-scaling
+          } else {
+            const timing = el.animBounce ? 'linear' : 'ease-out';
+            entryAnims.push(`anim-zoom-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both`);
+          }
+        } else if (animType === 'blur') {
+          entryAnims.push(`anim-blur-${el.id} ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both`);
+        } else if (animType === 'slide' || animType === 'slide-up' || animType === 'slide-down' || animType === 'slide-left' || animType === 'slide-right') {
+          const timing = el.animBounce ? 'linear' : 'ease-out';
+          entryAnims.push(`anim-slide-${el.id} ${el.animDuration || 1}s ${timing} ${el.animDelay || 0}s both`);
+        } else {
+          const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(animType);
+          const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in'].includes(animType);
+          const fadeOn = el.animFade !== false;
+          const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
+          if ((el.type !== 'text' && el.type !== 'button') || (animType !== 'typing' && animType !== 'fade-typing' && animType !== 'word-fade')) {
+            entryAnims.push(`anim-${animType}${suffix} ${el.animDuration || 1}s ${animType === 'typing' ? 'steps(30, end)' : 'ease-out'} ${el.animDelay || 0}s both`);
+          }
+        }
+      }
+    
+      let effAnims = [];
+      let effVars = '';
+      if (effType !== 'none') {
+        const effDur = el.effDuration !== undefined ? el.effDuration : 2;
+        const effDelay = el.effDelay !== undefined ? el.effDelay : 0;
+        if (effType === 'pan') {
+          let px = el.panFromX !== undefined ? el.panFromX : 0;
+          let py = el.panFromY !== undefined ? el.panFromY : 0;
+    
+          if (el.panFromX === undefined && el.panFromY === undefined) {
+            const dist = el.panDist !== undefined ? el.panDist : 50;
+            if (el.panDir === 'L') px = dist;
+            else if (el.panDir === 'R') px = -dist;
+            else if (el.panDir === 'U') py = dist;
+            else if (el.panDir === 'D') py = -dist;
+            else px = dist;
+          }
+          let animName = 'eff-pan';
+          let ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+          if (el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined)) {
+            animName = `eff-pan-${el.id}`;
+            ease = 'linear';
+          }
+          const fill = el.effOnce ? 'forwards' : 'infinite';
+          if (!isImageExport) effAnims.push(`${animName} ${effDur}s ${ease} ${effDelay}s ${fill}`);
+          const rot = el.panRotate !== undefined ? el.panRotate : 0;
+          const opStart = el.panFade ? 0 : 1;
+    
+          const angle = (el.rotation || 0) * Math.PI / 180;
+          const cos = Math.cos(angle);
+          const sin = Math.sin(angle);
+          const pxLocal = px * cos + py * sin;
+          const pyLocal = -px * sin + py * cos;
+    
+          effVars = `--pan-x:${pxLocal.toFixed(1)}px; --pan-y:${pyLocal.toFixed(1)}px; --pan-rotate:${rot}deg; --pan-opacity-start:${opStart};`;
+        } else if (effType === 'zoom') {
+          const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
+          const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+          const fill = el.effOnce ? 'forwards' : 'infinite';
+          if (!isImageExport) effAnims.push(`eff-zoom ${effDur}s ${ease} ${effDelay}s ${fill}`);
+          effVars = `--zoom-target:${zt};`;
+        } else if (effType === 'spin') {
+          const spinT = el.spinTarget !== undefined ? el.spinTarget : 360;
+          const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+          const repeat = el.spinRepeat !== undefined ? el.spinRepeat : 1;
+          const fill = Math.max(1, repeat);
+          if (!isImageExport) effAnims.push(`eff-spin ${effDur}s ${ease} ${effDelay}s ${fill} both`);
+          effVars = `--spin-target:${spinT}deg;`;
+        } else if (effType === 'pulse') {
+          const scaleVal = el.pulseScale !== undefined ? el.pulseScale / 100 : 1.05;
+          const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+          const speed = Math.max(1, Number(speedStr));
+          const duration = 2 / (speed / 100);
+          if (!isImageExport) effAnims.push(`eff-pulse ${duration}s ease-in-out ${effDelay}s infinite`);
+          effVars = `--pulse-scale:${scaleVal}; --pulse-scale-inverse:${(1 / scaleVal).toFixed(4)};`;
+        } else if (effType === 'heartbeat') {
+          const scaleVal = el.heartbeatScale !== undefined ? el.heartbeatScale / 100 : 1.3;
+          const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+          const speed = Math.max(1, Number(speedStr));
+          const duration = 2 / (speed / 100);
+          if (!isImageExport) effAnims.push(`eff-heartbeat ${duration}s ease-in-out ${effDelay}s infinite`);
+          effVars = `--heartbeat-scale:${scaleVal}; --heartbeat-scale-inverse:${(1 / scaleVal).toFixed(4)};`;
+        } else if (effType === 'float') {
+          const range = el.floatRange !== undefined ? el.floatRange : 10;
+          const dir = el.floatDirection || 'up';
+          let fx = 0, fy = 0;
+          if (dir === 'up') fy = -range;
+          else if (dir === 'down') fy = range;
+          else if (dir === 'left') fx = -range;
+          else if (dir === 'right') fx = range;
+          const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+          const speed = Math.max(1, Number(speedStr));
+          const duration = 2 / (speed / 100);
+          if (!isImageExport) effAnims.push(`eff-float ${duration}s ease-in-out ${effDelay}s infinite`);
+          effVars = `--float-x:${fx}px; --float-y:${fy}px; --float-x-inverse:${-fx}px; --float-y-inverse:${-fy}px;`;
+        } else {
+          const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+          const speed = Math.max(1, Number(speedStr));
+          const duration = 2 / (speed / 100);
+          if (!isImageExport) effAnims.push(`eff-${effType} ${duration}s ease-in-out ${effDelay}s infinite`);
+        }
+      }
+    
+      let entryConfig = entryAnims.length > 0 ? `animation: ${entryAnims.join(', ')};` : '';
+      if (isZoomLike && !isImageExport) {
+        entryConfig += ` transform-origin: ${getTransformOriginValue(el.zoomAnchor || 'center')};`;
+      }
+      const effConfig = effAnims.length > 0 ? `animation: ${effAnims.join(', ')};` : '';
+      return { entryConfig, entryVars, effConfig, effVars };
+    }
+    
+    function getInverseElementAnimationCSS(el, isImageExport, imageEl) {
+      const effType = el.effectType || 'none';
+      let effAnims = [];
+      let effVars = '';
+      if (effType !== 'none' && !isImageExport) {
+        const effDur = el.effDuration !== undefined ? el.effDuration : 2;
+        const effDelay = el.effDelay !== undefined ? el.effDelay : 0;
+        if (effType === 'pan') {
+          let px = el.panFromX !== undefined ? el.panFromX : 0;
+          let py = el.panFromY !== undefined ? el.panFromY : 0;
+          if (el.panFromX === undefined && el.panFromY === undefined) {
+            const dist = el.panDist !== undefined ? el.panDist : 50;
+            if (el.panDir === 'L') px = dist;
+            else if (el.panDir === 'R') px = -dist;
+            else if (el.panDir === 'U') py = dist;
+            else if (el.panDir === 'D') py = -dist;
+            else px = dist;
+          }
+          let rx = -px;
+          let ry = -py;
+          if (imageEl) {
+            const imgRot = imageEl.rotation || 0;
+            const rad = imgRot * Math.PI / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            rx = -px * cos - py * sin;
+            ry = px * sin - py * cos;
+          }
+          const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+          const fill = el.effOnce ? 'forwards' : 'infinite';
+          effAnims.push(`eff-pan-inverse ${effDur}s ${ease} ${effDelay}s ${fill}`);
+          const rot = el.panRotate !== undefined ? el.panRotate : 0;
+          effVars = `--pan-x:${rx}px; --pan-y:${ry}px; --pan-rotate:${-rot}deg;`;
+        } else if (effType === 'zoom') {
+          const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
+          const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+          const fill = el.effOnce ? 'forwards' : 'infinite';
+          effAnims.push(`eff-zoom-inverse ${effDur}s ${ease} ${effDelay}s ${fill}`);
+          effVars = `--zoom-target-inverse:${1 / zt};`;
+        } else if (effType === 'spin') {
+          const spinT = el.spinTarget !== undefined ? el.spinTarget : 360;
+          const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
+          const repeat = el.spinRepeat !== undefined ? el.spinRepeat : 1;
+          const fill = Math.max(1, repeat);
+          effAnims.push(`eff-spin-inverse ${effDur}s ${ease} ${effDelay}s ${fill} both`);
+          effVars = `--spin-target-inverse:${-spinT}deg;`;
+        } else if (effType === 'pulse') {
+          const scaleVal = el.pulseScale !== undefined ? el.pulseScale / 100 : 1.05;
+          const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+          const speed = Math.max(1, Number(speedStr));
+          const duration = 2 / (speed / 100);
+          effAnims.push(`eff-pulse-inverse ${duration}s ease-in-out ${effDelay}s infinite`);
+          effVars = `--pulse-scale-inverse:${(1 / scaleVal).toFixed(4)}; --pulse-scale:${scaleVal};`;
+        } else if (effType === 'heartbeat') {
+          const scaleVal = el.heartbeatScale !== undefined ? el.heartbeatScale / 100 : 1.3;
+          const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+          const speed = Math.max(1, Number(speedStr));
+          const duration = 2 / (speed / 100);
+          effAnims.push(`eff-heartbeat-inverse ${duration}s ease-in-out ${effDelay}s infinite`);
+          effVars = `--heartbeat-scale-inverse:${(1 / scaleVal).toFixed(4)}; --heartbeat-scale:${scaleVal};`;
+        } else if (effType === 'float') {
+          const range = el.floatRange !== undefined ? el.floatRange : 10;
+          const dir = el.floatDirection || 'up';
+          let fx = 0, fy = 0;
+          if (dir === 'up') fy = -range;
+          else if (dir === 'down') fy = range;
+          else if (dir === 'left') fx = -range;
+          else if (dir === 'right') fx = range;
+          const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+          const speed = Math.max(1, Number(speedStr));
+          const duration = 2 / (speed / 100);
+          effAnims.push(`eff-float-inverse ${duration}s ease-in-out ${effDelay}s infinite`);
+          effVars = `--float-x-inverse:${-fx}px; --float-y-inverse:${-fy}px; --float-x:${fx}px; --float-y:${fy}px;`;
+        } else {
+          const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
+          const speed = Math.max(1, Number(speedStr));
+          const duration = 2 / (speed / 100);
+          effAnims.push(`eff-${effType}-inverse ${duration}s ease-in-out ${effDelay}s infinite`);
+        }
+      }
+      return {
+        effConfig: effAnims.length ? `animation: ${effAnims.join(', ')};` : '',
+        effVars
+      };
+    }
+    
     // Accessibility and brand auditing routines ported from canvas-render.js
     function hexToRgba(hex, alpha) {
       let h = String(hex || '#000000').replace(/^#/, '');
@@ -687,6 +1184,49 @@
       const g = parseInt(h.substr(2, 2), 16);
       const b = parseInt(h.substr(4, 2), 16);
       return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    function setupTextLineBgs(wrapper) {
+      if (wrapper.dataset.bgInited) return;
+      if (wrapper.offsetWidth === 0) return;
+      wrapper.dataset.bgInited = '1';
+      var charSpans = Array.prototype.filter.call(wrapper.children, function (c) { return c.tagName === 'SPAN'; });
+      if (!charSpans.length) return;
+      var bgColor = wrapper.dataset.bgColor;
+      var lr = parseFloat(wrapper.dataset.bgPadL) || 0;
+      var tb = parseFloat(wrapper.dataset.bgPadV) || 0;
+      var cov = (parseFloat(wrapper.dataset.bgCov) || 100) / 100;
+      var baseDelay = parseFloat(wrapper.dataset.bgDelay) || 0;
+      var totalDuration = parseFloat(wrapper.dataset.bgDuration) || 1;
+      var totalChars = charSpans.length;
+      var lines = [];
+      var cur = null;
+      charSpans.forEach(function (s, i) {
+        var t = Math.round(s.offsetTop);
+        if (!cur || Math.abs(cur.top - t) > 1) {
+          cur = { top: t, spans: [], firstIdx: i, lastIdx: i };
+          lines.push(cur);
+        } else {
+          cur.lastIdx = i;
+        }
+        cur.spans.push(s);
+      });
+      lines.forEach(function (line) {
+        var first = line.spans[0];
+        var last = line.spans[line.spans.length - 1];
+        var lineLeft = first.offsetLeft;
+        var lineTop = first.offsetTop;
+        var lineWidth = (last.offsetLeft + last.offsetWidth) - lineLeft;
+        var lineHeight = first.offsetHeight;
+        var startFrac = line.firstIdx / totalChars;
+        var endFrac = (line.lastIdx + 1) / totalChars;
+        var lineDur = totalDuration * (endFrac - startFrac);
+        var lineDelay = baseDelay + totalDuration * startFrac;
+        var bg = document.createElement('div');
+        bg.className = 'line-bg-overlay';
+        bg.style.cssText = 'position:absolute;left:' + (lineLeft - lr) + 'px;top:' + (lineTop - tb) + 'px;width:' + ((lineWidth + 2 * lr) * cov) + 'px;height:' + (lineHeight + 2 * tb) + 'px;background:' + bgColor + ';transform-origin:left center;transform:scaleX(0);z-index:-1;pointer-events:none;animation:anim-bg-grow ' + lineDur + 's linear ' + lineDelay + 's both;';
+        wrapper.insertBefore(bg, wrapper.firstChild);
+      });
     }
     
     function parseColorToRGB(colorStr) {
@@ -810,10 +1350,9 @@
     const gridContainer = document.getElementById('canvas-grid');
     const selectVersion = document.getElementById('select-version');
     const selectFrame = document.getElementById('select-frame');
-    const selectSpeed = document.getElementById('select-speed');
     const sizeCheckList = document.getElementById('size-check-list');
-    const playPauseBtn = document.getElementById('btn-play-pause');
-    const playPauseLabel = document.getElementById('play-pause-label');
+    const playBtn = document.getElementById('btn-play');
+    const staticBtn = document.getElementById('btn-static');
     const replayBtn = document.getElementById('btn-replay');
     const highlightClickChk = document.getElementById('chk-highlight-click');
     const versionGroup = document.getElementById('version-control-group');
@@ -840,14 +1379,13 @@
       };
     });
     
-    // Play / Pause toggle
-    playPauseBtn.onclick = () => {
-      isPlaying = !isPlaying;
+    // Play / Static only state control
+    function setPlayState(playing) {
+      isPlaying = playing;
       
       if (isPlaying) {
-        playPauseLabel.textContent = 'Pause';
-        playPauseBtn.querySelector('svg').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
-        playPauseBtn.classList.add('primary');
+        playBtn.classList.add('primary');
+        staticBtn.classList.remove('primary');
         
         // Remove static overrides to let timer run
         document.querySelectorAll('iframe').forEach(iframe => {
@@ -862,9 +1400,8 @@
         
         selectFrame.value = 'play';
       } else {
-        playPauseLabel.textContent = 'Play';
-        playPauseBtn.querySelector('svg').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>'; // (play triangle)
-        playPauseBtn.classList.remove('primary');
+        playBtn.classList.remove('primary');
+        staticBtn.classList.add('primary');
         
         // Pause animations
         document.querySelectorAll('iframe').forEach(iframe => {
@@ -882,14 +1419,15 @@
           }
         });
       }
-    };
+    }
+    
+    playBtn.onclick = () => setPlayState(true);
+    staticBtn.onclick = () => setPlayState(false);
     
     // Replay timelines
     replayBtn.onclick = () => {
       reloadAllBanners();
-      // Force play state
-      isPlaying = false;
-      playPauseBtn.click();
+      setPlayState(true);
     };
     
     // Frame Selection
@@ -898,7 +1436,7 @@
       
       if (val === 'play') {
         // Resume play mode
-        if (!isPlaying) playPauseBtn.click();
+        setPlayState(true);
         
         document.querySelectorAll('iframe').forEach(iframe => {
           const doc = iframe.contentDocument || iframe.contentWindow.document;
@@ -907,7 +1445,7 @@
         });
       } else {
         // Select static frame: pause loop and isolate frame
-        if (isPlaying) playPauseBtn.click();
+        setPlayState(false);
         
         const frameId = parseInt(val);
         document.querySelectorAll('iframe').forEach(iframe => {
@@ -936,11 +1474,6 @@
           }
         });
       }
-    };
-    
-    // Speed Control
-    selectSpeed.onchange = () => {
-      reloadAllBanners();
     };
     
     // Highlight Click Overlay
@@ -1024,7 +1557,7 @@
         card.dataset.canvasId = c.id;
         
         // Calculate file weight estimate (raw HTML)
-        const speed = parseFloat(selectSpeed.value || 1);
+        const speed = 1;
         const originalState = window.state;
         window.state = getScaledState(speed);
         
@@ -1095,12 +1628,14 @@
       });
       
       updateCanvasGridVisibility();
+      setTimeout(layoutCards, 50);
     }
     
     function toggleAuditLog(id) {
       const element = document.getElementById('audit-' + id);
       if (element) {
         element.classList.toggle('visible');
+        layoutCards();
       }
     }
     
@@ -1109,7 +1644,7 @@
       state.canvases.forEach(c => {
         const iframe = document.getElementById('iframe-' + c.id);
         if (iframe) {
-          const speed = parseFloat(selectSpeed.value || 1);
+          const speed = 1;
           const originalState = window.state;
           window.state = getScaledState(speed);
           
@@ -1150,8 +1685,7 @@
       });
       
       // Reset play state controls
-      isPlaying = false;
-      playPauseBtn.click();
+      setPlayState(true);
     }
     
     // Update visibility based on checklists selection
@@ -1162,6 +1696,121 @@
           card.style.display = selectedCanvasIds.has(c.id) ? 'flex' : 'none';
         }
       });
+      layoutCards();
+    }
+    
+    function packRectangles(rectangles, viewportWidth, gap) {
+      const placed = [];
+      
+      for (const rect of rectangles) {
+        const w = rect.width;
+        const h = rect.height;
+        
+        const candidateX = [0];
+        const candidateY = [0];
+        for (const p of placed) {
+          candidateX.push(p.x + p.width + gap);
+          candidateY.push(p.y + p.height + gap);
+        }
+        
+        const validX = candidateX.filter(x => x + w <= viewportWidth);
+        if (validX.length === 0) {
+          validX.push(0);
+        }
+        
+        let bestX = 0;
+        let bestY = Infinity;
+        
+        for (const x of validX) {
+          for (const y of candidateY) {
+            let overlaps = false;
+            for (const p of placed) {
+              if (x < p.x + p.width + gap && x + w + gap > p.x &&
+                  y < p.y + p.height + gap && y + h + gap > p.y) {
+                overlaps = true;
+                break;
+              }
+            }
+            
+            if (!overlaps) {
+              if (y + h < bestY || (y + h === bestY && x < bestX)) {
+                bestY = y + h;
+                bestX = x;
+              }
+            }
+          }
+        }
+        
+        if (bestY === Infinity) {
+          let maxY = 0;
+          for (const p of placed) {
+            maxY = Math.max(maxY, p.y + p.height + gap);
+          }
+          bestX = 0;
+          bestY = maxY;
+        } else {
+          bestY = bestY - h;
+        }
+        
+        placed.push({
+          id: rect.id,
+          x: bestX,
+          y: bestY,
+          width: w,
+          height: h
+        });
+      }
+      
+      return placed;
+    }
+    
+    function layoutCards() {
+      const cards = Array.from(gridContainer.children).filter(card => card.classList.contains('card'));
+      const visibleCards = cards.filter(card => card.style.display !== 'none');
+      
+      let spacer = document.getElementById('canvas-grid-spacer');
+      if (!spacer) {
+        spacer = document.createElement('div');
+        spacer.id = 'canvas-grid-spacer';
+        spacer.style.cssText = 'position: absolute; left: 0; top: 0; pointer-events: none;';
+        gridContainer.appendChild(spacer);
+      }
+      
+      if (visibleCards.length === 0) {
+        spacer.style.width = '0px';
+        spacer.style.height = '0px';
+        return;
+      }
+      
+      const padding = 24;
+      const gap = 24;
+      const viewportWidth = Math.max(300, gridContainer.clientWidth - 2 * padding);
+      
+      const rectangles = visibleCards.map(card => {
+        return {
+          id: card.dataset.canvasId,
+          card: card,
+          width: card.offsetWidth || 280,
+          height: card.offsetHeight || 300
+        };
+      });
+      
+      const packed = packRectangles(rectangles, viewportWidth, gap);
+      
+      let maxBottom = 0;
+      let maxRight = 0;
+      packed.forEach(p => {
+        const item = rectangles.find(r => r.id === p.id);
+        if (item) {
+          item.card.style.left = (p.x + padding) + 'px';
+          item.card.style.top = (p.y + padding) + 'px';
+          maxBottom = Math.max(maxBottom, p.y + p.height + padding);
+          maxRight = Math.max(maxRight, p.x + p.width + padding);
+        }
+      });
+      
+      spacer.style.width = maxRight + 'px';
+      spacer.style.height = maxBottom + 'px';
     }
     
     // Populate controls based on loaded state
@@ -1312,15 +1961,43 @@
     };
     document.getElementById('btn-drag-trigger').onclick = () => fileSelector.click();
     
+    // Update Preview logic
+    const updatePreviewBtn = document.getElementById('btn-update-preview');
+    updatePreviewBtn.onclick = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const url = params.get('url');
+      if (!url) return;
+      
+      loader.style.opacity = '1';
+      loader.style.display = 'flex';
+      loader.querySelector('.spinner').style.display = 'block';
+      loaderTitle.textContent = 'Updating preview...';
+      loaderSubtitle.textContent = 'Downloading latest cloud snapshot';
+      
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP error fetching project: ${res.status}`);
+        
+        const blob = await res.blob();
+        await processProjectFile(blob);
+      } catch (e) {
+        console.error(e);
+        loaderTitle.textContent = 'Update Failed';
+        loaderSubtitle.innerHTML = 'Could not fetch latest updates. The preview link may have expired.<br/><br/><button class="btn" onclick="document.getElementById(\'portal-loader\').style.display=\'none\'">Close</button>';
+        loader.querySelector('.spinner').style.display = 'none';
+      }
+    };
+
     // Boot: Check query string for signed URL
     async function bootPortal() {
       const params = new URLSearchParams(window.location.search);
       const url = params.get('url');
       
       if (url) {
+        updatePreviewBtn.style.display = 'inline-flex';
         try {
           loaderSubtitle.textContent = 'Downloading cloud snapshot...';
-          const res = await fetch(url);
+          const res = await fetch(url, { cache: 'no-store' });
           if (!res.ok) throw new Error(`HTTP error fetching project: ${res.status}`);
           
           const blob = await res.blob();
@@ -1331,6 +2008,7 @@
           loaderSubtitle.textContent = 'Could not load project. Ensure the preview link has not expired.';
         }
       } else {
+        updatePreviewBtn.style.display = 'none';
         // No snapshot URL. Ask user to drop local file
         loaderTitle.textContent = 'Adflow Preview Portal';
         loaderSubtitle.innerHTML = 'No snapshot URL provided.<br/><br/><button class="btn primary" onclick="document.getElementById(\'btn-drag-trigger\').click()" style="display:inline-flex;">Open Local .flow File</button>';
@@ -1338,6 +2016,66 @@
       }
     }
     
+    // Canvas grid panning logic
+    let isPanning = false;
+    let startX, startY;
+    let scrollLeftStart, scrollTopStart;
+    let isSpaceDown = false;
+    
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && !isSpaceDown) {
+        if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT' && document.activeElement.tagName !== 'TEXTAREA') {
+          isSpaceDown = true;
+          gridContainer.style.cursor = 'grab';
+          e.preventDefault();
+        }
+      }
+    });
+    
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space') {
+        isSpaceDown = false;
+        gridContainer.style.cursor = 'default';
+      }
+    });
+    
+    gridContainer.addEventListener('mousedown', (e) => {
+      const isLeftClickOnBackground = e.button === 0 && (e.target === gridContainer || e.target.classList.contains('card-header') || e.target.classList.contains('card-body') || e.target.closest('.card-header') || e.target.closest('.card-body'));
+      const isMiddleClick = e.button === 1;
+      const isSpacePan = isSpaceDown && e.button === 0;
+      
+      if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input') || e.target.closest('a')) {
+        return;
+      }
+      
+      if (isLeftClickOnBackground || isMiddleClick || isSpacePan) {
+        isPanning = true;
+        gridContainer.style.cursor = 'grabbing';
+        startX = e.clientX;
+        startY = e.clientY;
+        scrollLeftStart = gridContainer.scrollLeft;
+        scrollTopStart = gridContainer.scrollTop;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      gridContainer.scrollLeft = scrollLeftStart - dx;
+      gridContainer.scrollTop = scrollTopStart - dy;
+    });
+    
+    window.addEventListener('mouseup', () => {
+      if (isPanning) {
+        isPanning = false;
+        gridContainer.style.cursor = isSpaceDown ? 'grab' : 'default';
+      }
+    });
+    
+    window.addEventListener('resize', layoutCards);
     window.onload = bootPortal;
   </script>
 </body>

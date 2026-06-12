@@ -660,6 +660,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.20.1',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Preview Speed Disabled: Removed the playback speed adjustment controls from the standalone preview portal.',
+      'Static Playback Mode Option: Replaced the Play/Pause toggler with explicit "Play" and "Static only" controls.',
+      'Preview Rendering Fix: Resolved ReferenceError on setupTextLineBgs within preview.html, restoring correct ad rendering (fixing the black preview screen).'
+    ]
+  },
+  {
     version: 'v0.20.0',
     date: 'June 2026 — Engine v2.19',
     items: [

@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.20.0 (Current) - June 2026 — Engine v2.19
+v0.20.1 (Current) - June 2026 — Engine v2.19
+- Preview Speed Disabled: Removed the playback speed adjustment controls from the standalone preview portal.
+- Static Playback Mode Option: Replaced the Play/Pause toggler with explicit "Play" and "Static only" controls.
+- Preview Rendering Fix: Resolved ReferenceError on `setupTextLineBgs` within preview.html, restoring correct ad rendering (fixing the black preview screen).
+
+v0.20.0 - June 2026 — Engine v2.19
 - Shareable Preview System: Added a "Share" option in the toolbar and File menu to generate secure, public view-only preview links (`preview.html`) containing the ad pack.
 - Standalone Review Portal: Built a view-only review page featuring sidebar size checklists, version switching (for data-merge/CSV rows), static frame-by-frame isolation, playback controls (Play/Pause, speed adjustment), checkered grid mode, clickTag region highlighting, and compliance/ad-weight audits.
 
