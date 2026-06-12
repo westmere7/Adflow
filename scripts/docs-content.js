@@ -660,6 +660,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.20.0',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Shareable Preview System: Added a "Share" option in the toolbar and File menu to generate secure, public view-only preview links (preview.html) containing the ad pack.',
+      'Standalone Review Portal: Built a view-only review page featuring sidebar size checklists, version switching (for data-merge/CSV rows), static frame-by-frame isolation, playback controls (Play/Pause, speed adjustment), checkered grid mode, clickTag region highlighting, and compliance/ad-weight audits.'
+    ]
+  },
+  {
     version: 'v0.19.18',
     date: 'June 2026 — Engine v2.19',
     items: [

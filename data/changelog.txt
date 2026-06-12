@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.19.18 (Current) - June 2026 — Engine v2.19
+v0.20.0 (Current) - June 2026 — Engine v2.19
+- Shareable Preview System: Added a "Share" option in the toolbar and File menu to generate secure, public view-only preview links (`preview.html`) containing the ad pack.
+- Standalone Review Portal: Built a view-only review page featuring sidebar size checklists, version switching (for data-merge/CSV rows), static frame-by-frame isolation, playback controls (Play/Pause, speed adjustment), checkered grid mode, clickTag region highlighting, and compliance/ad-weight audits.
+
+v0.19.18 - June 2026 — Engine v2.19
 - Per-Version clickTag Validation: The Validation & Audit checks now validate the clickTag of the currently active data version (the URL bound from the spreadsheet column), not just the project default. An invalid URL in a version row (e.g. a stray "-" before "https://") now flags the canvases immediately, matching what the Export panel reports.
 - Project Settings Menu Fix: Fixed "Project settings..." in the File menu not opening, and the project name not responding to clicks/double-clicks (a script load-order regression).
 

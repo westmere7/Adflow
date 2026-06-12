@@ -2642,8 +2642,8 @@ function openExportModal() {
   });
 }
 
-document.getElementById('menu-file-export').addEventListener('click', openExportModal);
-document.getElementById('btn-export-top').addEventListener('click', openExportModal);
+document.getElementById('menu-file-export')?.addEventListener('click', openExportModal);
+document.getElementById('btn-export-top')?.addEventListener('click', openExportModal);
 
 // ============================================================================
 // Web Workers & Streaming Zip Exporter (Bulk Versions)

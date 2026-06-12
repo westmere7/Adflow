@@ -248,7 +248,7 @@
     <div class="app-splash-inner">
       <div class="app-splash-logo">
         <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo />
-        <span class="app-splash-version">v0.19.18</span>
+        <span class="app-splash-version">v0.20.0</span>
       </div>
       <div class="app-splash-status" id="app-splash-status">Warming up…</div>
       <div class="app-splash-bar"><div class="app-splash-bar-fill" id="app-splash-bar-fill"></div></div>
@@ -349,6 +349,7 @@
             style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
             Export</div>
           <div class="dropdown-item" id="menu-file-export">Export…</div>
+          <div class="dropdown-item" id="menu-file-share">Share Preview…</div>
 
           <div class="dropdown-divider"></div>
 
@@ -492,6 +493,7 @@
       <div style="display:flex; align-items:center; gap:8px; margin-right:12px;">
         <button class="btn" id="btn-preview" title="Preview the interactive banner animation" style="width:100px;">Full preview</button>
         <button class="btn primary" id="btn-export-top" title="Export banner to HTML package" style="width:100px;">Export</button>
+        <button class="btn" id="btn-share-top" title="Share secure preview link" style="width:85px; display:inline-flex; align-items:center; justify-content:center; gap:6px; font-weight:600;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>Share</button>
       </div>
       <!-- Auth chip: shows "Sign in" when logged out, avatar + email + dropdown when logged in. -->
       <div id="auth-chip" style="position:relative; margin-right:8px;"></div>
@@ -674,7 +676,7 @@
         </div>
         <div class="workspace-footer" id="workspace-footer">
           <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
-          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.19.16</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.20.0</button>
         </div>
       </div>
     </div>
@@ -748,29 +750,30 @@
 
   <!-- ?v= is bumped with each release (part of the version/changelog workflow)
        so browsers and the local python server never serve stale JS. -->
-  <script src="scripts/auto-resize-engine.js?v=0.19.18"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.19.18"></script>
-  <script src="scripts/docs-content.js?v=0.19.18"></script>
-  <script src="scripts/auth-ui.js?v=0.19.18"></script>
-  <script src="scripts/data-merge.js?v=0.19.18"></script>
-  <script src="scripts/font-subset.js?v=0.19.18"></script>
-  <script src="scripts/export-pipeline.js?v=0.19.18"></script>
-  <script src="scripts/color-picker.js?v=0.19.18"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.20.0"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.20.0"></script>
+  <script src="scripts/docs-content.js?v=0.20.0"></script>
+  <script src="scripts/auth-ui.js?v=0.20.0"></script>
+  <script src="scripts/data-merge.js?v=0.20.0"></script>
+  <script src="scripts/font-subset.js?v=0.20.0"></script>
+  <script src="scripts/export-pipeline.js?v=0.20.0"></script>
+  <script src="scripts/color-picker.js?v=0.20.0"></script>
   <!-- script.js was split into the 13 files below (v0.19.16 refactor). They are
        plain scripts sharing globals — load order matters and must be preserved. -->
-  <script src="scripts/core-state.js?v=0.19.18"></script>
-  <script src="scripts/autosave.js?v=0.19.18"></script>
-  <script src="scripts/link-system.js?v=0.19.18"></script>
-  <script src="scripts/canvas-render.js?v=0.19.18"></script>
-  <script src="scripts/interactions.js?v=0.19.18"></script>
-  <script src="scripts/canvases-panel.js?v=0.19.18"></script>
-  <script src="scripts/layers-assets.js?v=0.19.18"></script>
-  <script src="scripts/props-panel.js?v=0.19.18"></script>
-  <script src="scripts/toolbar-import.js?v=0.19.18"></script>
-  <script src="scripts/project-io.js?v=0.19.18"></script>
-  <script src="scripts/project-dialogs.js?v=0.19.18"></script>
-  <script src="scripts/modals.js?v=0.19.18"></script>
-  <script src="scripts/app-boot.js?v=0.19.18"></script>
+  <script src="scripts/core-state.js?v=0.20.0"></script>
+  <script src="scripts/autosave.js?v=0.20.0"></script>
+  <script src="scripts/link-system.js?v=0.20.0"></script>
+  <script src="scripts/canvas-render.js?v=0.20.0"></script>
+  <script src="scripts/interactions.js?v=0.20.0"></script>
+  <script src="scripts/canvases-panel.js?v=0.20.0"></script>
+  <script src="scripts/layers-assets.js?v=0.20.0"></script>
+  <script src="scripts/props-panel.js?v=0.20.0"></script>
+  <script src="scripts/toolbar-import.js?v=0.20.0"></script>
+  <script src="scripts/project-io.js?v=0.20.0"></script>
+  <script src="scripts/project-dialogs.js?v=0.20.0"></script>
+  <script src="scripts/modals.js?v=0.20.0"></script>
+  <script src="scripts/share-preview.js?v=0.20.0"></script>
+  <script src="scripts/app-boot.js?v=0.20.0"></script>
 </body>
 
 </html>
