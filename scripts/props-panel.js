@@ -15,6 +15,26 @@ let startElementAnimPreviewFn = null;
 // (panDir custom select), which bypasses the panel closure's activeEffectVal.
 let hoverEffectPreviewActive = false;
 
+function getPreviewDomNodes(el, previewType = 'inAnim') {
+  let idsToPreview = [];
+  const lg = el.linkGroupId ? state.linkGroups?.[el.linkGroupId] : null;
+  const isSyncOn = lg && (previewType === 'inAnim' ? lg.syncProperties?.inAnim : lg.syncProperties?.effect);
+  if (el.linkGroupId && lg?.liveLink === true && isSyncOn) {
+    const gid = el.linkGroupId;
+    state.canvases.forEach(c => {
+      c.elements.forEach(targetEl => {
+        if (targetEl.linkGroupId === gid) {
+          idsToPreview.push(targetEl.id);
+        }
+      });
+    });
+  } else {
+    idsToPreview = state.layerSelection.length > 1 ? [...state.layerSelection] : [el.id];
+  }
+  
+  return idsToPreview.map(id => document.querySelector(`.el[data-id="${id}"]`)).filter(Boolean);
+}
+
 function stopAllAnimationPreviews() {
   if (stopElementAnimPreviewFn) stopElementAnimPreviewFn();
   if (stopElementEffectPreviewFn) stopElementEffectPreviewFn();
@@ -42,9 +62,6 @@ function startFrameTransitionPreview(type) {
     return;
   }
 
-  const c = getActiveCanvas();
-  if (!c) return;
-
   const activeIdx = state.frames.findIndex(f => f.id === state.activeFrameId);
   if (activeIdx < 0) return;
   if (activeIdx === 0 && !(state.loopAd && state.frames.length > 1)) return;
@@ -52,9 +69,6 @@ function startFrameTransitionPreview(type) {
     ? state.frames[state.frames.length - 1].id
     : state.frames[activeIdx - 1].id;
   const nextFrameId = state.activeFrameId;
-
-  const canvasDom = document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas`);
-  if (!canvasDom) return;
 
   const runCycle = () => {
     if (activeFramePreviewType !== type) return;
@@ -67,370 +81,392 @@ function startFrameTransitionPreview(type) {
     const bounce = !!currentFrame.transitionBounce;
     const zoomFrom = currentFrame.transitionZoomFrom !== undefined ? currentFrame.transitionZoomFrom : 80;
     const angle = currentFrame.transitionAngle !== undefined ? currentFrame.transitionAngle : 0;
-    let dir = currentFrame.transitionDirection || (type.startsWith('slide-') ? type.replace('slide-', '') : (type.startsWith('swipe-') ? type.replace('swipe-', '') : 'left'));
-    if (dir === 'short' || dir === 'long') {
-      const isShort = dir === 'short';
-      if (c.width > c.height) {
-        dir = isShort ? 'up' : 'left';
-      } else if (c.width < c.height) {
-        dir = isShort ? 'left' : 'up';
-      } else {
-        dir = isShort ? 'up' : 'left';
-      }
-    }
     const irisShape = currentFrame.transitionIrisShape || 'circle';
     const irisOrigin = currentFrame.transitionIrisOrigin || 'center';
     const blurAmount = currentFrame.transitionBlurAmount !== undefined ? currentFrame.transitionBlurAmount : 20;
     const blurScaleVal = currentFrame.transitionBlurScale !== undefined ? currentFrame.transitionBlurScale : 100;
     const blurScale = blurScaleVal / 100;
 
-    let overlay = canvasDom.querySelector('.frame-transition-preview-overlay');
-    if (overlay) overlay.remove();
+    const activeOverlays = [];
 
-    overlay = document.createElement('div');
-    overlay.className = 'frame-transition-preview-overlay';
-    overlay.style.position = 'absolute';
-    overlay.style.inset = '0';
-    overlay.style.zIndex = '1000';
-    overlay.style.pointerEvents = 'none';
-    overlay.style.overflow = 'hidden';
-    overlay.style.perspective = '1200px';
+    state.canvases.forEach(c => {
+      const canvasDom = document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas`);
+      if (!canvasDom) return;
 
-    const excludePers = !!currentFrame.excludePersistent;
-
-    const prevContainer = document.createElement('div');
-    prevContainer.style.position = 'absolute';
-    prevContainer.style.inset = '0';
-    prevContainer.style.background = getCanvasBg(c, prevFrameId);
-    prevContainer.style.zIndex = '1';
-
-    const prevBot = document.createElement('div'); prevBot.style.position = 'absolute'; prevBot.style.inset = '0'; prevBot.style.zIndex = '1';
-    const prevMid = document.createElement('div'); prevMid.style.position = 'absolute'; prevMid.style.inset = '0'; prevMid.style.zIndex = '2';
-    const prevTop = document.createElement('div'); prevTop.style.position = 'absolute'; prevTop.style.inset = '0'; prevTop.style.zIndex = '3';
-    prevContainer.appendChild(prevBot);
-    prevContainer.appendChild(prevMid);
-    prevContainer.appendChild(prevTop);
-
-    c.elements.forEach(el => {
-      if (el.persistent === 'bottom') {
-        if (!excludePers) prevBot.appendChild(elementNode(el, c));
+      let dir = currentFrame.transitionDirection || (type.startsWith('slide-') ? type.replace('slide-', '') : (type.startsWith('swipe-') ? type.replace('swipe-', '') : 'left'));
+      if (dir === 'short' || dir === 'long') {
+        const isShort = dir === 'short';
+        if (c.width > c.height) {
+          dir = isShort ? 'up' : 'left';
+        } else if (c.width < c.height) {
+          dir = isShort ? 'left' : 'up';
+        } else {
+          dir = isShort ? 'up' : 'left';
+        }
       }
-      else if (el.persistent === 'top') {
-        if (!excludePers) prevTop.appendChild(elementNode(el, c));
-      }
-      else if (el.frameId === prevFrameId) prevMid.appendChild(elementNode(el, c));
-    });
-    overlay.appendChild(prevContainer);
 
-    const nextContainer = document.createElement('div');
-    nextContainer.style.position = 'absolute';
-    nextContainer.style.inset = '0';
-    nextContainer.style.background = getCanvasBg(c, nextFrameId);
-    nextContainer.style.zIndex = '2';
+      let overlay = canvasDom.querySelector('.frame-transition-preview-overlay');
+      if (overlay) overlay.remove();
 
-    const nextBot = document.createElement('div'); nextBot.style.position = 'absolute'; nextBot.style.inset = '0'; nextBot.style.zIndex = '1';
-    const nextMid = document.createElement('div'); nextMid.style.position = 'absolute'; nextMid.style.inset = '0'; nextMid.style.zIndex = '2';
-    const nextTop = document.createElement('div'); nextTop.style.position = 'absolute'; nextTop.style.inset = '0'; nextTop.style.zIndex = '3';
-    nextContainer.appendChild(nextBot);
-    nextContainer.appendChild(nextMid);
-    nextContainer.appendChild(nextTop);
+      overlay = document.createElement('div');
+      overlay.className = 'frame-transition-preview-overlay';
+      overlay.style.position = 'absolute';
+      overlay.style.inset = '0';
+      overlay.style.zIndex = '1000';
+      overlay.style.pointerEvents = 'none';
+      overlay.style.overflow = 'hidden';
+      overlay.style.perspective = '1200px';
 
-    c.elements.forEach(el => {
-      if (el.persistent === 'bottom') {
-        if (!excludePers) nextBot.appendChild(elementNode(el, c));
-      }
-      else if (el.persistent === 'top') {
-        if (!excludePers) nextTop.appendChild(elementNode(el, c));
-      }
-      else if (el.frameId === nextFrameId) nextMid.appendChild(elementNode(el, c));
-    });
-    overlay.appendChild(nextContainer);
+      const excludePers = !!currentFrame.excludePersistent;
 
-    if (excludePers) {
-      const staticBot = document.createElement('div');
-      staticBot.style.position = 'absolute';
-      staticBot.style.inset = '0';
-      staticBot.style.zIndex = '0';
+      const prevContainer = document.createElement('div');
+      prevContainer.style.position = 'absolute';
+      prevContainer.style.inset = '0';
+      prevContainer.style.background = getCanvasBg(c, prevFrameId);
+      prevContainer.style.zIndex = '1';
+
+      const prevBot = document.createElement('div'); prevBot.style.position = 'absolute'; prevBot.style.inset = '0'; prevBot.style.zIndex = '1';
+      const prevMid = document.createElement('div'); prevMid.style.position = 'absolute'; prevMid.style.inset = '0'; prevMid.style.zIndex = '2';
+      const prevTop = document.createElement('div'); prevTop.style.position = 'absolute'; prevTop.style.inset = '0'; prevTop.style.zIndex = '3';
+      prevContainer.appendChild(prevBot);
+      prevContainer.appendChild(prevMid);
+      prevContainer.appendChild(prevTop);
+
       c.elements.forEach(el => {
-        if (el.persistent === 'bottom') staticBot.appendChild(elementNode(el, c));
+        if (el.persistent === 'bottom') {
+          if (!excludePers) prevBot.appendChild(elementNode(el, c));
+        }
+        else if (el.persistent === 'top') {
+          if (!excludePers) prevTop.appendChild(elementNode(el, c));
+        }
+        else if (el.frameId === prevFrameId) prevMid.appendChild(elementNode(el, c));
       });
-      overlay.appendChild(staticBot);
+      overlay.appendChild(prevContainer);
 
-      const staticTop = document.createElement('div');
-      staticTop.style.position = 'absolute';
-      staticTop.style.inset = '0';
-      staticTop.style.zIndex = '3';
+      const nextContainer = document.createElement('div');
+      nextContainer.style.position = 'absolute';
+      nextContainer.style.inset = '0';
+      nextContainer.style.background = getCanvasBg(c, nextFrameId);
+      nextContainer.style.zIndex = '2';
+
+      const nextBot = document.createElement('div'); nextBot.style.position = 'absolute'; nextBot.style.inset = '0'; nextBot.style.zIndex = '1';
+      const nextMid = document.createElement('div'); nextMid.style.position = 'absolute'; nextMid.style.inset = '0'; nextMid.style.zIndex = '2';
+      const nextTop = document.createElement('div'); nextTop.style.position = 'absolute'; nextTop.style.inset = '0'; nextTop.style.zIndex = '3';
+      nextContainer.appendChild(nextBot);
+      nextContainer.appendChild(nextMid);
+      nextContainer.appendChild(nextTop);
+
       c.elements.forEach(el => {
-        if (el.persistent === 'top') staticTop.appendChild(elementNode(el, c));
+        if (el.persistent === 'bottom') {
+          if (!excludePers) nextBot.appendChild(elementNode(el, c));
+        }
+        else if (el.persistent === 'top') {
+          if (!excludePers) nextTop.appendChild(elementNode(el, c));
+        }
+        else if (el.frameId === nextFrameId) nextMid.appendChild(elementNode(el, c));
       });
-      overlay.appendChild(staticTop);
-    }
+      overlay.appendChild(nextContainer);
 
-    canvasDom.appendChild(overlay);
-    nextContainer.style.display = 'none';
+      if (excludePers) {
+        const staticBot = document.createElement('div');
+        staticBot.style.position = 'absolute';
+        staticBot.style.inset = '0';
+        staticBot.style.zIndex = '0';
+        c.elements.forEach(el => {
+          if (el.persistent === 'bottom') staticBot.appendChild(elementNode(el, c));
+        });
+        overlay.appendChild(staticBot);
+
+        const staticTop = document.createElement('div');
+        staticTop.style.position = 'absolute';
+        staticTop.style.inset = '0';
+        staticTop.style.zIndex = '3';
+        c.elements.forEach(el => {
+          if (el.persistent === 'top') staticTop.appendChild(elementNode(el, c));
+        });
+        overlay.appendChild(staticTop);
+      }
+
+      canvasDom.appendChild(overlay);
+      nextContainer.style.display = 'none';
+
+      activeOverlays.push({ prevContainer, nextContainer, canvas: c, dir });
+    });
 
     framePreviewTimeoutId = setTimeout(() => {
       if (activeFramePreviewType !== type) return;
-      nextContainer.style.display = 'block';
 
-      const animName = `preview-frame-trans-${Date.now()}`;
-      const animNameOut = `preview-frame-trans-out-${Date.now()}`;
-      let keyframes = '';
-      let keyframesOut = '';
+      let keyframesText = '';
 
-      if (type === 'fade') {
-        keyframes = `@keyframes ${animName} { from { opacity: 0; } to { opacity: 1; } }`;
-      } else if (type === 'slide' || type === 'push') {
-        let transformFrom = '';
-        let transformToOut = '';
-        if (dir === 'up') { transformFrom = 'translateY(100%)'; transformToOut = 'translateY(-100%)'; }
-        else if (dir === 'down') { transformFrom = 'translateY(-100%)'; transformToOut = 'translateY(100%)'; }
-        else if (dir === 'left') { transformFrom = 'translateX(100%)'; transformToOut = 'translateX(-100%)'; }
-        else if (dir === 'right') { transformFrom = 'translateX(-100%)'; transformToOut = 'translateX(100%)'; }
+      activeOverlays.forEach(({ prevContainer, nextContainer, canvas, dir }) => {
+        nextContainer.style.display = 'block';
 
-        if (bounce) {
-          keyframes = `@keyframes ${animName} {\n`;
-          const d = 4.0;
-          const freq = 2.0;
-          for (let pct = 0; pct <= 100; pct += 5) {
-            const t = pct / 100;
-            const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * freq * t);
-            const currentDist = (100 * x).toFixed(2);
-            let transformStr = '';
-            if (dir === 'up') transformStr = `transform: translateY(${currentDist}%);`;
-            else if (dir === 'down') transformStr = `transform: translateY(${-currentDist}%);`;
-            else if (dir === 'left') transformStr = `transform: translateX(${currentDist}%);`;
-            else if (dir === 'right') transformStr = `transform: translateX(${-currentDist}%);`;
-            
-            let opacityStr = '';
-            if (fade) {
-              if (pct === 0) opacityStr = 'opacity: 0; ';
-              else if (pct >= 30) opacityStr = 'opacity: 1; ';
-              else {
-                const opt = (t / 0.3).toFixed(2);
-                opacityStr = `opacity: ${opt}; `;
+        const animName = `preview-frame-trans-${canvas.id}-${Date.now()}`;
+        const animNameOut = `preview-frame-trans-out-${canvas.id}-${Date.now()}`;
+        let keyframes = '';
+        let keyframesOut = '';
+
+        if (type === 'fade') {
+          keyframes = `@keyframes ${animName} { from { opacity: 0; } to { opacity: 1; } }`;
+        } else if (type === 'slide' || type === 'push') {
+          let transformFrom = '';
+          let transformToOut = '';
+          if (dir === 'up') { transformFrom = 'translateY(100%)'; transformToOut = 'translateY(-100%)'; }
+          else if (dir === 'down') { transformFrom = 'translateY(-100%)'; transformToOut = 'translateY(100%)'; }
+          else if (dir === 'left') { transformFrom = 'translateX(100%)'; transformToOut = 'translateX(-100%)'; }
+          else if (dir === 'right') { transformFrom = 'translateX(-100%)'; transformToOut = 'translateX(100%)'; }
+
+          if (bounce) {
+            keyframes = `@keyframes ${animName} {\n`;
+            const d = 4.0;
+            const freq = 2.0;
+            for (let pct = 0; pct <= 100; pct += 5) {
+              const t = pct / 100;
+              const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * freq * t);
+              const currentDist = (100 * x).toFixed(2);
+              let transformStr = '';
+              if (dir === 'up') transformStr = `transform: translateY(${currentDist}%);`;
+              else if (dir === 'down') transformStr = `transform: translateY(${-currentDist}%);`;
+              else if (dir === 'left') transformStr = `transform: translateX(${currentDist}%);`;
+              else if (dir === 'right') transformStr = `transform: translateX(${-currentDist}%);`;
+              
+              let opacityStr = '';
+              if (fade) {
+                if (pct === 0) opacityStr = 'opacity: 0; ';
+                else if (pct >= 30) opacityStr = 'opacity: 1; ';
+                else {
+                  const opt = (t / 0.3).toFixed(2);
+                  opacityStr = `opacity: ${opt}; `;
+                }
               }
+              keyframes += `      ${pct}% { ${transformStr} ${opacityStr}}\n`;
             }
-            keyframes += `      ${pct}% { ${transformStr} ${opacityStr}}\n`;
+            keyframes += '    }';
+          } else {
+            keyframes = `@keyframes ${animName} {
+              from { transform: ${transformFrom}; ${fade ? 'opacity: 0;' : ''} }
+              to { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
+            }`;
           }
-          keyframes += '    }';
-        } else {
-          keyframes = `@keyframes ${animName} {
-            from { transform: ${transformFrom}; ${fade ? 'opacity: 0;' : ''} }
-            to { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
-          }`;
-        }
 
-        if (type === 'push') {
+          if (type === 'push') {
+            keyframesOut = `@keyframes ${animNameOut} {
+              from { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
+              to { transform: ${transformToOut}; ${fade ? 'opacity: 0;' : ''} }
+            }`;
+          }
+        } else if (type === 'swipe') {
+          const feather = !!currentFrame.transitionFeather;
+          if (feather) {
+            let maskGrad = '';
+            let maskSize = '';
+            let posFrom = '';
+            let posTo = '';
+            
+            if (dir === 'up') {
+              maskGrad = 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+              maskSize = '100% 300%';
+              posFrom = '0 100%';
+              posTo = '0 0';
+            } else if (dir === 'down') {
+              maskGrad = 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+              maskSize = '100% 300%';
+              posFrom = '0 100%';
+              posTo = '0 0';
+            } else if (dir === 'left') {
+              maskGrad = 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+              maskSize = '300% 100%';
+              posFrom = '100% 0';
+              posTo = '0 0';
+            } else if (dir === 'right') {
+              maskGrad = 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
+              maskSize = '300% 100%';
+              posFrom = '100% 0';
+              posTo = '0 0';
+            }
+            
+            keyframes = `@keyframes ${animName} {
+              from {
+                -webkit-mask-image: ${maskGrad};
+                mask-image: ${maskGrad};
+                -webkit-mask-size: ${maskSize};
+                mask-size: ${maskSize};
+                -webkit-mask-position: ${posFrom};
+                mask-position: ${posFrom};
+              }
+              to {
+                -webkit-mask-image: ${maskGrad};
+                mask-image: ${maskGrad};
+                -webkit-mask-size: ${maskSize};
+                mask-size: ${maskSize};
+                -webkit-mask-position: ${posTo};
+                mask-position: ${posTo};
+              }
+            }`;
+          } else {
+            let clipFrom = '';
+            if (dir === 'up') clipFrom = 'inset(100% 0 0 0)';
+            else if (dir === 'down') clipFrom = 'inset(0 0 100% 0)';
+            else if (dir === 'left') clipFrom = 'inset(0 0 0 100%)';
+            else if (dir === 'right') clipFrom = 'inset(0 100% 0 0)';
+            
+            keyframes = `@keyframes ${animName} {
+              from { clip-path: ${clipFrom}; ${fade ? 'opacity: 0;' : ''} }
+              to { clip-path: inset(0 0 0 0); ${fade ? 'opacity: 1;' : ''} }
+            }`;
+          }
+        } else if (type === 'zoom') {
+          const zf = zoomFrom / 100;
+          if (bounce) {
+            keyframes = `@keyframes ${animName} {\n`;
+            const d = 4.0;
+            const freq = 2.0;
+            for (let pct = 0; pct <= 100; pct += 5) {
+              const t = pct / 100;
+              const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * freq * t);
+              const scale = (1.0 + (zf - 1.0) * x).toFixed(3);
+              
+              let opacityStr = '';
+              if (fade) {
+                if (pct === 0) opacityStr = 'opacity: 0; ';
+                else if (pct >= 30) opacityStr = 'opacity: 1; ';
+                else {
+                  const opt = (t / 0.3).toFixed(2);
+                  opacityStr = `opacity: ${opt}; `;
+                }
+              }
+              keyframes += `      ${pct}% { transform: scale(${scale}); ${opacityStr}}\n`;
+            }
+            keyframes += '    }';
+          } else {
+            keyframes = `@keyframes ${animName} {
+              from { transform: scale(${zf}); ${fade ? 'opacity: 0;' : ''} }
+              to { transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
+            }`;
+          }
+        } else if (type === 'split') {
+          const resolvedAngle = (dir === 'left' || dir === 'right') ? 90 : 0;
+          const fromPoly = getSplitClipPath(resolvedAngle);
+          keyframes = `@keyframes ${animName} {
+            from { clip-path: ${fromPoly}; ${fade ? 'opacity: 0;' : ''} }
+            to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fade ? 'opacity: 1;' : ''} }
+          }`;
+        } else if (type === 'blur') {
+          keyframes = `@keyframes ${animName} {
+            from { filter: blur(${blurAmount}px); transform: scale(${blurScale}); ${fade ? 'opacity: 0;' : ''} }
+            to { filter: blur(0px); transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
+          }`;
           keyframesOut = `@keyframes ${animNameOut} {
-            from { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
-            to { transform: ${transformToOut}; ${fade ? 'opacity: 0;' : ''} }
+            from { filter: blur(0px); transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
+            to { filter: blur(${blurAmount}px); transform: scale(${2 - blurScale}); ${fade ? 'opacity: 0;' : ''} }
           }`;
-        }
-      } else if (type === 'swipe') {
-        const feather = !!currentFrame.transitionFeather;
-        if (feather) {
-          let maskGrad = '';
-          let maskSize = '';
-          let posFrom = '';
-          let posTo = '';
-          
-          if (dir === 'up') {
-            maskGrad = 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
-            maskSize = '100% 300%';
-            posFrom = '0 100%';
-            posTo = '0 0';
-          } else if (dir === 'down') {
-            maskGrad = 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
-            maskSize = '100% 300%';
-            posFrom = '0 100%';
-            posTo = '0 0';
-          } else if (dir === 'left') {
-            maskGrad = 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
-            maskSize = '300% 100%';
-            posFrom = '100% 0';
-            posTo = '0 0';
-          } else if (dir === 'right') {
-            maskGrad = 'linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 33%, rgba(0,0,0,0) 66%, rgba(0,0,0,0) 100%)';
-            maskSize = '300% 100%';
-            posFrom = '100% 0';
-            posTo = '0 0';
-          }
-          
-          keyframes = `@keyframes ${animName} {
-            from {
-              -webkit-mask-image: ${maskGrad};
-              mask-image: ${maskGrad};
-              -webkit-mask-size: ${maskSize};
-              mask-size: ${maskSize};
-              -webkit-mask-position: ${posFrom};
-              mask-position: ${posFrom};
+        } else if (type === 'iris') {
+          let originCoords = '50% 50%';
+          if (irisOrigin === 'top-left') originCoords = '0% 0%';
+          else if (irisOrigin === 'top-right') originCoords = '100% 0%';
+          else if (irisOrigin === 'bottom-left') originCoords = '0% 100%';
+          else if (irisOrigin === 'bottom-right') originCoords = '100% 100%';
+
+          let fromClip = '';
+          let toClip = '';
+
+          if (irisShape === 'circle') {
+            fromClip = `circle(0% at ${originCoords})`;
+            toClip = `circle(150% at ${originCoords})`;
+          } else if (irisShape === 'square') {
+            if (irisOrigin === 'center') {
+              fromClip = 'inset(50%)';
+              toClip = 'inset(0%)';
+            } else if (irisOrigin === 'top-left') {
+              fromClip = 'inset(0% 100% 100% 0%)';
+              toClip = 'inset(0%)';
+            } else if (irisOrigin === 'top-right') {
+              fromClip = 'inset(0% 0% 100% 100%)';
+              toClip = 'inset(0%)';
+            } else if (irisOrigin === 'bottom-left') {
+              fromClip = 'inset(100% 100% 0% 0%)';
+              toClip = 'inset(0%)';
+            } else if (irisOrigin === 'bottom-right') {
+              fromClip = 'inset(100% 0% 0% 100%)';
+              toClip = 'inset(0%)';
             }
-            to {
-              -webkit-mask-image: ${maskGrad};
-              mask-image: ${maskGrad};
-              -webkit-mask-size: ${maskSize};
-              mask-size: ${maskSize};
-              -webkit-mask-position: ${posTo};
-              mask-position: ${posTo};
+          } else if (irisShape === 'diamond') {
+            if (irisOrigin === 'center') {
+              fromClip = 'polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%)';
+              toClip = 'polygon(50% -100%, 200% 50%, 50% 200%, -100% 50%)';
+            } else if (irisOrigin === 'top-left') {
+              fromClip = 'polygon(0% 0%, 0% 0%, 0% 0%)';
+              toClip = 'polygon(0% 0%, 250% 0%, 0% 250%)';
+            } else if (irisOrigin === 'top-right') {
+              fromClip = 'polygon(100% 0%, 100% 0%, 100% 0%)';
+              toClip = 'polygon(100% 0%, -150% 0%, 100% 250%)';
+            } else if (irisOrigin === 'bottom-left') {
+              fromClip = 'polygon(0% 100%, 0% 100%, 0% 100%)';
+              toClip = 'polygon(0% 100%, 250% 100%, 0% -150%)';
+            } else if (irisOrigin === 'bottom-right') {
+              fromClip = 'polygon(100% 100%, 100% 100%, 100% 100%)';
+              toClip = 'polygon(100% 100%, -150% 100%, 100% -150%)';
+            }
+          }
+
+          keyframes = `@keyframes ${animName} {
+            from { clip-path: ${fromClip}; ${fade ? 'opacity: 0;' : ''} }
+            to { clip-path: ${toClip}; ${fade ? 'opacity: 1;' : ''} }
+          }`;
+        } else if (type === 'corner-fold') {
+          const corner = dir || 'bottom-right';
+          let origin = '100% 100%';
+          let rotateAxis = '1, 1, 0';
+          let shadowOffset = '-15px -15px 40px';
+          let startClip = 'polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%)';
+
+          if (corner === 'bottom-left') {
+            origin = '0% 100%';
+            rotateAxis = '-1, 1, 0';
+            shadowOffset = '15px -15px 40px';
+            startClip = 'polygon(0% 100%, 0% 100%, 0% 100%, 0% 100%)';
+          } else if (corner === 'top-right') {
+            origin = '100% 0%';
+            rotateAxis = '1, -1, 0';
+            shadowOffset = '-15px 15px 40px';
+            startClip = 'polygon(100% 0%, 100% 0%, 100% 0%, 100% 0%)';
+          } else if (corner === 'top-left') {
+            origin = '0% 0%';
+            rotateAxis = '-1, -1, 0';
+            shadowOffset = '15px 15px 40px';
+            startClip = 'polygon(0% 0%, 0% 0%, 0% 0%, 0% 0%)';
+          }
+
+          keyframes = `@keyframes ${animName} {
+            0% {
+              transform-origin: ${origin};
+              clip-path: ${startClip};
+              transform: rotate3d(${rotateAxis}, 45deg);
+              box-shadow: 0 0 0 rgba(0,0,0,0);
+              ${fade ? 'opacity: 0;' : ''}
+            }
+            40% {
+              transform-origin: ${origin};
+              box-shadow: ${shadowOffset} rgba(0,0,0,0.3);
+              ${fade ? 'opacity: 1;' : ''}
+            }
+            100% {
+              transform-origin: ${origin};
+              clip-path: polygon(-50% -50%, 150% -50%, 150% 150%, -50% 150%);
+              transform: rotate3d(0, 0, 0, 0deg);
+              box-shadow: 0 0 0 rgba(0,0,0,0);
+              ${fade ? 'opacity: 1;' : ''}
             }
           }`;
-        } else {
-          let clipFrom = '';
-          if (dir === 'up') clipFrom = 'inset(100% 0 0 0)';
-          else if (dir === 'down') clipFrom = 'inset(0 0 100% 0)';
-          else if (dir === 'left') clipFrom = 'inset(0 0 0 100%)';
-          else if (dir === 'right') clipFrom = 'inset(0 100% 0 0)';
-          
-          keyframes = `@keyframes ${animName} {
-            from { clip-path: ${clipFrom}; ${fade ? 'opacity: 0;' : ''} }
-            to { clip-path: inset(0 0 0 0); ${fade ? 'opacity: 1;' : ''} }
-          }`;
-        }
-      } else if (type === 'zoom') {
-        const zf = zoomFrom / 100;
-        if (bounce) {
-          keyframes = `@keyframes ${animName} {\n`;
-          const d = 4.0;
-          const freq = 2.0;
-          for (let pct = 0; pct <= 100; pct += 5) {
-            const t = pct / 100;
-            const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * freq * t);
-            const scale = (1.0 + (zf - 1.0) * x).toFixed(3);
-            
-            let opacityStr = '';
-            if (fade) {
-              if (pct === 0) opacityStr = 'opacity: 0; ';
-              else if (pct >= 30) opacityStr = 'opacity: 1; ';
-              else {
-                const opt = (t / 0.3).toFixed(2);
-                opacityStr = `opacity: ${opt}; `;
-              }
-            }
-            keyframes += `      ${pct}% { transform: scale(${scale}); ${opacityStr}}\n`;
-          }
-          keyframes += '    }';
-        } else {
-          keyframes = `@keyframes ${animName} {
-            from { transform: scale(${zf}); ${fade ? 'opacity: 0;' : ''} }
-            to { transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
-          }`;
-        }
-      } else if (type === 'split') {
-        const resolvedAngle = (dir === 'left' || dir === 'right') ? 90 : 0;
-        const fromPoly = getSplitClipPath(resolvedAngle);
-        keyframes = `@keyframes ${animName} {
-          from { clip-path: ${fromPoly}; ${fade ? 'opacity: 0;' : ''} }
-          to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fade ? 'opacity: 1;' : ''} }
-        }`;
-      } else if (type === 'blur') {
-        keyframes = `@keyframes ${animName} {
-          from { filter: blur(${blurAmount}px); transform: scale(${blurScale}); ${fade ? 'opacity: 0;' : ''} }
-          to { filter: blur(0px); transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
-        }`;
-        keyframesOut = `@keyframes ${animNameOut} {
-          from { filter: blur(0px); transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
-          to { filter: blur(${blurAmount}px); transform: scale(${2 - blurScale}); ${fade ? 'opacity: 0;' : ''} }
-        }`;
-      } else if (type === 'iris') {
-        let originCoords = '50% 50%';
-        if (irisOrigin === 'top-left') originCoords = '0% 0%';
-        else if (irisOrigin === 'top-right') originCoords = '100% 0%';
-        else if (irisOrigin === 'bottom-left') originCoords = '0% 100%';
-        else if (irisOrigin === 'bottom-right') originCoords = '100% 100%';
-
-        let fromClip = '';
-        let toClip = '';
-
-        if (irisShape === 'circle') {
-          fromClip = `circle(0% at ${originCoords})`;
-          toClip = `circle(150% at ${originCoords})`;
-        } else if (irisShape === 'square') {
-          if (irisOrigin === 'center') {
-            fromClip = 'inset(50%)';
-            toClip = 'inset(0%)';
-          } else if (irisOrigin === 'top-left') {
-            fromClip = 'inset(0% 100% 100% 0%)';
-            toClip = 'inset(0%)';
-          } else if (irisOrigin === 'top-right') {
-            fromClip = 'inset(0% 0% 100% 100%)';
-            toClip = 'inset(0%)';
-          } else if (irisOrigin === 'bottom-left') {
-            fromClip = 'inset(100% 100% 0% 0%)';
-            toClip = 'inset(0%)';
-          } else if (irisOrigin === 'bottom-right') {
-            fromClip = 'inset(100% 0% 0% 100%)';
-            toClip = 'inset(0%)';
-          }
-        } else if (irisShape === 'diamond') {
-          if (irisOrigin === 'center') {
-            fromClip = 'polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%)';
-            toClip = 'polygon(50% -100%, 200% 50%, 50% 200%, -100% 50%)';
-          } else if (irisOrigin === 'top-left') {
-            fromClip = 'polygon(0% 0%, 0% 0%, 0% 0%)';
-            toClip = 'polygon(0% 0%, 250% 0%, 0% 250%)';
-          } else if (irisOrigin === 'top-right') {
-            fromClip = 'polygon(100% 0%, 100% 0%, 100% 0%)';
-            toClip = 'polygon(100% 0%, -150% 0%, 100% 250%)';
-          } else if (irisOrigin === 'bottom-left') {
-            fromClip = 'polygon(0% 100%, 0% 100%, 0% 100%)';
-            toClip = 'polygon(0% 100%, 250% 100%, 0% -150%)';
-          } else if (irisOrigin === 'bottom-right') {
-            fromClip = 'polygon(100% 100%, 100% 100%, 100% 100%)';
-            toClip = 'polygon(100% 100%, -150% 100%, 100% -150%)';
-          }
         }
 
-        keyframes = `@keyframes ${animName} {
-          from { clip-path: ${fromClip}; ${fade ? 'opacity: 0;' : ''} }
-          to { clip-path: ${toClip}; ${fade ? 'opacity: 1;' : ''} }
-        }`;
-      } else if (type === 'corner-fold') {
-        const corner = dir || 'bottom-right';
-        let origin = '100% 100%';
-        let rotateAxis = '1, 1, 0';
-        let shadowOffset = '-15px -15px 40px';
-        let startClip = 'polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%)';
+        keyframesText += keyframes + '\n' + (keyframesOut || '') + '\n';
 
-        if (corner === 'bottom-left') {
-          origin = '0% 100%';
-          rotateAxis = '-1, 1, 0';
-          shadowOffset = '15px -15px 40px';
-          startClip = 'polygon(0% 100%, 0% 100%, 0% 100%, 0% 100%)';
-        } else if (corner === 'top-right') {
-          origin = '100% 0%';
-          rotateAxis = '1, -1, 0';
-          shadowOffset = '-15px 15px 40px';
-          startClip = 'polygon(100% 0%, 100% 0%, 100% 0%, 100% 0%)';
-        } else if (corner === 'top-left') {
-          origin = '0% 0%';
-          rotateAxis = '-1, -1, 0';
-          shadowOffset = '15px 15px 40px';
-          startClip = 'polygon(0% 0%, 0% 0%, 0% 0%, 0% 0%)';
+        if (keyframesOut) {
+          prevContainer.style.animation = `${animNameOut} ${duration}s ease both`;
         }
-
-        keyframes = `@keyframes ${animName} {
-          0% {
-            transform-origin: ${origin};
-            clip-path: ${startClip};
-            transform: rotate3d(${rotateAxis}, 45deg);
-            box-shadow: 0 0 0 rgba(0,0,0,0);
-            ${fade ? 'opacity: 0;' : ''}
-          }
-          40% {
-            transform-origin: ${origin};
-            box-shadow: ${shadowOffset} rgba(0,0,0,0.3);
-            ${fade ? 'opacity: 1;' : ''}
-          }
-          100% {
-            transform-origin: ${origin};
-            clip-path: polygon(-50% -50%, 150% -50%, 150% 150%, -50% 150%);
-            transform: rotate3d(0, 0, 0, 0deg);
-            box-shadow: 0 0 0 rgba(0,0,0,0);
-            ${fade ? 'opacity: 1;' : ''}
-          }
-        }`;
-      }
+        nextContainer.style.animation = `${animName} ${duration}s ease both`;
+      });
 
       let styleEl = document.getElementById('frame-transition-preview-styles');
       if (!styleEl) {
@@ -438,12 +474,7 @@ function startFrameTransitionPreview(type) {
         styleEl.id = 'frame-transition-preview-styles';
         document.head.appendChild(styleEl);
       }
-      styleEl.textContent = keyframes + '\n' + (keyframesOut || '');
-
-      if (keyframesOut) {
-        prevContainer.style.animation = `${animNameOut} ${duration}s ease both`;
-      }
-      nextContainer.style.animation = `${animName} ${duration}s ease both`;
+      styleEl.textContent = keyframesText;
 
       framePreviewTimeoutId = setTimeout(() => {
         if (activeFramePreviewType === type) {
@@ -469,14 +500,13 @@ function stopFrameTransitionPreview() {
     clearTimeout(framePreviewTimeoutId);
     framePreviewTimeoutId = null;
   }
-  const c = getActiveCanvas();
-  if (c) {
+  state.canvases.forEach(c => {
     const canvasDom = document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas`);
     if (canvasDom) {
       const overlay = canvasDom.querySelector('.frame-transition-preview-overlay');
       if (overlay) overlay.remove();
     }
-  }
+  });
   const styleEl = document.getElementById('frame-transition-preview-styles');
   if (styleEl) styleEl.remove();
 }
@@ -1977,20 +2007,6 @@ function renderProps() {
           <div style="flex:1; min-width:0;"><label for="prop-padding-lr">Padding L/R</label><input type="number" data-k="paddingLR" id="prop-padding-lr" value="${el.paddingLR !== undefined ? el.paddingLR : 16}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button horizontal padding in pixels" /></div>
           <div style="flex:1; min-width:0;"><label for="prop-padding-tb">Padding T/B</label><input type="number" data-k="paddingTB" id="prop-padding-tb" value="${el.paddingTB !== undefined ? el.paddingTB : 0}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button vertical padding in pixels" /></div>
         </div>`);
-    f.push(`<div class="prop-row" style="display:flex; gap:16px;">
-          <div class="checkbox-row">
-            <input type="checkbox" data-k="autoHug" id="prop-auto-hug" title="Auto-scale button width to hug text content" ${el.autoHug ? 'checked' : ''} ${el.autoSize ? 'disabled style="pointer-events:none; opacity:0.5;"' : ''}/>
-            <label for="prop-auto-hug" title="Auto-scale button width to hug text content" style="cursor:${el.autoSize ? 'not-allowed' : 'pointer'}; opacity:${el.autoSize ? '0.5' : '1'};">Hug</label>
-          </div>
-          <div class="checkbox-row">
-            ${c && c.fullClickArea !== false 
-              ? `<input type="checkbox" data-k="isClickArea" id="prop-is-click-area" title="Forced selected because 'Use entire canvas as click area' is checked in Canvas Settings" checked disabled style="cursor: not-allowed;"/>
-                 <label for="prop-is-click-area" title="Forced selected because 'Use entire canvas as click area' is checked in Canvas Settings" style="cursor: not-allowed; opacity: 0.5;">Clicktag</label>`
-              : `<input type="checkbox" data-k="isClickArea" id="prop-is-click-area" title="Make this button the main click-through area" ${el.isClickArea ? 'checked' : ''}/>
-                 <label for="prop-is-click-area" title="Make this button the main click-through area" style="cursor:pointer;">Clicktag</label>`
-            }
-          </div>
-        </div>`);
     f.push(strokeSection());
   }
   if (el.type === 'image') {
@@ -2909,21 +2925,20 @@ function checkButtonFontSizeWarning(el) {
       resetPreviewNodes();
       return;
     }
+    document.body.classList.add('previewing-animation-hover');
 
     const runLoop = () => {
       if (activePreviewVal !== val) return;
       
-      const domNodes = state.layerSelection.length > 1
-        ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
-        : [document.querySelector(`.el[data-id="${el.id}"]`)];
+      const domNodes = getPreviewDomNodes(el, 'inAnim');
       
       domNodes.forEach(node => {
         if (!node) return;
         node.style.animation = '';
         node.style.transformOrigin = '';
         const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
-        const activeC = getActiveCanvas();
-        const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+        const targetCanvas = state.canvases.find(c => c.elements.some(e => e.id === nodeEl.id)) || getActiveCanvas();
+        const isMaskedImg = targetCanvas && findMaskAbove(targetCanvas, nodeEl);
         if (isMaskedImg) {
           const innerImg = node.querySelector('img');
           if (innerImg) {
@@ -2931,8 +2946,8 @@ function checkButtonFontSizeWarning(el) {
             innerImg.style.transformOrigin = '';
           }
         }
-        if (nodeEl.isMask && activeC) {
-          const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+        if (nodeEl.isMask && targetCanvas) {
+          const imgEl = targetCanvas.elements.find(x => findMaskAbove(targetCanvas, x) === nodeEl);
           if (imgEl) {
             const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
             if (imgDom) {
@@ -2969,31 +2984,49 @@ function checkButtonFontSizeWarning(el) {
       domNodes.forEach(node => {
         if (node) {
           const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+          const mergedEl = {
+            ...nodeEl,
+            animType: el.animType,
+            animDuration: el.animDuration,
+            animDelay: el.animDelay,
+            animFadeLetters: el.animFadeLetters,
+            animFadeBg: el.animFadeBg,
+            animateBg: el.animateBg,
+            bgOffset: el.bgOffset,
+            animStaggerText: el.animStaggerText,
+            zoomAnchor: el.zoomAnchor,
+            animAngle: el.animAngle,
+            zoomFrom: el.zoomFrom,
+            animFade: el.animFade,
+            animBounce: el.animBounce,
+            animDirection: el.animDirection,
+            animDistance: el.animDistance
+          };
           let previewVal = val;
           if (previewVal === 'swipe') {
-            const currentSwipeDir = (nodeEl.animType || 'none').startsWith('swipe-') ? nodeEl.animType.replace('swipe-', '') : 'right';
+            const currentSwipeDir = (mergedEl.animType || 'none').startsWith('swipe-') ? mergedEl.animType.replace('swipe-', '') : 'right';
             previewVal = `swipe-${currentSwipeDir}`;
           }
           if (previewVal === 'none') return;
 
-          const dur = Number(nodeEl.animDuration || 1);
-          const del = Number(nodeEl.animDelay || 0);
+          const dur = Number(mergedEl.animDuration || 1);
+          const del = Number(mergedEl.animDelay || 0);
           maxDur = Math.max(maxDur, dur + del);
 
-          if ((nodeEl.type === 'text' || nodeEl.type === 'button') && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade')) {
+          if ((mergedEl.type === 'text' || mergedEl.type === 'button') && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade')) {
             const target = node.querySelector('.editable') || node.querySelector('span');
             if (target) {
               target.dataset.origHtml = target.innerHTML;
               target.dataset.origStyle = target.getAttribute('style') || '';
-              const totalDur = nodeEl.animDuration || 1;
-              const baseDelay = nodeEl.animDelay || 0;
+              const totalDur = mergedEl.animDuration || 1;
+              const baseDelay = mergedEl.animDelay || 0;
 
-              const overrides = typeof dmDisplay === 'function' ? dmDisplay(nodeEl) : {};
-              const displayText = overrides.text !== undefined ? overrides.text : (nodeEl.text || '');
+              const overrides = typeof dmDisplay === 'function' ? dmDisplay(mergedEl) : {};
+              const displayText = overrides.text !== undefined ? overrides.text : (mergedEl.text || '');
 
               if (previewVal === 'typing' || previewVal === 'fade-typing') {
                 const chars = [...displayText];
-                const fadeLetters = nodeEl.animFadeLetters !== false;
+                const fadeLetters = mergedEl.animFadeLetters !== false;
                 const charDur = fadeLetters ? 0.3 : 0.01;
                 const nonNewlines = chars.filter(c => c !== '\n').length;
                 const charDelay = totalDur / Math.max(1, nonNewlines);
@@ -3021,14 +3054,14 @@ function checkButtonFontSizeWarning(el) {
                 }).join('');
               }
 
-              const fadeBg = nodeEl.animFadeBg !== undefined ? nodeEl.animFadeBg : (nodeEl.type === 'button' ? true : !!nodeEl.animateBg);
-              if (nodeEl.type === 'text' && nodeEl.hasBg && fadeBg && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade')) {
-                const lr = nodeEl.bgPadL !== undefined ? nodeEl.bgPadL : 8;
-                const tb = nodeEl.bgPadV !== undefined ? nodeEl.bgPadV : 4;
-                const cov = nodeEl.bgCoverage !== undefined ? nodeEl.bgCoverage : 100;
-                const opa = (nodeEl.bgOpacity !== undefined ? nodeEl.bgOpacity : 100) / 100;
-                const bgRgba = hexToRgba(nodeEl.bg || '#000000', opa);
-                let offset = Number(nodeEl.bgOffset) || 0;
+              const fadeBg = mergedEl.animFadeBg !== undefined ? mergedEl.animFadeBg : (mergedEl.type === 'button' ? true : !!mergedEl.animateBg);
+              if (mergedEl.type === 'text' && mergedEl.hasBg && fadeBg && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade')) {
+                const lr = mergedEl.bgPadL !== undefined ? mergedEl.bgPadL : 8;
+                const tb = mergedEl.bgPadV !== undefined ? mergedEl.bgPadV : 4;
+                const cov = mergedEl.bgCoverage !== undefined ? mergedEl.bgCoverage : 100;
+                const opa = (mergedEl.bgOpacity !== undefined ? mergedEl.bgOpacity : 100) / 100;
+                const bgRgba = hexToRgba(mergedEl.bg || '#000000', opa);
+                let offset = Number(mergedEl.bgOffset) || 0;
                 if (offset === 0 && (previewVal === 'typing' || previewVal === 'fade-typing' || previewVal === 'word-fade')) {
                   offset = -0.1;
                 }
@@ -3049,7 +3082,7 @@ function checkButtonFontSizeWarning(el) {
                 requestAnimationFrame(() => setupTextLineBgs(target));
               }
 
-              if (nodeEl.type === 'button' && fadeBg) {
+              if (mergedEl.type === 'button' && fadeBg) {
                 const fillBg = node.querySelector('div[style*="position: absolute"], div[style*="position:absolute"]');
                 if (fillBg) {
                   fillBg.style.animation = `anim-fade-in ${dur}s ease-out ${del}s both`;
@@ -3061,15 +3094,15 @@ function checkButtonFontSizeWarning(el) {
               }
             }
           } else {
-            const activeC = getActiveCanvas();
-            const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+            const targetCanvas = state.canvases.find(c => c.elements.some(x => x.id === nodeEl.id)) || getActiveCanvas();
+            const isMaskedImg = targetCanvas && findMaskAbove(targetCanvas, nodeEl);
             const targetNode = isMaskedImg ? node.querySelector('img') : node;
 
             if (previewVal === 'split') {
-              const angle = nodeEl.animAngle !== undefined ? nodeEl.animAngle : 0;
+              const angle = mergedEl.animAngle !== undefined ? mergedEl.animAngle : 0;
               const fromPoly = getSplitClipPath(angle);
-              const fadeFrom = nodeEl.animFade !== false ? 'opacity: 0;' : '';
-              const fadeTo = nodeEl.animFade !== false ? 'opacity: 1;' : '';
+              const fadeFrom = mergedEl.animFade !== false ? 'opacity: 0;' : '';
+              const fadeTo = mergedEl.animFade !== false ? 'opacity: 1;' : '';
               let styleTag = document.getElementById('dynamic-anim-styles');
               if (!styleTag) {
                 styleTag = document.createElement('style');
@@ -3077,15 +3110,15 @@ function checkButtonFontSizeWarning(el) {
                 document.head.appendChild(styleTag);
               }
               const keyframesRule = `
-@keyframes anim-split-${nodeEl.id} {
+@keyframes anim-split-${mergedEl.id} {
   from { clip-path: ${fromPoly}; ${fadeFrom} }
   to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fadeTo} }
 }`;
-              const regex = new RegExp(`@keyframes\\s+anim-split-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\}`, 'g');
+              const regex = new RegExp(`@keyframes\\s+anim-split-${mergedEl.id}\\s*\\{[\\s\\S]*?\\n\\}`, 'g');
               styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
-              targetNode.style.animation = `anim-split-${nodeEl.id} ${nodeEl.animDuration || 1}s ease-out 0s both`;
+              targetNode.style.animation = `anim-split-${mergedEl.id} ${mergedEl.animDuration || 1}s ease-out 0s both`;
             } else if (previewVal === 'zoom' || previewVal === 'zoom-in' || previewVal === 'pop-in') {
-              const tempEl = { ...nodeEl };
+              const tempEl = { ...mergedEl };
               if (previewVal === 'pop-in') {
                 tempEl.zoomFrom = 80;
                 tempEl.animFade = true;
@@ -3104,21 +3137,21 @@ function checkButtonFontSizeWarning(el) {
                 document.head.appendChild(styleTag);
               }
               const keyframesRule = getZoomKeyframes(tempEl);
-              const regex = new RegExp(`@keyframes\\s+anim-zoom-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+              const regex = new RegExp(`@keyframes\\s+anim-zoom-${mergedEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
               styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
               const timing = tempEl.animBounce ? 'linear' : 'ease-out';
-              if (nodeEl.type === 'button' && nodeEl.animStaggerText) {
+              if (mergedEl.type === 'button' && mergedEl.animStaggerText) {
                 // Background fill
                 const fillBg = node.querySelector('div[style*="position: absolute"], div[style*="position:absolute"]');
                 if (fillBg) {
-                  fillBg.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
-                  fillBg.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
+                  fillBg.style.animation = `anim-zoom-${mergedEl.id} ${mergedEl.animDuration || 1}s ${timing} 0s both`;
+                  fillBg.style.transformOrigin = getTransformOriginValue(mergedEl.zoomAnchor || 'center');
                 }
                 // Stroke SVG
                 const strokeSvg = node.querySelector('svg[style*="position: absolute"], svg[style*="position:absolute"]');
                 if (strokeSvg) {
-                  strokeSvg.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
-                  strokeSvg.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
+                  strokeSvg.style.animation = `anim-zoom-${mergedEl.id} ${mergedEl.animDuration || 1}s ${timing} 0s both`;
+                  strokeSvg.style.transformOrigin = getTransformOriginValue(mergedEl.zoomAnchor || 'center');
                 }
                 // Text child
                 const target = node.querySelector('.editable') || node.querySelector('span');
@@ -3127,11 +3160,11 @@ function checkButtonFontSizeWarning(el) {
                   target.dataset.origHtml = target.innerHTML;
                   target.style.display = 'inline-block';
                   target.style.transformOrigin = 'center';
-                  target.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0.15s both`;
+                  target.style.animation = `anim-zoom-${mergedEl.id} ${mergedEl.animDuration || 1}s ${timing} 0.15s both`;
                 }
               } else {
-                targetNode.style.animation = `anim-zoom-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
-                targetNode.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
+                targetNode.style.animation = `anim-zoom-${mergedEl.id} ${mergedEl.animDuration || 1}s ${timing} 0s both`;
+                targetNode.style.transformOrigin = getTransformOriginValue(mergedEl.zoomAnchor || 'center');
               }
             } else if (previewVal === 'blur') {
               let styleTag = document.getElementById('dynamic-anim-styles');
@@ -3140,13 +3173,13 @@ function checkButtonFontSizeWarning(el) {
                 styleTag.id = 'dynamic-anim-styles';
                 document.head.appendChild(styleTag);
               }
-              const keyframesRule = getBlurKeyframes(nodeEl);
-              const regex = new RegExp(`@keyframes\\s+anim-blur-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+              const keyframesRule = getBlurKeyframes(mergedEl);
+              const regex = new RegExp(`@keyframes\\s+anim-blur-${mergedEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
               styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
-              targetNode.style.animation = `anim-blur-${nodeEl.id} ${nodeEl.animDuration || 1}s ease-out 0s both`;
-              targetNode.style.transformOrigin = getTransformOriginValue(nodeEl.zoomAnchor || 'center');
+              targetNode.style.animation = `anim-blur-${mergedEl.id} ${mergedEl.animDuration || 1}s ease-out 0s both`;
+              targetNode.style.transformOrigin = getTransformOriginValue(mergedEl.zoomAnchor || 'center');
             } else if (previewVal === 'slide' || previewVal === 'slide-up' || previewVal === 'slide-down' || previewVal === 'slide-left' || previewVal === 'slide-right') {
-              const tempEl = { ...nodeEl };
+              const tempEl = { ...mergedEl };
               if (previewVal === 'slide-up') { tempEl.animDirection = 'up'; tempEl.animDistance = 20; }
               else if (previewVal === 'slide-down') { tempEl.animDirection = 'down'; tempEl.animDistance = 20; }
               else if (previewVal === 'slide-left') { tempEl.animDirection = 'left'; tempEl.animDistance = 20; }
@@ -3162,25 +3195,25 @@ function checkButtonFontSizeWarning(el) {
                 document.head.appendChild(styleTag);
               }
               const keyframesRule = getSlideKeyframes(tempEl);
-              const regex = new RegExp(`@keyframes\\s+anim-slide-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+              const regex = new RegExp(`@keyframes\\s+anim-slide-${mergedEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
               styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
               const timing = tempEl.animBounce ? 'linear' : 'ease-out';
-              targetNode.style.animation = `anim-slide-${nodeEl.id} ${nodeEl.animDuration || 1}s ${timing} 0s both`;
+              targetNode.style.animation = `anim-slide-${mergedEl.id} ${mergedEl.animDuration || 1}s ${timing} 0s both`;
             } else {
               const isSwipe = ['swipe-up', 'swipe-down', 'swipe-left', 'swipe-right'].includes(previewVal);
               const isSlideLike = ['slide-up', 'slide-down', 'slide-left', 'slide-right'].includes(previewVal);
-              const fadeOn = nodeEl.animFade !== false;
+              const fadeOn = mergedEl.animFade !== false;
               const suffix = isSwipe ? (fadeOn ? '-fade' : '') : (isSlideLike && !fadeOn ? '-nofade' : '');
-              targetNode.style.animation = `anim-${previewVal}${suffix} ${nodeEl.animDuration || 1}s ease-out 0s both`;
+              targetNode.style.animation = `anim-${previewVal}${suffix} ${mergedEl.animDuration || 1}s ease-out 0s both`;
             }
 
-            if (nodeEl.isMask) {
-              if (activeC) {
-                const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+            if (mergedEl.isMask) {
+              if (targetCanvas) {
+                const imgEl = targetCanvas.elements.find(x => findMaskAbove(targetCanvas, x) === nodeEl);
                 if (imgEl) {
                   const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
                   if (imgDom && typeof generateMaskClipPathKeyframes === 'function') {
-                    const maskAnim = generateMaskClipPathKeyframes(nodeEl, imgEl, previewVal);
+                    const maskAnim = generateMaskClipPathKeyframes(mergedEl, imgEl, previewVal);
                     if (maskAnim) {
                       let styleTag = document.getElementById('dynamic-mask-styles');
                       if (!styleTag) {
@@ -3206,15 +3239,14 @@ function checkButtonFontSizeWarning(el) {
   };
 
   const resetPreviewNodes = () => {
-    const domNodes = state.layerSelection.length > 1
-      ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
-      : [document.querySelector(`.el[data-id="${el.id}"]`)];
+    document.body.classList.remove('previewing-animation-hover');
+    const domNodes = getPreviewDomNodes(el, 'inAnim');
     domNodes.forEach(node => {
       if (node) {
         node.style.animation = '';
         const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
-        const activeC = getActiveCanvas();
-        const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+        const targetCanvas = state.canvases.find(c => c.elements.some(e => e.id === nodeEl.id)) || getActiveCanvas();
+        const isMaskedImg = targetCanvas && findMaskAbove(targetCanvas, nodeEl);
 
         if (isMaskedImg) {
           const innerImg = node.querySelector('img');
@@ -3225,8 +3257,8 @@ function checkButtonFontSizeWarning(el) {
         }
 
         if (nodeEl.isMask) {
-          if (activeC) {
-            const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+          if (targetCanvas) {
+            const imgEl = targetCanvas.elements.find(x => findMaskAbove(targetCanvas, x) === nodeEl);
             if (imgEl) {
               const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
               if (imgDom) imgDom.style.animation = '';
@@ -3286,62 +3318,26 @@ function checkButtonFontSizeWarning(el) {
     });
     btn.addEventListener('mouseenter', (e) => {
       e.stopPropagation();
-      const oldAnchor = el.zoomAnchor;
-      el.zoomAnchor = btn.dataset.anchor;
-      
-      let styleTag = document.getElementById('dynamic-anim-styles');
-      if (styleTag) {
-        const tempEl = { ...el };
-        if (el.animType === 'blur') {
-          const keyframesRule = getBlurKeyframes(tempEl);
-          const regex = new RegExp(`@keyframes\\s+anim-blur-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
-          styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
-        } else {
-          if (el.animType === 'pop-in') {
-            tempEl.zoomFrom = 80;
-            tempEl.animFade = true;
-          } else if (el.animType === 'zoom-in') {
-            tempEl.zoomFrom = 110;
-            tempEl.animFade = true;
-          } else {
-            if (tempEl.zoomFrom === undefined) {
-              tempEl.zoomFrom = 80;
-            }
-          }
-          const keyframesRule = getZoomKeyframes(tempEl);
-          const regex = new RegExp(`@keyframes\\s+anim-zoom-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
-          styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
-        }
-      }
-      
-      const domNode = document.querySelector(`.el[data-id="${el.id}"]`);
-      if (domNode) {
-        const activeC = getActiveCanvas();
-        const isMaskedImg = activeC && findMaskAbove(activeC, el);
-        const targetNode = isMaskedImg ? domNode.querySelector('img') : domNode;
-        if (targetNode) {
-          targetNode.style.transformOrigin = getTransformOriginValue(btn.dataset.anchor);
-        }
-      }
-      
-      startPreviewLoop(el.animType || 'none');
-      
-      btn.addEventListener('mouseleave', function onLeave() {
-        el.zoomAnchor = oldAnchor;
-        btn.removeEventListener('mouseleave', onLeave);
-        
+      const domNodes = getPreviewDomNodes(el, 'inAnim');
+      const oldAnchors = new Map();
+
+      domNodes.forEach(node => {
+        const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+        oldAnchors.set(nodeEl.id, nodeEl.zoomAnchor);
+        nodeEl.zoomAnchor = btn.dataset.anchor;
+
         let styleTag = document.getElementById('dynamic-anim-styles');
         if (styleTag) {
-          const tempEl = { ...el };
-          if (el.animType === 'blur') {
+          const tempEl = { ...nodeEl };
+          if (nodeEl.animType === 'blur') {
             const keyframesRule = getBlurKeyframes(tempEl);
-            const regex = new RegExp(`@keyframes\\s+anim-blur-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+            const regex = new RegExp(`@keyframes\\s+anim-blur-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
             styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
           } else {
-            if (el.animType === 'pop-in') {
+            if (nodeEl.animType === 'pop-in') {
               tempEl.zoomFrom = 80;
               tempEl.animFade = true;
-            } else if (el.animType === 'zoom-in') {
+            } else if (nodeEl.animType === 'zoom-in') {
               tempEl.zoomFrom = 110;
               tempEl.animFade = true;
             } else {
@@ -3350,19 +3346,61 @@ function checkButtonFontSizeWarning(el) {
               }
             }
             const keyframesRule = getZoomKeyframes(tempEl);
-            const regex = new RegExp(`@keyframes\\s+anim-zoom-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+            const regex = new RegExp(`@keyframes\\s+anim-zoom-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
             styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
           }
         }
-        const domNode = document.querySelector(`.el[data-id="${el.id}"]`);
-        if (domNode) {
-          const activeC = getActiveCanvas();
-          const isMaskedImg = activeC && findMaskAbove(activeC, el);
-          const targetNode = isMaskedImg ? domNode.querySelector('img') : domNode;
+
+        const targetCanvas = state.canvases.find(c => c.elements.some(x => x.id === nodeEl.id)) || getActiveCanvas();
+        const isMaskedImg = targetCanvas && findMaskAbove(targetCanvas, nodeEl);
+        const targetNode = isMaskedImg ? node.querySelector('img') : node;
+        if (targetNode) {
+          targetNode.style.transformOrigin = getTransformOriginValue(btn.dataset.anchor);
+        }
+      });
+
+      startPreviewLoop(el.animType || 'none');
+
+      btn.addEventListener('mouseleave', function onLeave() {
+        btn.removeEventListener('mouseleave', onLeave);
+
+        domNodes.forEach(node => {
+          const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+          const oldAnchor = oldAnchors.get(nodeEl.id);
+          nodeEl.zoomAnchor = oldAnchor;
+
+          let styleTag = document.getElementById('dynamic-anim-styles');
+          if (styleTag) {
+            const tempEl = { ...nodeEl };
+            if (nodeEl.animType === 'blur') {
+              const keyframesRule = getBlurKeyframes(tempEl);
+              const regex = new RegExp(`@keyframes\\s+anim-blur-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+              styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
+            } else {
+              if (nodeEl.animType === 'pop-in') {
+                tempEl.zoomFrom = 80;
+                tempEl.animFade = true;
+              } else if (nodeEl.animType === 'zoom-in') {
+                tempEl.zoomFrom = 110;
+                tempEl.animFade = true;
+              } else {
+                if (tempEl.zoomFrom === undefined) {
+                  tempEl.zoomFrom = 80;
+                }
+              }
+              const keyframesRule = getZoomKeyframes(tempEl);
+              const regex = new RegExp(`@keyframes\\s+anim-zoom-${nodeEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+              styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + keyframesRule;
+            }
+          }
+
+          const targetCanvas = state.canvases.find(c => c.elements.some(x => x.id === nodeEl.id)) || getActiveCanvas();
+          const isMaskedImg = targetCanvas && findMaskAbove(targetCanvas, nodeEl);
+          const targetNode = isMaskedImg ? node.querySelector('img') : node;
           if (targetNode) {
             targetNode.style.transformOrigin = getTransformOriginValue(oldAnchor || 'center');
           }
-        }
+        });
       });
     });
   });
@@ -3426,10 +3464,9 @@ function checkButtonFontSizeWarning(el) {
       resetEffectPreviewNodes();
       return;
     }
+    document.body.classList.add('previewing-animation-hover');
     
-    const domNodes = state.layerSelection.length > 1
-      ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
-      : [document.querySelector(`.el[data-id="${el.id}"]`)];
+    const domNodes = getPreviewDomNodes(el, 'effect');
     
     domNodes.forEach(node => {
       if (node && val !== 'none') {
@@ -3440,15 +3477,14 @@ function checkButtonFontSizeWarning(el) {
   };
 
   const resetEffectPreviewNodes = () => {
-    const domNodes = state.layerSelection.length > 1
-      ? state.layerSelection.map(id => document.querySelector(`.el[data-id="${id}"]`))
-      : [document.querySelector(`.el[data-id="${el.id}"]`)];
+    document.body.classList.remove('previewing-animation-hover');
+    const domNodes = getPreviewDomNodes(el, 'effect');
     domNodes.forEach(node => {
       if (node) {
         node.style.animation = '';
         const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
-        const activeC = getActiveCanvas();
-        const isMaskedImg = activeC && findMaskAbove(activeC, nodeEl);
+        const targetCanvas = state.canvases.find(c => c.elements.some(e => e.id === nodeEl.id)) || getActiveCanvas();
+        const isMaskedImg = targetCanvas && findMaskAbove(targetCanvas, nodeEl);
 
         if (isMaskedImg) {
           const innerImg = node.querySelector('img');
@@ -3463,8 +3499,8 @@ function checkButtonFontSizeWarning(el) {
         }
 
         if (nodeEl.isMask) {
-          if (activeC) {
-            const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === nodeEl);
+          if (targetCanvas) {
+            const imgEl = targetCanvas.elements.find(x => findMaskAbove(targetCanvas, x) === nodeEl);
             if (imgEl) {
               const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
               if (imgDom) {

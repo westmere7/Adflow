@@ -157,6 +157,12 @@
       border-color: var(--accent-base);
     }
     
+    select:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      border-color: var(--border-color);
+    }
+    
     .checkbox-item {
       display: flex;
       align-items: center;
@@ -561,7 +567,7 @@
       <!-- FRAME BY FRAME SWITCHER -->
       <div class="control-group">
         <div class="control-label">Frame Select</div>
-        <select id="select-frame">
+        <select id="select-frame" disabled>
           <option value="play" selected>Auto Loop Banners</option>
         </select>
       </div>
@@ -1380,32 +1386,53 @@
     });
     
     // Play / Static only state control
-    function setPlayState(playing) {
+    function setPlayState(playing, triggerReload = true) {
+      const wasStatic = !isPlaying;
       isPlaying = playing;
+      
+      // Update disabled state of frame select dropdown
+      selectFrame.disabled = playing;
       
       if (isPlaying) {
         playBtn.classList.add('primary');
         staticBtn.classList.remove('primary');
         
-        // Remove static overrides to let timer run
-        document.querySelectorAll('iframe').forEach(iframe => {
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          const style = doc.getElementById('preview-state-override-style');
-          if (style) style.remove();
-          
-          // Resume animations
-          const animStyle = doc.getElementById('preview-playback-pause-style');
-          if (animStyle) animStyle.remove();
-        });
+        if (wasStatic && triggerReload) {
+          reloadAllBanners();
+        } else {
+          // Remove static overrides to let timer run
+          document.querySelectorAll('iframe').forEach(iframe => {
+            if (!iframe.contentDocument) return;
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            const style = doc.getElementById('preview-state-override-style');
+            if (style) style.remove();
+            
+            // Resume animations
+            const animStyle = doc.getElementById('preview-playback-pause-style');
+            if (animStyle) animStyle.remove();
+          });
+        }
         
         selectFrame.value = 'play';
       } else {
         playBtn.classList.remove('primary');
         staticBtn.classList.add('primary');
         
-        // Pause animations
+        // Pause animations & clear internal loops to prevent background timeline jumps
         document.querySelectorAll('iframe').forEach(iframe => {
+          if (iframe.contentWindow) {
+            try {
+              const maxId = iframe.contentWindow.setTimeout(() => {}, 0);
+              for (let id = 0; id <= maxId; id++) {
+                iframe.contentWindow.clearTimeout(id);
+              }
+            } catch (err) {
+              console.warn('Failed to clear timeouts on pause:', err);
+            }
+          }
+          
           const doc = iframe.contentDocument || iframe.contentWindow.document;
+          if (!doc) return;
           let style = doc.getElementById('preview-playback-pause-style');
           if (!style) {
             style = doc.createElement('style');
@@ -1422,12 +1449,24 @@
     }
     
     playBtn.onclick = () => setPlayState(true);
-    staticBtn.onclick = () => setPlayState(false);
+    staticBtn.onclick = () => {
+      if (isPlaying) {
+        // Freeze on the first frame by default
+        const firstFrameId = state.frames && state.frames[0] ? state.frames[0].id : null;
+        if (firstFrameId !== null) {
+          selectFrame.value = firstFrameId;
+          selectFrame.dispatchEvent(new Event('change'));
+        } else {
+          setPlayState(false);
+        }
+      } else {
+        setPlayState(false);
+      }
+    };
     
     // Replay timelines
     replayBtn.onclick = () => {
       reloadAllBanners();
-      setPlayState(true);
     };
     
     // Frame Selection
@@ -1437,19 +1476,14 @@
       if (val === 'play') {
         // Resume play mode
         setPlayState(true);
-        
-        document.querySelectorAll('iframe').forEach(iframe => {
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          const style = doc.getElementById('preview-state-override-style');
-          if (style) style.remove();
-        });
       } else {
         // Select static frame: pause loop and isolate frame
-        setPlayState(false);
+        setPlayState(false, false);
         
         const frameId = parseInt(val);
         document.querySelectorAll('iframe').forEach(iframe => {
           const doc = iframe.contentDocument || iframe.contentWindow.document;
+          if (!doc) return;
           let style = doc.getElementById('preview-state-override-style');
           if (!style) {
             style = doc.createElement('style');
@@ -1457,9 +1491,15 @@
             doc.head.appendChild(style);
           }
           style.textContent = `
-            #ad > .frame { display: none !important; animation: none !important; z-index: 1 !important; }
-            #ad > #frame-${frameId} { display: block !important; animation: none !important; z-index: 2 !important; }
-            #ad * { animation-play-state: paused !important; }
+            #ad .frame { display: none !important; animation: none !important; z-index: 1 !important; }
+            #ad #frame-${frameId} { display: block !important; animation: none !important; z-index: 2 !important; }
+            #ad * {
+              animation-duration: 0s !important;
+              animation-delay: 0s !important;
+              animation-play-state: paused !important;
+              transition-duration: 0s !important;
+              transition-delay: 0s !important;
+            }
           `;
           
           // Repaint ad background to match this frame
@@ -1472,15 +1512,77 @@
               adEl.style.background = bgVal;
             }
           }
+          
+          // Call the iframe's updatePersistentLayersVisibility
+          if (iframe.contentWindow && iframe.contentWindow.frames && iframe.contentWindow.updatePersistentLayersVisibility) {
+            const idx = iframe.contentWindow.frames.findIndex(f => f.id === frameId);
+            if (idx !== -1) {
+              iframe.contentWindow.updatePersistentLayersVisibility(idx);
+            }
+          }
         });
       }
     };
+    
+    // Helper to construct state-specific stylesheets to inject before rendering
+    function getPreparedHtml(c, htmlContent) {
+      let extraStyle = '';
+      
+      // 1. ClickTag Highlight
+      if (highlightClickChk.checked) {
+        extraStyle += `
+          <style id="preview-clicktag-style">
+            .clickArea {
+              background: rgba(239, 68, 68, 0.25) !important;
+              border: 2px dashed #ef4444 !important;
+              box-sizing: border-box !important;
+            }
+          </style>
+        `;
+      }
+      
+      // 2. Playback state
+      if (!isPlaying) {
+        const val = selectFrame.value;
+        if (val !== 'play') {
+          const frameId = parseInt(val);
+          extraStyle += `
+            <style id="preview-state-override-style">
+              #ad .frame { display: none !important; animation: none !important; z-index: 1 !important; }
+              #ad #frame-${frameId} { display: block !important; animation: none !important; z-index: 2 !important; }
+              #ad * {
+                animation-duration: 0s !important;
+                animation-delay: 0s !important;
+                animation-play-state: paused !important;
+                transition-duration: 0s !important;
+                transition-delay: 0s !important;
+              }
+            </style>
+          `;
+        } else {
+          extraStyle += `
+            <style id="preview-playback-pause-style">
+              #ad * {
+                animation-play-state: paused !important;
+              }
+            </style>
+          `;
+        }
+      }
+      
+      if (extraStyle) {
+        htmlContent = htmlContent.replace('</head>', extraStyle + '</head>');
+      }
+      
+      return htmlContent;
+    }
     
     // Highlight Click Overlay
     highlightClickChk.onchange = () => {
       const active = highlightClickChk.checked;
       document.querySelectorAll('iframe').forEach(iframe => {
         const doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (!doc) return;
         let style = doc.getElementById('preview-clicktag-style');
         if (active) {
           if (!style) {
@@ -1619,12 +1721,23 @@
         
         gridContainer.appendChild(card);
         
-        // Write content into iframe doc doc
+        // Load content into iframe using srcdoc with prepared dynamic styles
         const iframe = card.querySelector('iframe');
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        doc.open();
-        doc.write(htmlContent);
-        doc.close();
+        iframe.onload = () => {
+          if (!isPlaying) {
+            const val = selectFrame.value;
+            if (val !== 'play') {
+              const frameId = parseInt(val);
+              if (iframe.contentWindow && iframe.contentWindow.frames && iframe.contentWindow.updatePersistentLayersVisibility) {
+                const idx = iframe.contentWindow.frames.findIndex(f => f.id === frameId);
+                if (idx !== -1) {
+                  iframe.contentWindow.updatePersistentLayersVisibility(idx);
+                }
+              }
+            }
+          }
+        };
+        iframe.srcdoc = getPreparedHtml(c, htmlContent);
       });
       
       updateCanvasGridVisibility();
@@ -1657,35 +1770,51 @@
             window.state = originalState;
           }
           
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          doc.open();
-          doc.write(htmlContent);
-          doc.close();
-          
-          // Re-apply clickTag highlight if on
-          if (highlightClickChk.checked) {
-            iframe.onload = () => {
-              const freshDoc = iframe.contentDocument || iframe.contentWindow.document;
-              let style = freshDoc.getElementById('preview-clicktag-style');
-              if (!style) {
-                style = freshDoc.createElement('style');
-                style.id = 'preview-clicktag-style';
-                style.textContent = `
-                  .clickArea {
-                    background: rgba(239, 68, 68, 0.25) !important;
-                    border: 2px dashed #ef4444 !important;
-                    box-sizing: border-box !important;
-                  }
-                `;
-                freshDoc.head.appendChild(style);
+          // Clear timeouts of the old iframe window before replacing it to prevent ghost execution
+          if (iframe.contentWindow) {
+            try {
+              const maxId = iframe.contentWindow.setTimeout(() => {}, 0);
+              for (let id = 0; id <= maxId; id++) {
+                iframe.contentWindow.clearTimeout(id);
               }
-            };
+            } catch (err) {
+              console.warn('Failed to clear timeouts on reload:', err);
+            }
           }
+          
+          // Re-create the iframe to completely discard the old document context and loops
+          const parent = iframe.parentElement;
+          const newIframe = document.createElement('iframe');
+          newIframe.className = 'preview-iframe';
+          newIframe.id = 'iframe-' + c.id;
+          newIframe.style.width = c.width + 'px';
+          newIframe.style.height = c.height + 'px';
+          newIframe.setAttribute('scrolling', 'no');
+          
+          parent.replaceChild(newIframe, iframe);
+          
+          // Sync persistent layers once loaded
+          newIframe.onload = () => {
+            if (!isPlaying) {
+              const val = selectFrame.value;
+              if (val !== 'play') {
+                const frameId = parseInt(val);
+                if (newIframe.contentWindow && newIframe.contentWindow.frames && newIframe.contentWindow.updatePersistentLayersVisibility) {
+                  const idx = newIframe.contentWindow.frames.findIndex(f => f.id === frameId);
+                  if (idx !== -1) {
+                    newIframe.contentWindow.updatePersistentLayersVisibility(idx);
+                  }
+                }
+              }
+            }
+          };
+          
+          newIframe.srcdoc = getPreparedHtml(c, htmlContent);
         }
       });
       
-      // Reset play state controls
-      setPlayState(true);
+      // Reset play state controls without triggering infinite recursion
+      setPlayState(true, false);
     }
     
     // Update visibility based on checklists selection

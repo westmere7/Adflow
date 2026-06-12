@@ -5922,6 +5922,18 @@ body.theme-rmit .outline-color-hybrid {
   }
 }
 
+/* Hide marching ants / selection outlines during hover preview animations */
+body.previewing-animation-hover .selection-outline,
+body.previewing-animation-hover .link-group-highlight-overlay {
+  display: none !important;
+}
+body.previewing-animation-hover .el.link-highlight::after,
+body.previewing-animation-hover .el.link-highlight-live::after,
+body.previewing-animation-hover .el.link-highlight-hover::after,
+body.previewing-animation-hover .el.link-highlight-hover-live::after {
+  display: none !important;
+}
+
 
 
 

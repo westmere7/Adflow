@@ -1737,213 +1737,261 @@ function startEffectPreview(el, tempVal) {
   if (!el) return;
   const val = tempVal !== undefined ? tempVal : (el.effectType || 'none');
   if (val === 'none') return;
+  document.body.classList.add('previewing-animation-hover');
 
-  const node = document.querySelector(`.el[data-id="${el.id}"]`);
-  if (!node) return;
+  let elementsToPreview = [];
+  const gid = el.linkGroupId;
+  const lg = gid ? state.linkGroups?.[gid] : null;
+  const isSyncActive = lg && lg.liveLink === true && lg.syncProperties?.effect === true;
 
-  const activeC = getActiveCanvas();
-  const isMaskedImg = activeC && findMaskAbove(activeC, el);
-  const targetNode = isMaskedImg ? node.querySelector('img') : node;
-
-  const applyEffAnim = (tNode) => {
-    const effDur = el.effDuration !== undefined ? el.effDuration : 2;
-    if (val === 'pan') {
-      let px = el.panFromX !== undefined ? el.panFromX : 0;
-      let py = el.panFromY !== undefined ? el.panFromY : 0;
-      if (el.panFromX === undefined && el.panFromY === undefined) {
-        const dist = el.panDist !== undefined ? el.panDist : 50;
-        if (el.panDir === 'L') px = dist;
-        else if (el.panDir === 'R') px = -dist;
-        else if (el.panDir === 'U') py = dist;
-        else if (el.panDir === 'D') py = -dist;
-        else px = dist;
-      }
-      let animName = 'eff-pan';
-      if (el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined)) {
-        animName = `eff-pan-${el.id}`;
-        let styleTag = document.getElementById('dynamic-anim-styles');
-        if (!styleTag) {
-          styleTag = document.createElement('style');
-          styleTag.id = 'dynamic-anim-styles';
-          document.head.appendChild(styleTag);
+  if (isSyncActive) {
+    state.canvases.forEach(c => {
+      c.elements.forEach(targetEl => {
+        if (targetEl.linkGroupId === gid) {
+          elementsToPreview.push(targetEl);
         }
-        const regex = new RegExp(`@keyframes\\s+eff-pan-${el.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
-        styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + getPanCurveKeyframes(el);
-      }
-      const angle = (el.rotation || 0) * Math.PI / 180;
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-      const pxLocal = px * cos + py * sin;
-      const pyLocal = -px * sin + py * cos;
-
-      tNode.style.setProperty('--pan-x', pxLocal.toFixed(1) + 'px');
-      tNode.style.setProperty('--pan-y', pyLocal.toFixed(1) + 'px');
-      const rot = el.panRotate !== undefined ? el.panRotate : 0;
-      const opStart = el.panFade ? 0 : 1;
-      tNode.style.setProperty('--pan-rotate', rot + 'deg');
-      tNode.style.setProperty('--pan-opacity-start', opStart);
-      let ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-      if (el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined)) {
-        ease = 'linear';
-      }
-      const fill = el.effOnce ? 'forwards' : 'infinite';
-      tNode.style.animation = `${animName} ${effDur}s ${ease} 0s ${fill}`;
-    } else if (val === 'zoom') {
-      const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
-      tNode.style.setProperty('--zoom-target', zt);
-      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-      const fill = el.effOnce ? 'forwards' : 'infinite';
-      tNode.style.animation = `eff-zoom ${effDur}s ${ease} 0s ${fill}`;
-    } else if (val === 'spin') {
-      const spinT = el.spinTarget !== undefined ? el.spinTarget : 360;
-      tNode.style.setProperty('--spin-target', spinT + 'deg');
-      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-      const repeat = el.spinRepeat !== undefined ? el.spinRepeat : 1;
-      const fill = Math.max(1, repeat);
-      tNode.style.animation = `eff-spin ${effDur}s ${ease} 0s ${fill} both`;
-    } else if (val === 'pulse') {
-      const scaleVal = el.pulseScale !== undefined ? el.pulseScale / 100 : 1.05;
-      tNode.style.setProperty('--pulse-scale', scaleVal);
-      tNode.style.setProperty('--pulse-scale-inverse', (1 / scaleVal).toFixed(4));
-      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
-      const speed = Math.max(1, Number(speedStr));
-      const duration = 2 / (speed / 100);
-      tNode.style.animation = `eff-pulse ${duration}s ease-in-out 0s infinite`;
-    } else if (val === 'heartbeat') {
-      const scaleVal = el.heartbeatScale !== undefined ? el.heartbeatScale / 100 : 1.3;
-      tNode.style.setProperty('--heartbeat-scale', scaleVal);
-      tNode.style.setProperty('--heartbeat-scale-inverse', (1 / scaleVal).toFixed(4));
-      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
-      const speed = Math.max(1, Number(speedStr));
-      const duration = 2 / (speed / 100);
-      tNode.style.animation = `eff-heartbeat ${duration}s ease-in-out 0s infinite`;
-    } else if (val === 'float') {
-      const range = el.floatRange !== undefined ? el.floatRange : 10;
-      const dir = el.floatDirection || 'up';
-      let fx = 0, fy = 0;
-      if (dir === 'up') fy = -range;
-      else if (dir === 'down') fy = range;
-      else if (dir === 'left') fx = -range;
-      else if (dir === 'right') fx = range;
-      tNode.style.setProperty('--float-x', fx + 'px');
-      tNode.style.setProperty('--float-y', fy + 'px');
-      tNode.style.setProperty('--float-x-inverse', -fx + 'px');
-      tNode.style.setProperty('--float-y-inverse', -fy + 'px');
-      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
-      const speed = Math.max(1, Number(speedStr));
-      const duration = 2 / (speed / 100);
-      tNode.style.animation = `eff-float ${duration}s ease-in-out 0s infinite`;
-    } else {
-      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
-      const speed = Math.max(1, Number(speedStr));
-      const duration = 2 / (speed / 100);
-      tNode.style.animation = `eff-${val} ${duration}s ease-in-out 0s infinite`;
-    }
-  };
-
-  const applyInverseEffAnim = (tNode, imgEl) => {
-    const effDur = el.effDuration !== undefined ? el.effDuration : 2;
-    if (val === 'pan') {
-      let px = el.panFromX !== undefined ? el.panFromX : 0;
-      let py = el.panFromY !== undefined ? el.panFromY : 0;
-      if (el.panFromX === undefined && el.panFromY === undefined) {
-        const dist = el.panDist !== undefined ? el.panDist : 50;
-        if (el.panDir === 'L') px = dist;
-        else if (el.panDir === 'R') px = -dist;
-        else if (el.panDir === 'U') py = dist;
-        else if (el.panDir === 'D') py = -dist;
-        else px = dist;
-      }
-      let rx = -px;
-      let ry = -py;
-      if (imgEl) {
-        const imgRot = imgEl.rotation || 0;
-        const rad = imgRot * Math.PI / 180;
-        const cos = Math.cos(rad);
-        const sin = Math.sin(rad);
-        rx = -px * cos - py * sin;
-        ry = px * sin - py * cos;
-      }
-      tNode.style.setProperty('--pan-x', rx + 'px');
-      tNode.style.setProperty('--pan-y', ry + 'px');
-      const rot = el.panRotate !== undefined ? el.panRotate : 0;
-      tNode.style.setProperty('--pan-rotate', (-rot) + 'deg');
-      tNode.style.setProperty('--pan-opacity-start', 1);
-      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-      const fill = el.effOnce ? 'forwards' : 'infinite';
-      tNode.style.animation = `eff-pan-inverse ${effDur}s ${ease} 0s ${fill}`;
-    } else if (val === 'zoom') {
-      const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
-      tNode.style.setProperty('--zoom-target-inverse', 1 / zt);
-      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-      const fill = el.effOnce ? 'forwards' : 'infinite';
-      tNode.style.animation = `eff-zoom-inverse ${effDur}s ${ease} 0s ${fill}`;
-    } else if (val === 'spin') {
-      const spinT = el.spinTarget !== undefined ? el.spinTarget : 360;
-      tNode.style.setProperty('--spin-target-inverse', (-spinT) + 'deg');
-      const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-      const repeat = el.spinRepeat !== undefined ? el.spinRepeat : 1;
-      const fill = Math.max(1, repeat);
-      tNode.style.animation = `eff-spin-inverse ${effDur}s ${ease} 0s ${fill} both`;
-    } else if (val === 'pulse') {
-      const scaleVal = el.pulseScale !== undefined ? el.pulseScale / 100 : 1.05;
-      tNode.style.setProperty('--pulse-scale-inverse', (1 / scaleVal).toFixed(4));
-      tNode.style.setProperty('--pulse-scale', scaleVal);
-      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
-      const speed = Math.max(1, Number(speedStr));
-      const duration = 2 / (speed / 100);
-      tNode.style.animation = `eff-pulse-inverse ${duration}s ease-in-out 0s infinite`;
-    } else if (val === 'heartbeat') {
-      const scaleVal = el.heartbeatScale !== undefined ? el.heartbeatScale / 100 : 1.3;
-      tNode.style.setProperty('--heartbeat-scale-inverse', (1 / scaleVal).toFixed(4));
-      tNode.style.setProperty('--heartbeat-scale', scaleVal);
-      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
-      const speed = Math.max(1, Number(speedStr));
-      const duration = 2 / (speed / 100);
-      tNode.style.animation = `eff-heartbeat-inverse ${duration}s ease-in-out 0s infinite`;
-    } else if (val === 'float') {
-      const range = el.floatRange !== undefined ? el.floatRange : 10;
-      const dir = el.floatDirection || 'up';
-      let fx = 0, fy = 0;
-      if (dir === 'up') fy = -range;
-      else if (dir === 'down') fy = range;
-      else if (dir === 'left') fx = -range;
-      else if (dir === 'right') fx = range;
-      tNode.style.setProperty('--float-x-inverse', -fx + 'px');
-      tNode.style.setProperty('--float-y-inverse', -fy + 'px');
-      tNode.style.setProperty('--float-x', fx + 'px');
-      tNode.style.setProperty('--float-y', fy + 'px');
-      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
-      const speed = Math.max(1, Number(speedStr));
-      const duration = 2 / (speed / 100);
-      tNode.style.animation = `eff-float-inverse ${duration}s ease-in-out 0s infinite`;
-    } else {
-      const speedStr = el.effSpeed !== undefined ? el.effSpeed : 100;
-      const speed = Math.max(1, Number(speedStr));
-      const duration = 2 / (speed / 100);
-      tNode.style.animation = `eff-${val}-inverse ${duration}s ease-in-out 0s infinite`;
-    }
-  };
-
-  applyEffAnim(targetNode);
-
-  if (el.isMask && activeC) {
-    const imgEl = activeC.elements.find(x => findMaskAbove(activeC, x) === el);
-    if (imgEl) {
-      const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
-      if (imgDom) {
-        const maskCenterX = el.x + el.width / 2 - imgEl.x;
-        const maskCenterY = el.y + el.height / 2 - imgEl.y;
-        imgDom.style.transformOrigin = `${maskCenterX}px ${maskCenterY}px`;
-        applyEffAnim(imgDom);
-        const innerImg = imgDom.querySelector('img');
-        if (innerImg) {
-          innerImg.style.transformOrigin = `${maskCenterX}px ${maskCenterY}px`;
-          applyInverseEffAnim(innerImg, imgEl);
-        }
-      }
-    }
+      });
+    });
+  } else {
+    elementsToPreview = state.layerSelection.length > 1 && state.layerSelection.includes(el.id)
+      ? state.canvases.flatMap(c => c.elements).filter(e => state.layerSelection.includes(e.id))
+      : [el];
   }
+
+  elementsToPreview.forEach(targetEl => {
+    const node = document.querySelector(`.el[data-id="${targetEl.id}"]`);
+    if (!node) return;
+
+    const targetCanvas = state.canvases.find(c => c.elements.some(e => e.id === targetEl.id)) || getActiveCanvas();
+    const isMaskedImg = targetCanvas && findMaskAbove(targetCanvas, targetEl);
+    const targetNode = isMaskedImg ? node.querySelector('img') : node;
+
+    const mergedEl = {
+      ...targetEl,
+      effectType: val,
+      effDuration: el.effDuration,
+      panFromX: el.panFromX,
+      panFromY: el.panFromY,
+      panDist: el.panDist,
+      panDir: el.panDir,
+      panTowards: el.panTowards,
+      panMidX: el.panMidX,
+      panMidY: el.panMidY,
+      panRotate: el.panRotate,
+      panFade: el.panFade,
+      effEase: el.effEase,
+      effOnce: el.effOnce,
+      zoomTarget: el.zoomTarget,
+      spinTarget: el.spinTarget,
+      spinRepeat: el.spinRepeat,
+      pulseScale: el.pulseScale,
+      effSpeed: el.effSpeed,
+      heartbeatScale: el.heartbeatScale,
+      floatRange: el.floatRange,
+      floatDirection: el.floatDirection,
+      effDelay: el.effDelay
+    };
+
+    const applyEffAnim = (tNode) => {
+      const effDur = mergedEl.effDuration !== undefined ? mergedEl.effDuration : 2;
+      if (val === 'pan') {
+        let px = mergedEl.panFromX !== undefined ? mergedEl.panFromX : 0;
+        let py = mergedEl.panFromY !== undefined ? mergedEl.panFromY : 0;
+        if (mergedEl.panFromX === undefined && mergedEl.panFromY === undefined) {
+          const dist = mergedEl.panDist !== undefined ? mergedEl.panDist : 50;
+          if (mergedEl.panDir === 'L') px = dist;
+          else if (mergedEl.panDir === 'R') px = -dist;
+          else if (mergedEl.panDir === 'U') py = dist;
+          else if (mergedEl.panDir === 'D') py = -dist;
+          else px = dist;
+        }
+        let animName = 'eff-pan';
+        if (mergedEl.panTowards || (mergedEl.panMidX !== undefined && mergedEl.panMidY !== undefined)) {
+          animName = `eff-pan-${mergedEl.id}`;
+          let styleTag = document.getElementById('dynamic-anim-styles');
+          if (!styleTag) {
+            styleTag = document.createElement('style');
+            styleTag.id = 'dynamic-anim-styles';
+            document.head.appendChild(styleTag);
+          }
+          const regex = new RegExp(`@keyframes\\s+eff-pan-${mergedEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+          styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + getPanCurveKeyframes(mergedEl);
+        }
+        const angle = (mergedEl.rotation || 0) * Math.PI / 180;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const pxLocal = px * cos + py * sin;
+        const pyLocal = -px * sin + py * cos;
+
+        tNode.style.setProperty('--pan-x', pxLocal.toFixed(1) + 'px');
+        tNode.style.setProperty('--pan-y', pyLocal.toFixed(1) + 'px');
+        const rot = mergedEl.panRotate !== undefined ? mergedEl.panRotate : 0;
+        const opStart = mergedEl.panFade ? 0 : 1;
+        tNode.style.setProperty('--pan-rotate', rot + 'deg');
+        tNode.style.setProperty('--pan-opacity-start', opStart);
+        let ease = mergedEl.effEase !== false ? 'ease-in-out' : 'linear';
+        if (mergedEl.panTowards || (mergedEl.panMidX !== undefined && mergedEl.panMidY !== undefined)) {
+          ease = 'linear';
+        }
+        const fill = mergedEl.effOnce ? 'forwards' : 'infinite';
+        tNode.style.animation = `${animName} ${effDur}s ${ease} 0s ${fill}`;
+      } else if (val === 'zoom') {
+        const zt = mergedEl.zoomTarget !== undefined ? mergedEl.zoomTarget / 100 : 1.5;
+        tNode.style.setProperty('--zoom-target', zt);
+        const ease = mergedEl.effEase !== false ? 'ease-in-out' : 'linear';
+        const fill = mergedEl.effOnce ? 'forwards' : 'infinite';
+        tNode.style.animation = `eff-zoom ${effDur}s ${ease} 0s ${fill}`;
+      } else if (val === 'spin') {
+        const spinT = mergedEl.spinTarget !== undefined ? mergedEl.spinTarget : 360;
+        tNode.style.setProperty('--spin-target', spinT + 'deg');
+        const ease = mergedEl.effEase !== false ? 'ease-in-out' : 'linear';
+        const repeat = mergedEl.spinRepeat !== undefined ? mergedEl.spinRepeat : 1;
+        const fill = Math.max(1, repeat);
+        tNode.style.animation = `eff-spin ${effDur}s ${ease} 0s ${fill} both`;
+      } else if (val === 'pulse') {
+        const scaleVal = mergedEl.pulseScale !== undefined ? mergedEl.pulseScale / 100 : 1.05;
+        tNode.style.setProperty('--pulse-scale', scaleVal);
+        tNode.style.setProperty('--pulse-scale-inverse', (1 / scaleVal).toFixed(4));
+        const speedStr = mergedEl.effSpeed !== undefined ? mergedEl.effSpeed : 100;
+        const speed = Math.max(1, Number(speedStr));
+        const duration = 2 / (speed / 100);
+        tNode.style.animation = `eff-pulse ${duration}s ease-in-out 0s infinite`;
+      } else if (val === 'heartbeat') {
+        const scaleVal = mergedEl.heartbeatScale !== undefined ? mergedEl.heartbeatScale / 100 : 1.3;
+        tNode.style.setProperty('--heartbeat-scale', scaleVal);
+        tNode.style.setProperty('--heartbeat-scale-inverse', (1 / scaleVal).toFixed(4));
+        const speedStr = mergedEl.effSpeed !== undefined ? mergedEl.effSpeed : 100;
+        const speed = Math.max(1, Number(speedStr));
+        const duration = 2 / (speed / 100);
+        tNode.style.animation = `eff-heartbeat ${duration}s ease-in-out 0s infinite`;
+      } else if (val === 'float') {
+        const range = mergedEl.floatRange !== undefined ? mergedEl.floatRange : 10;
+        const dir = mergedEl.floatDirection || 'up';
+        let fx = 0, fy = 0;
+        if (dir === 'up') fy = -range;
+        else if (dir === 'down') fy = range;
+        else if (dir === 'left') fx = -range;
+        else if (dir === 'right') fx = range;
+        tNode.style.setProperty('--float-x', fx + 'px');
+        tNode.style.setProperty('--float-y', fy + 'px');
+        tNode.style.setProperty('--float-x-inverse', -fx + 'px');
+        tNode.style.setProperty('--float-y-inverse', -fy + 'px');
+        const speedStr = mergedEl.effSpeed !== undefined ? mergedEl.effSpeed : 100;
+        const speed = Math.max(1, Number(speedStr));
+        const duration = 2 / (speed / 100);
+        tNode.style.animation = `eff-float ${duration}s ease-in-out 0s infinite`;
+      } else {
+        const speedStr = mergedEl.effSpeed !== undefined ? mergedEl.effSpeed : 100;
+        const speed = Math.max(1, Number(speedStr));
+        const duration = 2 / (speed / 100);
+        tNode.style.animation = `eff-${val} ${duration}s ease-in-out 0s infinite`;
+      }
+    };
+
+    const applyInverseEffAnim = (tNode, imgEl) => {
+      const effDur = mergedEl.effDuration !== undefined ? mergedEl.effDuration : 2;
+      if (val === 'pan') {
+        let px = mergedEl.panFromX !== undefined ? mergedEl.panFromX : 0;
+        let py = mergedEl.panFromY !== undefined ? mergedEl.panFromY : 0;
+        if (mergedEl.panFromX === undefined && mergedEl.panFromY === undefined) {
+          const dist = mergedEl.panDist !== undefined ? mergedEl.panDist : 50;
+          if (mergedEl.panDir === 'L') px = dist;
+          else if (mergedEl.panDir === 'R') px = -dist;
+          else if (mergedEl.panDir === 'U') py = dist;
+          else if (mergedEl.panDir === 'D') py = -dist;
+          else px = dist;
+        }
+        let rx = -px;
+        let ry = -py;
+        if (imgEl) {
+          const imgRot = imgEl.rotation || 0;
+          const rad = imgRot * Math.PI / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+          rx = -px * cos - py * sin;
+          ry = px * sin - py * cos;
+        }
+        tNode.style.setProperty('--pan-x', rx + 'px');
+        tNode.style.setProperty('--pan-y', ry + 'px');
+        const rot = mergedEl.panRotate !== undefined ? mergedEl.panRotate : 0;
+        tNode.style.setProperty('--pan-rotate', (-rot) + 'deg');
+        tNode.style.setProperty('--pan-opacity-start', 1);
+        const ease = mergedEl.effEase !== false ? 'ease-in-out' : 'linear';
+        const fill = mergedEl.effOnce ? 'forwards' : 'infinite';
+        tNode.style.animation = `eff-pan-inverse ${effDur}s ${ease} 0s ${fill}`;
+      } else if (val === 'zoom') {
+        const zt = mergedEl.zoomTarget !== undefined ? mergedEl.zoomTarget / 100 : 1.5;
+        tNode.style.setProperty('--zoom-target-inverse', 1 / zt);
+        const ease = mergedEl.effEase !== false ? 'ease-in-out' : 'linear';
+        const fill = mergedEl.effOnce ? 'forwards' : 'infinite';
+        tNode.style.animation = `eff-zoom-inverse ${effDur}s ${ease} 0s ${fill}`;
+      } else if (val === 'spin') {
+        const spinT = mergedEl.spinTarget !== undefined ? mergedEl.spinTarget : 360;
+        tNode.style.setProperty('--spin-target-inverse', (-spinT) + 'deg');
+        const ease = mergedEl.effEase !== false ? 'ease-in-out' : 'linear';
+        const repeat = mergedEl.spinRepeat !== undefined ? mergedEl.spinRepeat : 1;
+        const fill = Math.max(1, repeat);
+        tNode.style.animation = `eff-spin-inverse ${effDur}s ${ease} 0s ${fill} both`;
+      } else if (val === 'pulse') {
+        const scaleVal = mergedEl.pulseScale !== undefined ? mergedEl.pulseScale / 100 : 1.05;
+        tNode.style.setProperty('--pulse-scale-inverse', (1 / scaleVal).toFixed(4));
+        tNode.style.setProperty('--pulse-scale', scaleVal);
+        const speedStr = mergedEl.effSpeed !== undefined ? mergedEl.effSpeed : 100;
+        const speed = Math.max(1, Number(speedStr));
+        const duration = 2 / (speed / 100);
+        tNode.style.animation = `eff-pulse-inverse ${duration}s ease-in-out 0s infinite`;
+      } else if (val === 'heartbeat') {
+        const scaleVal = mergedEl.heartbeatScale !== undefined ? mergedEl.heartbeatScale / 100 : 1.3;
+        tNode.style.setProperty('--heartbeat-scale-inverse', (1 / scaleVal).toFixed(4));
+        tNode.style.setProperty('--heartbeat-scale', scaleVal);
+        const speedStr = mergedEl.effSpeed !== undefined ? mergedEl.effSpeed : 100;
+        const speed = Math.max(1, Number(speedStr));
+        const duration = 2 / (speed / 100);
+        tNode.style.animation = `eff-heartbeat-inverse ${duration}s ease-in-out 0s infinite`;
+      } else if (val === 'float') {
+        const range = mergedEl.floatRange !== undefined ? mergedEl.floatRange : 10;
+        const dir = mergedEl.floatDirection || 'up';
+        let fx = 0, fy = 0;
+        if (dir === 'up') fy = -range;
+        else if (dir === 'down') fy = range;
+        else if (dir === 'left') fx = -range;
+        else if (dir === 'right') fx = range;
+        tNode.style.setProperty('--float-x-inverse', -fx + 'px');
+        tNode.style.setProperty('--float-y-inverse', -fy + 'px');
+        tNode.style.setProperty('--float-x', fx + 'px');
+        tNode.style.setProperty('--float-y', fy + 'px');
+        const speedStr = mergedEl.effSpeed !== undefined ? mergedEl.effSpeed : 100;
+        const speed = Math.max(1, Number(speedStr));
+        const duration = 2 / (speed / 100);
+        tNode.style.animation = `eff-float-inverse ${duration}s ease-in-out 0s infinite`;
+      } else {
+        const speedStr = mergedEl.effSpeed !== undefined ? mergedEl.effSpeed : 100;
+        const speed = Math.max(1, Number(speedStr));
+        const duration = 2 / (speed / 100);
+        tNode.style.animation = `eff-${val}-inverse ${duration}s ease-in-out 0s infinite`;
+      }
+    };
+
+    applyEffAnim(targetNode);
+
+    if (mergedEl.isMask && targetCanvas) {
+      const imgEl = targetCanvas.elements.find(x => findMaskAbove(targetCanvas, x) === mergedEl);
+      if (imgEl) {
+        const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
+        if (imgDom) {
+          const maskCenterX = mergedEl.x + mergedEl.width / 2 - imgEl.x;
+          const maskCenterY = mergedEl.y + mergedEl.height / 2 - imgEl.y;
+          imgDom.style.transformOrigin = `${maskCenterX}px ${maskCenterY}px`;
+          applyEffAnim(imgDom);
+          const innerImg = imgDom.querySelector('img');
+          if (innerImg) {
+            innerImg.style.transformOrigin = `${maskCenterX}px ${maskCenterY}px`;
+            applyInverseEffAnim(innerImg, imgEl);
+          }
+        }
+      }
+    }
+  });
 }
 
 function getElementAnimationCSS(el, isImageExport) {
