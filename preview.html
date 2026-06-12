@@ -768,12 +768,12 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/render-runtime.js?v=0.20.3"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.20.3"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.20.3"></script>
-  <script src="scripts/data-merge.js?v=0.20.3"></script>
-  <script src="scripts/font-subset.js?v=0.20.3"></script>
-  <script src="scripts/export-pipeline.js?v=0.20.3"></script>
+  <script src="scripts/render-runtime.js?v=0.20.4"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.20.4"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.20.4"></script>
+  <script src="scripts/data-merge.js?v=0.20.4"></script>
+  <script src="scripts/font-subset.js?v=0.20.4"></script>
+  <script src="scripts/export-pipeline.js?v=0.20.4"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>
@@ -1438,7 +1438,7 @@
         const loadedState = JSON.parse(jsonStr);
         
         // Validate signed URL link state if accessed via cloud URL parameter.
-        // Snapshot shares (v0.20.3+, marked by previewSharePath) are revoked by
+        // Snapshot shares (v0.20.4+, marked by previewSharePath) are revoked by
         // deleting the storage object — the fetch 404s — so only the baked-in
         // expiry needs checking here. Legacy v0.20.0 links point at the live
         // project file and rely on this in-file metadata check for revocation.

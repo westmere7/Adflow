@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.20.3 (Current) - June 2026 — Engine v2.19
+v0.20.4 (Current) - June 2026 — Engine v2.19
+- Undo for Nudges: Arrow-key nudges are now reliably undoable. Previously a nudge never created an undo step, so Ctrl+Z after nudging skipped the nudge and reverted the action before it. Holding an arrow key produces a single undo step per movement burst rather than one per pixel, and pressing Ctrl+Z immediately after a nudge correctly undoes the nudge itself.
+- Settings Excluded From Undo: Undo/redo no longer touches user preferences. Ad weight (KB) limit and Validation & Audit toggles were previously captured in undo history, so undoing past a settings change silently flipped them back. Settings now keep their current values through any undo/redo; live revalidation on settings changes is unaffected.
+
+v0.20.3 - June 2026 — Engine v2.19
 - Live Share Links: Shared preview links are now live — every cloud save automatically updates what reviewers see at the same link. Local-only edits stay private until you save to cloud. Delete Link still revokes access immediately, and generating a new link still invalidates the previous one.
 
 v0.20.2 - June 2026 — Engine v2.19

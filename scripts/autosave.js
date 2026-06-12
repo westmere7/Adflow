@@ -371,6 +371,9 @@ async function restoreAutosave() {
 }
 
 function undo() {
+  // Commit any pending debounced push (nudges) so Ctrl+Z right after a nudge
+  // undoes the nudge itself instead of the action before it.
+  flushPendingHistory();
   if (historyIndex > 0) {
     historyIndex--;
     restoreSnapshot(history[historyIndex]);
@@ -378,6 +381,7 @@ function undo() {
 }
 
 function redo() {
+  flushPendingHistory();
   if (historyIndex < history.length - 1) {
     historyIndex++;
     restoreSnapshot(history[historyIndex]);
@@ -401,9 +405,10 @@ function restoreSnapshot(snapStr) {
     if (snap.activeFrameId !== undefined) state.activeFrameId = snap.activeFrameId;
     if (snap.dataMerge     !== undefined) state.dataMerge     = snap.dataMerge;
     if (snap.projectName   !== undefined) state.projectName   = snap.projectName;
-    if (snap.validationSettings !== undefined) state.validationSettings = snap.validationSettings;
     if (snap.clickTag      !== undefined) state.clickTag      = snap.clickTag;
-    if (snap.adSizeLimit   !== undefined) state.adSizeLimit   = snap.adSizeLimit;
+    // NOTE: validationSettings / adSizeLimit are user PREFERENCES, not content.
+    // They are no longer snapshotted (v0.20.4) and old snapshots' values are
+    // deliberately ignored here — undo must never flip the user's settings.
     state.editingElementId = null;
     render();
     // Undo/redo bypasses pushHistory, so re-queue validation explicitly —

@@ -443,12 +443,14 @@ function pushHistory() {
     linkGroups:        state.linkGroups,
     dataMerge:         state.dataMerge,
     projectName:       state.projectName,
-    validationSettings: state.validationSettings,
-    // Validation inputs — must be in the snapshot, or the duplicate-skip below
-    // returns early and queueSizeUpdate() never re-runs the clickTag/size checks
-    // (stale _valErrors until the export panel recomputes them).
-    clickTag:          state.clickTag,
-    adSizeLimit:       state.adSizeLimit
+    // clickTag is ad CONTENT (the exit URL baked into exports), so it is
+    // undoable. Being in the snapshot also defeats the duplicate-skip below
+    // so queueSizeUpdate() re-runs the URL validation when it changes.
+    // App/validator PREFERENCES (adSizeLimit, validationSettings, snap*,
+    // theme, ...) are deliberately NOT snapshotted: undo must never flip
+    // the user's settings. Their save handlers call queueSizeUpdate()
+    // directly when revalidation is needed.
+    clickTag:          state.clickTag
   });
   // Skip exact duplicates (e.g. a no-op drag).
   if (historyIndex >= 0 && history[historyIndex] === snapshot) return;
@@ -468,6 +470,31 @@ function pushHistory() {
   // has loaded. Boot-time validation is queued by app-boot.js instead.
   if (typeof queueSizeUpdate === 'function') queueSizeUpdate();
   scheduleAutosave();
+}
+
+// Debounced history push for rapid-fire micro-edits (arrow-key nudges).
+// Holding an arrow key produces one history entry per pause instead of one
+// per keystroke — and instead of none at all, which silently merged the
+// nudge into the NEXT action's undo step.
+let _pendingHistoryTimer = null;
+function pushHistoryDebounced(delay = 500) {
+  if (_pendingHistoryTimer) clearTimeout(_pendingHistoryTimer);
+  _pendingHistoryTimer = setTimeout(() => {
+    _pendingHistoryTimer = null;
+    pushHistory();
+  }, delay);
+}
+
+// Commit any pending debounced push NOW. undo()/redo() call this first so a
+// nudge followed by an immediate Ctrl+Z undoes the nudge itself, not the
+// action before it (and so the pending timer can't fire after a restore and
+// wipe the redo branch).
+function flushPendingHistory() {
+  if (_pendingHistoryTimer) {
+    clearTimeout(_pendingHistoryTimer);
+    _pendingHistoryTimer = null;
+    pushHistory();
+  }
 }
 
 function getCappedHistory(limit) {

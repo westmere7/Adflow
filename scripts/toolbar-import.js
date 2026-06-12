@@ -1066,6 +1066,9 @@ window.addEventListener('keydown', (e) => {
           });
           e.preventDefault();
           render();
+          // Debounced: holding the key yields ONE undo step per pause, and a
+          // single tap is reliably undoable on its own (flushed by undo()).
+          pushHistoryDebounced();
         }
         return;
       }

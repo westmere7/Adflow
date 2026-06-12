@@ -660,6 +660,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.20.4',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Undo for Nudges: Arrow-key nudges are now reliably undoable. Previously a nudge never created an undo step, so Ctrl+Z after nudging skipped the nudge and reverted the action before it. Holding an arrow key produces a single undo step per movement burst rather than one per pixel, and pressing Ctrl+Z immediately after a nudge correctly undoes the nudge itself.',
+      'Settings Excluded From Undo: Undo/redo no longer touches user preferences. Ad weight (KB) limit and Validation & Audit toggles were previously captured in undo history, so undoing past a settings change silently flipped them back. Settings now keep their current values through any undo/redo; live revalidation on settings changes is unaffected.'
+    ]
+  },
+  {
     version: 'v0.20.3',
     date: 'June 2026 — Engine v2.19',
     items: [
