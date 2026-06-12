@@ -1877,6 +1877,14 @@
         const jsonStr = await projFile.async('string');
         const loadedState = JSON.parse(jsonStr);
         
+        // Validate signed URL link state if accessed via cloud URL parameter
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('url')) {
+          if (!loadedState.previewUrl || !loadedState.previewExpiry || loadedState.previewExpiry <= Date.now()) {
+            throw new Error('This preview link is expired or has been deleted by the owner.');
+          }
+        }
+        
         loaderSubtitle.textContent = 'Extracting assets';
         const newAssets = {};
         if (loadedState.assets) {
@@ -1913,9 +1921,9 @@
         setTimeout(() => loader.style.display = 'none', 500);
       } catch (err) {
         console.error(err);
-        loaderTitle.textContent = 'Import Failed';
+        loaderTitle.textContent = err.message.includes('expired or has been deleted') ? 'Link Inactive' : 'Import Failed';
         loaderSubtitle.textContent = err.message || err;
-        // Keep loader up so they see error
+        loader.querySelector('.spinner').style.display = 'none';
       }
     }
     

@@ -73,10 +73,6 @@ async function openSharePreviewModal() {
         </button>
       </div>
       <div class="modal-body" style="padding: 18px;" id="share-modal-body">
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; gap: 12px;">
-          <div class="adflow-share-spinner" style="width: 28px; height: 28px; border: 3px solid var(--accent-base); border-top-color: transparent; border-radius: 50%;"></div>
-          <span style="font-size: 13px; color: var(--text-muted);" id="share-progress-text">Saving latest changes to cloud...</span>
-        </div>
       </div>
     </div>
   `;
@@ -85,44 +81,116 @@ async function openSharePreviewModal() {
   const closeFn = () => bg.remove();
   bg.querySelector('#modal-close').onclick = closeFn;
   bg.onclick = (e) => { if (e.target === bg) closeFn(); };
-  
-  try {
-    const textEl = bg.querySelector('#share-progress-text');
-    
-    // Save to Cloud
-    if (textEl) textEl.textContent = 'Saving latest changes to cloud...';
-    
-    const pushRes = await pushCurrentProjectToCloud();
-    if (pushRes && pushRes.collisionHandled) {
-      closeFn();
-      return;
-    }
-    
-    // Generate signed URL
-    if (textEl) textEl.textContent = 'Generating secure signed URL...';
-    
-    const spaceId = state.spaceId || (typeof spacesState !== 'undefined' ? spacesState.currentId() : null);
-    const path = spaceId ? `spaces/${spaceId}/${state.projectId}.flow` : `${u.id}/${state.projectId}.flow`;
-    
-    // Expires in 30 days
-    const expires = 2592000;
-    const { data, error } = await sb.storage.from('projects').createSignedUrl(path, expires);
-    
-    if (error) throw error;
-    if (!data || !data.signedUrl) throw new Error('Failed to retrieve signed URL.');
-    
-    const previewUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'preview.html?url=' + encodeURIComponent(data.signedUrl);
-    
-    const bodyEl = bg.querySelector('#share-modal-body');
+
+  const bodyEl = bg.querySelector('#share-modal-body');
+
+  function _formatFutureTime(epoch) {
+    const diff = epoch - Date.now();
+    if (diff <= 0) return 'expired';
+    const s = Math.floor(diff / 1000);
+    if (s < 60) return 'in less than a minute';
+    const m = Math.floor(s / 60);
+    if (m < 60) return `in ${m} minute${m > 1 ? 's' : ''}`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `in ${h} hour${h > 1 ? 's' : ''}`;
+    const d = Math.floor(h / 24);
+    return `in ${d} day${d > 1 ? 's' : ''}`;
+  }
+
+  function showConfigScreen(showCancelToActive = false) {
     bodyEl.innerHTML = `
       <div style="font-family: inherit; color: var(--text-main); font-size: 13px; line-height: 1.6;">
-        <p style="margin-top: 0; margin-bottom: 12px;">Your project has been successfully saved to the cloud, and a shareable preview link is ready.</p>
+        <p style="margin-top: 0; margin-bottom: 16px;">Configure your secure shareable preview link. Reviewers will be able to view the interactive portal without logging in.</p>
+        
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; letter-spacing: 0.05em;">Link Expiration</label>
+          <select id="share-expiry-select" style="width: 100%; padding: 8px 12px; font-size: 13px; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 4px; color: var(--text-main); outline: none;">
+            <option value="86400">1 Day</option>
+            <option value="604800">7 Days</option>
+            <option value="2592000" selected>30 Days (Recommended)</option>
+          </select>
+        </div>
+        
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button class="btn" id="btn-share-settings-cancel" style="padding: 6px 16px;">Cancel</button>
+          <button class="btn primary" id="btn-make-share-link" style="padding: 6px 16px; font-weight: 600;">Make shareable link</button>
+        </div>
+      </div>
+    `;
+    
+    bg.querySelector('#btn-share-settings-cancel').onclick = () => {
+      if (showCancelToActive && state.previewUrl && typeof state.previewExpiry === 'number' && state.previewExpiry > Date.now()) {
+        showActiveLinkScreen();
+      } else {
+        closeFn();
+      }
+    };
+    
+    bg.querySelector('#btn-make-share-link').onclick = async () => {
+      const expires = parseInt(bg.querySelector('#share-expiry-select').value);
+      
+      bodyEl.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; gap: 12px;">
+          <div class="adflow-share-spinner" style="width: 28px; height: 28px; border: 3px solid var(--accent-base); border-top-color: transparent; border-radius: 50%;"></div>
+          <span style="font-size: 13px; color: var(--text-muted);" id="share-progress-text">Saving latest changes to cloud...</span>
+        </div>
+      `;
+      
+      try {
+        const textEl = bg.querySelector('#share-progress-text');
+        
+        // Save to Cloud
+        if (textEl) textEl.textContent = 'Saving latest changes to cloud...';
+        
+        const pushRes = await pushCurrentProjectToCloud();
+        if (pushRes && pushRes.collisionHandled) {
+          closeFn();
+          return;
+        }
+        
+        // Generate signed URL
+        if (textEl) textEl.textContent = 'Generating secure signed URL...';
+        
+        const spaceId = state.spaceId || (typeof spacesState !== 'undefined' ? spacesState.currentId() : null);
+        const path = spaceId ? `spaces/${spaceId}/${state.projectId}.flow` : `${u.id}/${state.projectId}.flow`;
+        
+        const { data, error } = await sb.storage.from('projects').createSignedUrl(path, expires);
+        
+        if (error) throw error;
+        if (!data || !data.signedUrl) throw new Error('Failed to retrieve signed URL.');
+        
+        const previewUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'preview.html?url=' + encodeURIComponent(data.signedUrl);
+        
+        // Save metadata to project state
+        state.previewUrl = previewUrl;
+        state.previewExpiry = Date.now() + expires * 1000;
+        
+        // Push project back to cloud with updated preview metadata
+        if (textEl) textEl.textContent = 'Saving preview details to project...';
+        await pushCurrentProjectToCloud();
+        
+        showActiveLinkScreen();
+        
+      } catch (err) {
+        showErrorScreen(err);
+      }
+    };
+  }
+
+  function showActiveLinkScreen() {
+    bodyEl.innerHTML = `
+      <div style="font-family: inherit; color: var(--text-main); font-size: 13px; line-height: 1.6;">
+        <p style="margin-top: 0; margin-bottom: 12px;">Your project is ready to preview. Copy the link below to share.</p>
         
         <div style="margin-bottom: 14px;">
           <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; letter-spacing: 0.05em;">Preview Link</label>
           <div style="display: flex; gap: 8px;">
-            <input type="text" id="share-link-input" readonly value="${previewUrl}" style="flex: 1; padding: 8px 12px; font-size: 12px; font-family: monospace; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 4px; color: var(--text-main); outline: none;" />
-            <button class="btn primary" id="btn-copy-share-link" style="padding: 0 16px; font-weight: 600; font-size: 12px; white-space: nowrap;">Copy Link</button>
+            <input type="text" id="share-link-input" readonly value="${state.previewUrl}" style="flex: 1; padding: 8px 12px; font-size: 12px; font-family: monospace; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 4px; color: var(--text-main); outline: none;" />
+            <button class="btn primary" id="btn-copy-share-link" style="padding: 0 14px; font-weight: 600; font-size: 12px; white-space: nowrap;">Copy Link</button>
+            <button class="btn" id="btn-open-share-link" style="padding: 0 14px; font-weight: 600; font-size: 12px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;">
+              <span>Open Link</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            </button>
           </div>
         </div>
         
@@ -130,22 +198,27 @@ async function openSharePreviewModal() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-base)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           <div>
             Anyone with this link can view the interactive preview without logging in.
-            <div style="margin-top: 4px; font-weight: 500;">Link expires in 30 days.</div>
+            <div style="margin-top: 4px; font-weight: 500;">Link expires ${_formatFutureTime(state.previewExpiry)} (on ${new Date(state.previewExpiry).toLocaleDateString()}).</div>
           </div>
         </div>
         
-        <div style="display: flex; justify-content: flex-end; gap: 8px;">
-          <button class="btn" id="btn-share-done" style="padding: 6px 16px; font-weight: 500;">Done</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <div style="display: flex; gap: 8px;">
+            <button class="btn ghost" id="btn-share-show-settings" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted); font-weight: 500;">Change Expiration...</button>
+            <button class="btn ghost" id="btn-share-delete-link" style="padding: 6px 12px; font-size: 12px; color: var(--danger-base); border-color: transparent; font-weight: 500;" title="Delete preview link">Delete Link</button>
+          </div>
+          <button class="btn primary" id="btn-share-done" style="padding: 6px 16px; font-weight: 600;">Done</button>
         </div>
       </div>
     `;
-    
+
     const input = bg.querySelector('#share-link-input');
     const copyBtn = bg.querySelector('#btn-copy-share-link');
+    const openBtn = bg.querySelector('#btn-open-share-link');
     
     input.onclick = () => input.select();
     copyBtn.onclick = () => {
-      navigator.clipboard.writeText(previewUrl);
+      navigator.clipboard.writeText(state.previewUrl);
       copyBtn.textContent = 'Copied!';
       copyBtn.style.background = '#10b981';
       copyBtn.style.borderColor = '#10b981';
@@ -156,11 +229,49 @@ async function openSharePreviewModal() {
       }, 2000);
     };
     
+    openBtn.onclick = () => {
+      window.open(state.previewUrl, '_blank');
+    };
+
+    bg.querySelector('#btn-share-show-settings').onclick = () => {
+      showConfigScreen(true);
+    };
+
     bg.querySelector('#btn-share-done').onclick = closeFn;
-    
-  } catch (err) {
+
+    bg.querySelector('#btn-share-delete-link').onclick = async () => {
+      if (!confirm('Are you sure you want to delete this preview link? Reviewers will no longer be able to access the interactive portal.')) {
+        return;
+      }
+      bodyEl.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; gap: 12px;">
+          <div class="adflow-share-spinner" style="width: 28px; height: 28px; border: 3px solid var(--accent-base); border-top-color: transparent; border-radius: 50%;"></div>
+          <span style="font-size: 13px; color: var(--text-muted);" id="delete-progress-text">Deleting preview link...</span>
+        </div>
+      `;
+      try {
+        const textEl = bg.querySelector('#delete-progress-text');
+        
+        // Remove preview metadata
+        delete state.previewUrl;
+        delete state.previewExpiry;
+        
+        // Save to Cloud to persist deletion
+        if (textEl) textEl.textContent = 'Updating project configuration in cloud...';
+        await pushCurrentProjectToCloud();
+        
+        showConfigScreen(false);
+        if (typeof showCanvasNotification === 'function') {
+          showCanvasNotification('Preview link deleted successfully', { type: 'success' });
+        }
+      } catch (err) {
+        showErrorScreen(err);
+      }
+    };
+  }
+
+  function showErrorScreen(err) {
     console.error('Sharing failed:', err);
-    const bodyEl = bg.querySelector('#share-modal-body');
     bodyEl.innerHTML = `
       <div style="font-family: inherit; color: var(--text-main); font-size: 13px; line-height: 1.6;">
         <div style="color: #ef4444; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
@@ -174,6 +285,12 @@ async function openSharePreviewModal() {
       </div>
     `;
     bg.querySelector('#btn-share-error-close').onclick = closeFn;
+  }
+
+  if (state.previewUrl && typeof state.previewExpiry === 'number' && state.previewExpiry > Date.now()) {
+    showActiveLinkScreen();
+  } else {
+    showConfigScreen(false);
   }
 }
 
