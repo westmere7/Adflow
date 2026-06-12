@@ -3,6 +3,8 @@ RMIT Adflow - Version & Changelog History
 v0.21.0 (Current) - June 2026 — Engine v2.19
 - Full Preview Controls: The full-preview bar gained a control cluster. A frame selector lets you jump to any frame and play forward from there across every size at once; "Replay all" restarts every size from the first frame; and "Download all" packages each size as an HTML5 zip in one click.
 - Live Runtime Readout: The preview bar now shows the ad's total runtime (the sum of all playable frame durations, with a ↻ when looping). Picking a specific frame switches the readout to that frame's own duration. Exported ad files are unchanged — the new controls live only in the editor's preview.
+- Preview Page Controls: The shareable preview page now matches the editor. Its Frame Select jumps-and-plays (picking a frame plays every size forward from it) instead of only freezing, the old "Auto Loop Banners" option is now "All frames", and the same total/per-frame runtime readout appears under the playback buttons. Static-frame inspection still lives on the "Static only" button.
+- Per-Banner Restart: Each size on the preview page has a small restart icon in its header to replay just that banner's timeline, independent of the others.
 
 v0.20.4 - June 2026 — Engine v2.19
 - Undo for Nudges: Arrow-key nudges are now reliably undoable. Previously a nudge never created an undo step, so Ctrl+Z after nudging skipped the nudge and reverted the action before it. Holding an arrow key produces a single undo step per movement burst rather than one per pixel, and pressing Ctrl+Z immediately after a nudge correctly undoes the nudge itself.

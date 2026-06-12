@@ -561,14 +561,15 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             <span>Restart Timeline</span>
           </button>
+          <div id="preview-runtime-stat" style="font-size:11px; color:var(--text-muted); font-weight:600; text-align:center; padding-top:2px;"></div>
         </div>
       </div>
       
       <!-- FRAME BY FRAME SWITCHER -->
       <div class="control-group">
         <div class="control-label">Frame Select</div>
-        <select id="select-frame" disabled>
-          <option value="play" selected>Auto Loop Banners</option>
+        <select id="select-frame">
+          <option value="play" selected>All frames</option>
         </select>
       </div>
       
@@ -796,6 +797,23 @@
     
     let isPlaying = true;
     let selectedCanvasIds = new Set();
+
+    // Runtime readout: total = sum of playable frame durations; when a frame is
+    // selected, show that frame's own duration (mirrors the editor preview bar).
+    function fmtDur(n) { const r = Math.round(n * 10) / 10; return (Number.isInteger(r) ? r : r.toFixed(1)) + 's'; }
+    function updateRuntimeStat(frameId) {
+      const el = document.getElementById('preview-runtime-stat');
+      if (!el) return;
+      const playable = (state.frames || []).filter(f => !f.skip);
+      if (frameId == null) {
+        const t = playable.reduce((s, f) => s + (f.duration != null ? f.duration : 2), 0);
+        el.textContent = playable.length ? `Runtime ${fmtDur(t)}${state.loopAd ? ' ↻' : ''}` : '';
+      } else {
+        const i = playable.findIndex(f => f.id === frameId);
+        const f = playable[i];
+        if (f) el.textContent = `Frame ${i + 1} · ${fmtDur(f.duration != null ? f.duration : 2)}`;
+      }
+    }
     
     // Theme Management
     document.querySelectorAll('.swatch').forEach(swatch => {
@@ -821,8 +839,8 @@
       const wasStatic = !isPlaying;
       isPlaying = playing;
       
-      // Update disabled state of frame select dropdown
-      selectFrame.disabled = playing;
+      // Frame select stays enabled at all times (jump-and-play model).
+      selectFrame.disabled = false;
       
       if (isPlaying) {
         playBtn.classList.add('primary');
@@ -845,6 +863,7 @@
         }
         
         selectFrame.value = 'play';
+        updateRuntimeStat(null);
       } else {
         playBtn.classList.remove('primary');
         staticBtn.classList.add('primary');
@@ -880,79 +899,91 @@
     }
     
     playBtn.onclick = () => setPlayState(true);
-    staticBtn.onclick = () => {
-      if (isPlaying) {
-        // Freeze on the first frame by default
-        const firstFrameId = state.frames && state.frames[0] ? state.frames[0].id : null;
-        if (firstFrameId !== null) {
-          selectFrame.value = firstFrameId;
-          selectFrame.dispatchEvent(new Event('change'));
-        } else {
-          setPlayState(false);
+
+    // Inject a static-freeze stylesheet into every banner so it shows `frameId`
+    // with all animations stopped. Used by the Static-only button.
+    function freezeFrame(frameId) {
+      document.querySelectorAll('iframe').forEach(iframe => {
+        const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+        if (!doc) return;
+        let style = doc.getElementById('preview-state-override-style');
+        if (!style) {
+          style = doc.createElement('style');
+          style.id = 'preview-state-override-style';
+          doc.head.appendChild(style);
         }
-      } else {
-        setPlayState(false);
+        style.textContent = `
+          #ad .frame { display: none !important; animation: none !important; z-index: 1 !important; }
+          #ad #frame-${frameId} { display: block !important; animation: none !important; z-index: 2 !important; }
+          #ad * {
+            animation-duration: 0s !important;
+            animation-delay: 0s !important;
+            animation-play-state: paused !important;
+            transition-duration: 0s !important;
+            transition-delay: 0s !important;
+          }
+        `;
+        // Repaint ad background to match this frame
+        const card = iframe.closest('.card');
+        const canvasObj = card && state.canvases.find(c => c.id === card.dataset.canvasId);
+        if (canvasObj) {
+          const adEl = doc.getElementById('ad');
+          if (adEl) adEl.style.background = getCanvasBg(canvasObj, frameId);
+        }
+        if (iframe.contentWindow && iframe.contentWindow.frames && iframe.contentWindow.updatePersistentLayersVisibility) {
+          const idx = iframe.contentWindow.frames.findIndex(f => f.id === frameId);
+          if (idx !== -1) iframe.contentWindow.updatePersistentLayersVisibility(idx);
+        }
+      });
+    }
+
+    staticBtn.onclick = () => {
+      // Freeze every banner on the first playable frame for static inspection.
+      const playable = (state.frames || []).filter(f => !f.skip);
+      const firstFrameId = playable.length ? playable[0].id : null;
+      setPlayState(false, false);
+      if (firstFrameId !== null) {
+        freezeFrame(firstFrameId);
+        selectFrame.value = 'play';
+        updateRuntimeStat(firstFrameId);
       }
     };
-    
+
     // Replay timelines
     replayBtn.onclick = () => {
       reloadAllBanners();
+      updateRuntimeStat(null);
     };
-    
-    // Frame Selection
+
+    // Frame Selection — jump-and-play: picking a frame jumps every banner to it
+    // and plays forward; "All frames" restarts the full loop.
     selectFrame.onchange = () => {
       const val = selectFrame.value;
-      
       if (val === 'play') {
-        // Resume play mode
-        setPlayState(true);
-      } else {
-        // Select static frame: pause loop and isolate frame
-        setPlayState(false, false);
-        
-        const frameId = parseInt(val);
-        document.querySelectorAll('iframe').forEach(iframe => {
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          if (!doc) return;
-          let style = doc.getElementById('preview-state-override-style');
-          if (!style) {
-            style = doc.createElement('style');
-            style.id = 'preview-state-override-style';
-            doc.head.appendChild(style);
-          }
-          style.textContent = `
-            #ad .frame { display: none !important; animation: none !important; z-index: 1 !important; }
-            #ad #frame-${frameId} { display: block !important; animation: none !important; z-index: 2 !important; }
-            #ad * {
-              animation-duration: 0s !important;
-              animation-delay: 0s !important;
-              animation-play-state: paused !important;
-              transition-duration: 0s !important;
-              transition-delay: 0s !important;
-            }
-          `;
-          
-          // Repaint ad background to match this frame
-          const canvasId = iframe.closest('.card').dataset.canvasId;
-          const canvasObj = state.canvases.find(c => c.id === canvasId);
-          if (canvasObj) {
-            const adEl = doc.getElementById('ad');
-            if (adEl) {
-              const bgVal = getCanvasBg(canvasObj, frameId);
-              adEl.style.background = bgVal;
-            }
-          }
-          
-          // Call the iframe's updatePersistentLayersVisibility
-          if (iframe.contentWindow && iframe.contentWindow.frames && iframe.contentWindow.updatePersistentLayersVisibility) {
-            const idx = iframe.contentWindow.frames.findIndex(f => f.id === frameId);
-            if (idx !== -1) {
-              iframe.contentWindow.updatePersistentLayersVisibility(idx);
-            }
-          }
-        });
+        reloadAllBanners();
+        updateRuntimeStat(null);
+        return;
       }
+      const frameId = parseInt(val);
+      // Leave any frozen/paused state — resume playing and clear overrides.
+      isPlaying = true;
+      playBtn.classList.add('primary');
+      staticBtn.classList.remove('primary');
+      document.querySelectorAll('iframe').forEach(iframe => {
+        const cw = iframe.contentWindow;
+        const doc = iframe.contentDocument || (cw && cw.document);
+        if (doc) {
+          ['preview-state-override-style', 'preview-playback-pause-style'].forEach(id => {
+            const s = doc.getElementById(id);
+            if (s) s.remove();
+          });
+        }
+        if (cw && typeof cw.adflowPlayFrom === 'function' && cw.frames) {
+          const idx = cw.frames.findIndex(f => f.id === frameId);
+          if (idx !== -1) cw.adflowPlayFrom(idx);
+        }
+      });
+      updateRuntimeStat(frameId);
     };
     
     // Helper to construct state-specific stylesheets to inject before rendering
@@ -1096,7 +1127,7 @@
         
         let htmlContent = '';
         try {
-          htmlContent = generateExportHTML(c);
+          htmlContent = generateExportHTML(c, null, false, { previewControls: true });
         } catch (e) {
           console.error(e);
         } finally {
@@ -1122,6 +1153,9 @@
             <div style="display:flex; gap:6px; align-items:center;">
               ${warningBadge}
               <span class="${sizeClass}">${kbSize} KB</span>
+              <button class="banner-restart-btn" title="Restart this banner" onclick="restartBanner('${c.id}')" style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; padding:2px; border-radius:3px; opacity:0.7; transition:color 0.1s, opacity 0.1s;" onmouseover="this.style.opacity=1;this.style.color='var(--accent-base)';" onmouseout="this.style.opacity=0.7;this.style.color='var(--text-muted)';">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </button>
             </div>
           </div>
           
@@ -1183,70 +1217,80 @@
       }
     }
     
+    // Reload (restart) a single banner: rebuilds its iframe from scratch so the
+    // timeline and all animations start fresh from frame 1. Used by the per-size
+    // restart icon and by reloadAllBanners().
+    function reloadBanner(c) {
+      const iframe = document.getElementById('iframe-' + c.id);
+      if (!iframe) return;
+      const speed = 1;
+      const originalState = window.state;
+      window.state = getScaledState(speed);
+
+      let htmlContent = '';
+      try {
+        htmlContent = generateExportHTML(c, null, false, { previewControls: true });
+      } catch(e) {
+        console.error(e);
+      } finally {
+        window.state = originalState;
+      }
+
+      // Clear timeouts of the old iframe window before replacing it to prevent ghost execution
+      if (iframe.contentWindow) {
+        try {
+          const maxId = iframe.contentWindow.setTimeout(() => {}, 0);
+          for (let id = 0; id <= maxId; id++) {
+            iframe.contentWindow.clearTimeout(id);
+          }
+        } catch (err) {
+          console.warn('Failed to clear timeouts on reload:', err);
+        }
+      }
+
+      // Re-create the iframe to completely discard the old document context and loops
+      const parent = iframe.parentElement;
+      const newIframe = document.createElement('iframe');
+      newIframe.className = 'preview-iframe';
+      newIframe.id = 'iframe-' + c.id;
+      newIframe.style.width = c.width + 'px';
+      newIframe.style.height = c.height + 'px';
+      newIframe.setAttribute('scrolling', 'no');
+
+      parent.replaceChild(newIframe, iframe);
+
+      // Sync persistent layers once loaded
+      newIframe.onload = () => {
+        if (!isPlaying) {
+          const val = selectFrame.value;
+          if (val !== 'play') {
+            const frameId = parseInt(val);
+            if (newIframe.contentWindow && newIframe.contentWindow.frames && newIframe.contentWindow.updatePersistentLayersVisibility) {
+              const idx = newIframe.contentWindow.frames.findIndex(f => f.id === frameId);
+              if (idx !== -1) {
+                newIframe.contentWindow.updatePersistentLayersVisibility(idx);
+              }
+            }
+          }
+        }
+      };
+
+      newIframe.srcdoc = getPreparedHtml(c, htmlContent);
+    }
+
     // Reload all canvases
     function reloadAllBanners() {
-      state.canvases.forEach(c => {
-        const iframe = document.getElementById('iframe-' + c.id);
-        if (iframe) {
-          const speed = 1;
-          const originalState = window.state;
-          window.state = getScaledState(speed);
-          
-          let htmlContent = '';
-          try {
-            htmlContent = generateExportHTML(c);
-          } catch(e) {
-            console.error(e);
-          } finally {
-            window.state = originalState;
-          }
-          
-          // Clear timeouts of the old iframe window before replacing it to prevent ghost execution
-          if (iframe.contentWindow) {
-            try {
-              const maxId = iframe.contentWindow.setTimeout(() => {}, 0);
-              for (let id = 0; id <= maxId; id++) {
-                iframe.contentWindow.clearTimeout(id);
-              }
-            } catch (err) {
-              console.warn('Failed to clear timeouts on reload:', err);
-            }
-          }
-          
-          // Re-create the iframe to completely discard the old document context and loops
-          const parent = iframe.parentElement;
-          const newIframe = document.createElement('iframe');
-          newIframe.className = 'preview-iframe';
-          newIframe.id = 'iframe-' + c.id;
-          newIframe.style.width = c.width + 'px';
-          newIframe.style.height = c.height + 'px';
-          newIframe.setAttribute('scrolling', 'no');
-          
-          parent.replaceChild(newIframe, iframe);
-          
-          // Sync persistent layers once loaded
-          newIframe.onload = () => {
-            if (!isPlaying) {
-              const val = selectFrame.value;
-              if (val !== 'play') {
-                const frameId = parseInt(val);
-                if (newIframe.contentWindow && newIframe.contentWindow.frames && newIframe.contentWindow.updatePersistentLayersVisibility) {
-                  const idx = newIframe.contentWindow.frames.findIndex(f => f.id === frameId);
-                  if (idx !== -1) {
-                    newIframe.contentWindow.updatePersistentLayersVisibility(idx);
-                  }
-                }
-              }
-            }
-          };
-          
-          newIframe.srcdoc = getPreparedHtml(c, htmlContent);
-        }
-      });
-      
+      state.canvases.forEach(reloadBanner);
+
       // Reset play state controls without triggering infinite recursion
       setPlayState(true, false);
     }
+
+    // Restart a single banner's timeline (per-size restart icon).
+    window.restartBanner = (id) => {
+      const c = state.canvases.find(x => x.id === id);
+      if (c) reloadBanner(c);
+    };
     
     // Update visibility based on checklists selection
     function updateCanvasGridVisibility() {
@@ -1379,13 +1423,16 @@
       projectNameEl.textContent = state.projectName || 'Adflow Ad Pack';
       adCountEl.textContent = `${state.canvases.length} size${state.canvases.length > 1 ? 's' : ''}`;
       
-      // 2. Timeline Selector
-      selectFrame.innerHTML = '<option value="play" selected>Auto Loop Banners</option>';
+      // 2. Timeline Selector — "All frames" plays the full loop; picking a frame
+      // jumps every banner to it and plays forward (jump-and-play, matches editor).
+      selectFrame.innerHTML = '<option value="play" selected>All frames</option>';
       if (state.frames) {
-        state.frames.forEach((f, i) => {
+        state.frames.filter(f => !f.skip).forEach((f) => {
+          const i = state.frames.indexOf(f);
           selectFrame.innerHTML += `<option value="${f.id}">Frame ${i + 1} (${f.duration}s)</option>`;
         });
       }
+      updateRuntimeStat(null);
       
       // 3. Data Version Switcher
       selectVersion.innerHTML = '';
