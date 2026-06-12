@@ -327,7 +327,7 @@ function getFrameTransitionKeyframes(f, c) {
       to { filter: blur(${blurAmount}px); transform: scale(${2 - blurScale}); ${fade ? 'opacity: 0;' : ''} }
     }`;
   } else if (t.startsWith('swipe') || t === 'swipe') {
-    const feather = !!f.transitionFeather;
+    const feather = false;
     if (feather) {
       let maskGrad = '';
       let maskSize = '';
@@ -426,58 +426,113 @@ function getFrameTransitionKeyframes(f, c) {
   } else if (t === 'iris') {
     const shape = f.transitionIrisShape || 'circle';
     const origin = f.transitionIrisOrigin || 'center';
+    const feather = false;
     let originCoords = '50% 50%';
     if (origin === 'top-left') originCoords = '0% 0%';
     else if (origin === 'top-right') originCoords = '100% 0%';
     else if (origin === 'bottom-left') originCoords = '0% 100%';
     else if (origin === 'bottom-right') originCoords = '100% 100%';
 
-    let fromClip = '';
-    let toClip = '';
+    if (feather) {
+      keyframes = `@keyframes ${animName} {\n`;
+      for (let pct = 0; pct <= 100; pct += 5) {
+        const time = pct / 100;
+        const opacityStr = fade ? `opacity: ${time};` : '';
+        const r1 = -30 * (1 - time) + 150 * time;
+        const r2 = r1 + 30;
+        const grad = `radial-gradient(circle at ${originCoords}, rgba(0,0,0,1) ${r1.toFixed(1)}%, rgba(0,0,0,0) ${r2.toFixed(1)}%)`;
+        keyframes += `      ${pct}% {
+          -webkit-mask-image: ${grad};
+          mask-image: ${grad};
+          -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+          -webkit-mask-size: 100% 100%;
+          mask-size: 100% 100%;
+          ${opacityStr}
+        }\n`;
+      }
+      keyframes += '    }';
+    } else if (shape === 'rmit-pixel') {
+      const W = c ? c.width : 300;
+      const H = c ? c.height : 250;
+      let ox = W / 2;
+      let oy = H / 2;
+      if (origin === 'top-left') { ox = 0; oy = 0; }
+      else if (origin === 'top-right') { ox = W; oy = 0; }
+      else if (origin === 'bottom-left') { ox = 0; oy = H; }
+      else if (origin === 'bottom-right') { ox = W; oy = H; }
 
-    if (shape === 'circle') {
-      fromClip = `circle(0% at ${originCoords})`;
-      toClip = `circle(150% at ${originCoords})`;
-    } else if (shape === 'square') {
-      if (origin === 'center') {
-        fromClip = 'inset(50%)';
-        toClip = 'inset(0%)';
-      } else if (origin === 'top-left') {
-        fromClip = 'inset(0% 100% 100% 0%)';
-        toClip = 'inset(0%)';
-      } else if (origin === 'top-right') {
-        fromClip = 'inset(0% 0% 100% 100%)';
-        toClip = 'inset(0%)';
-      } else if (origin === 'bottom-left') {
-        fromClip = 'inset(100% 100% 0% 0%)';
-        toClip = 'inset(0%)';
-      } else if (origin === 'bottom-right') {
-        fromClip = 'inset(100% 0% 0% 100%)';
-        toClip = 'inset(0%)';
+      const maxDist = Math.max(
+        Math.hypot(ox - 0, oy - 0),
+        Math.hypot(ox - W, oy - 0),
+        Math.hypot(ox - 0, oy - H),
+        Math.hypot(ox - W, oy - H)
+      );
+      const sMax = maxDist / 200;
+
+      keyframes = `@keyframes ${animName} {\n`;
+      for (let pct = 0; pct <= 100; pct += 5) {
+        const time = pct / 100;
+        const s = sMax * time;
+        const tx = ox - 289.26 * s;
+        const ty = oy - 278.38 * s;
+        const cp = `path('${_buildPixelClipPath(s, s, tx, ty, 0, 0, 0)}')`;
+        const opacityStr = fade ? `opacity: ${time};` : '';
+        keyframes += `      ${pct}% {
+          -webkit-clip-path: ${cp};
+          clip-path: ${cp};
+          ${opacityStr}
+        }\n`;
       }
-    } else if (shape === 'diamond') {
-      if (origin === 'center') {
-        fromClip = 'polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%)';
-        toClip = 'polygon(50% -100%, 200% 50%, 50% 200%, -100% 50%)';
-      } else if (origin === 'top-left') {
-        fromClip = 'polygon(0% 0%, 0% 0%, 0% 0%)';
-        toClip = 'polygon(0% 0%, 250% 0%, 0% 250%)';
-      } else if (origin === 'top-right') {
-        fromClip = 'polygon(100% 0%, 100% 0%, 100% 0%)';
-        toClip = 'polygon(100% 0%, -150% 0%, 100% 250%)';
-      } else if (origin === 'bottom-left') {
-        fromClip = 'polygon(0% 100%, 0% 100%, 0% 100%)';
-        toClip = 'polygon(0% 100%, 250% 100%, 0% -150%)';
-      } else if (origin === 'bottom-right') {
-        fromClip = 'polygon(100% 100%, 100% 100%, 100% 100%)';
-        toClip = 'polygon(100% 100%, -150% 100%, 100% -150%)';
+      keyframes += '    }';
+    } else {
+      let fromClip = '';
+      let toClip = '';
+
+      if (shape === 'circle') {
+        fromClip = `circle(0% at ${originCoords})`;
+        toClip = `circle(150% at ${originCoords})`;
+      } else if (shape === 'square') {
+        if (origin === 'center') {
+          fromClip = 'inset(50%)';
+          toClip = 'inset(0%)';
+        } else if (origin === 'top-left') {
+          fromClip = 'inset(0% 100% 100% 0%)';
+          toClip = 'inset(0%)';
+        } else if (origin === 'top-right') {
+          fromClip = 'inset(0% 0% 100% 100%)';
+          toClip = 'inset(0%)';
+        } else if (origin === 'bottom-left') {
+          fromClip = 'inset(100% 100% 0% 0%)';
+          toClip = 'inset(0%)';
+        } else if (origin === 'bottom-right') {
+          fromClip = 'inset(100% 0% 0% 100%)';
+          toClip = 'inset(0%)';
+        }
+      } else if (shape === 'diamond') {
+        if (origin === 'center') {
+          fromClip = 'polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%)';
+          toClip = 'polygon(50% -100%, 200% 50%, 50% 200%, -100% 50%)';
+        } else if (origin === 'top-left') {
+          fromClip = 'polygon(0% 0%, 0% 0%, 0% 0%)';
+          toClip = 'polygon(0% 0%, 250% 0%, 0% 250%)';
+        } else if (origin === 'top-right') {
+          fromClip = 'polygon(100% 0%, 100% 0%, 100% 0%)';
+          toClip = 'polygon(100% 0%, -150% 0%, 100% 250%)';
+        } else if (origin === 'bottom-left') {
+          fromClip = 'polygon(0% 100%, 0% 100%, 0% 100%)';
+          toClip = 'polygon(0% 100%, 250% 100%, 0% -150%)';
+        } else if (origin === 'bottom-right') {
+          fromClip = 'polygon(100% 100%, 100% 100%, 100% 100%)';
+          toClip = 'polygon(100% 100%, -150% 100%, 100% -150%)';
+        }
       }
+
+      keyframes = `@keyframes ${animName} {
+        from { clip-path: ${fromClip}; ${fade ? 'opacity: 0;' : ''} }
+        to { clip-path: ${toClip}; ${fade ? 'opacity: 1;' : ''} }
+      }`;
     }
-
-    keyframes = `@keyframes ${animName} {
-      from { clip-path: ${fromClip}; ${fade ? 'opacity: 0;' : ''} }
-      to { clip-path: ${toClip}; ${fade ? 'opacity: 1;' : ''} }
-    }`;
   } else if (t === 'corner-fold') {
     const corner = dir || 'bottom-right';
     let origin = '100% 100%';
@@ -1719,9 +1774,10 @@ ${elsTop}
         }
       }
       
-      nextFrameEl.style.animation = anim ? (anim + ' ' + td + ' ease both') : '';
+      var timingFunc = t === 'iris' ? 'ease-in-out' : 'ease';
+      nextFrameEl.style.animation = anim ? (anim + ' ' + td + ' ' + timingFunc + ' both') : '';
       if (animOut) {
-        prevFrameEl.style.animation = animOut + ' ' + td + ' ease both';
+        prevFrameEl.style.animation = animOut + ' ' + td + ' ' + timingFunc + ' both';
       }
       
       // Once the transition settles: also clear the INCOMING frame's animation

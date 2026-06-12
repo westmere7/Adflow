@@ -206,6 +206,16 @@ function startFrameTransitionPreview(type) {
         let keyframes = '';
         let keyframesOut = '';
 
+        if (type === 'iris') {
+          const feather = false;
+          if (feather) {
+            nextContainer.style.webkitMaskRepeat = 'no-repeat';
+            nextContainer.style.maskRepeat = 'no-repeat';
+            nextContainer.style.webkitMaskSize = '100% 100%';
+            nextContainer.style.maskSize = '100% 100%';
+          }
+        }
+
         if (type === 'fade') {
           keyframes = `@keyframes ${animName} { from { opacity: 0; } to { opacity: 1; } }`;
         } else if (type === 'slide' || type === 'push') {
@@ -256,7 +266,7 @@ function startFrameTransitionPreview(type) {
             }`;
           }
         } else if (type === 'swipe') {
-          const feather = !!currentFrame.transitionFeather;
+          const feather = false;
           if (feather) {
             let maskGrad = '';
             let maskSize = '';
@@ -367,52 +377,104 @@ function startFrameTransitionPreview(type) {
           else if (irisOrigin === 'bottom-left') originCoords = '0% 100%';
           else if (irisOrigin === 'bottom-right') originCoords = '100% 100%';
 
-          let fromClip = '';
-          let toClip = '';
+          const feather = false;
 
-          if (irisShape === 'circle') {
-            fromClip = `circle(0% at ${originCoords})`;
-            toClip = `circle(150% at ${originCoords})`;
-          } else if (irisShape === 'square') {
-            if (irisOrigin === 'center') {
-              fromClip = 'inset(50%)';
-              toClip = 'inset(0%)';
-            } else if (irisOrigin === 'top-left') {
-              fromClip = 'inset(0% 100% 100% 0%)';
-              toClip = 'inset(0%)';
-            } else if (irisOrigin === 'top-right') {
-              fromClip = 'inset(0% 0% 100% 100%)';
-              toClip = 'inset(0%)';
-            } else if (irisOrigin === 'bottom-left') {
-              fromClip = 'inset(100% 100% 0% 0%)';
-              toClip = 'inset(0%)';
-            } else if (irisOrigin === 'bottom-right') {
-              fromClip = 'inset(100% 0% 0% 100%)';
-              toClip = 'inset(0%)';
+          if (feather) {
+            keyframes = `@keyframes ${animName} {\n`;
+            for (let pct = 0; pct <= 100; pct += 5) {
+              const t = pct / 100;
+              const opacityStr = fade ? `opacity: ${t};` : '';
+              const r1 = -30 * (1 - t) + 150 * t;
+              const r2 = r1 + 30;
+              const grad = `radial-gradient(circle at ${originCoords}, rgba(0,0,0,1) ${r1.toFixed(1)}%, rgba(0,0,0,0) ${r2.toFixed(1)}%)`;
+              keyframes += `      ${pct}% {
+                -webkit-mask-image: ${grad};
+                mask-image: ${grad};
+                ${opacityStr}
+              }\n`;
             }
-          } else if (irisShape === 'diamond') {
-            if (irisOrigin === 'center') {
-              fromClip = 'polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%)';
-              toClip = 'polygon(50% -100%, 200% 50%, 50% 200%, -100% 50%)';
-            } else if (irisOrigin === 'top-left') {
-              fromClip = 'polygon(0% 0%, 0% 0%, 0% 0%)';
-              toClip = 'polygon(0% 0%, 250% 0%, 0% 250%)';
-            } else if (irisOrigin === 'top-right') {
-              fromClip = 'polygon(100% 0%, 100% 0%, 100% 0%)';
-              toClip = 'polygon(100% 0%, -150% 0%, 100% 250%)';
-            } else if (irisOrigin === 'bottom-left') {
-              fromClip = 'polygon(0% 100%, 0% 100%, 0% 100%)';
-              toClip = 'polygon(0% 100%, 250% 100%, 0% -150%)';
-            } else if (irisOrigin === 'bottom-right') {
-              fromClip = 'polygon(100% 100%, 100% 100%, 100% 100%)';
-              toClip = 'polygon(100% 100%, -150% 100%, 100% -150%)';
+            keyframes += '    }';
+          } else if (irisShape === 'rmit-pixel') {
+            const W = canvas.width;
+            const H = canvas.height;
+            let ox = W / 2;
+            let oy = H / 2;
+            if (irisOrigin === 'top-left') { ox = 0; oy = 0; }
+            else if (irisOrigin === 'top-right') { ox = W; oy = 0; }
+            else if (irisOrigin === 'bottom-left') { ox = 0; oy = H; }
+            else if (irisOrigin === 'bottom-right') { ox = W; oy = H; }
+
+            const maxDist = Math.max(
+              Math.hypot(ox - 0, oy - 0),
+              Math.hypot(ox - W, oy - 0),
+              Math.hypot(ox - 0, oy - H),
+              Math.hypot(ox - W, oy - H)
+            );
+            const sMax = maxDist / 200;
+
+            keyframes = `@keyframes ${animName} {\n`;
+            for (let pct = 0; pct <= 100; pct += 5) {
+              const t = pct / 100;
+              const s = sMax * t;
+              const tx = ox - 289.26 * s;
+              const ty = oy - 278.38 * s;
+              const cp = `path('${_buildPixelClipPath(s, s, tx, ty, 0, 0, 0)}')`;
+              const opacityStr = fade ? `opacity: ${t};` : '';
+              keyframes += `      ${pct}% {
+                -webkit-clip-path: ${cp};
+                clip-path: ${cp};
+                ${opacityStr}
+              }\n`;
             }
+            keyframes += '    }';
+          } else {
+            let fromClip = '';
+            let toClip = '';
+
+            if (irisShape === 'circle') {
+              fromClip = `circle(0% at ${originCoords})`;
+              toClip = `circle(150% at ${originCoords})`;
+            } else if (irisShape === 'square') {
+              if (irisOrigin === 'center') {
+                fromClip = 'inset(50%)';
+                toClip = 'inset(0%)';
+              } else if (irisOrigin === 'top-left') {
+                fromClip = 'inset(0% 100% 100% 0%)';
+                toClip = 'inset(0%)';
+              } else if (irisOrigin === 'top-right') {
+                fromClip = 'inset(0% 0% 100% 100%)';
+                toClip = 'inset(0%)';
+              } else if (irisOrigin === 'bottom-left') {
+                fromClip = 'inset(100% 100% 0% 0%)';
+                toClip = 'inset(0%)';
+              } else if (irisOrigin === 'bottom-right') {
+                fromClip = 'inset(100% 0% 0% 100%)';
+                toClip = 'inset(0%)';
+              }
+            } else if (irisShape === 'diamond') {
+              if (irisOrigin === 'center') {
+                fromClip = 'polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%)';
+                toClip = 'polygon(50% -100%, 200% 50%, 50% 200%, -100% 50%)';
+              } else if (irisOrigin === 'top-left') {
+                fromClip = 'polygon(0% 0%, 0% 0%, 0% 0%)';
+                toClip = 'polygon(0% 0%, 250% 0%, 0% 250%)';
+              } else if (irisOrigin === 'top-right') {
+                fromClip = 'polygon(100% 0%, 100% 0%, 100% 0%)';
+                toClip = 'polygon(100% 0%, -150% 0%, 100% 250%)';
+              } else if (irisOrigin === 'bottom-left') {
+                fromClip = 'polygon(0% 100%, 0% 100%, 0% 100%)';
+                toClip = 'polygon(0% 100%, 250% 100%, 0% -150%)';
+              } else if (irisOrigin === 'bottom-right') {
+                fromClip = 'polygon(100% 100%, 100% 100%, 100% 100%)';
+                toClip = 'polygon(100% 100%, -150% 100%, 100% -150%)';
+              }
+            }
+
+            keyframes = `@keyframes ${animName} {
+              from { clip-path: ${fromClip}; ${fade ? 'opacity: 0;' : ''} }
+              to { clip-path: ${toClip}; ${fade ? 'opacity: 1;' : ''} }
+            }`;
           }
-
-          keyframes = `@keyframes ${animName} {
-            from { clip-path: ${fromClip}; ${fade ? 'opacity: 0;' : ''} }
-            to { clip-path: ${toClip}; ${fade ? 'opacity: 1;' : ''} }
-          }`;
         } else if (type === 'corner-fold') {
           const corner = dir || 'bottom-right';
           let origin = '100% 100%';
@@ -462,10 +524,11 @@ function startFrameTransitionPreview(type) {
 
         keyframesText += keyframes + '\n' + (keyframesOut || '') + '\n';
 
+        const timingFunc = type === 'iris' ? 'ease-in-out' : 'ease';
         if (keyframesOut) {
-          prevContainer.style.animation = `${animNameOut} ${duration}s ease both`;
+          prevContainer.style.animation = `${animNameOut} ${duration}s ${timingFunc} both`;
         }
-        nextContainer.style.animation = `${animName} ${duration}s ease both`;
+        nextContainer.style.animation = `${animName} ${duration}s ${timingFunc} both`;
       });
 
       let styleEl = document.getElementById('frame-transition-preview-styles');
@@ -587,7 +650,7 @@ function getFrameTransitionHtml(currentFrame) {
   const durHtml = `<div class="prop-row" style="margin:0;"><label>Duration (s)</label><input type="number" step="0.1" id="frame-trans-duration" value="${durVal}" min="0.1" /></div>`;
 
   const showFade = ['slide', 'push', 'swipe', 'zoom', 'split', 'iris', 'blur', 'corner-fold'].includes(activePreset);
-  const showFeather = activePreset === 'swipe';
+  const showFeather = false;
   let fadeToggleHtml = '';
   let featherToggleHtml = '';
 
@@ -696,7 +759,8 @@ function getFrameTransitionHtml(currentFrame) {
             ${customSelect('irisShape', [
               { val: 'circle', label: 'Circle' },
               { val: 'square', label: 'Square' },
-              { val: 'diamond', label: 'Diamond' }
+              { val: 'diamond', label: 'Diamond' },
+              { val: 'rmit-pixel', label: 'RMIT Pixel' }
             ], currentShape, 'Iris Shape', true, 'frame-trans-iris-shape')}
           </div>
           <div style="display:flex; flex-direction:column; gap:4px;">
