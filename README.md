@@ -138,17 +138,32 @@ RMIT-Adflow/
 ├── index.html                 # Application shell, splash screen, top-bar, panels
 ├── styles.css                 # UI styles, 5 named themes, responsive rules
 │
-│   # JS files (loaded in this order; classic <script> tags share global scope):
-├── auto-resize-engine.js      # Rule-based 9-role resize engine
-├── docs-content.js            # In-app docs (DOCS_SECTIONS) + changelog (CHANGELOG_DATA)
-├── auth-ui.js                 # Supabase auth + Cloud Projects + Team Spaces
-├── data-merge.js              # Live Data / Versions (CSV → ads)
-├── export-pipeline.js         # HTML5 ZIP + PNG export
-├── color-picker.js            # iro.js wrapper, gradient editor
-├── script.js                  # State, render, elements, link groups, masking,
-│                              #   frames, project save/load, splash boot, menus,
-│                              #   undo/redo, autosave, asset library, etc.
-├── font_assets.js             # Brand font base64 blobs (Museo / Bilo / Akkurat)
+│
+├── scripts/                   # All JS (loaded in index.html order; classic <script> tags share global scope)
+│   ├── build-asset-manifest.js    # (Node, build-time) writes data/assets/manifest.json
+│   ├── build-startup-registry.js  # (Node, build-time) writes Startup/registry.json
+│   ├── auto-resize-engine.js  # Rule-based 9-role resize engine
+│   ├── auto-arrange-config.js # Placement coordinates and specs per size
+│   ├── docs-content.js        # In-app docs (DOCS_SECTIONS) + changelog (CHANGELOG_DATA)
+│   ├── auth-ui.js             # Supabase auth + Cloud Projects + Team Spaces
+│   ├── data-merge.js          # Live Data / Versions (CSV → ads)
+│   ├── font-subset.js         # Font subsetting for export
+│   ├── export-pipeline.js     # HTML5 ZIP + PNG export
+│   ├── color-picker.js        # iro.js wrapper, gradient editor
+│   │   # Core app (formerly one script.js — split into 13 files, same load order):
+│   ├── core-state.js          # state object, presets, element factories, history
+│   ├── autosave.js            # IndexedDB autosave + save-status indicator
+│   ├── link-system.js         # element link groups + accessors
+│   ├── canvas-render.js       # render(), canvas frames, rulers, masks, animations
+│   ├── interactions.js        # element/canvas drag, resize, rotate, validator
+│   ├── canvases-panel.js      # left panel canvases list
+│   ├── layers-assets.js       # Layers + Assets panels
+│   ├── props-panel.js         # Properties panel + frame transitions
+│   ├── toolbar-import.js      # top bar wiring, brand elements, DnD import, shortcuts
+│   ├── project-io.js          # save/load .flow, recent projects, menu wiring
+│   ├── project-dialogs.js     # New Project / Settings dialogs, auto-arrange, version check
+│   ├── modals.js              # modal/alert/confirm/prompt, image compress/crop
+│   └── app-boot.js            # group ops, splash, notifications, sync, initial render
 │
 └── data/
     ├── version.txt            # Current app version (single line)
@@ -308,13 +323,13 @@ This section provides a deep technical breakdown of Adflow's architecture, data 
 Adflow is built as a **zero-dependency, compilation-free Single Page Application (SPA)** using pure HTML5, Vanilla JavaScript, and CSS3. There are no build pipelines (Webpack, Vite, etc.) or package managers involved in running the application.
 
 All application logic is divided into modular JavaScript files that are loaded sequentially via classic `<script>` tags in `index.html`. Because these scripts share the global lexical scope, declarations and states are globally visible at execution time. The load order is strictly defined as:
-1. [auto-resize-engine.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auto-resize-engine.js) — Rule-based layout calculation engine.
-2. [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/docs-content.js) — Internal Help modal content and Changelog history.
-3. [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auth-ui.js) — Supabase integration controller (Auth, Cloud Saves, Team Spaces).
-4. [data-merge.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data-merge.js) — CSV data-merge and version preview/interpolation.
-5. [export-pipeline.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/export-pipeline.js) — HTML5 ZIP builder and static PNG rasterizer.
-6. [color-picker.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/color-picker.js) — Gradient editor wrapper for iro.js.
-7. [script.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/script.js) — Core application bootstrap, DOM renderer, event loops, undo/redo history, and workspace canvas orchestration.
+1. [auto-resize-engine.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auto-resize-engine.js) — Rule-based layout calculation engine.
+2. [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/docs-content.js) — Internal Help modal content and Changelog history.
+3. [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auth-ui.js) — Supabase integration controller (Auth, Cloud Saves, Team Spaces).
+4. [data-merge.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/data-merge.js) — CSV data-merge and version preview/interpolation.
+5. [export-pipeline.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/export-pipeline.js) — HTML5 ZIP builder and static PNG rasterizer.
+6. [color-picker.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/color-picker.js) — Gradient editor wrapper for iro.js.
+7. Core app scripts (formerly `script.js`, split into 13 files loaded in order): [core-state.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/core-state.js), [autosave.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/autosave.js), [link-system.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/link-system.js), [canvas-render.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/canvas-render.js), [interactions.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/interactions.js), [canvases-panel.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/canvases-panel.js), [layers-assets.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/layers-assets.js), [props-panel.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/props-panel.js), [toolbar-import.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/toolbar-import.js), [project-io.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/project-io.js), [project-dialogs.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/project-dialogs.js), [modals.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/modals.js), [app-boot.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/app-boot.js) — bootstrap, DOM renderer, event loops, undo/redo history, and workspace canvas orchestration.
 
 ### 2. Sandbox Preview Engine
 Adflow uses dynamic `<iframe>` sandboxing to isolate and render active HTML5 ads. This prevents the parent editor's styles and scripts from bleeding into the ad runtime, and vice-versa. 
@@ -322,7 +337,7 @@ Adflow uses dynamic `<iframe>` sandboxing to isolate and render active HTML5 ads
 * **Performance Optimizations**: Canvas rendering uses CSS properties `transform: translateZ(0)` to force GPU compositing and `clip-path: inset(0)` to prevent sub-pixel hairline rendering leaks during view-panning and zoom actions.
 
 ### 3. Global State Schema
-The application's active state is managed inside a single, mutable global object named `state` (declared in [script.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/script.js)). Below is the core TypeScript representation of the state structure:
+The application's active state is managed inside a single, mutable global object named `state` (declared in [core-state.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/core-state.js)). Below is the core TypeScript representation of the state structure:
 
 ```typescript
 interface State {

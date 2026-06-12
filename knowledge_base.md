@@ -10,7 +10,7 @@ Adflow is a vanilla-JS single-page application — no framework, no bundler, no 
 
 - **Structure**: `index.html` (~620 lines).
 - **Styling**: `styles.css` (~4100 lines, CSS variables drive 5 named themes).
-- **Logic**: Eight JS files loaded in sequential order via classic `<script>` tags sharing the global lexical scope (so declarations in earlier files are visible to later files at execution time):
+- **Logic**: 21 app JS files in `scripts/` (since June 2026; previously repo root, alongside the two Node build scripts) loaded in sequential order via classic `<script>` tags sharing the global lexical scope (so declarations in earlier files are visible to later files at execution time):
   1. `auto-resize-engine.js` (~1750 lines) — rule-based placement engine
   2. `auto-arrange-config.js` (~300 lines) — placement coordinates and specs per size
   3. `docs-content.js`       (~1430 lines) — in-app docs + changelog data/UI
@@ -18,8 +18,8 @@ Adflow is a vanilla-JS single-page application — no framework, no bundler, no 
   5. `data-merge.js`         (~825 lines)  — Live Data / Versions (CSV → ads)
   6. `export-pipeline.js`    (~890 lines)  — HTML5 ZIP / PNG / GIF export
   7. `color-picker.js`       (~510 lines)  — iro.js wrapper, gradient editor
-  8. `script.js`             (~11,480 lines) — state, rendering loop, selection/layer panels, element transforms, history, and workspace interactions.
-- **Embedded Fonts**: [font_assets.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/font_assets.js) loaded inline at the top containing brand font base64 blobs.
+  8. Core app (~21,600 lines, formerly one `script.js`, split into 13 plain scripts loaded in order): `core-state.js`, `autosave.js`, `link-system.js`, `canvas-render.js`, `interactions.js`, `canvases-panel.js`, `layers-assets.js`, `props-panel.js`, `toolbar-import.js`, `project-io.js`, `project-dialogs.js`, `modals.js`, `app-boot.js` — state, rendering loop, panels, element transforms, history, project IO, and workspace interactions.
+- **Embedded Fonts**: brand `.woff2` files in `data/fonts/`, subset and embedded at export time by `scripts/font-subset.js`.
 - **Persistence**: IndexedDB (`adflow-autosave` DB) for autosaves; `.flow` ZIP archives (JSZip) for project export/import.
 - **Cloud Backend**: Supabase for authentication, storage, and shared workspaces.
 
@@ -31,23 +31,23 @@ When looking for specific features or bugs, refer to this table:
 
 | Feature Area | File | Notable Globals / APIs |
 | :--- | :--- | :--- |
-| **Auto-resize engine** (rules, placement, settings, picker) | [auto-resize-engine.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auto-resize-engine.js) | `ENGINE_VERSION`, `ROLE_IDS`, `runRuleBasedAutoResize`, `autoAssignRole`, `openAutoResizeModal` |
-| **Auto-arrange configurations** (coordinates, safezones, font sizes per format) | [auto-arrange-config.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auto-arrange-config.js) | `AUTO_ARRANGE_CONFIG` |
-| **In-app documentation** (Help modal) | [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/docs-content.js) | `DOCS_SECTIONS`, `openDocumentation`, `renderDocsPanel` |
-| **Changelog data & modal** | [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/docs-content.js) | `CHANGELOG_DATA`, `openChangelogModal` |
-| **Supabase client & session** | [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auth-ui.js) | `sb`, `authState`, `spacesState` |
-| **Auth UI / Cloud Projects** | [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auth-ui.js) | `openAuthModal`, `openCloudProjectsModal`, `pushCurrentProjectToCloud` |
-| **Team Spaces & Invitations** | [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auth-ui.js) | `openSpaceManagementModal`, `openMembersModal`, `openInviteModal` |
-| **Live Data slots & CSV** | [data-merge.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data-merge.js) | `dm*` helpers, `openDataPanel`, `dmRenderPanel` |
-| **ZIP/PNG Export & Validation** | [export-pipeline.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/export-pipeline.js) | `exportCanvasAsZip`, `exportCanvasAsPng`, `generateExportHTML` |
-| **Color & Gradient Picker** | [color-picker.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/color-picker.js) | `openColorPicker`, `syncColorPickerWithSelection` |
-| **Core Boot, Render, Event Loop** | [script.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/script.js) | `state`, `initApp`, `render`, `pushHistory`, `undo`/`redo`, `openModal` |
+| **Auto-resize engine** (rules, placement, settings, picker) | [auto-resize-engine.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auto-resize-engine.js) | `ENGINE_VERSION`, `ROLE_IDS`, `runRuleBasedAutoResize`, `autoAssignRole`, `openAutoResizeModal` |
+| **Auto-arrange configurations** (coordinates, safezones, font sizes per format) | [auto-arrange-config.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auto-arrange-config.js) | `AUTO_ARRANGE_CONFIG` |
+| **In-app documentation** (Help modal) | [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/docs-content.js) | `DOCS_SECTIONS`, `openDocumentation`, `renderDocsPanel` |
+| **Changelog data & modal** | [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/docs-content.js) | `CHANGELOG_DATA`, `openChangelogModal` |
+| **Supabase client & session** | [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auth-ui.js) | `sb`, `authState`, `spacesState` |
+| **Auth UI / Cloud Projects** | [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auth-ui.js) | `openAuthModal`, `openCloudProjectsModal`, `pushCurrentProjectToCloud` |
+| **Team Spaces & Invitations** | [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auth-ui.js) | `openSpaceManagementModal`, `openMembersModal`, `openInviteModal` |
+| **Live Data slots & CSV** | [data-merge.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/data-merge.js) | `dm*` helpers, `openDataPanel`, `dmRenderPanel` |
+| **ZIP/PNG Export & Validation** | [export-pipeline.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/export-pipeline.js) | `exportCanvasAsZip`, `exportCanvasAsPng`, `generateExportHTML` |
+| **Color & Gradient Picker** | [color-picker.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/color-picker.js) | `openColorPicker`, `syncColorPickerWithSelection` |
+| **Core Boot, Render, Event Loop** | [core-state.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/core-state.js), [canvas-render.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/canvas-render.js), [app-boot.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/app-boot.js), [modals.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/modals.js) | `state` + `pushHistory`/`undo`/`redo` (core-state), `render` (canvas-render), `openModal` (modals), boot/splash (app-boot) |
 
 ---
 
 ## 3. Data Model & State Schema
 
-The active project configuration is managed inside a single mutable global object named `state` (declared in `script.js`).
+The active project configuration is managed inside a single mutable global object named `state` (declared in `core-state.js`).
 
 ```typescript
 interface State {
@@ -196,7 +196,7 @@ interface LinkGroup {
 
 ### Auto-Resize Engine (v2.19) & Auto-Arrange Configurations
 Deterministic, rule-based layout generator. Takes a source canvas and targets, recalculates relative sizes, crops, and wrapping.
-- **Geometries & Parameters**: Canvas-specific placement specifications, safezones, maximum font-sizes, and brand element (Logo, Tagline, CRICOS) quadrant coordinates are managed in [auto-arrange-config.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/auto-arrange-config.js).
+- **Geometries & Parameters**: Canvas-specific placement specifications, safezones, maximum font-sizes, and brand element (Logo, Tagline, CRICOS) quadrant coordinates are managed in [auto-arrange-config.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auto-arrange-config.js).
 - **Roles**: Positions are determined by priority (`rmit-logo` -> `cta-button` -> `heading` etc.).
 - **Crop Preservation**: For the `main-image` ("Fixed shape") role, the engine calculates normalized source cropping offsets and applies them to small target canvases, while keeping its exact aspect ratio.
 - **R1 Alignments**: Pairs the logo and the "Ready for what's next" taglines dynamically.
@@ -244,8 +244,8 @@ After making user-visible modifications, **bump the version and add a changelog 
 
 1. [data/version.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/version.txt) — Update the single-line string (e.g. `v0.16.94`).
 2. [data/changelog.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/changelog.txt) — Add description at the top of the file.
-3. [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/docs-content.js) — Insert the new entry details in the `CHANGELOG_DATA` array.
-4. [script.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/script.js) — Update `currentVersion` inside `checkVersionUpdate()`, and update the version strings in the About and Settings modal templates.
+3. [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/docs-content.js) — Insert the new entry details in the `CHANGELOG_DATA` array.
+4. [project-dialogs.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/project-dialogs.js) — Update `currentVersion` inside `checkVersionUpdate()`, plus the Settings-modal version label; the splash-badge version string lives in [app-boot.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/app-boot.js) (`verEl.textContent`).
 5. [index.html](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/index.html) — Update the footer element `#app-version-display` text label.
 
 ### Severity Guide
