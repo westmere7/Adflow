@@ -98,10 +98,12 @@ async function openSharePreviewModal() {
   }
 
   function showConfigScreen(showCancelToActive = false) {
+    const replacingExisting = !!(state.previewSharePath || state.previewUrl);
     bodyEl.innerHTML = `
       <div style="font-family: inherit; color: var(--text-main); font-size: 13px; line-height: 1.6;">
-        <p style="margin-top: 0; margin-bottom: 16px;">Configure your secure shareable preview link. Reviewers will be able to view the interactive portal without logging in.</p>
-        
+        <p style="margin-top: 0; margin-bottom: 16px;">Configure your secure shareable preview link. Reviewers will be able to view the interactive portal without logging in. The link is <strong>live</strong> — it always serves the latest version you have saved to the cloud.</p>
+        ${replacingExisting ? `<p style="margin-top: 0; margin-bottom: 16px; color: var(--text-muted);">Generating a new link replaces the current one — the previous link will stop working immediately.</p>` : ''}
+
         <div style="margin-bottom: 20px;">
           <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; letter-spacing: 0.05em;">Link Expiration</label>
           <select id="share-expiry-select" style="width: 100%; padding: 8px 12px; font-size: 13px; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 4px; color: var(--text-main); outline: none;">
@@ -110,7 +112,7 @@ async function openSharePreviewModal() {
             <option value="2592000" selected>30 Days (Recommended)</option>
           </select>
         </div>
-        
+
         <div style="display: flex; gap: 8px; justify-content: flex-end;">
           <button class="btn" id="btn-share-settings-cancel" style="padding: 6px 16px;">Cancel</button>
           <button class="btn primary" id="btn-make-share-link" style="padding: 6px 16px; font-weight: 600;">Make shareable link</button>
@@ -138,39 +140,68 @@ async function openSharePreviewModal() {
       
       try {
         const textEl = bg.querySelector('#share-progress-text');
-        
-        // Save to Cloud
+
+        // Keep the cloud copy current (also runs name-collision handling early).
         if (textEl) textEl.textContent = 'Saving latest changes to cloud...';
-        
         const pushRes = await pushCurrentProjectToCloud();
         if (pushRes && pushRes.collisionHandled) {
           closeFn();
           return;
         }
-        
-        // Generate signed URL
-        if (textEl) textEl.textContent = 'Generating secure signed URL...';
-        
-        const spaceId = state.spaceId || (typeof spacesState !== 'undefined' ? spacesState.currentId() : null);
-        const path = spaceId ? `spaces/${spaceId}/${state.projectId}.flow` : `${u.id}/${state.projectId}.flow`;
-        
-        const { data, error } = await sb.storage.from('projects').createSignedUrl(path, expires);
-        
-        if (error) throw error;
-        if (!data || !data.signedUrl) throw new Error('Failed to retrieve signed URL.');
-        
-        const previewUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'preview.html?url=' + encodeURIComponent(data.signedUrl);
-        
-        // Save metadata to project state
-        state.previewUrl = previewUrl;
-        state.previewExpiry = Date.now() + expires * 1000;
-        
-        // Push project back to cloud with updated preview metadata
-        if (textEl) textEl.textContent = 'Saving preview details to project...';
-        await pushCurrentProjectToCloud();
-        
+
+        // Share a dedicated SNAPSHOT copy, not the live project file. This is
+        // what makes revocation real: deleting the snapshot kills the signed
+        // URL, and later edits never leak to reviewers until an explicit
+        // "update snapshot". A fresh token per link means regenerating also
+        // invalidates the previous link.
+        const token = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+        const path = `${u.id}/shares/${token}.flow`;
+        const oldPath = state.previewSharePath;
+        const oldExpiry = state.previewExpiry;
+        const oldUrl = state.previewUrl;
+
+        try {
+          // Bake share metadata into the snapshot BEFORE building it: the
+          // portal validates previewSharePath/previewExpiry inside the loaded
+          // file (previewUrl is only known after signing, so it can't be baked).
+          state.previewSharePath = path;
+          state.previewExpiry = Date.now() + expires * 1000;
+          delete state.previewUrl;
+
+          if (textEl) textEl.textContent = 'Building preview snapshot...';
+          const { blob } = await buildFlowBlob();
+
+          if (textEl) textEl.textContent = 'Uploading snapshot...';
+          const { error: upErr } = await sb.storage.from('projects').upload(path, blob, { upsert: true, contentType: 'application/octet-stream' });
+          if (upErr) throw upErr;
+
+          // Generate signed URL for the snapshot
+          if (textEl) textEl.textContent = 'Generating secure signed URL...';
+          const { data, error } = await sb.storage.from('projects').createSignedUrl(path, expires);
+          if (error) throw error;
+          if (!data || !data.signedUrl) throw new Error('Failed to retrieve signed URL.');
+
+          state.previewUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'preview.html?url=' + encodeURIComponent(data.signedUrl);
+        } catch (err) {
+          // Roll back metadata so a failed attempt doesn't leave the project
+          // pointing at a snapshot that was never created.
+          state.previewSharePath = oldPath;
+          state.previewExpiry = oldExpiry;
+          if (oldUrl) state.previewUrl = oldUrl; else delete state.previewUrl;
+          throw err;
+        }
+
+        // Revoke the previous link by removing its snapshot (best-effort —
+        // v0.20.0-era links pointed at the live file and have no snapshot).
+        if (oldPath && oldPath !== path) {
+          try { await sb.storage.from('projects').remove([oldPath]); } catch (e) {}
+        }
+
+        // Persist via autosave; the metadata rides along on the next cloud push.
+        if (typeof scheduleAutosave === 'function') scheduleAutosave();
+
         showActiveLinkScreen();
-        
+
       } catch (err) {
         showErrorScreen(err);
       }
@@ -197,15 +228,15 @@ async function openSharePreviewModal() {
         <div style="background: rgba(124, 92, 255, 0.08); border: 1px solid rgba(124, 92, 255, 0.2); border-radius: 6px; padding: 10px 12px; font-size: 12px; color: var(--text-muted); margin-bottom: 16px; display: flex; gap: 8px; align-items: flex-start;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-base)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           <div>
-            Anyone with this link can view the interactive preview without logging in.
+            Anyone with this link can view the interactive preview without logging in. The link is live: every cloud save updates what reviewers see (local-only edits stay private until you save to cloud). Note the link carries the full project source (assets and data sheet included).
             <div style="margin-top: 4px; font-weight: 500;">Link expires ${_formatFutureTime(state.previewExpiry)} (on ${new Date(state.previewExpiry).toLocaleDateString()}).</div>
           </div>
         </div>
-        
+
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
           <div style="display: flex; gap: 8px;">
-            <button class="btn ghost" id="btn-share-show-settings" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted); font-weight: 500;">Change Expiration...</button>
-            <button class="btn ghost" id="btn-share-delete-link" style="padding: 6px 12px; font-size: 12px; color: var(--danger-base); border-color: transparent; font-weight: 500;" title="Delete preview link">Delete Link</button>
+            <button class="btn ghost" id="btn-share-show-settings" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted); font-weight: 500;" title="Generates a new link; the current one stops working">New Link / Expiration...</button>
+            <button class="btn ghost" id="btn-share-delete-link" style="padding: 6px 12px; font-size: 12px; color: var(--danger-base); border-color: transparent; font-weight: 500;" title="Delete preview link and revoke access">Delete Link</button>
           </div>
           <button class="btn primary" id="btn-share-done" style="padding: 6px 16px; font-weight: 600;">Done</button>
         </div>
@@ -240,9 +271,12 @@ async function openSharePreviewModal() {
     bg.querySelector('#btn-share-done').onclick = closeFn;
 
     bg.querySelector('#btn-share-delete-link').onclick = async () => {
-      if (!confirm('Are you sure you want to delete this preview link? Reviewers will no longer be able to access the interactive portal.')) {
-        return;
-      }
+      const isSnapshotShare = !!state.previewSharePath;
+      const msg = isSnapshotShare
+        ? 'Delete this preview link? Access is revoked immediately — the link will stop working for everyone.'
+        : 'Delete this preview link? Note: this link was created with an older Adflow version and points at the live project file, so existing copies of the link keep working until they expire. Creating a new link later will use a revocable snapshot.';
+      const confirmed = (typeof showAdflowConfirm === 'function') ? await showAdflowConfirm(msg, 'Delete Preview Link') : confirm(msg);
+      if (!confirmed) return;
       bodyEl.innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; gap: 12px;">
           <div class="adflow-share-spinner" style="width: 28px; height: 28px; border: 3px solid var(--accent-base); border-top-color: transparent; border-radius: 50%;"></div>
@@ -251,18 +285,23 @@ async function openSharePreviewModal() {
       `;
       try {
         const textEl = bg.querySelector('#delete-progress-text');
-        
-        // Remove preview metadata
+
+        // True revocation: remove the shared snapshot so the signed URL 404s.
+        if (isSnapshotShare) {
+          if (textEl) textEl.textContent = 'Revoking link access...';
+          const { error: rmErr } = await sb.storage.from('projects').remove([state.previewSharePath]);
+          if (rmErr) throw rmErr;
+        }
+
+        // Remove preview metadata (persisted via autosave / next cloud push).
         delete state.previewUrl;
         delete state.previewExpiry;
-        
-        // Save to Cloud to persist deletion
-        if (textEl) textEl.textContent = 'Updating project configuration in cloud...';
-        await pushCurrentProjectToCloud();
-        
+        delete state.previewSharePath;
+        if (typeof scheduleAutosave === 'function') scheduleAutosave();
+
         showConfigScreen(false);
         if (typeof showCanvasNotification === 'function') {
-          showCanvasNotification('Preview link deleted successfully', { type: 'success' });
+          showCanvasNotification(isSnapshotShare ? 'Preview link deleted — access revoked' : 'Preview link deleted', { type: 'success' });
         }
       } catch (err) {
         showErrorScreen(err);

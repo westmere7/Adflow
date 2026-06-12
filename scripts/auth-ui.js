@@ -678,6 +678,17 @@ async function pushCurrentProjectToCloud(opts = {}) {
     });
     if (ins) { setCloudSaveStatus('error'); throw ins; }
   }
+  // Live share link: if a shared preview exists (and hasn't expired), mirror
+  // this save into its snapshot file so reviewers always see the latest
+  // cloud-saved version at the same link. Best-effort — a share-sync failure
+  // must never fail the project save itself.
+  if (state.previewSharePath && state.previewExpiry && state.previewExpiry > Date.now()) {
+    try {
+      await sb.storage.from('projects').upload(state.previewSharePath, blob, { upsert: true, contentType: 'application/octet-stream' });
+    } catch (e) {
+      console.warn('Share preview sync failed (project save succeeded):', e);
+    }
+  }
   setCloudSaveStatus('saved');
   return { isFirstSave };
 }

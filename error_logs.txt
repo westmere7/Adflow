@@ -1,8 +1,0 @@
-[
-  [
-    "Eval Error:",
-    "ReferenceError: Cannot access 'sizeUpdateTimeout' before initialization",
-    "ReferenceError: Cannot access 'sizeUpdateTimeout' before initialization\n    at queueSizeUpdate (eval at <anonymous> ([eval]:60:3), <anonymous>:3403:7)\n    at pushHistory (eval at <anonymous> ([eval]:60:3), <anonymous>:155:7)\n    at eval (eval at <anonymous> ([eval]:60:3), <anonymous>:183:5)\n    at [eval]:60:3\n    at runScriptInThisContext (node:internal/vm:209:10)\n    at node:internal/process/execution:449:12\n    at [eval]-wrapper:6:24\n    at runScriptInContext (node:internal/process/execution:447:60)\n    at evalFunction (node:internal/process/execution:87:30)\n    at evalScript (node:internal/process/execution:99:3)"
-  ]
-]
-;---

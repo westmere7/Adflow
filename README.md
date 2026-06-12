@@ -136,12 +136,15 @@ Optional Supabase-backed cloud sync, layered on top of the local-first model. An
 ```text
 RMIT-Adflow/
 ├── index.html                 # Application shell, splash screen, top-bar, panels
+├── preview.html               # Shareable view-only review portal (signed-URL links)
 ├── styles.css                 # UI styles, 5 named themes, responsive rules
 │
 │
 ├── scripts/                   # All JS (loaded in index.html order; classic <script> tags share global scope)
 │   ├── build-asset-manifest.js    # (Node, build-time) writes data/assets/manifest.json
 │   ├── build-startup-registry.js  # (Node, build-time) writes Startup/registry.json
+│   ├── render-runtime.js      # Pure render helpers shared by editor + preview portal
+│   ├── share-preview.js       # "Share Preview" live link dialog (synced on cloud save, revocable)
 │   ├── auto-resize-engine.js  # Rule-based 9-role resize engine
 │   ├── auto-arrange-config.js # Placement coordinates and specs per size
 │   ├── docs-content.js        # In-app docs (DOCS_SECTIONS) + changelog (CHANGELOG_DATA)

@@ -1242,17 +1242,7 @@ function layerIcon(type) {
   return '';
 }
 
-function baseLayerLabel(el) {
-  if (el.customName) return el.customName;
-  if (el.type === 'text') return (el.text || 'Text').slice(0, 28) || 'Text';
-  if (el.type === 'button') return 'Button · ' + ((el.text || '').slice(0, 20));
-  if (el.type === 'image') return 'Image';
-  if (el.type === 'rect') return 'Rectangle';
-  if (el.type === 'circle') return 'Circle';
-  if (el.type === 'pixel') return 'RMIT Pixel';
-  if (el.type === 'line') return 'Line';
-  return el.type;
-}
+// baseLayerLabel() moved to render-runtime.js (shared with preview.html portal).
 
 function layerLabel(el) {
   const base = baseLayerLabel(el);

@@ -67,78 +67,7 @@ function cpBuildGradient() {
   return `linear-gradient(${angle}deg, ${parts.join(', ')})`;
 }
 
-// Parse a linear-gradient string back into {angle, stops}. Handles bare hex
-// stops (legacy), rgba()+position stops (modern), and CSS color hints — a
-// bare "X%" between two colour stops is treated as the midpoint hint and
-// stored as the preceding stop's `mid` (0..1 relative to the gap).
-function cpParseGradient(str) {
-  const m = str.match(/linear-gradient\(\s*(-?\d+(?:\.\d+)?)deg\s*,\s*(.+)\)\s*$/i);
-  if (!m) return null;
-  const angle = parseFloat(m[1]);
-  const parts = [];
-  let depth = 0, cur = '';
-  for (const ch of m[2]) {
-    if (ch === '(') depth++;
-    else if (ch === ')') depth--;
-    if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; }
-    else cur += ch;
-  }
-  if (cur.trim()) parts.push(cur);
-
-  // First pass: classify each segment as a colour stop or a bare-position hint.
-  const tokens = [];
-  parts.forEach((p, i) => {
-    p = p.trim();
-    if (!p) return;
-    // Bare position (color hint) — just "X%" with no colour.
-    const bareM = p.match(/^(-?\d+(?:\.\d+)?)%$/);
-    if (bareM) { tokens.push({ kind: 'hint', pos: parseFloat(bareM[1]) }); return; }
-    const posM = p.match(/\s+(-?\d+(?:\.\d+)?)%\s*$/);
-    const pos = posM ? parseFloat(posM[1]) : (i === 0 ? 0 : 100);
-    const colorStr = (posM ? p.slice(0, posM.index) : p).trim();
-    const rgbaM = colorStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)/i);
-    let stop;
-    if (rgbaM) {
-      const hex = '#' + [rgbaM[1], rgbaM[2], rgbaM[3]].map(n => (+n).toString(16).padStart(2, '0')).join('');
-      const op = rgbaM[4] !== undefined ? Math.round(parseFloat(rgbaM[4]) * 100) : 100;
-      stop = { color: hex, opacity: op, pos };
-    } else {
-      stop = { color: colorStr, opacity: 100, pos };
-    }
-    tokens.push({ kind: 'stop', stop });
-  });
-
-  // Second pass: walk tokens, attaching pending hints to the preceding stop's
-  // `mid` (normalised against the gap to the NEXT stop).
-  const stops = [];
-  let pendingHint = null;
-  tokens.forEach(t => {
-    if (t.kind === 'stop') {
-      if (pendingHint != null && stops.length > 0) {
-        const prev = stops[stops.length - 1];
-        const span = t.stop.pos - prev.pos;
-        prev.mid = span > 0
-          ? Math.max(0, Math.min(1, (pendingHint - prev.pos) / span))
-          : 0.5;
-        pendingHint = null;
-      }
-      stops.push(t.stop);
-    } else {
-      pendingHint = t.pos;
-    }
-  });
-
-  // Fill in any missing `mid` with the linear default.
-  stops.forEach((s, i) => {
-    if (typeof s.mid !== 'number' || i === stops.length - 1) s.mid = 0.5;
-  });
-
-  // UI supports 2-5 stops; clamp and pad.
-  let out = stops;
-  if (out.length > 5) out = out.slice(0, 5);
-  if (out.length === 1) out.push({ color: out[0].color, opacity: out[0].opacity, pos: 100, mid: 0.5 });
-  return { angle, stops: out };
-}
+// cpParseGradient() moved to render-runtime.js (shared with preview.html portal).
 
 // Lightweight per-frame update: positions, colors, active states, inputs and the
 // preview bar. Does NOT recreate DOM (safe to call during a marker drag).

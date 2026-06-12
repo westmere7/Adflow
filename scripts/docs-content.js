@@ -660,6 +660,23 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.20.3',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Live Share Links: Shared preview links are now live — every cloud save automatically updates what reviewers see at the same link. Local-only edits stay private until you save to cloud. Delete Link still revokes access immediately, and generating a new link still invalidates the previous one.'
+    ]
+  },
+  {
+    version: 'v0.20.2',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Revocable Share Links: Share links now serve a dedicated snapshot of the project instead of the live cloud file. "Delete Link" now revokes access immediately for everyone, generating a new link invalidates the previous one, and edits made after sharing are no longer visible to reviewers until you press the new "Update Snapshot" button.',
+      'Gradient Text in Shared Previews: Fixed gradient-colored text rendering flat (without its gradient) in the shared preview portal while looking correct in the editor and exports.',
+      'Preview Portal Cache Fix: preview.html engine scripts are now version-pinned (?v=) like the editor\'s, so reviewers always load matching code after an update.',
+      'Shared Render Runtime: Moved the render helpers that the editor and the preview portal both use into a single scripts/render-runtime.js, removing the hand-copied duplicates inside preview.html that could silently drift out of sync.'
+    ]
+  },
+  {
     version: 'v0.20.1',
     date: 'June 2026 — Engine v2.19',
     items: [

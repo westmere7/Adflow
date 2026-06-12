@@ -240,13 +240,14 @@ To prevent 1px edge hairline bleeding caused by fractional device pixel ratios o
 - Do not create branches or trigger pushes.
 
 ### Changelog Workflow
-After making user-visible modifications, **bump the version and add a changelog entry in these 5 locations**:
+After making user-visible modifications, **bump the version and add a changelog entry in these 6 locations** (the reliable method: `grep -rn "<old version>"` across `*.js *.html *.txt` and bump every live hit):
 
 1. [data/version.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/version.txt) — Update the single-line string (e.g. `v0.16.94`).
 2. [data/changelog.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/changelog.txt) — Add description at the top of the file.
 3. [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/docs-content.js) — Insert the new entry details in the `CHANGELOG_DATA` array.
 4. [project-dialogs.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/project-dialogs.js) — Update `currentVersion` inside `checkVersionUpdate()`, plus the Settings-modal version label; the splash-badge version string lives in [app-boot.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/app-boot.js) (`verEl.textContent`).
-5. [index.html](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/index.html) — Update the footer element `#app-version-display` text label.
+5. [index.html](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/index.html) — Update the footer element `#app-version-display` text label, the `.app-splash-version` span, and every local `<script src="...?v=...">` query string.
+6. [preview.html](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/preview.html) — Update the `?v=` query strings on its engine `<script>` tags (the shared preview portal loads the same scripts/ files and must never pair stale engine code with new inline portal code).
 
 ### Severity Guide
 - **Patch (Z + 1)**: For bug fixes, UI polish, or algorithm tuning (e.g. `v0.16.89` -> `v0.16.90`).
