@@ -11,9 +11,45 @@ let stopElementEffectPreviewFn = null;
 // startPreviewLoop is a closure inside renderProps(); register it so the
 // top-level wireCustomSelects() (animDirection dropdown) can drive the preview.
 let startElementAnimPreviewFn = null;
+let applyElementEffectPreviewFn = null;
 // Set when a hover-driven effect preview starts via the global startEffectPreview
 // (panDir custom select), which bypasses the panel closure's activeEffectVal.
 let hoverEffectPreviewActive = false;
+
+const PRESET_DESCRIPTIONS = {
+  // In Animations
+  'in-none': "No entry animation.",
+  'in-fade-in': "Smoothly fades in the element.",
+  'in-slide': "Slides in the element from a specified direction.",
+  'in-swipe': "Reveals the element via a linear sliding wipe transition.",
+  'in-zoom': "Zooms/scales in the element from its anchor point.",
+  'in-split': "Splits open the element from a center angle.",
+  'in-blur': "Fades in the element with a smooth camera blur.",
+  'in-typing': "Fades/types in text characters or words sequentially.",
+
+  // Continuous Effects
+  'eff-none': "No active continuous effect.",
+  'eff-pulse': "Repeatedly scales the element up and down slightly.",
+  'eff-float': "Slowly floats the element up and down.",
+  'eff-flash': "Flashes the opacity of the element repeatedly.",
+  'eff-wiggle': "Tilts the element back and forth continuously.",
+  'eff-spin': "Rotates the element continuously by a set angle.",
+  'eff-heartbeat': "A sudden double-pulse beat simulation.",
+  'eff-pan': "Repeatedly moves/pans the element along an axis.",
+  'eff-zoom': "Repeatedly zooms/scales the element's scale.",
+
+  // Frame Transitions
+  'frame-none': "No transition between frames.",
+  'frame-fade': "Fades out the previous frame while fading in the next.",
+  'frame-slide': "Slides the next frame over the top of the previous.",
+  'frame-push': "Pushes the previous frame out of view with the next.",
+  'frame-swipe': "Wipes the previous frame into the next frame.",
+  'frame-zoom': "Scales in the next frame from the center or corners.",
+  'frame-split': "Splits open the previous frame to reveal the next.",
+  'frame-iris': "Reveals the next frame through an expanding shape (circle, square, diamond, or pixel).",
+  'frame-blur': "Blurs the previous frame and cross-fades into the next.",
+  'frame-corner-fold': "Folds the corner of the previous frame back to reveal the next."
+};
 
 function getPreviewDomNodes(el, previewType = 'inAnim') {
   let idsToPreview = [];
@@ -545,7 +581,7 @@ function startFrameTransitionPreview(type) {
         }
       }, (duration + 1.5) * 1000);
 
-    }, 500);
+    }, 50);
   };
 
   runCycle();
@@ -574,21 +610,47 @@ function stopFrameTransitionPreview() {
   if (styleEl) styleEl.remove();
 }
 
-function customSelect(key, options, currentVal, title, isFrameTrans = false, frameTransId = '') {
+function customSelect(key, options, currentVal, title, isFrameTrans = false, frameTransId = '', favCategory = '') {
   const currentOpt = options.find(o => o.val === currentVal) || options[0];
-  const dropdownItems = options.map(opt => `
-    <div class="custom-select-item" data-value="${opt.val}" style="padding: 5px 8px; font-size: 11px; color: var(--text-main); cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 8px;" title="${opt.label}">
+  const dropdownItems = options.map(opt => {
+    let favHtml = '';
+    if (favCategory && opt.val !== 'none') {
+      const favKey = favCategory + opt.val;
+      const isFav = state.favoriteAnimations?.includes(favKey);
+      const starColor = isFav ? 'var(--accent-base)' : 'var(--text-muted)';
+      const starFill = isFav ? 'currentColor' : 'none';
+      favHtml = `<svg class="fav-star-icon" data-fav-key="${favKey}" width="12" height="12" viewBox="0 0 24 24" fill="${starFill}" stroke="${starColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; flex-shrink: 0; padding: 2px; border-radius: 3px; cursor: pointer; opacity: ${isFav ? '1' : '0.5'}; transition: all 0.2s;" title="Toggle favorite"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+    }
+    let itemTitle = opt.label;
+    if (favCategory) {
+      const descKey = favCategory + opt.val;
+      const desc = PRESET_DESCRIPTIONS[descKey];
+      if (desc) {
+        let prefix = '';
+        if (favCategory === 'in-') prefix = 'Animation';
+        else if (favCategory === 'eff-') prefix = 'Effect';
+        else if (favCategory === 'frame-') prefix = 'Transition';
+        itemTitle = `${prefix}: ${opt.label}\n\n${desc}`;
+      }
+    }
+
+    return `
+    <div class="custom-select-item" data-value="${opt.val}" style="padding: 5px 8px; font-size: 11px; color: var(--text-main); cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 8px;" title="${itemTitle}">
       ${opt.img ? `<img src="${opt.img}" style="max-height: 18px; max-width: 40px; object-fit: contain; flex-shrink: 0; background: #475569; padding: 2px 4px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15);" />` : ''}
       <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${opt.label}</span>
+      ${favHtml}
     </div>
-  `).join('');
+  `}).join('');
 
   const containerIdHtml = frameTransId ? `id="${frameTransId}"` : '';
   const dataKeyAttr = isFrameTrans ? `data-frame-k="${key}"` : `data-k="${key}"`;
+  const isMainPreset = key === 'animType' || key === 'effectType' || key === 'transition';
+  const borderStyle = isMainPreset ? 'border: 1.5px solid var(--accent-base);' : 'border: 1px solid var(--border-light);';
+  const extraTriggerClass = isMainPreset ? 'preset-select-trigger' : '';
 
   return `
     <div class="custom-select-container ${isFrameTrans ? 'frame-trans-select' : ''}" ${dataKeyAttr} ${containerIdHtml} style="position: relative; width: 100%;">
-      <button class="custom-select-trigger" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 6px; padding: 4px 6px; font-size: 11px; height: 24px; text-align: left; cursor: pointer; outline: none; min-width: 0;">
+      <button class="custom-select-trigger ${extraTriggerClass}" title="${title}" style="width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-input); ${borderStyle} color: var(--text-main); border-radius: 6px; padding: 4px 6px; font-size: 11px; height: 24px; text-align: left; cursor: pointer; outline: none; min-width: 0;">
         <span class="custom-select-label" style="display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; flex: 1;">
           ${currentOpt.img ? `<img src="${currentOpt.img}" style="max-height: 16px; max-width: 36px; object-fit: contain; flex-shrink: 0; background: #475569; padding: 2px 3px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15);" />` : ''}
           <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${currentOpt.label}</span>
@@ -813,8 +875,8 @@ function getFrameTransitionHtml(currentFrame) {
   return `
     <div id="frame-transition-preview-area" class="animation-sub-panel">
       <div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_11908101" width="12" height="12" viewBox="0 0 48 48" style="color: var(--accent-base); flex-shrink: 0;" fill="currentColor"><g transform="translate(-504 -648)"><g transform="scale(1.5)"><g id="SOLID" transform="scale(.667)"><g><path d="m511.861 693.334c-.902.713-2.133.848-3.168.347s-1.693-1.55-1.693-2.7v-37.963c0-1.15.657-2.199 1.693-2.7 1.035-.501 2.265-.366 3.167.347l24.005 18.976c.719.569 1.139 1.436 1.139 2.353 0 .918-.419 1.785-1.139 2.354z"></path></g><g><path d="m546 694h-3c-1.657 0-3-1.343-3-3v-38c0-1.657 1.343-3 3-3h3c1.657 0 3 1.343 3 3v38c0 1.657-1.343 3-3 3z"></path></g></g></g></g></svg>FRAME TRANSITION</label></div>
-      <div class="anim-grid" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:12px;">
-        ${presetButtons}
+      <div style="margin-bottom:12px;">
+        ${customSelect('transition', filteredPresets, activePreset, 'Select Frame Transition', true, 'frame-trans-select', 'frame-')}
         ${favMessageHtml}
       </div>
       ${activePreset !== 'none' ? excludePersHtml + standardProps + conditionalControls : ''}
@@ -825,40 +887,6 @@ function getFrameTransitionHtml(currentFrame) {
 function wireFrameTransitionEvents() {
   const currentFrame = state.frames.find(f => f.id === state.activeFrameId);
   if (!currentFrame) return;
-
-  propsEl.querySelectorAll('.frame-trans-btn').forEach(btn => {
-    const val = btn.dataset.val;
-    btn.addEventListener('click', () => {
-      currentFrame.transition = val;
-      if (val === 'slide' || val === 'push' || val === 'swipe' || val === 'split') {
-        if (!currentFrame.transitionDirection) currentFrame.transitionDirection = 'left';
-      }
-      if (val === 'corner-fold') {
-        if (!currentFrame.transitionDirection) currentFrame.transitionDirection = 'bottom-right';
-      }
-      if (val === 'zoom') {
-        if (currentFrame.transitionZoomFrom === undefined) currentFrame.transitionZoomFrom = 80;
-      }
-      if (val === 'iris') {
-        if (!currentFrame.transitionIrisShape) currentFrame.transitionIrisShape = 'circle';
-        if (!currentFrame.transitionIrisOrigin) currentFrame.transitionIrisOrigin = 'center';
-      }
-      if (val === 'blur') {
-        if (currentFrame.transitionBlurAmount === undefined) currentFrame.transitionBlurAmount = 20;
-        if (currentFrame.transitionBlurScale === undefined) currentFrame.transitionBlurScale = 100;
-      }
-      pushHistory();
-      renderProps();
-      render(true);
-      
-      startFrameTransitionPreview(val);
-    });
-
-    btn.addEventListener('mouseenter', (e) => {
-      e.stopPropagation();
-      startFrameTransitionPreview(val);
-    });
-  });
 
   const durInp = propsEl.querySelector('#frame-trans-duration');
   if (durInp) {
@@ -1066,6 +1094,10 @@ function wireCustomSelects(el, updateProp) {
           } else if (key === 'panDir') {
             hoverEffectPreviewActive = true;
             startEffectPreview(el);
+          } else if (key === 'animType') {
+            if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
+          } else if (key === 'effectType') {
+            if (applyElementEffectPreviewFn) applyElementEffectPreviewFn(el.effectType || 'none');
           }
         }
       }
@@ -1090,6 +1122,27 @@ function wireCustomSelects(el, updateProp) {
           if (key === 'direction') currentFrame.transitionDirection = val;
           else if (key === 'irisShape') currentFrame.transitionIrisShape = val;
           else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = val;
+          else if (key === 'transition') {
+            currentFrame.transition = val;
+            if (val === 'slide' || val === 'push' || val === 'swipe' || val === 'split') {
+              if (!currentFrame.transitionDirection) currentFrame.transitionDirection = 'left';
+            }
+            if (val === 'corner-fold') {
+              if (!currentFrame.transitionDirection) currentFrame.transitionDirection = 'bottom-right';
+            }
+            if (val === 'zoom') {
+              if (currentFrame.transitionZoomFrom === undefined) currentFrame.transitionZoomFrom = 80;
+            }
+            if (val === 'iris') {
+              if (!currentFrame.transitionIrisShape) currentFrame.transitionIrisShape = 'circle';
+              if (!currentFrame.transitionIrisOrigin) currentFrame.transitionIrisOrigin = 'center';
+            }
+            if (val === 'blur') {
+              if (currentFrame.transitionBlurAmount === undefined) currentFrame.transitionBlurAmount = 20;
+              if (currentFrame.transitionBlurScale === undefined) currentFrame.transitionBlurScale = 100;
+            }
+            render(true);
+          }
 
           pushHistory();
           renderProps();
@@ -1103,6 +1156,47 @@ function wireCustomSelects(el, updateProp) {
             } else {
               updateProp('animDirection', val);
             }
+          } else if (key === 'animType') {
+            let targetVal = val;
+            if (targetVal === 'swipe') targetVal = 'swipe-right';
+            updateProp('animType', targetVal);
+          } else if (key === 'effectType') {
+            updateProp('effectType', val);
+            if (val === 'pan') {
+              if (el.panFromX === undefined && el.panFromY === undefined) {
+                const dist = el.panDist !== undefined ? el.panDist : 50;
+                if (el.panDir === 'L') { updateProp('panFromX', dist); updateProp('panFromY', 0); }
+                else if (el.panDir === 'R') { updateProp('panFromX', -dist); updateProp('panFromY', 0); }
+                else if (el.panDir === 'U') { updateProp('panFromX', 0); updateProp('panFromY', dist); }
+                else if (el.panDir === 'D') { updateProp('panFromX', 0); updateProp('panFromY', -dist); }
+                else { updateProp('panFromX', 0); updateProp('panFromY', -50); }
+              }
+              if (el.effDuration === undefined) updateProp('effDuration', 5);
+              if (el.effOnce === undefined) updateProp('effOnce', true);
+            } else if (val === 'zoom') {
+              if (el.zoomTarget === undefined) updateProp('zoomTarget', 150);
+              if (el.effDuration === undefined) updateProp('effDuration', 5);
+            } else if (val === 'spin') {
+              if (el.spinTarget === undefined) updateProp('spinTarget', 360);
+              if (el.spinRepeat === undefined) updateProp('spinRepeat', 1);
+              if (el.effDuration === undefined) updateProp('effDuration', 2);
+              if (el.effEase === undefined) updateProp('effEase', true);
+            } else if (val === 'pulse') {
+              if (el.pulseScale === undefined) updateProp('pulseScale', 105);
+              if (el.effSpeed === undefined) updateProp('effSpeed', 100);
+            } else if (val === 'heartbeat') {
+              if (el.heartbeatScale === undefined) updateProp('heartbeatScale', 130);
+              if (el.effSpeed === undefined) updateProp('effSpeed', 100);
+            } else if (val === 'float') {
+              if (el.floatRange === undefined) updateProp('floatRange', 10);
+              if (el.floatDirection === undefined) updateProp('floatDirection', 'up');
+              if (el.effSpeed === undefined) updateProp('effSpeed', 100);
+            } else if (val !== 'none') {
+              if (el.effSpeed === undefined) updateProp('effSpeed', 100);
+            }
+            if (val !== 'none' && el.effDelay === undefined) {
+              updateProp('effDelay', 0);
+            }
           } else {
             updateProp(key, val);
           }
@@ -1110,6 +1204,10 @@ function wireCustomSelects(el, updateProp) {
           renderProps();
           if (key === 'animDirection') {
             if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
+          } else if (key === 'animType') {
+            if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
+          } else if (key === 'effectType') {
+            if (applyElementEffectPreviewFn) applyElementEffectPreviewFn(el.effectType || 'none');
           } else if (key === 'panDir') {
             hoverEffectPreviewActive = true;
             startEffectPreview(el);
@@ -1126,10 +1224,12 @@ function wireCustomSelects(el, updateProp) {
           const origDirection = currentFrame.transitionDirection || 'left';
           const origShape = currentFrame.transitionIrisShape || 'circle';
           const origOrigin = currentFrame.transitionIrisOrigin || 'center';
+          const origTransition = currentFrame.transition || 'none';
 
           if (key === 'direction') currentFrame.transitionDirection = val;
           else if (key === 'irisShape') currentFrame.transitionIrisShape = val;
           else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = val;
+          else if (key === 'transition') currentFrame.transition = val;
 
           startFrameTransitionPreview(currentFrame.transition || 'none');
 
@@ -1137,6 +1237,7 @@ function wireCustomSelects(el, updateProp) {
             if (key === 'direction') currentFrame.transitionDirection = origDirection;
             else if (key === 'irisShape') currentFrame.transitionIrisShape = origShape;
             else if (key === 'irisOrigin') currentFrame.transitionIrisOrigin = origOrigin;
+            else if (key === 'transition') currentFrame.transition = origTransition;
             startFrameTransitionPreview(currentFrame.transition || 'none');
           };
         }
@@ -1157,6 +1258,12 @@ function wireCustomSelects(el, updateProp) {
             el.panDir = val;
             hoverEffectPreviewActive = true;
             startEffectPreview(el);
+          } else if (key === 'animType') {
+            let targetVal = val;
+            if (targetVal === 'swipe') targetVal = 'swipe-right';
+            if (startElementAnimPreviewFn) startElementAnimPreviewFn(targetVal);
+          } else if (key === 'effectType') {
+            if (applyElementEffectPreviewFn) applyElementEffectPreviewFn(val);
           }
 
           item.onmouseleave = () => {
@@ -1168,9 +1275,39 @@ function wireCustomSelects(el, updateProp) {
             } else if (key === 'panDir') {
               hoverEffectPreviewActive = true;
               startEffectPreview(el);
+            } else if (key === 'animType') {
+              if (stopElementAnimPreviewFn) stopElementAnimPreviewFn();
+            } else if (key === 'effectType') {
+              if (stopElementEffectPreviewFn) stopElementEffectPreviewFn();
             }
           };
         }
+      }
+    };
+  });
+
+  propsEl.querySelectorAll('.fav-star-icon').forEach(star => {
+    star.onclick = (e) => {
+      e.stopPropagation();
+      const favKey = star.dataset.favKey;
+      if (!state.favoriteAnimations) state.favoriteAnimations = [];
+      const idx = state.favoriteAnimations.indexOf(favKey);
+      if (idx > -1) {
+        state.favoriteAnimations.splice(idx, 1);
+        star.setAttribute('fill', 'none');
+        star.setAttribute('stroke', 'var(--text-muted)');
+        star.style.opacity = '0.5';
+      } else {
+        state.favoriteAnimations.push(favKey);
+        star.setAttribute('fill', 'currentColor');
+        star.setAttribute('stroke', 'var(--accent-base)');
+        star.style.opacity = '1';
+      }
+      pushHistory();
+      
+      const subPanel = star.closest('.animation-sub-panel');
+      if (state.filterFavorites && subPanel) {
+        setTimeout(() => renderProps(), 150);
       }
     };
   });
@@ -2266,13 +2403,13 @@ function renderProps() {
     const isSwipeActive = (el.animType || 'none').startsWith('swipe-');
     const isSlideActive = el.animType === 'slide' || el.animType === 'slide-up' || el.animType === 'slide-down' || el.animType === 'slide-left' || el.animType === 'slide-right';
 
-    f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">
-      ${filteredOptions.map(o => {
-        const isActive = o.val === 'swipe' ? isSwipeActive : (o.val === 'zoom' ? (el.animType === 'zoom' || el.animType === 'zoom-in' || el.animType === 'pop-in') : (o.val === 'slide' ? isSlideActive : o.val === (el.animType || 'none')));
-        const isFav = state.favoriteAnimations?.includes('in-' + o.val);
-        const favStyle = isFav ? 'outline: 1px solid var(--accent-base); outline-offset: -1px;' : '';
-        return `<button class="align-btn anim-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px; ${favStyle}" title="Transition: ${o.label}">${o.label}</button>`;
-      }).join('')}
+    let currentAnimVal = el.animType || 'none';
+    if (isSwipeActive) currentAnimVal = 'swipe';
+    else if (isSlideActive) currentAnimVal = 'slide';
+    else if (currentAnimVal === 'zoom-in' || currentAnimVal === 'pop-in') currentAnimVal = 'zoom';
+
+    f.push(`<div style="margin-bottom:12px;">
+      ${customSelect('animType', filteredOptions, currentAnimVal, 'Select In Animation', false, '', 'in-')}
       ${favMessageHtml}
     </div>`);
 
@@ -2487,13 +2624,8 @@ function renderProps() {
       }
     }
 
-    f.push(`<div class="anim-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:16px;">
-      ${filteredEffects.map(o => {
-        const isActive = o.val === (el.effectType || 'none');
-        const isFav = state.favoriteAnimations?.includes('eff-' + o.val);
-        const favStyle = isFav ? 'outline: 1px solid var(--accent-base); outline-offset: -1px;' : '';
-        return `<button class="align-btn eff-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px; ${favStyle}" title="Effect: ${o.label}">${o.label}</button>`;
-      }).join('')}
+    f.push(`<div style="margin-bottom:16px;">
+      ${customSelect('effectType', filteredEffects, el.effectType || 'none', 'Select Continuous Effect', false, '', 'eff-')}
       ${effFavMessageHtml}
     </div>`);
 
@@ -3355,22 +3487,6 @@ function checkButtonFontSizeWarning(el) {
     });
   };
 
-  propsEl.querySelectorAll('.anim-btn').forEach(btn => {
-    const val = btn.dataset.val;
-    btn.addEventListener('click', () => {
-      let targetVal = val;
-      if (targetVal === 'swipe') {
-        targetVal = 'swipe-right';
-      }
-      updateProp('animType', targetVal);
-      pushHistory();
-      renderProps();
-    });
-    btn.addEventListener('mouseenter', (e) => {
-      e.stopPropagation();
-      startPreviewLoop(val);
-    });
-  });
 
   propsEl.querySelectorAll('.anchor-dot-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -3587,53 +3703,6 @@ function checkButtonFontSizeWarning(el) {
     });
   };
 
-  propsEl.querySelectorAll('.eff-btn').forEach(btn => {
-    const val = btn.dataset.val;
-    btn.addEventListener('click', () => {
-      updateProp('effectType', val);
-      if (val === 'pan') {
-        if (el.panFromX === undefined && el.panFromY === undefined) {
-          const dist = el.panDist !== undefined ? el.panDist : 50;
-          if (el.panDir === 'L') { updateProp('panFromX', dist); updateProp('panFromY', 0); }
-          else if (el.panDir === 'R') { updateProp('panFromX', -dist); updateProp('panFromY', 0); }
-          else if (el.panDir === 'U') { updateProp('panFromX', 0); updateProp('panFromY', dist); }
-          else if (el.panDir === 'D') { updateProp('panFromX', 0); updateProp('panFromY', -dist); }
-          else { updateProp('panFromX', 0); updateProp('panFromY', -50); }
-        }
-        if (el.effDuration === undefined) updateProp('effDuration', 5);
-        if (el.effOnce === undefined) updateProp('effOnce', true);
-      } else if (val === 'zoom') {
-        if (el.zoomTarget === undefined) updateProp('zoomTarget', 150);
-        if (el.effDuration === undefined) updateProp('effDuration', 5);
-      } else if (val === 'spin') {
-        if (el.spinTarget === undefined) updateProp('spinTarget', 360);
-        if (el.spinRepeat === undefined) updateProp('spinRepeat', 1);
-        if (el.effDuration === undefined) updateProp('effDuration', 2);
-        if (el.effEase === undefined) updateProp('effEase', true);
-      } else if (val === 'pulse') {
-        if (el.pulseScale === undefined) updateProp('pulseScale', 105);
-        if (el.effSpeed === undefined) updateProp('effSpeed', 100);
-      } else if (val === 'heartbeat') {
-        if (el.heartbeatScale === undefined) updateProp('heartbeatScale', 130);
-        if (el.effSpeed === undefined) updateProp('effSpeed', 100);
-      } else if (val === 'float') {
-        if (el.floatRange === undefined) updateProp('floatRange', 10);
-        if (el.floatDirection === undefined) updateProp('floatDirection', 'up');
-        if (el.effSpeed === undefined) updateProp('effSpeed', 100);
-      } else if (val !== 'none') {
-        if (el.effSpeed === undefined) updateProp('effSpeed', 100);
-      }
-      if (val !== 'none' && el.effDelay === undefined) {
-        updateProp('effDelay', 0);
-      }
-      pushHistory();
-      renderProps();
-    });
-    btn.addEventListener('mouseenter', (e) => {
-      e.stopPropagation();
-      applyEffectPreview(val);
-    });
-  });
 
   const stopEffectPreviewLoop = () => {
     if (activeEffectVal === null && !hoverEffectPreviewActive) return;
@@ -3642,6 +3711,7 @@ function checkButtonFontSizeWarning(el) {
     resetEffectPreviewNodes();
   };
   stopElementEffectPreviewFn = stopEffectPreviewLoop;
+  applyElementEffectPreviewFn = applyEffectPreview;
 
   const effectsArea = propsEl.querySelector('#effects-preview-area');
   if (effectsArea) {

@@ -5934,6 +5934,20 @@ body.previewing-animation-hover .el.link-highlight-hover-live::after {
   display: none !important;
 }
 
+/* Preset dropdown outlining and glow styling */
+.preset-select-trigger {
+  border: 1.5px solid var(--accent-base) !important;
+  box-shadow: 0 0 3px color-mix(in srgb, var(--accent-base) 20%, transparent);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s !important;
+}
+.preset-select-trigger:hover {
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-base) 40%, transparent);
+  transform: translateY(-0.5px);
+}
+.preset-select-trigger:active {
+  transform: translateY(0.5px);
+}
+
 
 
 
