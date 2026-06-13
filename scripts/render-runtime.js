@@ -156,7 +156,8 @@ const DEFAULT_EXIT_MOTION_DURATION = 0.6;
 // renderer (persistent layers omit it, so they never exit). Image-export and
 // mask-effect callers omit it too, preserving their output.
 function getElementAnimationCSS(el, isImageExport, frameCtx) {
-  const animType = el.animType || 'none';
+  const animMode = el.animationMode || (el.exitEnabled ? 'in-out' : (el.animType && el.animType !== 'none' ? 'in' : 'static'));
+  const animType = animMode === 'static' ? 'none' : (el.animType || 'none');
   const effType = el.effectType || 'none';
 
   let entryAnims = [];
@@ -288,7 +289,7 @@ function getElementAnimationCSS(el, isImageExport, frameCtx) {
   let exitAnims = [];
   const exitType = el.exitType || 'fade-out';
   const isExitZoom = exitType === 'zoom';
-  const hasExit = !!el.exitEnabled && frameCtx && !isImageExport;
+  const hasExit = animMode === 'in-out' && frameCtx && !isImageExport;
   if (hasExit) {
     const start = el.exitStart !== undefined ? el.exitStart : 1.5;
     const dur = el.exitDuration !== undefined ? el.exitDuration : DEFAULT_EXIT_MOTION_DURATION;

@@ -1165,6 +1165,20 @@ function wireCustomSelects(el, updateProp) {
             let targetVal = val;
             if (targetVal === 'swipe') targetVal = 'swipe-right';
             updateProp('animType', targetVal);
+            if (targetVal === 'none') {
+              updateProp('animationMode', 'static');
+              
+              const inProps = ['animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor', 'animStaggerText'];
+              inProps.forEach(p => updateProp(p, undefined));
+              
+              const outProps = ['exitEnabled', 'exitType', 'exitStart', 'exitDuration', 'exitFade', 'exitDirection', 'exitDistance'];
+              outProps.forEach(p => updateProp(p, undefined));
+            } else {
+              const currentMode = el.animationMode || (el.exitEnabled ? 'in-out' : (el.animType && el.animType !== 'none' ? 'in' : 'static'));
+              if (currentMode === 'static') {
+                updateProp('animationMode', 'in');
+              }
+            }
           } else if (key === 'effectType') {
             updateProp('effectType', val);
             if (val === 'pan') {
@@ -2380,9 +2394,18 @@ function renderProps() {
       </svg>
     `;
 
+    const currentMode = el.animationMode || (el.exitEnabled ? 'in-out' : (el.animType && el.animType !== 'none' ? 'in' : 'static'));
+    const showIn = (currentMode === 'in' || currentMode === 'in-out');
+    const showOut = (currentMode === 'in-out');
+
     f.push(`<div class="panel-section" id="panel-section-animation">
-      <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none;">
+      <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;">
         <span>Animation</span>
+        <select id="prop-animation-mode" class="animation-mode-select" style="background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 4px; padding: 2px 6px; font-size: 11px; outline: none; cursor: pointer; font-weight: normal; margin-left: 4px; height: 20px; max-width: 115px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+          <option value="static" ${currentMode === 'static' ? 'selected' : ''}>Static frames + transition only</option>
+          <option value="in" ${currentMode === 'in' ? 'selected' : ''}>In + transition</option>
+          <option value="in-out" ${currentMode === 'in-out' ? 'selected' : ''}>In+out+transition</option>
+        </select>
         <button class="fav-filter-btn" style="background:none; border:none; padding:4px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; outline:none; margin-left:auto;" title="${state.filterFavorites ? 'Show All Transitions' : 'Filter Favorites'}">
           ${starIcon}
         </button>
@@ -2392,8 +2415,8 @@ function renderProps() {
       </h3>
       <div class="panel-section-content">`);
 
-    f.push(`<div id="in-transition-preview-area" class="animation-sub-panel">`);
-    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>IN ANIMATIONS</label></div>`);
+    f.push(`<div id="in-transition-preview-area" class="animation-sub-panel" style="${showIn ? '' : 'display:none;'}">`);
+    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>IN</label></div>`);
 
     const animOptions = [
       { val: 'none', label: 'None' },
@@ -2623,72 +2646,72 @@ function renderProps() {
     // Opt-in via a toggle (off by default). When off, only the heading + toggle
     // show. The exit plays on its own timer: it begins "In → Out" seconds after the
     // element appears, independent of the frame's own duration.
-    const exitOn = !!el.exitEnabled;
-    f.push(`<div id="out-transition-preview-area" class="animation-sub-panel">`);
-    f.push(`<div class="prop-row" style="margin:0 0 ${exitOn ? '10px' : '0'}; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-      <label class="anim-sub-head" style="margin:0;"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0; transform: scaleX(-1);" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>OUT ANIMATIONS</label>
-      <div class="checkbox-row" style="margin:0;">
-        <input type="checkbox" data-k="exitEnabled" id="prop-exit-enabled" title="Enable an exit animation for this element" ${exitOn ? 'checked' : ''}/>
-        <label for="prop-exit-enabled" title="Enable an exit animation for this element" style="cursor:pointer; font-size:11px; white-space:nowrap;">Enable</label>
+    f.push(`<div id="out-transition-preview-area" class="animation-sub-panel" style="${showOut ? '' : 'display:none;'}">`);
+    f.push(`<div class="prop-row" style="margin:0 0 10px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <label class="anim-sub-head" style="margin:0;"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0; transform: scaleX(-1);" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>OUT</label>
+      <div style="display:flex; align-items:center; gap:4px;">
+        <label for="prop-exit-start" style="font-size:11px; color:var(--text-muted); margin:0;">after</label>
+        <input type="number" step="0.1" min="0" data-k="exitStart" id="prop-exit-start" value="${el.exitStart !== undefined ? el.exitStart : 1.5}" style="width:45px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 4px; font-size:11px; height:20px; outline:none;" />
+        <span style="font-size:11px; color:var(--text-muted);">s</span>
       </div>
     </div>`);
 
-    if (exitOn) {
-      const exitOptions = [
-        { val: 'fade-out', label: 'Fade Out' },
-        { val: 'slide', label: 'Slide' },
-        { val: 'swipe', label: 'Swipe' },
-        { val: 'zoom', label: 'Zoom' },
-        { val: 'blur', label: 'Blur' }
-      ];
-      const exitVal = el.exitType || 'fade-out';
-      f.push(`<div style="margin-bottom:8px;">
-        ${customSelect('exitType', exitOptions, exitVal, 'Select Out Animation', false, '', 'out-')}
-      </div>`);
+    const exitOptions = [
+      { val: 'fade-out', label: 'Fade Out' },
+      { val: 'slide', label: 'Slide' },
+      { val: 'swipe', label: 'Swipe' },
+      { val: 'zoom', label: 'Zoom' },
+      { val: 'blur', label: 'Blur' }
+    ];
+    const exitVal = el.exitType || 'fade-out';
+    f.push(`<div style="margin-bottom:8px;">
+      ${customSelect('exitType', exitOptions, exitVal, 'Select Out Animation', false, '', 'out-')}
+    </div>`);
 
-      const showFade = exitVal !== 'fade-out'; // Fade Out is inherently a fade
-      const showDir = exitVal === 'slide' || exitVal === 'swipe';
-      const showDist = exitVal === 'slide';
+    const showFade = exitVal !== 'fade-out'; // Fade Out is inherently a fade
+    const showDir = exitVal === 'slide' || exitVal === 'swipe';
+    const showDist = exitVal === 'slide';
 
-      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
-        <div class="prop-row" style="margin:0;"><label title="Seconds the element stays after appearing, before it begins leaving — independent of the frame's duration">In → Out (s)</label><input type="number" step="0.1" min="0" data-k="exitStart" value="${el.exitStart !== undefined ? el.exitStart : 1.5}" /></div>
+    f.push(`<div class="prop-row" style="margin-bottom:8px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
         ${secNum('exitDuration', 'Duration (s)', 0.6)}
+        <div></div>
+      </div>
+    </div>`);
+
+    if (showFade) {
+      f.push(`<div class="prop-row" style="margin-bottom:8px;">
+        <div style="display:flex; gap:16px; align-items:center;">
+          <div class="checkbox-row" style="margin:0;">
+            <input type="checkbox" data-k="exitFade" id="prop-exit-fade" title="Fade out while leaving" ${el.exitFade !== false ? 'checked' : ''}/>
+            <label for="prop-exit-fade" title="Fade out while leaving" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
+          </div>
+        </div>
+      </div>`);
+    }
+
+    if (showDir) {
+      const exitDir = el.exitDirection || (exitVal === 'swipe' ? 'left' : 'down');
+      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <label>Direction</label>
+          ${customSelect('exitDirection', [
+            { val: 'up', label: 'Up' },
+            { val: 'down', label: 'Down' },
+            { val: 'left', label: 'Left' },
+            { val: 'right', label: 'Right' }
+          ], exitDir, 'Exit direction', false, 'prop-exit-direction')}
+        </div>
+        ${showDist ? `<div style="display:flex; flex-direction:column; gap:4px;">
+          <label>Dist. (px)</label>
+          <input type="number" min="1" max="500" data-k="exitDistance" value="${el.exitDistance !== undefined ? el.exitDistance : 20}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Exit slide distance in pixels" />
+        </div>` : '<div></div>'}
       </div></div>`);
+    }
 
-      if (showFade) {
-        f.push(`<div class="prop-row" style="margin-bottom:8px;">
-          <div style="display:flex; gap:16px; align-items:center;">
-            <div class="checkbox-row" style="margin:0;">
-              <input type="checkbox" data-k="exitFade" id="prop-exit-fade" title="Fade out while leaving" ${el.exitFade !== false ? 'checked' : ''}/>
-              <label for="prop-exit-fade" title="Fade out while leaving" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
-            </div>
-          </div>
-        </div>`);
-      }
-
-      if (showDir) {
-        const exitDir = el.exitDirection || (exitVal === 'swipe' ? 'left' : 'down');
-        f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label>Direction</label>
-            ${customSelect('exitDirection', [
-              { val: 'up', label: 'Up' },
-              { val: 'down', label: 'Down' },
-              { val: 'left', label: 'Left' },
-              { val: 'right', label: 'Right' }
-            ], exitDir, 'Exit direction', false, 'prop-exit-direction')}
-          </div>
-          ${showDist ? `<div style="display:flex; flex-direction:column; gap:4px;">
-            <label>Dist. (px)</label>
-            <input type="number" min="1" max="500" data-k="exitDistance" value="${el.exitDistance !== undefined ? el.exitDistance : 20}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Exit slide distance in pixels" />
-          </div>` : '<div></div>'}
-        </div></div>`);
-      }
-
-      const isPersistentEl = el.persistent === 'top' || el.persistent === 'bottom';
-      if (isPersistentEl) {
-        f.push(`<div style="font-size:10px; color:var(--text-muted); line-height:1.4; margin:-2px 0 8px;">Exit applies to frame elements, not persistent layers.</div>`);
-      }
+    const isPersistentEl = el.persistent === 'top' || el.persistent === 'bottom';
+    if (isPersistentEl) {
+      f.push(`<div style="font-size:10px; color:var(--text-muted); line-height:1.4; margin:-2px 0 8px;">Exit applies to frame elements, not persistent layers.</div>`);
     }
 
     f.push(`</div>`); // Close out-transition-preview-area
@@ -3060,7 +3083,7 @@ function checkButtonFontSizeWarning(el) {
     });
     inp.addEventListener('change', () => {
       pushHistory();
-      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize' || inp.dataset.k === 'animStaggerText' || inp.dataset.k === 'exitEnabled' || inp.dataset.k === 'exitType') renderProps();
+      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize' || inp.dataset.k === 'animStaggerText' || inp.dataset.k === 'exitEnabled' || inp.dataset.k === 'exitType' || inp.dataset.k === 'animationMode' || inp.dataset.k === 'exitStart') renderProps();
     });
     if (inp.type === 'number') {
       inp.addEventListener('wheel', (e) => {
@@ -4060,6 +4083,40 @@ function checkButtonFontSizeWarning(el) {
     wireFrameTransitionEvents();
   }
   initCollapsiblePanels();
+
+  const modeSelect = propsEl.querySelector('#prop-animation-mode');
+  if (modeSelect) {
+    modeSelect.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    modeSelect.addEventListener('change', (e) => {
+      const newMode = e.target.value;
+      updateProp('animationMode', newMode);
+      if (newMode === 'static') {
+        const inProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor', 'animStaggerText'];
+        inProps.forEach(p => updateProp(p, undefined));
+        
+        const outProps = ['exitEnabled', 'exitType', 'exitStart', 'exitDuration', 'exitFade', 'exitDirection', 'exitDistance'];
+        outProps.forEach(p => updateProp(p, undefined));
+      } else if (newMode === 'in') {
+        if (!el.animType || el.animType === 'none') {
+          updateProp('animType', 'fade-in');
+        }
+        const outProps = ['exitEnabled', 'exitType', 'exitStart', 'exitDuration', 'exitFade', 'exitDirection', 'exitDistance'];
+        outProps.forEach(p => updateProp(p, undefined));
+      } else if (newMode === 'in-out') {
+        if (!el.animType || el.animType === 'none') {
+          updateProp('animType', 'fade-in');
+        }
+        updateProp('exitEnabled', true);
+        if (!el.exitType) {
+          updateProp('exitType', 'fade-out');
+        }
+      }
+      pushHistory();
+      renderProps();
+    });
+  }
 
   wireCustomSelects(el, updateProp);
 }

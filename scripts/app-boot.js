@@ -935,7 +935,7 @@ function initCollapsiblePanels() {
     setChevronPoints(isCollapsed);
 
     header.addEventListener('click', (e) => {
-      if (e.target.closest('.panel-fullscreen-btn') || e.target.closest('.fav-filter-btn') || e.target.closest('#btn-add-canvas')) return;
+      if (e.target.closest('.panel-fullscreen-btn') || e.target.closest('.fav-filter-btn') || e.target.closest('#btn-add-canvas') || e.target.closest('.animation-mode-select')) return;
       const currentlyCollapsed = parentSection.classList.toggle('collapsed');
       localStorage.setItem(storageKey, currentlyCollapsed ? 'true' : 'false');
       setChevronPoints(currentlyCollapsed);

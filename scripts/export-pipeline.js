@@ -1433,7 +1433,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
     const wrapStyle = `position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;transform:rotate(${el.rotation || 0}deg);opacity:${wrapOpacity};`;
     const wrapAttrs = `data-id="${el.id}" style="${wrapStyle}"`;
 
-    const animType = el.animType || 'none';
+    const animMode = el.animationMode || (el.exitEnabled ? 'in-out' : (el.animType && el.animType !== 'none' ? 'in' : 'static'));
+    const animType = animMode === 'static' ? 'none' : (el.animType || 'none');
     if (animType === 'split' && !isImageExport) {
       const fromPoly = getSplitClipPath(el.animAngle || 0);
       const fadeFrom = el.animFade !== false ? 'opacity: 0;' : '';
@@ -1474,7 +1475,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
     // Per-id EXIT keyframes — only when the element actually exits (its frame
     // transitions away). Static exit presets (fade/swipe/blur) use shared
     // keyframes and need no per-id emission.
-    if (frameCtx && !isImageExport && el.exitEnabled) {
+    if (frameCtx && !isImageExport && animMode === 'in-out') {
       usesExitKeyframes = true;
       if (el.exitType === 'slide') dynamicKeyframes += '\n' + getSlideOutKeyframes(el);
       else if (el.exitType === 'zoom') dynamicKeyframes += '\n' + getZoomOutKeyframes(el);
