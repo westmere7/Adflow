@@ -291,6 +291,35 @@ let historyIndex = -1;
 var sizeUpdateTimeout = null;
 let startupTemplates = [];
 
+// The auto-size / auto-hug sizers (measureButtonWidth, measureTextFits) measure
+// label text with canvas.measureText / a hidden <div>. Both depend on the real
+// web font being loaded — the @font-face fonts (Museo, Helvetica Neue LT Pro)
+// download lazily, so a cold load/refresh can measure against the FALLBACK font
+// and pick a too-small width/font, which makes single-line button labels wrap.
+// The user previously had to zoom in/out to force a re-render (by which point
+// the font had loaded) to fix it. ensureAppFontsLoaded() forces those fonts to
+// download up front so callers can re-render once measurement is reliable.
+// Mirrors the families/weights declared in styles.css.
+let _appFontsReadyPromise = null;
+function ensureAppFontsLoaded() {
+  if (_appFontsReadyPromise) return _appFontsReadyPromise;
+  if (!document.fonts || !document.fonts.load) {
+    _appFontsReadyPromise = Promise.resolve();
+    return _appFontsReadyPromise;
+  }
+  const specs = [
+    "300 16px 'Museo'", "500 16px 'Museo'", "700 16px 'Museo'",
+    "300 16px 'Helvetica Neue LT Pro'", "400 16px 'Helvetica Neue LT Pro'",
+    "500 16px 'Helvetica Neue LT Pro'", "600 16px 'Helvetica Neue LT Pro'"
+  ];
+  // document.fonts.ready only resolves for fonts already REQUESTED, so we kick
+  // an explicit load of each spec first; .ready then waits for them all.
+  _appFontsReadyPromise = Promise.all(
+    specs.map(s => document.fonts.load(s).catch(() => {}))
+  ).then(() => document.fonts.ready).catch(() => {});
+  return _appFontsReadyPromise;
+}
+
 function measureButtonWidth(el) {
   const canvas = measureButtonWidth.canvas || (measureButtonWidth.canvas = document.createElement('canvas'));
   const ctx = canvas.getContext('2d');

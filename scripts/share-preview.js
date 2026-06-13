@@ -228,7 +228,7 @@ async function openSharePreviewModal() {
         <div style="background: rgba(124, 92, 255, 0.08); border: 1px solid rgba(124, 92, 255, 0.2); border-radius: 6px; padding: 10px 12px; font-size: 12px; color: var(--text-muted); margin-bottom: 16px; display: flex; gap: 8px; align-items: flex-start;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-base)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
           <div>
-            Anyone with this link can view the interactive preview without logging in. The link is live: every cloud save updates what reviewers see (local-only edits stay private until you save to cloud). Note the link carries the full project source (assets and data sheet included).
+            Anyone with this link can view the preview — no login needed. It updates each time you save to cloud.
             <div style="margin-top: 4px; font-weight: 500;">Link expires ${_formatFutureTime(state.previewExpiry)} (on ${new Date(state.previewExpiry).toLocaleDateString()}).</div>
           </div>
         </div>

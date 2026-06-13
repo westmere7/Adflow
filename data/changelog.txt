@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.21.0 (Current) - June 2026 — Engine v2.19
+v0.21.1 (Current) - June 2026 — Engine v2.19
+- Fixed Button Labels Wrapping On Load: Auto-sized button labels (like "Take next step") could appear with an extra line break right after loading a project or refreshing the browser, then snap back to one line once you zoomed in and out. The labels were being measured against a fallback font before the brand fonts had finished loading; the canvas now re-measures and re-renders as soon as the fonts are ready, so labels look correct immediately without the zoom workaround.
+- Shorter Share Dialog Copy: Trimmed the explanatory note in the Share Project Preview dialog down to one plain-language line.
+
+v0.21.0 - June 2026 — Engine v2.19
 - Full Preview Controls: The full-preview bar gained a control cluster. A frame selector lets you jump to any frame and play forward from there across every size at once; "Replay all" restarts every size from the first frame; and "Download all" packages each size as an HTML5 zip in one click.
 - Live Runtime Readout: The preview bar now shows the ad's total runtime (the sum of all playable frame durations, with a ↻ when looping). Picking a specific frame switches the readout to that frame's own duration. Exported ad files are unchanged — the new controls live only in the editor's preview.
 - Preview Page Controls: The shareable preview page now matches the editor. Its Frame Select jumps-and-plays (picking a frame plays every size forward from it) instead of only freezing, the old "Auto Loop Banners" option is now "All frames", and the same total/per-frame runtime readout appears under the playback buttons. Static-frame inspection still lives on the "Static only" button.

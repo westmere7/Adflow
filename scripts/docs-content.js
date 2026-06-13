@@ -660,6 +660,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.21.1',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Fixed Button Labels Wrapping On Load: Auto-sized button labels (like "Take next step") could appear with an extra line break right after loading a project or refreshing the browser, then snap back to one line once you zoomed in and out. The labels were being measured against a fallback font before the brand fonts had finished loading; the canvas now re-measures and re-renders as soon as the fonts are ready, so labels look correct immediately without the zoom workaround.',
+      'Shorter Share Dialog Copy: Trimmed the explanatory note in the Share Project Preview dialog down to one plain-language line.'
+    ]
+  },
+  {
     version: 'v0.21.0',
     date: 'June 2026 — Engine v2.19',
     items: [

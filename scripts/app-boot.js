@@ -1182,7 +1182,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.21.0';
+        verEl.textContent = 'v0.21.1';
         logoEl.appendChild(verEl);
       }
     }
@@ -1374,6 +1374,14 @@ async function loadStartupTemplate(fileName, customProjectName, customCompressFo
   }
 
   render();
+  // The first render may have measured auto-sized/auto-hug button labels before
+  // the web fonts finished loading (they download lazily), which can make a
+  // single-line label wrap against the fallback font's metrics. Re-render once
+  // the real fonts are ready so the labels re-measure correctly — this removes
+  // the old "zoom in/out to fix the line break" workaround.
+  if (typeof ensureAppFontsLoaded === 'function') {
+    ensureAppFontsLoaded().then(() => render(true));
+  }
   setActiveTool(state.activeTool || 'select');
   initCollapsiblePanels();
   appSplash.setPhase(4);
