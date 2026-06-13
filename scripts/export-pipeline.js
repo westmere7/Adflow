@@ -498,6 +498,50 @@ function getSlideKeyframes(el) {
   }
 }
 
+// Per-id EXIT keyframes — reverse of getSlideKeyframes/getZoomKeyframes. They go
+// FROM the resting state (transform:none, opacity:1) TO an offset/scaled + faded
+// state, so they compose cleanly after the entry animation's fill. Direction means
+// "leaves toward": up = -Y, down = +Y, left = -X, right = +X.
+function getSlideOutKeyframes(el) {
+  const dir = el.exitDirection || 'down';
+  const dist = el.exitDistance !== undefined ? el.exitDistance : 20;
+  const fade = el.exitFade !== false;
+  const animName = `anim-slide-out-${el.id}`;
+  let transformTo = '';
+  if (dir === 'up') transformTo = `translateY(${-dist}px)`;
+  else if (dir === 'down') transformTo = `translateY(${dist}px)`;
+  else if (dir === 'left') transformTo = `translateX(${-dist}px)`;
+  else transformTo = `translateX(${dist}px)`;
+  return `@keyframes ${animName} {
+      from { transform: translate(0); ${fade ? 'opacity: 1;' : ''} }
+      to { transform: ${transformTo}; ${fade ? 'opacity: 0;' : ''} }
+    }`;
+}
+
+function getZoomOutKeyframes(el) {
+  const fade = el.exitFade !== false;
+  const animName = `anim-zoom-out-${el.id}`;
+  return `@keyframes ${animName} {
+      from { transform: scale(1); ${fade ? 'opacity: 1;' : ''} }
+      to { transform: scale(0.8); ${fade ? 'opacity: 0;' : ''} }
+    }`;
+}
+
+// Shared exit @keyframes (fade/blur/swipe). Only injected into an export when an
+// element actually uses an exit, so all-"none" exports are unchanged in weight.
+const EXIT_STATIC_KEYFRAMES = `
+  @keyframes anim-fade-out { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes anim-blur-out { from { filter: blur(0px); opacity: 1; } to { filter: blur(20px); opacity: 0; } }
+  @keyframes anim-blur-out-nofade { from { filter: blur(0px); } to { filter: blur(20px); } }
+  @keyframes anim-swipe-out-left  { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 0 100%); } }
+  @keyframes anim-swipe-out-right { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 100% 0 0); } }
+  @keyframes anim-swipe-out-up    { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(100% 0 0 0); } }
+  @keyframes anim-swipe-out-down  { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 100% 0); } }
+  @keyframes anim-swipe-out-left-fade  { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 0 0 100%); opacity: 0; } }
+  @keyframes anim-swipe-out-right-fade { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 100% 0 0); opacity: 0; } }
+  @keyframes anim-swipe-out-up-fade    { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(100% 0 0 0); opacity: 0; } }
+  @keyframes anim-swipe-out-down-fade  { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 0 100% 0); opacity: 0; } }`;
+
 function getFrameTransitionKeyframes(f, c) {
   const t = f.transition || 'none';
   if (t === 'none') return '';
@@ -1370,8 +1414,12 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
   if (!c) return '';
   const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   let dynamicKeyframes = '';
+  // Set true when any element actually emits an exit animation, so the shared
+  // exit @keyframes are only included when used — an all-"none" export stays
+  // byte-for-byte as it was before exit animations existed.
+  let usesExitKeyframes = false;
 
-  const renderEl = (el) => {
+  const renderEl = (el, frameCtx) => {
     if (el.hidden) return '';
     // Mask layer: not rendered visibly — its geometry is baked into the SVG
     // mask attached to the image below it. Skip here.
@@ -1423,7 +1471,15 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
     if (el.effectType === 'pan' && !isImageExport) {
       dynamicKeyframes += '\n' + getPanCurveKeyframes(el);
     }
-    const { entryConfig, entryVars, effConfig, effVars } = getElementAnimationCSS(el, isImageExport);
+    // Per-id EXIT keyframes — only when the element actually exits (its frame
+    // transitions away). Static exit presets (fade/swipe/blur) use shared
+    // keyframes and need no per-id emission.
+    if (frameCtx && !isImageExport && el.exitEnabled) {
+      usesExitKeyframes = true;
+      if (el.exitType === 'slide') dynamicKeyframes += '\n' + getSlideOutKeyframes(el);
+      else if (el.exitType === 'zoom') dynamicKeyframes += '\n' + getZoomOutKeyframes(el);
+    }
+    const { entryConfig, entryVars, effConfig, effVars } = getElementAnimationCSS(el, isImageExport, frameCtx);
     // Continuous-effect wrapper goes OUTSIDE the entry wrapper. Clip-path entry
     // animations (swipe / typing) settle on `clip-path: inset(0 0 0 0)` (their
     // "fully revealed" state, kept by fill-mode), which clips to the element's
@@ -1723,8 +1779,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
     return '';
   };
 
-  const elsBot = c.elements.filter(e => e.persistent === 'bottom').map(renderEl).join('\n');
-  const elsTop = c.elements.filter(e => e.persistent === 'top').map(renderEl).join('\n');
+  const elsBot = c.elements.filter(e => e.persistent === 'bottom').map(e => renderEl(e)).join('\n');
+  const elsTop = c.elements.filter(e => e.persistent === 'top').map(e => renderEl(e)).join('\n');
 
   // Filter out skipped frames unless (a) it's a static image export of the
   // active frame, OR (b) the caller explicitly requested skipped frames be
@@ -1780,11 +1836,26 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
   let initialAdBg = null;
   activeFrames.forEach((f, i) => {
     const excludePers = !!f.excludePersistent;
+
+    // Effective playable duration of this frame, computed up-front (it normally
+    // lives further down with frameData) because per-element EXIT animations are
+    // delayed to finish exactly as this duration elapses, and must use the same
+    // value the runtime frame timer uses.
+    // In current frame preview, we show the previous frame (index 0) briefly, then transition to index 1 (active frame)
+    const isFirstOfPreviewCurrent = isPreviewCurrent && isCurrentWithPrev && i === 0;
+    const isSecondOfPreviewCurrent = isPreviewCurrent && isCurrentWithPrev && i === 1;
+    let durationVal = f.duration || 2;
+    if (isFirstOfPreviewCurrent) durationVal = Math.min(1.0, f.duration || 2);
+    // frameCtx marks a per-frame element so it's eligible for an exit animation
+    // (persistent layers omit it). Exit timing is independent of the frame, so it
+    // plays on any frame; image export still suppresses it (handled downstream).
+    const frameCtx = { perFrame: true };
+
     const frameElsList = [];
     if (!excludePers) {
       c.elements.filter(e => e.persistent === 'bottom').forEach(e => frameElsList.push(renderEl(e)));
     }
-    c.elements.filter(e => e.persistent === false && e.frameId === f.id).forEach(e => frameElsList.push(renderEl(e)));
+    c.elements.filter(e => e.persistent === false && e.frameId === f.id).forEach(e => frameElsList.push(renderEl(e, frameCtx)));
     if (!excludePers) {
       c.elements.filter(e => e.persistent === 'top').forEach(e => frameElsList.push(renderEl(e)));
     }
@@ -1793,11 +1864,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
     const displayStyle = (isImageExport || isPreviewCurrent)
       ? (f.id === state.activeFrameId ? 'block' : 'none')
       : (i === 0 ? 'block' : 'none');
-    
-    // In current frame preview, we show the previous frame (index 0) briefly, then transition to index 1 (active frame)
-    const isFirstOfPreviewCurrent = isPreviewCurrent && isCurrentWithPrev && i === 0;
-    const isSecondOfPreviewCurrent = isPreviewCurrent && isCurrentWithPrev && i === 1;
-    
+
     const displayStyleVal = isPreviewCurrent
       ? (isCurrentWithPrev ? (isFirstOfPreviewCurrent ? 'block' : 'none') : 'block')
       : displayStyle;
@@ -1813,12 +1880,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
       transitionVal = state.loopAd ? (f.transition || 'none') : 'none';
     }
 
-    let durationVal = f.duration || 2;
-    if (isFirstOfPreviewCurrent) {
-      durationVal = Math.min(1.0, f.duration || 2);
-    }
-
-    frameData.push({ 
+    frameData.push({
       id: f.id, 
       duration: durationVal, 
       transition: transitionVal, 
@@ -1932,7 +1994,7 @@ ${dynamicKeyframes}
   @keyframes anim-swipe-left-fade  { from { clip-path: inset(0 0 0 100%); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
   @keyframes anim-swipe-right-fade { from { clip-path: inset(0 100% 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
   @keyframes anim-swipe-up-fade    { from { clip-path: inset(100% 0 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
-  @keyframes anim-swipe-down-fade  { from { clip-path: inset(0 0 100% 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+  @keyframes anim-swipe-down-fade  { from { clip-path: inset(0 0 100% 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }${usesExitKeyframes ? EXIT_STATIC_KEYFRAMES : ''}
   @keyframes eff-pulse { 0% { scale: 1; } 50% { scale: var(--pulse-scale, 1.05); } 100% { scale: 1; } }
   @keyframes eff-float { 0% { translate: 0 0; } 50% { translate: var(--float-x, 0px) var(--float-y, -10px); } 100% { translate: 0 0; } }
   @keyframes eff-flash { 0%, 50%, 100% { opacity: 1; } 25%, 75% { opacity: 0; } }

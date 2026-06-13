@@ -2008,7 +2008,7 @@ function buildSyncFromLiveLink(ll, cat) {
   const s = { transform: false, fontSize: false, visibility: true };
 
   if (ll.syncOpacity)    s.opacity = true;
-  if (ll.syncAnimations) { s.inAnim = true; s.effect = true; }
+  if (ll.syncAnimations) { s.inAnim = true; s.outAnim = true; s.effect = true; }
 
   if (cat === 'text') {
     if (ll.syncText)  s.text = true;

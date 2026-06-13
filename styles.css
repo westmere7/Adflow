@@ -424,6 +424,19 @@ body.theme-rmit-navy {
     @keyframes anim-swipe-up-fade    { from { clip-path: inset(100% 0 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
     @keyframes anim-swipe-down-fade  { from { clip-path: inset(0 0 100% 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
 
+    /* Exit ("out") animations — reverse of the entry presets, played near frame end. */
+    @keyframes anim-fade-out { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes anim-blur-out { from { filter: blur(0px); opacity: 1; } to { filter: blur(20px); opacity: 0; } }
+    @keyframes anim-blur-out-nofade { from { filter: blur(0px); } to { filter: blur(20px); } }
+    @keyframes anim-swipe-out-left  { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 0 100%); } }
+    @keyframes anim-swipe-out-right { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 100% 0 0); } }
+    @keyframes anim-swipe-out-up    { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(100% 0 0 0); } }
+    @keyframes anim-swipe-out-down  { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 100% 0); } }
+    @keyframes anim-swipe-out-left-fade  { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 0 0 100%); opacity: 0; } }
+    @keyframes anim-swipe-out-right-fade { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 100% 0 0); opacity: 0; } }
+    @keyframes anim-swipe-out-up-fade    { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(100% 0 0 0); opacity: 0; } }
+    @keyframes anim-swipe-out-down-fade  { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 0 100% 0); opacity: 0; } }
+
 
 
 

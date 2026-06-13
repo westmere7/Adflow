@@ -24,6 +24,7 @@ function getDefaultSync(el) {
     defaultSync.background = true;
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
+    defaultSync.outAnim = true;
     defaultSync.effect = true;
     defaultSync.visibility = true;
   } else if (cat === 'button') {
@@ -36,6 +37,7 @@ function getDefaultSync(el) {
     defaultSync.transform = !isRoleAssigned; // Unchecked by default for role-assigned (syncs width, height)
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
+    defaultSync.outAnim = true;
     defaultSync.effect = true;
     defaultSync.visibility = true;
   } else if (cat === 'image') {
@@ -48,6 +50,7 @@ function getDefaultSync(el) {
     defaultSync.opacity = true;
     defaultSync.rotation = true;
     defaultSync.inAnim = true;
+    defaultSync.outAnim = true;
     defaultSync.effect = true;
     defaultSync.visibility = true;
   } else if (cat === 'shape') {
@@ -57,6 +60,7 @@ function getDefaultSync(el) {
     defaultSync.transform = !isRoleAssigned;
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
+    defaultSync.outAnim = true;
     defaultSync.effect = true;
     defaultSync.visibility = true;
   } else if (cat === 'line') {
@@ -64,6 +68,7 @@ function getDefaultSync(el) {
     defaultSync.thickness = true;
     defaultSync.opacity = true;
     defaultSync.inAnim = true;
+    defaultSync.outAnim = true;
     defaultSync.effect = true;
     defaultSync.visibility = true;
   }
@@ -378,6 +383,13 @@ function applyLinkSync(sourceEl, targetEl, group) {
   if (sync.effect) {
     const effectProps = ['effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panTowards', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
     effectProps.forEach(p => {
+      if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
+      else delete targetEl[p];
+    });
+  }
+  if (sync.outAnim) {
+    const outAnimProps = ['exitEnabled', 'exitType', 'exitStart', 'exitDuration', 'exitFade', 'exitDirection', 'exitDistance'];
+    outAnimProps.forEach(p => {
       if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
       else delete targetEl[p];
     });

@@ -8,9 +8,11 @@ let framePreviewTimeoutId = null;
 // previews even after the panel DOM was rebuilt (which swallows mouseleave).
 let stopElementAnimPreviewFn = null;
 let stopElementEffectPreviewFn = null;
+let stopElementExitPreviewFn = null;
 // startPreviewLoop is a closure inside renderProps(); register it so the
 // top-level wireCustomSelects() (animDirection dropdown) can drive the preview.
 let startElementAnimPreviewFn = null;
+let startElementExitPreviewFn = null;
 let applyElementEffectPreviewFn = null;
 // Set when a hover-driven effect preview starts via the global startEffectPreview
 // (panDir custom select), which bypasses the panel closure's activeEffectVal.
@@ -54,7 +56,7 @@ const PRESET_DESCRIPTIONS = {
 function getPreviewDomNodes(el, previewType = 'inAnim') {
   let idsToPreview = [];
   const lg = el.linkGroupId ? state.linkGroups?.[el.linkGroupId] : null;
-  const isSyncOn = lg && (previewType === 'inAnim' ? lg.syncProperties?.inAnim : lg.syncProperties?.effect);
+  const isSyncOn = lg && (previewType === 'inAnim' ? lg.syncProperties?.inAnim : previewType === 'outAnim' ? lg.syncProperties?.outAnim : lg.syncProperties?.effect);
   if (el.linkGroupId && lg?.liveLink === true && isSyncOn) {
     const gid = el.linkGroupId;
     state.canvases.forEach(c => {
@@ -74,6 +76,7 @@ function getPreviewDomNodes(el, previewType = 'inAnim') {
 function stopAllAnimationPreviews() {
   if (stopElementAnimPreviewFn) stopElementAnimPreviewFn();
   if (stopElementEffectPreviewFn) stopElementEffectPreviewFn();
+  if (stopElementExitPreviewFn) stopElementExitPreviewFn();
   if (activeFramePreviewType || framePreviewTimeoutId) stopFrameTransitionPreview();
 }
 
@@ -82,7 +85,7 @@ function stopAllAnimationPreviews() {
 // every preview as soon as the pointer hovers anything outside the 3 sub-panels.
 document.addEventListener('mouseover', (e) => {
   const t = e.target;
-  if (t && t.closest && t.closest('#in-transition-preview-area, #effects-preview-area, #frame-transition-preview-area')) return;
+  if (t && t.closest && t.closest('#in-transition-preview-area, #out-transition-preview-area, #effects-preview-area, #frame-transition-preview-area')) return;
   stopAllAnimationPreviews();
 });
 document.addEventListener('mouseleave', () => stopAllAnimationPreviews());
@@ -644,7 +647,7 @@ function customSelect(key, options, currentVal, title, isFrameTrans = false, fra
 
   const containerIdHtml = frameTransId ? `id="${frameTransId}"` : '';
   const dataKeyAttr = isFrameTrans ? `data-frame-k="${key}"` : `data-k="${key}"`;
-  const isMainPreset = key === 'animType' || key === 'effectType' || key === 'transition';
+  const isMainPreset = key === 'animType' || key === 'effectType' || key === 'transition' || key === 'exitType';
   const borderStyle = isMainPreset ? 'border: 1.5px solid var(--accent-base);' : 'border: 1px solid var(--border-light);';
   const extraTriggerClass = isMainPreset ? 'preset-select-trigger' : '';
 
@@ -1098,6 +1101,8 @@ function wireCustomSelects(el, updateProp) {
             if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
           } else if (key === 'effectType') {
             if (applyElementEffectPreviewFn) applyElementEffectPreviewFn(el.effectType || 'none');
+          } else if ((key === 'exitType' || key === 'exitDirection') && el.exitEnabled) {
+            if (startElementExitPreviewFn) startElementExitPreviewFn(el.exitType || 'fade-out');
           }
         }
       }
@@ -1211,6 +1216,8 @@ function wireCustomSelects(el, updateProp) {
           } else if (key === 'panDir') {
             hoverEffectPreviewActive = true;
             startEffectPreview(el);
+          } else if ((key === 'exitType' || key === 'exitDirection') && el.exitEnabled) {
+            if (startElementExitPreviewFn) startElementExitPreviewFn(el.exitType || 'fade-out');
           }
         }
       }
@@ -1246,6 +1253,8 @@ function wireCustomSelects(el, updateProp) {
           const origType = el.animType;
           const origDirection = el.animDirection;
           const origPanDir = el.panDir;
+          const origExitType = el.exitType;
+          const origExitDirection = el.exitDirection;
 
           if (key === 'animDirection') {
             if ((el.animType || '').startsWith('swipe-')) {
@@ -1264,12 +1273,19 @@ function wireCustomSelects(el, updateProp) {
             if (startElementAnimPreviewFn) startElementAnimPreviewFn(targetVal);
           } else if (key === 'effectType') {
             if (applyElementEffectPreviewFn) applyElementEffectPreviewFn(val);
+          } else if (key === 'exitType' && el.exitEnabled) {
+            if (startElementExitPreviewFn) startElementExitPreviewFn(val);
+          } else if (key === 'exitDirection' && el.exitEnabled) {
+            el.exitDirection = val;
+            if (startElementExitPreviewFn) startElementExitPreviewFn(el.exitType || 'fade-out');
           }
 
           item.onmouseleave = () => {
             el.animType = origType;
             el.animDirection = origDirection;
             el.panDir = origPanDir;
+            el.exitType = origExitType;
+            el.exitDirection = origExitDirection;
             if (key === 'animDirection') {
               if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
             } else if (key === 'panDir') {
@@ -1279,6 +1295,9 @@ function wireCustomSelects(el, updateProp) {
               if (stopElementAnimPreviewFn) stopElementAnimPreviewFn();
             } else if (key === 'effectType') {
               if (stopElementEffectPreviewFn) stopElementEffectPreviewFn();
+            } else if (key === 'exitType' || key === 'exitDirection') {
+              if (el.exitEnabled && startElementExitPreviewFn) startElementExitPreviewFn(el.exitType || 'fade-out');
+              else if (stopElementExitPreviewFn) stopElementExitPreviewFn();
             }
           };
         }
@@ -2599,6 +2618,81 @@ function renderProps() {
     }
 
     f.push(`</div>`); // Close in-transition-preview-area
+
+    // ---- OUT ANIMATIONS (exit) ----
+    // Opt-in via a toggle (off by default). When off, only the heading + toggle
+    // show. The exit plays on its own timer: it begins "In → Out" seconds after the
+    // element appears, independent of the frame's own duration.
+    const exitOn = !!el.exitEnabled;
+    f.push(`<div id="out-transition-preview-area" class="animation-sub-panel">`);
+    f.push(`<div class="prop-row" style="margin:0 0 ${exitOn ? '10px' : '0'}; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <label class="anim-sub-head" style="margin:0;"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0; transform: scaleX(-1);" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>OUT ANIMATIONS</label>
+      <div class="checkbox-row" style="margin:0;">
+        <input type="checkbox" data-k="exitEnabled" id="prop-exit-enabled" title="Enable an exit animation for this element" ${exitOn ? 'checked' : ''}/>
+        <label for="prop-exit-enabled" title="Enable an exit animation for this element" style="cursor:pointer; font-size:11px; white-space:nowrap;">Enable</label>
+      </div>
+    </div>`);
+
+    if (exitOn) {
+      const exitOptions = [
+        { val: 'fade-out', label: 'Fade Out' },
+        { val: 'slide', label: 'Slide' },
+        { val: 'swipe', label: 'Swipe' },
+        { val: 'zoom', label: 'Zoom' },
+        { val: 'blur', label: 'Blur' }
+      ];
+      const exitVal = el.exitType || 'fade-out';
+      f.push(`<div style="margin-bottom:8px;">
+        ${customSelect('exitType', exitOptions, exitVal, 'Select Out Animation', false, '', 'out-')}
+      </div>`);
+
+      const showFade = exitVal !== 'fade-out'; // Fade Out is inherently a fade
+      const showDir = exitVal === 'slide' || exitVal === 'swipe';
+      const showDist = exitVal === 'slide';
+
+      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
+        <div class="prop-row" style="margin:0;"><label title="Seconds the element stays after appearing, before it begins leaving — independent of the frame's duration">In → Out (s)</label><input type="number" step="0.1" min="0" data-k="exitStart" value="${el.exitStart !== undefined ? el.exitStart : 1.5}" /></div>
+        ${secNum('exitDuration', 'Duration (s)', 0.6)}
+      </div></div>`);
+
+      if (showFade) {
+        f.push(`<div class="prop-row" style="margin-bottom:8px;">
+          <div style="display:flex; gap:16px; align-items:center;">
+            <div class="checkbox-row" style="margin:0;">
+              <input type="checkbox" data-k="exitFade" id="prop-exit-fade" title="Fade out while leaving" ${el.exitFade !== false ? 'checked' : ''}/>
+              <label for="prop-exit-fade" title="Fade out while leaving" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
+            </div>
+          </div>
+        </div>`);
+      }
+
+      if (showDir) {
+        const exitDir = el.exitDirection || (exitVal === 'swipe' ? 'left' : 'down');
+        f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label>Direction</label>
+            ${customSelect('exitDirection', [
+              { val: 'up', label: 'Up' },
+              { val: 'down', label: 'Down' },
+              { val: 'left', label: 'Left' },
+              { val: 'right', label: 'Right' }
+            ], exitDir, 'Exit direction', false, 'prop-exit-direction')}
+          </div>
+          ${showDist ? `<div style="display:flex; flex-direction:column; gap:4px;">
+            <label>Dist. (px)</label>
+            <input type="number" min="1" max="500" data-k="exitDistance" value="${el.exitDistance !== undefined ? el.exitDistance : 20}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Exit slide distance in pixels" />
+          </div>` : '<div></div>'}
+        </div></div>`);
+      }
+
+      const isPersistentEl = el.persistent === 'top' || el.persistent === 'bottom';
+      if (isPersistentEl) {
+        f.push(`<div style="font-size:10px; color:var(--text-muted); line-height:1.4; margin:-2px 0 8px;">Exit applies to frame elements, not persistent layers.</div>`);
+      }
+    }
+
+    f.push(`</div>`); // Close out-transition-preview-area
+
     f.push(`<div id="effects-preview-area" class="animation-sub-panel">`);
     f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18489086" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;"><g fill="currentColor"><path d="m62.9545441 6.8181796v17.2727323h-60.4545455v17.2727203h95.0000014z"></path><path d="m37.0454559 75.9090881h60.4545441v-17.2727203h-95.0000014l34.5454573 34.5454559z"></path></g></svg>CONTINUOUS EFFECT</label></div>`);
     const effectOptions = [
@@ -2966,7 +3060,7 @@ function checkButtonFontSizeWarning(el) {
     });
     inp.addEventListener('change', () => {
       pushHistory();
-      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize' || inp.dataset.k === 'animStaggerText') renderProps();
+      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize' || inp.dataset.k === 'animStaggerText' || inp.dataset.k === 'exitEnabled' || inp.dataset.k === 'exitType') renderProps();
     });
     if (inp.type === 'number') {
       inp.addEventListener('wheel', (e) => {
@@ -3727,6 +3821,83 @@ function checkButtonFontSizeWarning(el) {
       input.addEventListener('change', () => {
         applyEffectPreview(el.effectType || 'none');
       });
+    });
+  }
+
+  // ---- OUT (exit) animation hover preview ----
+  // Loops the chosen exit on the selected element(s) in the canvas, mirroring the
+  // IN-animation hover preview. Static presets (fade/swipe/blur) use styles.css
+  // keyframes; slide/zoom inject per-id keyframes into the shared dynamic style tag.
+  let activeExitVal = null;
+  const resetExitPreviewNodes = () => {
+    document.body.classList.remove('previewing-animation-hover');
+    getPreviewDomNodes(el, 'outAnim').forEach(node => {
+      if (!node) return;
+      node.style.animation = '';
+      node.style.transformOrigin = '';
+    });
+  };
+  const startExitPreviewLoop = (exitVal) => {
+    if (state.exitPreviewTimeoutId) { clearTimeout(state.exitPreviewTimeoutId); state.exitPreviewTimeoutId = null; }
+    activeExitVal = exitVal;
+    if (!exitVal) { resetExitPreviewNodes(); return; }
+    document.body.classList.add('previewing-animation-hover');
+    const MOTION = el.exitDuration !== undefined ? el.exitDuration : 0.6;
+    const ensureStyleTag = () => {
+      let s = document.getElementById('dynamic-anim-styles');
+      if (!s) { s = document.createElement('style'); s.id = 'dynamic-anim-styles'; document.head.appendChild(s); }
+      return s;
+    };
+    const runLoop = () => {
+      if (activeExitVal !== exitVal) return;
+      const domNodes = getPreviewDomNodes(el, 'outAnim');
+      domNodes.forEach(node => { if (node) { node.style.animation = ''; node.style.transformOrigin = ''; void node.offsetHeight; } });
+      domNodes.forEach(node => {
+        if (!node) return;
+        const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
+        const merged = { ...nodeEl, exitType: el.exitType, exitFade: el.exitFade, exitDirection: el.exitDirection, exitDistance: el.exitDistance, exitDuration: el.exitDuration };
+        const fadeOn = merged.exitFade !== false;
+        const dir = merged.exitDirection || (exitVal === 'swipe' ? 'left' : 'down');
+        let name = '';
+        if (exitVal === 'fade-out') name = 'anim-fade-out';
+        else if (exitVal === 'blur') name = 'anim-blur-out' + (fadeOn ? '' : '-nofade');
+        else if (exitVal === 'swipe') name = `anim-swipe-out-${dir}` + (fadeOn ? '-fade' : '');
+        else if (exitVal === 'slide') {
+          const tag = ensureStyleTag();
+          const re = new RegExp(`@keyframes\\s+anim-slide-out-${merged.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+          tag.textContent = tag.textContent.replace(re, '') + '\n' + getSlideOutKeyframes(merged);
+          name = `anim-slide-out-${merged.id}`;
+        } else if (exitVal === 'zoom') {
+          const tag = ensureStyleTag();
+          const re = new RegExp(`@keyframes\\s+anim-zoom-out-${merged.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+          tag.textContent = tag.textContent.replace(re, '') + '\n' + getZoomOutKeyframes(merged);
+          name = `anim-zoom-out-${merged.id}`;
+          node.style.transformOrigin = 'center';
+        }
+        if (name) node.style.animation = `${name} ${MOTION}s ease-in 0.35s forwards`;
+      });
+      // pause after the leave, then replay
+      state.exitPreviewTimeoutId = setTimeout(runLoop, MOTION * 1000 + 1100);
+    };
+    runLoop();
+  };
+  const stopExitPreviewLoop = () => {
+    if (activeExitVal === null && !state.exitPreviewTimeoutId) return;
+    activeExitVal = null;
+    if (state.exitPreviewTimeoutId) { clearTimeout(state.exitPreviewTimeoutId); state.exitPreviewTimeoutId = null; }
+    resetExitPreviewNodes();
+  };
+  stopElementExitPreviewFn = stopExitPreviewLoop;
+  startElementExitPreviewFn = startExitPreviewLoop;
+
+  const outArea = propsEl.querySelector('#out-transition-preview-area');
+  if (outArea) {
+    outArea.addEventListener('mouseleave', stopExitPreviewLoop);
+    outArea.querySelectorAll('input, select').forEach(input => {
+      const fire = () => { if (el.exitEnabled) startExitPreviewLoop(el.exitType || 'fade-out'); };
+      input.addEventListener('mouseenter', fire);
+      input.addEventListener('input', fire);
+      input.addEventListener('change', fire);
     });
   }
 

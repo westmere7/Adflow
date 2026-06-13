@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.21.1 (Current) - June 2026 — Engine v2.19
+v0.22.1 (Current) - June 2026 — Engine v2.19
+- Exit Animations: Elements can now animate OUT, not just in. A new "Out Animations" section in the Animation panel has an Enable toggle — off by default, so everything behaves exactly as before until you switch it on — and offers Fade Out, Slide, Swipe, Zoom and Blur (with direction/fade where relevant). You set a single "In → Out" time: how long the element stays after appearing before it leaves. This runs independently of the frame's own duration, so the exit plays on whatever frame the element is on. Hovering an out preset previews it live on the canvas just like entry animations, and exit settings sync across linked elements via a new "OUT Animation" option in the link group properties. Exit isn't applied to persistent layers.
+
+v0.21.1 - June 2026 — Engine v2.19
 - Fixed Button Labels Wrapping On Load: Auto-sized button labels (like "Take next step") could appear with an extra line break right after loading a project or refreshing the browser, then snap back to one line once you zoomed in and out. The labels were being measured against a fallback font before the brand fonts had finished loading; the canvas now re-measures and re-renders as soon as the fonts are ready, so labels look correct immediately without the zoom workaround.
 - Shorter Share Dialog Copy: Trimmed the explanatory note in the Share Project Preview dialog down to one plain-language line.
 

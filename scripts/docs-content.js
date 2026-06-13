@@ -660,6 +660,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.22.1',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Exit Animations: Elements can now animate OUT, not just in. A new "Out Animations" section in the Animation panel has an Enable toggle — off by default, so everything behaves exactly as before until you switch it on — and offers Fade Out, Slide, Swipe, Zoom and Blur (with direction/fade where relevant). You set a single "In → Out" time: how long the element stays after appearing before it leaves, independent of the frame\'s own duration, so the exit plays on whatever frame the element is on. Hovering an out preset previews it live on the canvas like entry animations, and exit settings sync across linked elements via a new "OUT Animation" option in the link group properties. Exit isn\'t applied to persistent layers.'
+    ]
+  },
+  {
     version: 'v0.21.1',
     date: 'June 2026 — Engine v2.19',
     items: [

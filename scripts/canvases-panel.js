@@ -471,14 +471,14 @@ function renderLinkControl() {
           };
 
           let keys = [];
-          if (cat === 'text') keys = ['customName', 'visibility', 'text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect'];
-          else if (cat === 'button') keys = ['customName', 'visibility', 'text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
+          if (cat === 'text') keys = ['customName', 'visibility', 'text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'outAnim', 'effect'];
+          else if (cat === 'button') keys = ['customName', 'visibility', 'text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'outAnim', 'effect'];
           else if (cat === 'image') {
-            keys = ['customName', 'visibility', 'image', 'radius', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
+            keys = ['customName', 'visibility', 'image', 'radius', 'transform', 'opacity', 'rotation', 'inAnim', 'outAnim', 'effect'];
             if (isRmitLogo) keys.push('variant');
           }
-          else if (cat === 'shape') keys = ['customName', 'visibility', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
-          else if (cat === 'line') keys = ['customName', 'visibility', 'color', 'thickness', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'shape') keys = ['customName', 'visibility', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'outAnim', 'effect'];
+          else if (cat === 'line') keys = ['customName', 'visibility', 'color', 'thickness', 'opacity', 'inAnim', 'outAnim', 'effect'];
 
           const anyChecked = keys.some(k => {
             if (k === 'fontSize') return !!(sync.fontSize !== undefined ? sync.fontSize : sync.font);
@@ -503,6 +503,7 @@ function renderLinkControl() {
               ${renderPropChk('background', 'Background', 'Sync text background properties across linked elements')}
               ${renderPropChk('opacity', 'Opacity', 'Sync opacity across linked elements')}
               ${renderPropChk('inAnim', 'IN Animation', 'Sync entry transition animation across linked elements')}
+              ${renderPropChk('outAnim', 'OUT Animation', 'Sync exit animation across linked elements')}
               ${renderPropChk('effect', 'Effects', 'Sync continuous effect across linked elements')}
             </div>`;
           } else if (cat === 'button') {
@@ -518,6 +519,7 @@ function renderLinkControl() {
               ${renderPropChk('transform', 'Size (W+H)', 'Sync button width and height across linked elements')}
               ${renderPropChk('opacity', 'Opacity', 'Sync button opacity across linked elements')}
               ${renderPropChk('inAnim', 'IN Animation', 'Sync button entry transition animation across linked elements')}
+              ${renderPropChk('outAnim', 'OUT Animation', 'Sync button exit animation across linked elements')}
               ${renderPropChk('effect', 'Effects', 'Sync button continuous effect across linked elements')}
             </div>`;
           } else if (cat === 'image') {
@@ -531,6 +533,7 @@ function renderLinkControl() {
               ${renderPropChk('opacity', 'Opacity', 'Sync image opacity across linked elements')}
               ${renderPropChk('rotation', 'Rotation', 'Sync image rotation angle across linked elements')}
               ${renderPropChk('inAnim', 'IN Animation', 'Sync image entry transition animation across linked elements')}
+              ${renderPropChk('outAnim', 'OUT Animation', 'Sync image exit animation across linked elements')}
               ${renderPropChk('effect', 'Effects', 'Sync image continuous effect across linked elements')}
             </div>`;
           } else if (cat === 'shape') {
@@ -543,6 +546,7 @@ function renderLinkControl() {
               ${renderPropChk('transform', 'Size (W+H)', 'Sync shape width and height across linked elements')}
               ${renderPropChk('opacity', 'Opacity', 'Sync shape opacity across linked elements')}
               ${renderPropChk('inAnim', 'IN Animation', 'Sync shape entry transition animation across linked elements')}
+              ${renderPropChk('outAnim', 'OUT Animation', 'Sync shape exit animation across linked elements')}
               ${renderPropChk('effect', 'Effects', 'Sync shape continuous effect across linked elements')}
             </div>`;
           } else if (cat === 'line') {
@@ -553,6 +557,7 @@ function renderLinkControl() {
               ${renderPropChk('thickness', 'Thickness', 'Sync line thickness across linked elements')}
               ${renderPropChk('opacity', 'Opacity', 'Sync line opacity across linked elements')}
               ${renderPropChk('inAnim', 'IN Animation', 'Sync line entry transition animation across linked elements')}
+              ${renderPropChk('outAnim', 'OUT Animation', 'Sync line exit animation across linked elements')}
               ${renderPropChk('effect', 'Effects', 'Sync line continuous effect across linked elements')}
             </div>`;
           }
@@ -648,14 +653,14 @@ function renderLinkControl() {
           const cat = group.category;
           
           let keys = [];
-          if (cat === 'text') keys = ['customName', 'visibility', 'text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'effect'];
-          else if (cat === 'button') keys = ['customName', 'visibility', 'text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
+          if (cat === 'text') keys = ['customName', 'visibility', 'text', 'font', 'fontSize', 'color', 'background', 'opacity', 'inAnim', 'outAnim', 'effect'];
+          else if (cat === 'button') keys = ['customName', 'visibility', 'text', 'textColor', 'font', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'outAnim', 'effect'];
           else if (cat === 'image') {
-            keys = ['customName', 'visibility', 'image', 'radius', 'transform', 'opacity', 'rotation', 'inAnim', 'effect'];
+            keys = ['customName', 'visibility', 'image', 'radius', 'transform', 'opacity', 'rotation', 'inAnim', 'outAnim', 'effect'];
             if (isRmitLogo) keys.push('variant');
           }
-          else if (cat === 'shape') keys = ['customName', 'visibility', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'effect'];
-          else if (cat === 'line') keys = ['customName', 'visibility', 'color', 'thickness', 'opacity', 'inAnim', 'effect'];
+          else if (cat === 'shape') keys = ['customName', 'visibility', 'fill', 'stroke', 'radius', 'transform', 'opacity', 'inAnim', 'outAnim', 'effect'];
+          else if (cat === 'line') keys = ['customName', 'visibility', 'color', 'thickness', 'opacity', 'inAnim', 'outAnim', 'effect'];
 
           const anyChecked = keys.some(k => {
             if (k === 'fontSize') return !!(sync.fontSize !== undefined ? sync.fontSize : sync.font);

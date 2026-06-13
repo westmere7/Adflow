@@ -149,7 +149,13 @@ function strokeOverlayHTML(el) {
 }
 
 
-function getElementAnimationCSS(el, isImageExport) {
+// Default length of the exit ("out") leaving motion, in seconds if undefined.
+const DEFAULT_EXIT_MOTION_DURATION = 0.6;
+
+// frameCtx (optional): a presence marker passed by the export's per-frame element
+// renderer (persistent layers omit it, so they never exit). Image-export and
+// mask-effect callers omit it too, preserving their output.
+function getElementAnimationCSS(el, isImageExport, frameCtx) {
   const animType = el.animType || 'none';
   const effType = el.effectType || 'none';
 
@@ -266,9 +272,44 @@ function getElementAnimationCSS(el, isImageExport) {
     }
   }
 
-  let entryConfig = entryAnims.length > 0 ? `animation: ${entryAnims.join(', ')};` : '';
-  if (isZoomLike && !isImageExport) {
-    entryConfig += ` transform-origin: ${getTransformOriginValue(el.zoomAnchor || 'center')};`;
+  // Exit ("out") animation — plays in the final moment of the element's frame,
+  // just before it hands off to the next. Fully opt-in: exitType 'none' (the
+  // default) emits nothing, so existing projects are byte-identical. It composes
+  // onto the SAME inner node as the entry animation (shared transform/opacity
+  // layer): entry's `both` fill holds the resting state through the gap, then the
+  // exit — declared LAST in the shorthand, with `forwards` fill and a delay of
+  // (frameDuration − exitDuration) — wins during its delayed active window. Each
+  // exit keyframe's 0% is the resting state, so there is no jump at handover.
+  // Opt-in via el.exitEnabled. The exit plays on its OWN timer, independent of the
+  // frame's duration: it begins el.exitStart seconds after the element appears
+  // ("In → Out" time) and runs for a fixed motion length. It composes onto the entry
+  // node's shorthand (declared last → wins during its window). frameCtx present means
+  // this is a per-frame element (persistent layers are excluded).
+  let exitAnims = [];
+  const exitType = el.exitType || 'fade-out';
+  const isExitZoom = exitType === 'zoom';
+  const hasExit = !!el.exitEnabled && frameCtx && !isImageExport;
+  if (hasExit) {
+    const start = el.exitStart !== undefined ? el.exitStart : 1.5;
+    const dur = el.exitDuration !== undefined ? el.exitDuration : DEFAULT_EXIT_MOTION_DURATION;
+    const fadeOn = el.exitFade !== false;
+    const dir = el.exitDirection || (exitType === 'swipe' ? 'left' : 'down');
+    let name = '';
+    if (exitType === 'fade-out') name = 'anim-fade-out';
+    else if (exitType === 'slide') name = `anim-slide-out-${el.id}`;
+    else if (exitType === 'zoom') name = `anim-zoom-out-${el.id}`;
+    else if (exitType === 'swipe') name = `anim-swipe-out-${dir}${fadeOn ? '-fade' : ''}`;
+    else if (exitType === 'blur') name = `anim-blur-out${fadeOn ? '' : '-nofade'}`;
+    if (name) exitAnims.push(`${name} ${dur}s ease-in ${start}s forwards`);
+  }
+
+  const allEntry = entryAnims.concat(exitAnims);
+  let entryConfig = allEntry.length > 0 ? `animation: ${allEntry.join(', ')};` : '';
+  if ((isZoomLike || (hasExit && isExitZoom)) && !isImageExport) {
+    // transform-origin is a single property shared by both zoom keyframes; when an
+    // element zooms both in and out, the entry anchor wins.
+    const anchor = isZoomLike ? (el.zoomAnchor || 'center') : (el.exitZoomAnchor || 'center');
+    entryConfig += ` transform-origin: ${getTransformOriginValue(anchor)};`;
   }
   const effConfig = effAnims.length > 0 ? `animation: ${effAnims.join(', ')};` : '';
   return { entryConfig, entryVars, effConfig, effVars };
