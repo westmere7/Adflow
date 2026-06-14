@@ -29,8 +29,8 @@ const PRESET_DESCRIPTIONS = {
   'in-blur': "Fades in the element with a smooth camera blur.",
   'in-typing': "Fades/types in text characters or words sequentially.",
 
-  // Continuous Effects
-  'eff-none': "No active continuous effect.",
+  // Animation FX
+  'eff-none': "No active Animation FX.",
   'eff-pulse': "Repeatedly scales the element up and down slightly.",
   'eff-float': "Slowly floats the element up and down.",
   'eff-flash': "Flashes the opacity of the element repeatedly.",
@@ -616,14 +616,6 @@ function stopFrameTransitionPreview() {
 function customSelect(key, options, currentVal, title, isFrameTrans = false, frameTransId = '', favCategory = '') {
   const currentOpt = options.find(o => o.val === currentVal) || options[0];
   const dropdownItems = options.map(opt => {
-    let favHtml = '';
-    if (favCategory && opt.val !== 'none') {
-      const favKey = favCategory + opt.val;
-      const isFav = state.favoriteAnimations?.includes(favKey);
-      const starColor = isFav ? 'var(--accent-base)' : 'var(--text-muted)';
-      const starFill = isFav ? 'var(--accent-base)' : 'var(--text-muted)';
-      favHtml = `<svg class="fav-star-icon" data-fav-key="${favKey}" width="14" height="14" viewBox="0 0 24 24" fill="${starFill}" stroke="${starColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; flex-shrink: 0; padding: 1px; border-radius: 3px; cursor: pointer; opacity: 1; transition: all 0.2s;" title="Toggle favorite"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
-    }
     let itemTitle = opt.label;
     if (favCategory) {
       const descKey = favCategory + opt.val;
@@ -641,7 +633,6 @@ function customSelect(key, options, currentVal, title, isFrameTrans = false, fra
     <div class="custom-select-item" data-value="${opt.val}" style="padding: 5px 8px; font-size: 11px; color: var(--text-main); cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 8px;" title="${itemTitle}">
       ${opt.img ? `<img src="${opt.img}" style="max-height: 18px; max-width: 40px; object-fit: contain; flex-shrink: 0; background: #475569; padding: 2px 4px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.15);" />` : ''}
       <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;">${opt.label}</span>
-      ${favHtml}
     </div>
   `}).join('');
 
@@ -697,21 +688,10 @@ function getFrameTransitionHtml(currentFrame) {
   ];
 
   let filteredPresets = presets;
-  let favMessageHtml = '';
-  if (state.filterFavorites) {
-    filteredPresets = presets.filter(o => o.val === 'none' || state.favoriteAnimations?.includes('frame-' + o.val));
-    if (filteredPresets.length <= 1) {
-      favMessageHtml = `<div style="grid-column: span 3; font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
-        No favorite transitions. Click the star icon next to presets in the dropdown to add to favorites.
-      </div>`;
-    }
-  }
 
   const presetButtons = filteredPresets.map(o => {
     const isActive = o.val === activePreset;
-    const isFav = state.favoriteAnimations?.includes('frame-' + o.val);
-    const favStyle = isFav ? 'outline: 1px solid var(--accent-base); outline-offset: -1px;' : '';
-    return `<button class="align-btn frame-trans-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px; ${favStyle}" title="Transition: ${o.label}">${o.label}</button>`;
+    return `<button class="align-btn frame-trans-btn ${isActive ? 'active' : ''}" data-val="${o.val}" style="font-size:10px;" title="Transition: ${o.label}">${o.label}</button>`;
   }).join('');
 
   const durVal = currentFrame.transitionDuration !== undefined ? currentFrame.transitionDuration : 0.5;
@@ -1337,31 +1317,7 @@ function wireCustomSelects(el, updateProp) {
     };
   });
 
-  propsEl.querySelectorAll('.fav-star-icon').forEach(star => {
-    star.onclick = (e) => {
-      e.stopPropagation();
-      const favKey = star.dataset.favKey;
-      if (!state.favoriteAnimations) state.favoriteAnimations = [];
-      const idx = state.favoriteAnimations.indexOf(favKey);
-      if (idx > -1) {
-        state.favoriteAnimations.splice(idx, 1);
-        star.setAttribute('fill', 'var(--text-muted)');
-        star.setAttribute('stroke', 'var(--text-muted)');
-        star.style.opacity = '1';
-      } else {
-        state.favoriteAnimations.push(favKey);
-        star.setAttribute('fill', 'var(--accent-base)');
-        star.setAttribute('stroke', 'var(--accent-base)');
-        star.style.opacity = '1';
-      }
-      pushHistory();
-      
-      const subPanel = star.closest('.animation-sub-panel');
-      if (state.filterFavorites && subPanel) {
-        setTimeout(() => renderProps(), 150);
-      }
-    };
-  });
+  // Favorites click handler removed
 
   if (!window.customSelectGlobalBound) {
     window.customSelectGlobalBound = true;
@@ -2402,16 +2358,6 @@ function renderProps() {
       </div>
     </div>`);
   } else {
-    const starIcon = state.filterFavorites ? `
-      <svg class="fav-filter-icon" width="14" height="14" viewBox="0 0 24 24" fill="var(--accent-base)" stroke="var(--accent-base)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-      </svg>
-    ` : `
-      <svg class="fav-filter-icon" width="14" height="14" viewBox="0 0 24 24" fill="var(--text-muted)" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-      </svg>
-    `;
-
     // Each animation category is its own independent toggle (no preset modes).
     // IN/OUT/FX are per-element (driven by inEnabled/exitEnabled/fxEnabled, with the
     // preset preserved when off); TRANS is the current frame's transition. OUT
@@ -2439,11 +2385,14 @@ function renderProps() {
         <div class="anim-mode-toggles" style="display:inline-flex; gap:4px; margin-left:4px;">
           ${modeToggle('in', showIn, `IN — entrance animation (${showIn ? 'on' : 'off'})`, AM_ICON_IN, false)}
           ${modeToggle('out', showOut, inOn ? `OUT — exit animation (${showOut ? 'on' : 'off'})` : 'OUT — turn IN on first', AM_ICON_OUT, !inOn)}
-          ${modeToggle('fx', showFx, `FX — continuous effect (${showFx ? 'on' : 'off'})`, AM_ICON_FX, false)}
+          ${modeToggle('fx', showFx, `FX — Animation FX (${showFx ? 'on' : 'off'})`, AM_ICON_FX, false)}
           ${modeToggle('trans', showTrans, transPossible ? `Frame transition (${showTrans ? 'on' : 'off'})` : 'Frame transition — needs 2+ frames', AM_ICON_TRANS, !transPossible)}
         </div>
-        <button class="fav-filter-btn" style="background:none; border:none; padding:4px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; outline:none; margin-left:auto;" title="${state.filterFavorites ? 'Show All Transitions' : 'Filter Favorites'}">
-          ${starIcon}
+        <button class="anim-reset-btn" style="background:none; border:none; padding:4px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; outline:none; margin-left:auto; color: var(--text-muted); transition: color 0.15s;" title="Reset Element Animations" onmouseover="this.style.color='var(--accent-base)'" onmouseout="this.style.color='var(--text-muted)'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <polyline points="3 3 3 8 8 8"></polyline>
+          </svg>
         </button>
         <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
           <polyline points="6 9 12 15 18 9"></polyline>
@@ -2468,15 +2417,6 @@ function renderProps() {
     }
 
     let filteredOptions = animOptions;
-    let favMessageHtml = '';
-    if (state.filterFavorites) {
-      filteredOptions = animOptions.filter(o => o.val === 'none' || state.favoriteAnimations?.includes('in-' + o.val));
-      if (filteredOptions.length <= 1) {
-        favMessageHtml = `<div style="grid-column: span 3; font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
-          No favorite animations for this element type yet. Click the star icon next to presets in the dropdown to add to favorites.
-        </div>`;
-      }
-    }
 
     const isSwipeActive = (el.animType || 'none').startsWith('swipe-');
     const isSlideActive = el.animType === 'slide' || el.animType === 'slide-up' || el.animType === 'slide-down' || el.animType === 'slide-left' || el.animType === 'slide-right';
@@ -2488,7 +2428,6 @@ function renderProps() {
 
     f.push(`<div style="margin-bottom:12px;">
       ${customSelect('animType', filteredOptions, currentAnimVal, 'Select In Animation', false, '', 'in-')}
-      ${favMessageHtml}
     </div>`);
 
     // Seconds inputs use step=0.1 so wheel-scroll and arrow keys nudge by 0.1.
@@ -2708,19 +2647,8 @@ function renderProps() {
     ];
     const exitVal = el.exitType || 'fade-out';
     let filteredExit = exitOptions;
-    let exitFavMessageHtml = '';
-    if (state.filterFavorites) {
-      // Keep the current selection too, so the dropdown is never empty (OUT has no 'none').
-      filteredExit = exitOptions.filter(o => o.val === exitVal || state.favoriteAnimations?.includes('out-' + o.val));
-      if (filteredExit.length <= 1) {
-        exitFavMessageHtml = `<div style="font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
-          No favorite exit animations yet. Click the star icon next to presets in the dropdown to add to favorites.
-        </div>`;
-      }
-    }
     f.push(`<div style="margin-bottom:8px;">
       ${customSelect('exitType', filteredExit, exitVal, 'Select Out Animation', false, '', 'out-')}
-      ${exitFavMessageHtml}
     </div>`);
 
     const showFade = exitVal !== 'fade-out'; // Fade Out is inherently a fade
@@ -2775,7 +2703,7 @@ function renderProps() {
     f.push(`</div>`); // Close out-transition-preview-area
 
     f.push(`<div id="effects-preview-area" class="animation-sub-panel" style="${showFx ? '' : 'display:none;'}">`);
-    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18489086" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;"><g fill="currentColor"><path d="m62.9545441 6.8181796v17.2727323h-60.4545455v17.2727203h95.0000014z"></path><path d="m37.0454559 75.9090881h60.4545441v-17.2727203h-95.0000014l34.5454573 34.5454559z"></path></g></svg>CONTINUOUS EFFECT</label></div>`);
+    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18489086" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;"><g fill="currentColor"><path d="m62.9545441 6.8181796v17.2727323h-60.4545455v17.2727203h95.0000014z"></path><path d="m37.0454559 75.9090881h60.4545441v-17.2727203h-95.0000014l34.5454573 34.5454559z"></path></g></svg>ANIMATION FX</label></div>`);
     const effectOptions = [
       { val: 'none', label: 'None' },
       { val: 'pulse', label: 'Pulse' },
@@ -2789,19 +2717,9 @@ function renderProps() {
     ];
 
     let filteredEffects = effectOptions;
-    let effFavMessageHtml = '';
-    if (state.filterFavorites) {
-      filteredEffects = effectOptions.filter(o => o.val === 'none' || state.favoriteAnimations?.includes('eff-' + o.val));
-      if (filteredEffects.length <= 1) {
-        effFavMessageHtml = `<div style="grid-column: span 3; font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
-          No favorite continuous effects yet. Click the star icon next to presets in the dropdown to add to favorites.
-        </div>`;
-      }
-    }
 
     f.push(`<div style="margin-bottom:16px;">
-      ${customSelect('effectType', filteredEffects, el.effectType || 'none', 'Select Continuous Effect', false, '', 'eff-')}
-      ${effFavMessageHtml}
+      ${customSelect('effectType', filteredEffects, el.effectType || 'none', 'Select Animation FX', false, '', 'eff-')}
     </div>`);
 
     if (el.effectType && el.effectType !== 'none') {
@@ -3803,12 +3721,36 @@ function checkButtonFontSizeWarning(el) {
     });
   }
 
-  const favFilterBtn = propsEl.querySelector('.fav-filter-btn');
-  if (favFilterBtn) {
-    favFilterBtn.addEventListener('click', (e) => {
+  const animResetBtn = propsEl.querySelector('.anim-reset-btn');
+  if (animResetBtn) {
+    animResetBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      state.filterFavorites = !state.filterFavorites;
+      // Reset settings but keep the category toggles ("mode") intact
+      if (animInEnabled(el)) {
+        updateProp('animType', 'none');
+        const inAnimProps = ['animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor', 'animStaggerText'];
+        inAnimProps.forEach(p => updateProp(p, undefined));
+      }
+      if (animOutEnabled(el)) {
+        updateProp('exitType', 'fade-out');
+        const outAnimProps = ['exitDuration', 'exitStart', 'exitFade', 'exitDirection', 'exitDistance'];
+        outAnimProps.forEach(p => updateProp(p, undefined));
+      }
+      if (animFxEnabled(el)) {
+        updateProp('effectType', 'none');
+        const effectProps = ['effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panFade', 'panTowards', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
+        effectProps.forEach(p => updateProp(p, undefined));
+      }
+      const frame = state.frames.find(fr => fr.id === state.activeFrameId);
+      if (frame && frameTransEnabled(frame)) {
+        frame.transition = 'fade';
+        const frameProps = ['transitionDuration', 'transitionFade', 'transitionDirection', 'transitionBounce', 'transitionZoomFrom', 'transitionAngle', 'transitionIrisShape', 'transitionIrisOrigin', 'transitionBlurAmount', 'transitionBlurScale', 'transitionFeather'];
+        frameProps.forEach(p => delete frame[p]);
+      }
+      
+      pushHistory();
       renderProps();
+      render(true);
     });
   }
 
@@ -4171,6 +4113,24 @@ function checkButtonFontSizeWarning(el) {
             frame.transition = 'none';
           } else {
             frame.transition = frame._transStash || 'fade';
+          }
+        }
+      }
+      
+      if (el.linkGroupId && state.linkGroups) {
+        const lg = state.linkGroups[el.linkGroupId];
+        if (lg) {
+          if (!lg.syncProperties) lg.syncProperties = {};
+          if (which === 'in') {
+            const nextVal = animInEnabled(el);
+            lg.syncProperties.inAnim = nextVal;
+            if (!nextVal) {
+              lg.syncProperties.outAnim = false;
+            }
+          } else if (which === 'out') {
+            lg.syncProperties.outAnim = animOutEnabled(el);
+          } else if (which === 'fx') {
+            lg.syncProperties.effect = animFxEnabled(el);
           }
         }
       }
