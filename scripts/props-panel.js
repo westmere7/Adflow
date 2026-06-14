@@ -2430,7 +2430,6 @@ function renderProps() {
     const AM_ICON_IN = `<svg width="12" height="12" viewBox="0 0 100 100" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>`;
     const AM_ICON_OUT = `<svg width="12" height="12" viewBox="0 0 100 100" fill="currentColor" style="transform:scaleX(-1);"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>`;
     const AM_ICON_FX = `<svg width="12" height="12" viewBox="0 0 100 100"><g fill="currentColor"><path d="m62.9545441 6.8181796v17.2727323h-60.4545455v17.2727203h95.0000014z"></path><path d="m37.0454559 75.9090881h60.4545441v-17.2727203h-95.0000014l34.5454573 34.5454559z"></path></g></svg>`;
-    const AM_ICON_TRANS = `<svg width="12" height="12" viewBox="0 0 48 48" fill="currentColor"><g transform="translate(-504 -648)"><g transform="scale(1.5)"><g transform="scale(.667)"><g><path d="m511.861 693.334c-.902.713-2.133.848-3.168.347s-1.693-1.55-1.693-2.7v-37.963c0-1.15.657-2.199 1.693-2.7 1.035-.501 2.265-.366 3.167.347l24.005 18.976c.719.569 1.139 1.436 1.139 2.353 0 .918-.419 1.785-1.139 2.354z"></path></g><g><path d="m546 694h-3c-1.657 0-3-1.343-3-3v-38c0-1.657 1.343-3 3-3h3c1.657 0 3 1.343 3 3v38c0 1.657-1.343 3-3 3z"></path></g></g></g></g></svg>`;
     const modeToggle = (id, active, title, icon, disabled) => `<button type="button" class="anim-mode-toggle${active ? ' active' : ''}" data-anim-toggle="${id}" title="${title}" ${disabled ? 'disabled' : ''} style="background:${active ? 'var(--accent-base)' : 'var(--bg-input)'}; border:1px solid ${active ? 'var(--accent-base)' : 'var(--border-light)'}; color:${active ? '#fff' : 'var(--text-muted)'}; border-radius:4px; width:24px; height:20px; display:inline-flex; align-items:center; justify-content:center; padding:0; cursor:${disabled ? 'not-allowed' : 'pointer'}; opacity:${disabled ? '0.4' : '1'}; outline:none; transition:background .12s,color .12s,border-color .12s;">${icon}</button>`;
 
     f.push(`<div class="panel-section" id="panel-section-animation">
@@ -2440,7 +2439,6 @@ function renderProps() {
           ${modeToggle('in', showIn, `IN — entrance animation (${showIn ? 'on' : 'off'})`, AM_ICON_IN, false)}
           ${modeToggle('out', showOut, inOn ? `OUT — exit animation (${showOut ? 'on' : 'off'})` : 'OUT — turn IN on first', AM_ICON_OUT, !inOn)}
           ${modeToggle('fx', showFx, `FX — AnimationFX (${showFx ? 'on' : 'off'})`, AM_ICON_FX, false)}
-          ${modeToggle('trans', showTrans, transPossible ? `Frame transition (${showTrans ? 'on' : 'off'})` : 'Frame transition — needs 2+ frames', AM_ICON_TRANS, !transPossible)}
         </div>
         <button class="fav-filter-btn" style="background:none; border:none; padding:4px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; outline:none; margin-left:auto;" title="${state.filterFavorites ? 'Show All Transitions' : 'Filter Favorites'}">
           ${starIcon}
@@ -2890,7 +2888,7 @@ function renderProps() {
     f.push(`</div>`); // Close effects-preview-area
 
     const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-    if (transPossible && showTrans) {
+    if (transPossible) {
       f.push(getFrameTransitionHtml(state.frames[activeIdx]));
     }
 
@@ -4162,17 +4160,6 @@ function checkButtonFontSizeWarning(el) {
         if (el.exitEnabled && !el.exitType) updateProp('exitType', 'fade-out');
       } else if (which === 'fx') {
         updateProp('fxEnabled', !animFxEnabled(el));
-      } else if (which === 'trans') {
-        const frame = state.frames.find(fr => fr.id === state.activeFrameId);
-        if (frame) {
-          if (frameTransEnabled(frame)) {
-            // turn off: stash the current transition type so it can be restored
-            frame._transStash = (frame.transition && frame.transition !== 'none') ? frame.transition : 'fade';
-            frame.transition = 'none';
-          } else {
-            frame.transition = frame._transStash || 'fade';
-          }
-        }
       }
       
       if (el.linkGroupId && state.linkGroups) {
