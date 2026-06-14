@@ -1972,23 +1972,34 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.18.2';
+  const currentVersion = 'v0.22.7';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-        <p style="margin: 0 0 16px 0;">Hi, I’m Danh.</p>
-        <p style="margin: 0 0 16px 0;">After months of wrestling with legacy display ad editors, I came to a very professional conclusion: banner production should not be this painful.</p>
-        <p style="margin: 0 0 16px 0;">These tools somehow manage to be both massively overkill and still missing basic features I need daily. Weird workflows, clicktag chaos, timeline madness, random compatibility issues, and somehow every single ad feels like a fight against the software instead of actually designing.</p>
-        <p style="margin: 0 0 16px 0;">So eventually I hit the point where I thought:<br/>
-        “Fuck it, I’ll just build my own.”</p>
-        <p style="margin: 0 0 16px 0;">This project is my attempt at creating the HTML5 ad tool I always wanted: fast, lightweight, visual, export-friendly, standards-compatible, and without the feeling that the software is actively fighting me.</p>
-        <p style="margin: 0 0 16px 0;">Also, my teammate Eden, who has suffered through years of banner production alongside me, may finally have his curse lifted.</p>
-        <p style="font-style:italic; margin: 24px 0 0 0; color:var(--text-label);">Built by a designer trying to free creative teams from cursed display ad workflows.</p>
+        <p style="margin: 0 0 16px 0;"><strong>RMIT Adflow</strong> is a specialized, lightweight HTML5 display advertisement creation and automation platform. Designed to eliminate the overhead and complexities of legacy ad builders, Adflow offers a fast, precise, and visual environment for building, validating, and exporting high-performance advertising creatives.</p>
+        
+        <p style="margin: 0 0 16px 0;">Adflow provides creative and production teams with native canvas layout capabilities, custom frame transition mechanics, real-time quality control checks, and standards-compliant package exports.</p>
+        
+        <div style="margin: 20px 0; padding: 14px 16px; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 6px;">
+          <h4 style="margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 700;">Infrastructure & Stack</h4>
+          <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 12px; line-height: 1.5;">
+            <span style="color: var(--text-muted); font-weight: 500;">AI Development:</span>
+            <span style="color: var(--text-main);">Google Flash Pro &amp; Claude Opus</span>
+            
+            <span style="color: var(--text-muted); font-weight: 500;">Source Control:</span>
+            <span style="color: var(--text-main);">GitHub</span>
+            
+            <span style="color: var(--text-muted); font-weight: 500;">Hosting &amp; Deployment:</span>
+            <span style="color: var(--text-main);">Netlify</span>
+          </div>
+        </div>
+
+        <p style="font-style:italic; margin: 20px 0 0 0; color:var(--text-label); font-size:12px;">Built to liberate creative teams from tedious display ad workflows and legacy tooling limitations.</p>
+        
         <div style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border-light); display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
             <span style="font-size:11px; color:var(--text-muted);">${currentVersion}</span>
             <button id="btn-changelog" class="btn" style="padding:6px 12px; font-size:11px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Version and changelog</button>
           </div>
-          <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" style="display:inline-block; padding:8px 16px; background:#f59e0b; color:var(--bg-input); text-decoration:none; border-radius:4px; font-weight:600; font-size:13px; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">☕ Buy me a cà phê</a>
         </div>
       </div>`;
   openModal('About RMIT Adflow', body, false);
