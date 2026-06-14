@@ -433,6 +433,14 @@ async function loadProjectFromState(loadedState) {
   loadedState = JSON.parse(JSON.stringify(loadedState));
   delete loadedState.isTemplate;
 
+  // Drop the previously open project's share-link metadata so it can't leak into
+  // the project being loaded. Object.assign restores previewSharePath/previewExpiry
+  // from the file if it has them; previewUrl is session-only (never baked) and
+  // stays cleared, so a project that was never shared shows no active link.
+  delete state.previewUrl;
+  delete state.previewExpiry;
+  delete state.previewSharePath;
+
   Object.assign(state, loadedState);
   delete state.isTemplate;
   if (!state.projectId) state.projectId = uid('proj_');
@@ -557,6 +565,12 @@ async function loadProjectFromBlob(file, customProjectName, existingProgress = n
     const savedZoom = isTemplateFile ? undefined : loadedState.zoom;
   
     progress.setProgress(95, 'Syncing application assets...');
+    // Clear the previously open project's share-link metadata before merging so it
+    // can't leak into the loaded project (see loadProjectFromState). Object.assign
+    // restores previewSharePath/previewExpiry from the file if present.
+    delete state.previewUrl;
+    delete state.previewExpiry;
+    delete state.previewSharePath;
     Object.assign(state, loadedState);
     delete state.isTemplate; // Always ensure isTemplate is removed at runtime
   

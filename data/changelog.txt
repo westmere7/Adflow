@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.22.6 (Current) - June 2026 — Engine v2.19
+v0.22.7 (Current) - June 2026 — Engine v2.19
+- New Projects No Longer Show a Stale Share Link: Creating a new project (or opening a different one) now clears the previous project's preview-share metadata, so the Share dialog correctly opens to the "create link" screen instead of showing a leftover link from the project you were just on.
+
+v0.22.6 - June 2026 — Engine v2.19
 - Share No Longer Drops You Mid-Flow on a Name Clash: When you share a preview link and a cloud project with the same name already exists, the Replace / Rename prompt now lets sharing continue — pick one and the link is generated right away. Previously the dialog closed as soon as the prompt appeared, forcing you to resolve it and re-open Share. Cancelling the prompt still stops the share, as before.
 
 v0.22.5 - June 2026 — Engine v2.19

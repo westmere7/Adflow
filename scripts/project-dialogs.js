@@ -55,6 +55,12 @@ async function createNewProject({ name, presetIndices, sizeLimitKb, bgColor, cli
 
   state.projectName = (name || 'RMIT_ad').trim() || 'RMIT_ad';
   state.projectId = uid('proj_');
+  // A brand-new project has never been shared — drop any preview-share metadata
+  // carried over from the previously open project, so the Share dialog opens to
+  // the "create link" screen instead of showing a stale active link.
+  delete state.previewUrl;
+  delete state.previewExpiry;
+  delete state.previewSharePath;
   state.clickTag = (clickTag || 'https://www.rmit.edu.au/').trim();
   state.adSizeLimit = Math.max(1, parseInt(sizeLimitKb, 10) || 150);
   state.defaultBg = bg;
@@ -1915,7 +1921,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.22.6';
+  const currentVersion = 'v0.22.7';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -2130,7 +2136,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.22.6</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.22.7</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

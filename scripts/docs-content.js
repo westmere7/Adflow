@@ -663,6 +663,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.22.7',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'New Projects No Longer Show a Stale Share Link: Creating a new project (or opening a different one) now clears the previous project\'s preview-share metadata, so the Share dialog opens to the "create link" screen instead of showing a leftover link from the project you were just on.'
+    ]
+  },
+  {
     version: 'v0.22.6',
     date: 'June 2026 — Engine v2.19',
     items: [
