@@ -1474,7 +1474,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
     // Per-id EXIT keyframes — only when the element actually exits (its frame
     // transitions away). Static exit presets (fade/swipe/blur) use shared
     // keyframes and need no per-id emission.
-    if (frameCtx && !isImageExport && animOutEnabled(el) && el.exitType !== 'none') {
+    if (frameCtx && !isImageExport && animOutEnabled(el)) {
       usesExitKeyframes = true;
       if (el.exitType === 'slide') dynamicKeyframes += '\n' + getSlideOutKeyframes(el);
       else if (el.exitType === 'zoom') dynamicKeyframes += '\n' + getZoomOutKeyframes(el);
