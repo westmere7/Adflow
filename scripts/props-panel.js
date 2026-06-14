@@ -668,7 +668,10 @@ function customSelect(key, options, currentVal, title, isFrameTrans = false, fra
 }
 
 function getFrameTransitionHtml(currentFrame) {
-  let tType = currentFrame.transition || 'none';
+  // Unset transition exports as 'fade' (see generateExportHTML), so show 'Fade' —
+  // not 'None' — for an unconfigured frame, keeping the panel and the TRANS toggle
+  // consistent with what actually plays.
+  let tType = currentFrame.transition || 'fade';
   let activePreset = 'none';
   if (tType === 'fade') activePreset = 'fade';
   else if (tType === 'slide') activePreset = 'slide';
@@ -1165,20 +1168,7 @@ function wireCustomSelects(el, updateProp) {
             let targetVal = val;
             if (targetVal === 'swipe') targetVal = 'swipe-right';
             updateProp('animType', targetVal);
-            if (targetVal === 'none') {
-              updateProp('animationMode', 'static');
-              
-              const inProps = ['animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor', 'animStaggerText'];
-              inProps.forEach(p => updateProp(p, undefined));
-              
-              const outProps = ['exitEnabled', 'exitType', 'exitStart', 'exitDuration', 'exitFade', 'exitDirection', 'exitDistance'];
-              outProps.forEach(p => updateProp(p, undefined));
-            } else {
-              const currentMode = el.animationMode || (el.exitEnabled ? 'in-out' : (el.animType && el.animType !== 'none' ? 'in' : 'static'));
-              if (currentMode === 'static') {
-                updateProp('animationMode', 'in');
-              }
-            }
+            delete el.animationMode; // legacy field retired; IN is driven by animType
           } else if (key === 'effectType') {
             updateProp('effectType', val);
             if (val === 'pan') {
@@ -2394,18 +2384,36 @@ function renderProps() {
       </svg>
     `;
 
-    const currentMode = el.animationMode || (el.exitEnabled ? 'in-out' : (el.animType && el.animType !== 'none' ? 'in' : 'static'));
-    const showIn = (currentMode === 'in' || currentMode === 'in-out');
-    const showOut = (currentMode === 'in-out');
+    // Each animation category is its own independent toggle (no preset modes).
+    // IN/OUT/FX are per-element (driven by inEnabled/exitEnabled/fxEnabled, with the
+    // preset preserved when off); TRANS is the current frame's transition. OUT
+    // depends on IN. State comes from the shared helpers so toggles, sub-panels,
+    // and the runtime always agree.
+    const inOn = animInEnabled(el);
+    const showIn = inOn;
+    const showOut = animOutEnabled(el);
+    const showFx = animFxEnabled(el);
+    const _amActiveIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
+    const _amFrame = state.frames[_amActiveIdx];
+    const transPossible = state.frames.length > 1 && (_amActiveIdx > 0 || state.loopAd);
+    const showTrans = transPossible && frameTransEnabled(_amFrame);
+
+    // Icons are the exact glyphs used by each sub-panel heading.
+    const AM_ICON_IN = `<svg width="12" height="12" viewBox="0 0 100 100" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>`;
+    const AM_ICON_OUT = `<svg width="12" height="12" viewBox="0 0 100 100" fill="currentColor" style="transform:scaleX(-1);"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>`;
+    const AM_ICON_FX = `<svg width="12" height="12" viewBox="0 0 100 100"><g fill="currentColor"><path d="m62.9545441 6.8181796v17.2727323h-60.4545455v17.2727203h95.0000014z"></path><path d="m37.0454559 75.9090881h60.4545441v-17.2727203h-95.0000014l34.5454573 34.5454559z"></path></g></svg>`;
+    const AM_ICON_TRANS = `<svg width="12" height="12" viewBox="0 0 48 48" fill="currentColor"><g transform="translate(-504 -648)"><g transform="scale(1.5)"><g transform="scale(.667)"><g><path d="m511.861 693.334c-.902.713-2.133.848-3.168.347s-1.693-1.55-1.693-2.7v-37.963c0-1.15.657-2.199 1.693-2.7 1.035-.501 2.265-.366 3.167.347l24.005 18.976c.719.569 1.139 1.436 1.139 2.353 0 .918-.419 1.785-1.139 2.354z"></path></g><g><path d="m546 694h-3c-1.657 0-3-1.343-3-3v-38c0-1.657 1.343-3 3-3h3c1.657 0 3 1.343 3 3v38c0 1.657-1.343 3-3 3z"></path></g></g></g></g></svg>`;
+    const modeToggle = (id, active, title, icon, disabled) => `<button type="button" class="anim-mode-toggle${active ? ' active' : ''}" data-anim-toggle="${id}" title="${title}" ${disabled ? 'disabled' : ''} style="background:${active ? 'var(--accent-base)' : 'var(--bg-input)'}; border:1px solid ${active ? 'var(--accent-base)' : 'var(--border-light)'}; color:${active ? '#fff' : 'var(--text-muted)'}; border-radius:4px; width:24px; height:20px; display:inline-flex; align-items:center; justify-content:center; padding:0; cursor:${disabled ? 'not-allowed' : 'pointer'}; opacity:${disabled ? '0.4' : '1'}; outline:none; transition:background .12s,color .12s,border-color .12s;">${icon}</button>`;
 
     f.push(`<div class="panel-section" id="panel-section-animation">
       <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none; display: flex; align-items: center; gap: 8px;">
         <span>Animation</span>
-        <select id="prop-animation-mode" class="animation-mode-select" style="background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 4px; padding: 2px 6px; font-size: 11px; outline: none; cursor: pointer; font-weight: normal; margin-left: 4px; height: 20px; max-width: 115px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-          <option value="static" ${currentMode === 'static' ? 'selected' : ''}>Static frames + transition only</option>
-          <option value="in" ${currentMode === 'in' ? 'selected' : ''}>In + transition</option>
-          <option value="in-out" ${currentMode === 'in-out' ? 'selected' : ''}>In+out+transition</option>
-        </select>
+        <div class="anim-mode-toggles" style="display:inline-flex; gap:4px; margin-left:4px;">
+          ${modeToggle('in', showIn, `IN — entrance animation (${showIn ? 'on' : 'off'})`, AM_ICON_IN, false)}
+          ${modeToggle('out', showOut, inOn ? `OUT — exit animation (${showOut ? 'on' : 'off'})` : 'OUT — turn IN on first', AM_ICON_OUT, !inOn)}
+          ${modeToggle('fx', showFx, `FX — continuous effect (${showFx ? 'on' : 'off'})`, AM_ICON_FX, false)}
+          ${modeToggle('trans', showTrans, transPossible ? `Frame transition (${showTrans ? 'on' : 'off'})` : 'Frame transition — needs 2+ frames', AM_ICON_TRANS, !transPossible)}
+        </div>
         <button class="fav-filter-btn" style="background:none; border:none; padding:4px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; outline:none; margin-left:auto;" title="${state.filterFavorites ? 'Show All Transitions' : 'Filter Favorites'}">
           ${starIcon}
         </button>
@@ -2664,8 +2672,20 @@ function renderProps() {
       { val: 'blur', label: 'Blur' }
     ];
     const exitVal = el.exitType || 'fade-out';
+    let filteredExit = exitOptions;
+    let exitFavMessageHtml = '';
+    if (state.filterFavorites) {
+      // Keep the current selection too, so the dropdown is never empty (OUT has no 'none').
+      filteredExit = exitOptions.filter(o => o.val === exitVal || state.favoriteAnimations?.includes('out-' + o.val));
+      if (filteredExit.length <= 1) {
+        exitFavMessageHtml = `<div style="font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
+          No favorite exit animations yet. Right-click presets to add to favorites.
+        </div>`;
+      }
+    }
     f.push(`<div style="margin-bottom:8px;">
-      ${customSelect('exitType', exitOptions, exitVal, 'Select Out Animation', false, '', 'out-')}
+      ${customSelect('exitType', filteredExit, exitVal, 'Select Out Animation', false, '', 'out-')}
+      ${exitFavMessageHtml}
     </div>`);
 
     const showFade = exitVal !== 'fade-out'; // Fade Out is inherently a fade
@@ -2716,7 +2736,7 @@ function renderProps() {
 
     f.push(`</div>`); // Close out-transition-preview-area
 
-    f.push(`<div id="effects-preview-area" class="animation-sub-panel">`);
+    f.push(`<div id="effects-preview-area" class="animation-sub-panel" style="${showFx ? '' : 'display:none;'}">`);
     f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18489086" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;"><g fill="currentColor"><path d="m62.9545441 6.8181796v17.2727323h-60.4545455v17.2727203h95.0000014z"></path><path d="m37.0454559 75.9090881h60.4545441v-17.2727203h-95.0000014l34.5454573 34.5454559z"></path></g></svg>CONTINUOUS EFFECT</label></div>`);
     const effectOptions = [
       { val: 'none', label: 'None' },
@@ -2832,7 +2852,7 @@ function renderProps() {
     f.push(`</div>`); // Close effects-preview-area
 
     const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-    if (state.frames.length > 1 && (activeIdx > 0 || state.loopAd)) {
+    if (transPossible && showTrans) {
       f.push(getFrameTransitionHtml(state.frames[activeIdx]));
     }
 
@@ -3083,7 +3103,7 @@ function checkButtonFontSizeWarning(el) {
     });
     inp.addEventListener('change', () => {
       pushHistory();
-      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize' || inp.dataset.k === 'animStaggerText' || inp.dataset.k === 'exitEnabled' || inp.dataset.k === 'exitType' || inp.dataset.k === 'animationMode' || inp.dataset.k === 'exitStart') renderProps();
+      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize' || inp.dataset.k === 'animStaggerText' || inp.dataset.k === 'exitEnabled' || inp.dataset.k === 'exitType' || inp.dataset.k === 'exitStart') renderProps();
     });
     if (inp.type === 'number') {
       inp.addEventListener('wheel', (e) => {
@@ -4084,39 +4104,43 @@ function checkButtonFontSizeWarning(el) {
   }
   initCollapsiblePanels();
 
-  const modeSelect = propsEl.querySelector('#prop-animation-mode');
-  if (modeSelect) {
-    modeSelect.addEventListener('click', (e) => {
+  // Animation-category toggles (IN / OUT / FX / TRANS). Each independently turns its
+  // category on/off by driving the underlying field; the legacy animationMode field
+  // is cleared on any toggle so it can't override the runtime.
+  propsEl.querySelectorAll('.anim-mode-toggle').forEach(btn => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-    });
-    modeSelect.addEventListener('change', (e) => {
-      const newMode = e.target.value;
-      updateProp('animationMode', newMode);
-      if (newMode === 'static') {
-        const inProps = ['animType', 'animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor', 'animStaggerText'];
-        inProps.forEach(p => updateProp(p, undefined));
-        
-        const outProps = ['exitEnabled', 'exitType', 'exitStart', 'exitDuration', 'exitFade', 'exitDirection', 'exitDistance'];
-        outProps.forEach(p => updateProp(p, undefined));
-      } else if (newMode === 'in') {
-        if (!el.animType || el.animType === 'none') {
-          updateProp('animType', 'fade-in');
-        }
-        const outProps = ['exitEnabled', 'exitType', 'exitStart', 'exitDuration', 'exitFade', 'exitDirection', 'exitDistance'];
-        outProps.forEach(p => updateProp(p, undefined));
-      } else if (newMode === 'in-out') {
-        if (!el.animType || el.animType === 'none') {
-          updateProp('animType', 'fade-in');
-        }
-        updateProp('exitEnabled', true);
-        if (!el.exitType) {
-          updateProp('exitType', 'fade-out');
+      if (btn.disabled) return;
+      const which = btn.dataset.animToggle;
+      delete el.animationMode;
+      // Each toggle flips an enable flag and leaves the chosen preset untouched, so
+      // turning a category off and back on restores exactly what was selected
+      // (including "none" if nothing was ever picked).
+      if (which === 'in') {
+        updateProp('inEnabled', !animInEnabled(el));
+      } else if (which === 'out') {
+        if (!animInEnabled(el)) return; // OUT requires IN
+        updateProp('exitEnabled', !el.exitEnabled);
+        if (el.exitEnabled && !el.exitType) updateProp('exitType', 'fade-out');
+      } else if (which === 'fx') {
+        updateProp('fxEnabled', !animFxEnabled(el));
+      } else if (which === 'trans') {
+        const frame = state.frames.find(fr => fr.id === state.activeFrameId);
+        if (frame) {
+          if (frameTransEnabled(frame)) {
+            // turn off: stash the current transition type so it can be restored
+            frame._transStash = (frame.transition && frame.transition !== 'none') ? frame.transition : 'fade';
+            frame.transition = 'none';
+          } else {
+            frame.transition = frame._transStash || 'fade';
+          }
         }
       }
       pushHistory();
       renderProps();
+      render(true);
     });
-  }
+  });
 
   wireCustomSelects(el, updateProp);
 }

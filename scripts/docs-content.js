@@ -660,6 +660,27 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.22.4',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Favorites Now Include Exit Animations: The Animation panel\'s "Filter Favorites" star now also filters the OUT (exit) animation list, matching how it already works for entrance animations, effects, and frame transitions. Previously the exit list ignored favorites and always showed every option.'
+    ]
+  },
+  {
+    version: 'v0.22.3',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Animation Toggles, Refined: The four animation toggles (IN, OUT, FX, TRANS) now use the same icons as their panel sections, each with a tooltip, and the Animation panel\'s full-screen button was removed. Turning a category off remembers its settings — flip it back on and your animation (or "None", if you never picked one) returns exactly as it was. OUT now requires IN: with no entrance, the exit toggle is disabled. New elements start with IN, FX and frame transitions on, and OUT off.'
+    ]
+  },
+  {
+    version: 'v0.22.2',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Independent Animation Toggles: The Animation panel\'s mode dropdown (Static / In+transition / In+out+transition) is replaced by four toggle buttons in the header — IN, OUT, FX and TRANS. Each turns its own animation on or off independently, so you can mix any combination (e.g. an exit with no entrance, or a continuous effect on its own). Turning a toggle on reveals that section; off hides it. The TRANS toggle controls the current frame\'s transition and is disabled when there\'s only one frame.'
+    ]
+  },
+  {
     version: 'v0.22.1',
     date: 'June 2026 — Engine v2.19',
     items: [

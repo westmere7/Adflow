@@ -1,6 +1,15 @@
 RMIT Adflow - Version & Changelog History
 
-v0.22.1 (Current) - June 2026 — Engine v2.19
+v0.22.4 (Current) - June 2026 — Engine v2.19
+- Favorites Now Include Exit Animations: The Animation panel's "Filter Favorites" star now also filters the OUT (exit) animation list, just like it does for entrance animations, effects, and frame transitions. Previously the exit list always showed every option regardless of your favorites.
+
+v0.22.3 - June 2026 — Engine v2.19
+- Animation Toggles, Refined: The four animation toggles (IN, OUT, FX, TRANS) now use the same icons as their panel sections, each with a tooltip, and the Animation panel's full-screen button was removed to make room. Turning a category off now remembers its settings — flip it back on and your animation (or "None", if you never picked one) returns exactly as it was. OUT now requires IN: with no entrance, the exit toggle is disabled. New elements start with IN, FX and frame transitions on and OUT off.
+
+v0.22.2 - June 2026 — Engine v2.19
+- Independent Animation Toggles: The Animation panel's mode dropdown (Static / In+transition / In+out+transition) is replaced by four little toggle buttons in the header — IN, OUT, FX and TRANS. Each turns its own animation on or off independently, so you can now mix any combination (for example an exit with no entrance, or a continuous effect on its own). Turning a toggle on reveals that section; turning it off hides it. The TRANS toggle controls the current frame's transition and is greyed out when there's only one frame.
+
+v0.22.1 - June 2026 — Engine v2.19
 - Exit Animations: Elements can now animate OUT, not just in. A new "Out Animations" section in the Animation panel has an Enable toggle — off by default, so everything behaves exactly as before until you switch it on — and offers Fade Out, Slide, Swipe, Zoom and Blur (with direction/fade where relevant). You set a single "In → Out" time: how long the element stays after appearing before it leaves. This runs independently of the frame's own duration, so the exit plays on whatever frame the element is on. Hovering an out preset previews it live on the canvas just like entry animations, and exit settings sync across linked elements via a new "OUT Animation" option in the link group properties. Exit isn't applied to persistent layers.
 
 v0.21.1 - June 2026 — Engine v2.19

@@ -935,13 +935,13 @@ function initCollapsiblePanels() {
     setChevronPoints(isCollapsed);
 
     header.addEventListener('click', (e) => {
-      if (e.target.closest('.panel-fullscreen-btn') || e.target.closest('.fav-filter-btn') || e.target.closest('#btn-add-canvas') || e.target.closest('.animation-mode-select')) return;
+      if (e.target.closest('.panel-fullscreen-btn') || e.target.closest('.fav-filter-btn') || e.target.closest('#btn-add-canvas') || e.target.closest('.anim-mode-toggles')) return;
       const currentlyCollapsed = parentSection.classList.toggle('collapsed');
       localStorage.setItem(storageKey, currentlyCollapsed ? 'true' : 'false');
       setChevronPoints(currentlyCollapsed);
     });
-    // Exclude canvases and Dynamic Data
-    const isExcluded = (keyAttr === 'header-dynamic-data' || keyAttr === 'header-canvases');
+    // Exclude canvases, Dynamic Data, and Animation (its header holds the toggles)
+    const isExcluded = (keyAttr === 'header-dynamic-data' || keyAttr === 'header-canvases' || keyAttr === 'header-animation');
     if (!isExcluded) {
       const collapseIcon = header.querySelector('.collapse-icon');
       if (collapseIcon) {
@@ -1182,7 +1182,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.22.1';
+        verEl.textContent = 'v0.22.4';
         logoEl.appendChild(verEl);
       }
     }

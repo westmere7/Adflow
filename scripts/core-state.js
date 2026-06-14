@@ -178,7 +178,10 @@ function defaultElements(preset) {
 function makeElement(type) {
   let fId = 1;
   try { fId = state.activeFrameId || 1; } catch (e) { }
-  const base = { id: uid(), x: 20, y: 20, width: 120, height: 40, animType: 'none', animDuration: 1.0, animDelay: 0.0, effectType: 'none', frameId: fId, persistent: false };
+  // New elements default to all animation categories enabled EXCEPT out (inEnabled
+  // / fxEnabled on, exitEnabled off). The presets start at 'none' so nothing
+  // actually animates until the user picks one, but the sections are shown.
+  const base = { id: uid(), x: 20, y: 20, width: 120, height: 40, animType: 'none', animDuration: 1.0, animDelay: 0.0, effectType: 'none', inEnabled: true, fxEnabled: true, frameId: fId, persistent: false };
   switch (type) {
     case 'text': return { ...base, type, text: 'Your headline', fontSize: 22, color: '#ffffff', weight: '400', fontFamily: 'Helvetica Neue LT Pro', width: 220, height: 32 };
     case 'rect': return { ...base, type, color: '#7c5cff', width: 120, height: 80, radius: 8 };

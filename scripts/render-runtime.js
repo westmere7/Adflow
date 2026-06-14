@@ -152,13 +152,37 @@ function strokeOverlayHTML(el) {
 // Default length of the exit ("out") leaving motion, in seconds if undefined.
 const DEFAULT_EXIT_MOTION_DURATION = 0.6;
 
+// Animation-category enable flags. Each category (IN / OUT / FX / TRANS) has an
+// explicit on/off flag that is independent of its chosen preset, so turning a
+// category off and back on restores whatever preset was selected — including
+// "none" if the user never picked one. When the flag is absent (older projects),
+// we fall back to deriving it from the preset so their look is unchanged.
+function animInEnabled(el) {
+  return el.inEnabled !== undefined ? !!el.inEnabled : !!(el.animType && el.animType !== 'none');
+}
+function animFxEnabled(el) {
+  return el.fxEnabled !== undefined ? !!el.fxEnabled : !!(el.effectType && el.effectType !== 'none');
+}
+// OUT depends on IN: an exit only plays when the element also has its entrance on.
+function animOutEnabled(el) {
+  return animInEnabled(el) && !!el.exitEnabled;
+}
+// TRANS toggle state for a frame. An unset transition defaults to a real one (the
+// export falls back to 'fade'), so unset counts as ON; only an explicit 'none' is
+// OFF. The transition type itself is the preset (stashed on toggle-off for restore).
+function frameTransEnabled(frame) {
+  return !!frame && frame.transition !== 'none';
+}
+
 // frameCtx (optional): a presence marker passed by the export's per-frame element
 // renderer (persistent layers omit it, so they never exit). Image-export and
 // mask-effect callers omit it too, preserving their output.
 function getElementAnimationCSS(el, isImageExport, frameCtx) {
-  const animMode = el.animationMode || (el.exitEnabled ? 'in-out' : (el.animType && el.animType !== 'none' ? 'in' : 'static'));
-  const animType = animMode === 'static' ? 'none' : (el.animType || 'none');
-  const effType = el.effectType || 'none';
+  // IN / OUT / FX are independent enable flags (animInEnabled/animFxEnabled/
+  // animOutEnabled), each decoupled from its preset. The legacy 3-way
+  // el.animationMode enum is no longer consulted.
+  const animType = animInEnabled(el) ? (el.animType || 'none') : 'none';
+  const effType = animFxEnabled(el) ? (el.effectType || 'none') : 'none';
 
   let entryAnims = [];
   let entryVars = '';
@@ -289,7 +313,7 @@ function getElementAnimationCSS(el, isImageExport, frameCtx) {
   let exitAnims = [];
   const exitType = el.exitType || 'fade-out';
   const isExitZoom = exitType === 'zoom';
-  const hasExit = animMode === 'in-out' && frameCtx && !isImageExport;
+  const hasExit = animOutEnabled(el) && frameCtx && !isImageExport;
   if (hasExit) {
     const start = el.exitStart !== undefined ? el.exitStart : 1.5;
     const dur = el.exitDuration !== undefined ? el.exitDuration : DEFAULT_EXIT_MOTION_DURATION;
