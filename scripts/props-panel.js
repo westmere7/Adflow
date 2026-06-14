@@ -3740,7 +3740,7 @@ function checkButtonFontSizeWarning(el) {
         inAnimProps.forEach(p => updateProp(p, undefined));
       }
       if (animOutEnabled(el)) {
-        updateProp('exitType', 'fade-out');
+        updateProp('exitType', 'none');
         const outAnimProps = ['exitDuration', 'exitStart', 'exitFade', 'exitDirection', 'exitDistance'];
         outAnimProps.forEach(p => updateProp(p, undefined));
       }
@@ -3751,7 +3751,7 @@ function checkButtonFontSizeWarning(el) {
       }
       const frame = state.frames.find(fr => fr.id === state.activeFrameId);
       if (frame && frameTransEnabled(frame)) {
-        frame.transition = 'fade';
+        frame.transition = 'none';
         const frameProps = ['transitionDuration', 'transitionFade', 'transitionDirection', 'transitionBounce', 'transitionZoomFrom', 'transitionAngle', 'transitionIrisShape', 'transitionIrisOrigin', 'transitionBlurAmount', 'transitionBlurScale', 'transitionFeather'];
         frameProps.forEach(p => delete frame[p]);
       }
