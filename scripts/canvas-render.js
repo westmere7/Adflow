@@ -1906,7 +1906,10 @@ function elementNode(el, canvasCtx) {
   if (typeof dmFieldActive === 'function' && typeof dmFieldsForType === 'function') {
     isDynamic = dmFieldsForType(el.type).some(f => dmFieldActive(el, f));
   }
-  const isAnimated = (el.animType && el.animType !== 'none') || (el.effectType && el.effectType !== 'none');
+  const hasIn = (typeof animInEnabled === 'function' ? animInEnabled(el) : (el.inEnabled !== false)) && el.animType && el.animType !== 'none';
+  const hasFx = (typeof animFxEnabled === 'function' ? animFxEnabled(el) : (el.fxEnabled !== false)) && el.effectType && el.effectType !== 'none';
+  const hasOut = typeof animOutEnabled === 'function' ? animOutEnabled(el) : (!!el.exitEnabled && hasIn);
+  const isAnimated = !!(hasIn || hasFx || hasOut);
 
   if (isDynamic) d.classList.add('dynamic-el');
   if (isAnimated) d.classList.add('animated-el');
