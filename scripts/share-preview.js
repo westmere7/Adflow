@@ -169,6 +169,8 @@ async function openSharePreviewModal() {
           // file (previewUrl is only known after signing, so it can't be baked).
           state.previewSharePath = path;
           state.previewExpiry = Date.now() + expires * 1000;
+          state.previewSharedBy = u.email;
+          state.previewSharedAt = Date.now();
           delete state.previewUrl;
 
           if (textEl) textEl.textContent = 'Building preview snapshot...';
@@ -184,12 +186,16 @@ async function openSharePreviewModal() {
           if (error) throw error;
           if (!data || !data.signedUrl) throw new Error('Failed to retrieve signed URL.');
 
-          state.previewUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'preview.html?url=' + encodeURIComponent(data.signedUrl);
+          const username = u.email ? u.email.split('@')[0] : 'Unknown';
+          const shareTime = Date.now();
+          state.previewUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'preview.html?url=' + encodeURIComponent(data.signedUrl) + '&by=' + encodeURIComponent(username) + '&at=' + shareTime;
         } catch (err) {
           // Roll back metadata so a failed attempt doesn't leave the project
           // pointing at a snapshot that was never created.
           state.previewSharePath = oldPath;
           state.previewExpiry = oldExpiry;
+          delete state.previewSharedBy;
+          delete state.previewSharedAt;
           if (oldUrl) state.previewUrl = oldUrl; else delete state.previewUrl;
           throw err;
         }

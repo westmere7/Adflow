@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ad Preview Portal - RMIT Adflow</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
   <!-- Premium Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -320,23 +321,24 @@
     /* Card Styles */
     .card {
       position: absolute;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      overflow: visible;
+      box-shadow: none;
       display: flex;
       flex-direction: column;
-      transition: background 0.3s ease, border-color 0.3s ease, left 0.4s cubic-bezier(0.16, 1, 0.3, 1), top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1), top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
     
     .card-header {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border-color);
+      padding: 0 0 10px 0;
+      border-bottom: none;
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-start;
       align-items: center;
-      background: rgba(0,0,0,0.1);
+      background: transparent;
+      height: 24px;
     }
     
     .card-title {
@@ -378,13 +380,12 @@
     }
     
     .card-body {
-      padding: 24px;
+      padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex: 1;
-      overflow: auto;
-      min-height: 250px;
+      background: transparent;
+      min-height: auto;
     }
     
     .card-body.checkered {
@@ -407,9 +408,9 @@
     
     .iframe-wrapper {
       position: relative;
-      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
-      border: 1px solid #000;
-      background: #000;
+      box-shadow: none;
+      border: none;
+      background: transparent;
     }
     
     iframe.preview-iframe {
@@ -419,10 +420,13 @@
     }
     
     .card-audit {
-      border-top: 1px solid var(--border-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
       padding: 10px 16px;
-      background: rgba(0,0,0,0.05);
+      background: var(--bg-card);
+      font-size: 11px;
       display: none;
+      margin-top: 8px;
     }
     
     .card-audit.visible {
@@ -539,12 +543,8 @@
 
   <!-- SIDEBAR CONTROLS -->
   <div class="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-base)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-        <span>Adflow Review</span>
-      </div>
-      <div class="sidebar-subtitle">Interactive Ad Preview</div>
+    <div class="sidebar-header" style="display:flex; flex-direction:column; align-items:flex-start; padding:24px 20px; border-bottom:1px solid var(--border-color);">
+      <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" style="height:26px; display:block;" />
     </div>
     
     <div class="sidebar-content">
@@ -554,34 +554,61 @@
         <div class="control-label">Playback Controls</div>
         <div class="playback-row" style="display:flex; flex-direction:column; gap:8px;">
           <div style="display:flex; gap:8px; width:100%;">
-            <button class="btn primary" id="btn-play" style="flex:1;" title="Play banner animations">Play</button>
+            <button class="btn primary" id="btn-play" style="flex:1;" title="Play banner animations">Animated</button>
             <button class="btn" id="btn-static" style="flex:1;" title="Freeze animations as static images">Static only</button>
           </div>
           <button class="btn" id="btn-replay" style="width:100%;" title="Restart timeline">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             <span>Restart Timeline</span>
           </button>
-          <div id="preview-runtime-stat" style="font-size:11px; color:var(--text-muted); font-weight:600; text-align:center; padding-top:2px;"></div>
+          <div style="display:flex; flex-direction:column; gap:4px; margin-top:2px;">
+            <label class="checkbox-item" style="font-size:11.5px; color:var(--text-main); display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" id="chk-loop-ad" style="margin:0; cursor:pointer;">
+              <span>Loop timeline</span>
+            </label>
+            <div style="font-size:10px; color:var(--text-muted); line-height:1.3; font-style:italic;">
+              Preview override only; does not affect exported ad loop settings.
+            </div>
+          </div>
         </div>
       </div>
       
       <!-- FRAME BY FRAME SWITCHER -->
       <div class="control-group">
         <div class="control-label">Frame Select</div>
-        <select id="select-frame">
-          <option value="play" selected>All frames</option>
-        </select>
+        <div style="display:flex; align-items:center; gap:4px; width:100%;">
+          <button type="button" class="btn" id="btn-prev-frame" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Previous Frame">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <select id="select-frame" style="flex:1; margin:0; height:26px; font-size:11.5px; padding:2px 8px;">
+            <option value="play" selected>All frames</option>
+          </select>
+          <button type="button" class="btn" id="btn-next-frame" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Next Frame">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
       </div>
       
-      <!-- DATA VERSION (CSV) -->
+      <!-- DATA VERSION -->
       <div class="control-group" id="version-control-group" style="display:none;">
-        <div class="control-label">Data Version (CSV)</div>
-        <select id="select-version"></select>
+        <div class="control-label">Data Version</div>
+        <div style="display:flex; align-items:center; gap:4px; width:100%;">
+          <button type="button" class="btn" id="btn-prev-version" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Previous Version">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <select id="select-version" style="flex:1; margin:0; height:26px; font-size:11.5px; padding:2px 8px;"></select>
+          <button type="button" class="btn" id="btn-next-version" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Next Version">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
       </div>
       
       <!-- CANVAS CHECKLIST -->
       <div class="control-group">
-        <div class="control-label">Banners Sizes</div>
+        <div class="control-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+          <span>Banners Sizes</span>
+          <span id="ad-count" style="font-size:10px; font-weight:normal; text-transform:none; color:var(--text-muted);">0 sizes</span>
+        </div>
         <div class="size-check-list" id="size-check-list"></div>
         <div class="list-actions">
           <button class="btn-link" id="btn-select-all">Select All</button>
@@ -589,14 +616,7 @@
         </div>
       </div>
       
-      <!-- AUDIT OVERLAYS -->
-      <div class="control-group">
-        <div class="control-label">Review Overlays</div>
-        <label class="checkbox-item">
-          <input type="checkbox" id="chk-highlight-click">
-          <span>Highlight Click Areas</span>
-        </label>
-      </div>
+
       
       <!-- PRESENTATION THEME -->
       <div class="control-group">
@@ -614,16 +634,22 @@
 
   <!-- MAIN VIEWPORT -->
   <div class="main-viewport">
-    <div class="main-header">
-      <div class="project-name-title" id="project-name">No Project Loaded</div>
-      <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 12px;">
-        <button class="btn primary" id="btn-update-preview" style="display: none; padding: 4px 10px; font-size: 11px; height: 26px; gap: 4px; flex-shrink: 0; align-items: center; justify-content: center; cursor: pointer;">
+    <div class="main-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:nowrap; gap:12px; overflow:hidden;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:nowrap; overflow:hidden; flex-shrink:1;">
+        <div class="project-name-title" id="project-name" style="margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No Project Loaded</div>
+        <span style="font-size:10px; font-weight:700; text-transform:uppercase; border:1px solid var(--border-color); color:var(--text-muted); padding:2px 6px; border-radius:4px; white-space:nowrap; letter-spacing:0.04em;">Preview</span>
+        <div id="preview-share-meta" style="font-size:11.5px; color:var(--text-muted); font-weight:500; white-space:nowrap; flex-shrink:0;"></div>
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 12px; flex-shrink:0;">
+        <button class="btn primary" id="btn-download-all" style="display: none; padding: 4px 10px; font-size: 11px; height: 26px; gap: 4px; flex-shrink: 0; align-items: center; justify-content: center; cursor: pointer; white-space: nowrap;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download All (.zip)</span>
+        </button>
+        <button class="btn" id="btn-update-preview" style="display: none; padding: 4px 10px; font-size: 11px; height: 26px; gap: 4px; flex-shrink: 0; align-items: center; justify-content: center; cursor: pointer; white-space: nowrap;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           <span>Update Preview</span>
         </button>
-        <span id="ad-count">0 sizes</span>
-        <span>&bull;</span>
-        <button class="btn-link" id="btn-drag-trigger" style="font-size: 12px;">Load Local File...</button>
+        <button class="btn-link" id="btn-drag-trigger" style="font-size: 12px; white-space: nowrap; flex-shrink:0;">Load Local File...</button>
       </div>
     </div>
     
@@ -792,27 +818,66 @@
     const playBtn = document.getElementById('btn-play');
     const staticBtn = document.getElementById('btn-static');
     const replayBtn = document.getElementById('btn-replay');
-    const highlightClickChk = document.getElementById('chk-highlight-click');
+    const chkLoopAd = document.getElementById('chk-loop-ad');
     const versionGroup = document.getElementById('version-control-group');
+    
+    // Cycle select helpers
+    const btnPrevFrame = document.getElementById('btn-prev-frame');
+    const btnNextFrame = document.getElementById('btn-next-frame');
+    const btnPrevVersion = document.getElementById('btn-prev-version');
+    const btnNextVersion = document.getElementById('btn-next-version');
+
+    function cycleSelect(selectEl, direction) {
+      const len = selectEl.options.length;
+      if (len <= 1) return;
+      let newIdx = selectEl.selectedIndex + direction;
+      if (newIdx < 0) newIdx = len - 1;
+      if (newIdx >= len) newIdx = 0;
+      selectEl.selectedIndex = newIdx;
+      selectEl.dispatchEvent(new Event('change'));
+    }
+
+    if (btnPrevFrame) btnPrevFrame.onclick = () => cycleSelect(selectFrame, -1);
+    if (btnNextFrame) btnNextFrame.onclick = () => cycleSelect(selectFrame, 1);
+    if (btnPrevVersion) btnPrevVersion.onclick = () => cycleSelect(selectVersion, -1);
+    if (btnNextVersion) btnNextVersion.onclick = () => cycleSelect(selectVersion, 1);
     
     let isPlaying = true;
     let selectedCanvasIds = new Set();
 
-    // Runtime readout: total = sum of playable frame durations; when a frame is
-    // selected, show that frame's own duration (mirrors the editor preview bar).
-    function fmtDur(n) { const r = Math.round(n * 10) / 10; return (Number.isInteger(r) ? r : r.toFixed(1)) + 's'; }
-    function updateRuntimeStat(frameId) {
-      const el = document.getElementById('preview-runtime-stat');
-      if (!el) return;
+    // Repopulate options based on play state (shows or hides "All frames")
+    function repopulateFrameSelect() {
+      const currentVal = selectFrame.value;
+      selectFrame.innerHTML = '';
+      
       const playable = (state.frames || []).filter(f => !f.skip);
-      if (frameId == null) {
-        const t = playable.reduce((s, f) => s + (f.duration != null ? f.duration : 2), 0);
-        el.textContent = playable.length ? `Runtime ${fmtDur(t)}${state.loopAd ? ' ↻' : ''}` : '';
-      } else {
-        const i = playable.findIndex(f => f.id === frameId);
-        const f = playable[i];
-        if (f) el.textContent = `Frame ${i + 1} · ${fmtDur(f.duration != null ? f.duration : 2)}`;
+      
+      if (isPlaying) {
+        selectFrame.innerHTML += '<option value="play">All frames</option>';
       }
+      
+      playable.forEach((f) => {
+        const i = state.frames.indexOf(f);
+        selectFrame.innerHTML += `<option value="${f.id}">Frame ${i + 1} (${f.duration}s)</option>`;
+      });
+      
+      // Restore previous selection if valid
+      if (currentVal && selectFrame.querySelector(`option[value="${currentVal}"]`)) {
+        selectFrame.value = currentVal;
+      } else {
+        if (isPlaying) {
+          selectFrame.value = 'play';
+        } else {
+          selectFrame.value = playable.length ? playable[0].id : '';
+        }
+      }
+    }
+
+    if (chkLoopAd) {
+      chkLoopAd.onchange = () => {
+        state.loopAd = chkLoopAd.checked;
+        reloadAllBanners();
+      };
     }
     
     // Theme Management
@@ -836,8 +901,10 @@
     
     // Play / Static only state control
     function setPlayState(playing, triggerReload = true) {
-      const wasStatic = !isPlaying;
       isPlaying = playing;
+      
+      // Repopulate options based on play state (shows or hides "All frames")
+      repopulateFrameSelect();
       
       // Frame select stays enabled at all times (jump-and-play model).
       selectFrame.disabled = false;
@@ -846,7 +913,7 @@
         playBtn.classList.add('primary');
         staticBtn.classList.remove('primary');
         
-        if (wasStatic && triggerReload) {
+        if (triggerReload) {
           reloadAllBanners();
         } else {
           // Remove static overrides to let timer run
@@ -859,11 +926,16 @@
             // Resume animations
             const animStyle = doc.getElementById('preview-playback-pause-style');
             if (animStyle) animStyle.remove();
+            
+            // If a specific frame is selected, loop it
+            const cw = iframe.contentWindow;
+            const val = selectFrame.value;
+            if (val && val !== 'play' && cw && typeof cw.adflowPlayFrom === 'function' && cw.frames) {
+              const idx = cw.frames.findIndex(f => f.id === parseInt(val));
+              if (idx !== -1) cw.adflowPlayFrom(idx, true);
+            }
           });
         }
-        
-        selectFrame.value = 'play';
-        updateRuntimeStat(null);
       } else {
         playBtn.classList.remove('primary');
         staticBtn.classList.add('primary');
@@ -895,6 +967,12 @@
             doc.head.appendChild(style);
           }
         });
+        
+        // Freeze on the selected frame
+        const val = selectFrame.value;
+        if (val && val !== 'play') {
+          freezeFrame(parseInt(val));
+        }
       }
     }
     
@@ -944,66 +1022,55 @@
       setPlayState(false, false);
       if (firstFrameId !== null) {
         freezeFrame(firstFrameId);
-        selectFrame.value = 'play';
-        updateRuntimeStat(firstFrameId);
+        selectFrame.value = firstFrameId;
       }
     };
 
     // Replay timelines
     replayBtn.onclick = () => {
       reloadAllBanners();
-      updateRuntimeStat(null);
     };
 
     // Frame Selection — jump-and-play: picking a frame jumps every banner to it
-    // and plays forward; "All frames" restarts the full loop.
+    // and plays forward (looping just that frame if playing); "All frames" restarts the full loop.
     selectFrame.onchange = () => {
       const val = selectFrame.value;
       if (val === 'play') {
-        reloadAllBanners();
-        updateRuntimeStat(null);
+        if (!isPlaying) {
+          setPlayState(true);
+        } else {
+          reloadAllBanners();
+        }
         return;
       }
       const frameId = parseInt(val);
-      // Leave any frozen/paused state — resume playing and clear overrides.
-      isPlaying = true;
-      playBtn.classList.add('primary');
-      staticBtn.classList.remove('primary');
-      document.querySelectorAll('iframe').forEach(iframe => {
-        const cw = iframe.contentWindow;
-        const doc = iframe.contentDocument || (cw && cw.document);
-        if (doc) {
-          ['preview-state-override-style', 'preview-playback-pause-style'].forEach(id => {
-            const s = doc.getElementById(id);
-            if (s) s.remove();
-          });
-        }
-        if (cw && typeof cw.adflowPlayFrom === 'function' && cw.frames) {
-          const idx = cw.frames.findIndex(f => f.id === frameId);
-          if (idx !== -1) cw.adflowPlayFrom(idx);
-        }
-      });
-      updateRuntimeStat(frameId);
+      if (isPlaying) {
+        // Animated mode: play and loop just this frame
+        document.querySelectorAll('iframe').forEach(iframe => {
+          const cw = iframe.contentWindow;
+          const doc = iframe.contentDocument || (cw && cw.document);
+          if (doc) {
+            ['preview-state-override-style', 'preview-playback-pause-style'].forEach(id => {
+              const s = doc.getElementById(id);
+              if (s) s.remove();
+            });
+          }
+          if (cw && typeof cw.adflowPlayFrom === 'function' && cw.frames) {
+            const idx = cw.frames.findIndex(f => f.id === frameId);
+            if (idx !== -1) cw.adflowPlayFrom(idx, true);
+          }
+        });
+      } else {
+        // Static mode: freeze on this frame
+        freezeFrame(frameId);
+      }
     };
     
     // Helper to construct state-specific stylesheets to inject before rendering
     function getPreparedHtml(c, htmlContent) {
       let extraStyle = '';
       
-      // 1. ClickTag Highlight
-      if (highlightClickChk.checked) {
-        extraStyle += `
-          <style id="preview-clicktag-style">
-            .clickArea {
-              background: rgba(239, 68, 68, 0.25) !important;
-              border: 2px dashed #ef4444 !important;
-              box-sizing: border-box !important;
-            }
-          </style>
-        `;
-      }
-      
-      // 2. Playback state
+      // 1. Playback state
       if (!isPlaying) {
         const val = selectFrame.value;
         if (val !== 'play') {
@@ -1039,31 +1106,7 @@
       return htmlContent;
     }
     
-    // Highlight Click Overlay
-    highlightClickChk.onchange = () => {
-      const active = highlightClickChk.checked;
-      document.querySelectorAll('iframe').forEach(iframe => {
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        if (!doc) return;
-        let style = doc.getElementById('preview-clicktag-style');
-        if (active) {
-          if (!style) {
-            style = doc.createElement('style');
-            style.id = 'preview-clicktag-style';
-            style.textContent = `
-              .clickArea {
-                background: rgba(239, 68, 68, 0.25) !important;
-                border: 2px dashed #ef4444 !important;
-                box-sizing: border-box !important;
-              }
-            `;
-            doc.head.appendChild(style);
-          }
-        } else {
-          if (style) style.remove();
-        }
-      });
-    };
+
     
     // Version switching
     selectVersion.onchange = () => {
@@ -1108,6 +1151,50 @@
       }
       return cloned;
     }
+
+    // Calculate compressed ZIP size for a canvas (matching export & app weight calculation)
+    async function calculateCanvasZipSize(c) {
+      if (typeof JSZip === 'undefined') return 0;
+      const zip = new JSZip();
+      
+      const speed = 1;
+      const originalState = window.state;
+      window.state = getScaledState(speed);
+      
+      const dm = state.dataMerge;
+      const activeVersionIdx = (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
+      
+      try {
+        if (typeof dmRunExport === 'function') {
+          await dmRunExport(activeVersionIdx, async () => {
+            await addCanvasAssetsToZip(c, zip);
+            zip.file('index.html', generateExportHTML(c, zip, false, { previewControls: true }));
+          });
+        } else {
+          await addCanvasAssetsToZip(c, zip);
+          zip.file('index.html', generateExportHTML(c, zip, false, { previewControls: true }));
+        }
+      } catch (e) {
+        console.error('Failed to calculate canvas ZIP size:', e);
+      } finally {
+        window.state = originalState;
+      }
+      
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+      return parseFloat((blob.size / 1024).toFixed(1));
+    }
+
+    // Update the size badge in the UI asynchronously
+    async function updateSizeBadge(c) {
+      const badge = document.getElementById('size-badge-' + c.id);
+      if (!badge) return;
+      
+      const kbSize = await calculateCanvasZipSize(c);
+      const sizeLimit = state.adSizeLimit || 150;
+      
+      badge.className = kbSize > sizeLimit ? 'badge danger' : 'badge success';
+      badge.textContent = `${kbSize} KB`;
+    }
     
     // Render canvases
     function renderCanvases() {
@@ -1146,16 +1233,10 @@
         
         card.innerHTML = `
           <div class="card-header">
-            <div class="card-title">
-              <span>${c.name}</span>
-              <span class="badge info">${c.width} &times; ${c.height}</span>
-            </div>
-            <div style="display:flex; gap:6px; align-items:center;">
-              ${warningBadge}
-              <span class="${sizeClass}">${kbSize} KB</span>
-              <button class="banner-restart-btn" title="Restart this banner" onclick="restartBanner('${c.id}')" style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; padding:2px; border-radius:3px; opacity:0.7; transition:color 0.1s, opacity 0.1s;" onmouseover="this.style.opacity=1;this.style.color='var(--accent-base)';" onmouseout="this.style.opacity=0.7;this.style.color='var(--text-muted)';">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-              </button>
+            <div class="card-title" style="display:flex; align-items:center; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--text-muted); letter-spacing:0.04em;">
+              <span style="font-weight:600; color:var(--text-bright);">${c.width} &times; ${c.height}</span>
+              <span style="margin-left:8px; margin-right:8px; color:var(--text-muted);">&bull;</span>
+              <span class="${sizeClass}" id="size-badge-${c.id}" style="font-size:11px; font-weight:700; color:var(--accent-base); padding:0; background:transparent; text-transform:none;">${kbSize} KB</span>
             </div>
           </div>
           
@@ -1163,6 +1244,16 @@
             <div class="iframe-wrapper" style="width:${c.width}px; height:${c.height}px;">
               <iframe class="preview-iframe" id="iframe-${c.id}" style="width:${c.width}px; height:${c.height}px;" scrolling="no"></iframe>
             </div>
+          </div>
+
+          <div class="card-footer" style="display:flex; justify-content:flex-start; margin-top:10px; gap:8px; align-items:center;">
+            <button class="banner-footer-btn" title="Restart this banner" onclick="restartBanner('${c.id}')" style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; padding:2px; border-radius:3px; opacity:0.8; transition:color 0.1s;" onmouseover="this.style.color='#fff';" onmouseout="this.style.color='var(--text-muted)';">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+            <button class="banner-footer-btn" title="Download HTML5" onclick="downloadSingleBanner('${c.id}')" style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; padding:2px; border-radius:3px; opacity:0.8; transition:color 0.1s;" onmouseover="this.style.color='#fff';" onmouseout="this.style.color='var(--text-muted)';">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            ${totalWarnings > 0 ? `<span class="badge warning" onclick="toggleAuditLog('${c.id}')" style="margin-left:4px; font-size:9px; padding:1px 4px; border-radius:3px; cursor:pointer;">${totalWarnings} Warning${totalWarnings > 1 ? 's' : ''}</span>` : ''}
           </div>
           
           <div class="card-audit" id="audit-${c.id}">
@@ -1200,9 +1291,22 @@
                 }
               }
             }
+          } else {
+            const val = selectFrame.value;
+            if (val !== 'play') {
+              const frameId = parseInt(val);
+              const cw = iframe.contentWindow;
+              if (cw && typeof cw.adflowPlayFrom === 'function' && cw.frames) {
+                const idx = cw.frames.findIndex(f => f.id === frameId);
+                if (idx !== -1) cw.adflowPlayFrom(idx, true);
+              }
+            }
           }
         };
         iframe.srcdoc = getPreparedHtml(c, htmlContent);
+        
+        // Asynchronously update size badge with the accurate compressed ZIP size
+        updateSizeBadge(c);
       });
       
       updateCanvasGridVisibility();
@@ -1272,10 +1376,23 @@
               }
             }
           }
+        } else {
+          const val = selectFrame.value;
+          if (val !== 'play') {
+            const frameId = parseInt(val);
+            const cw = newIframe.contentWindow;
+            if (cw && typeof cw.adflowPlayFrom === 'function' && cw.frames) {
+              const idx = cw.frames.findIndex(f => f.id === frameId);
+              if (idx !== -1) cw.adflowPlayFrom(idx, true);
+            }
+          }
         }
       };
 
       newIframe.srcdoc = getPreparedHtml(c, htmlContent);
+      
+      // Update size badge with the accurate compressed ZIP size
+      updateSizeBadge(c);
     }
 
     // Reload all canvases
@@ -1290,6 +1407,50 @@
     window.restartBanner = (id) => {
       const c = state.canvases.find(x => x.id === id);
       if (c) reloadBanner(c);
+    };
+
+    window.downloadSingleBanner = async (id) => {
+      const c = state.canvases.find(x => x.id === id);
+      if (!c) return;
+      if (typeof JSZip === 'undefined') {
+        alert('JSZip is not loaded.');
+        return;
+      }
+      const zip = new JSZip();
+      const projName = state.projectName || 'Ad';
+      const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      
+      const speed = 1;
+      const originalState = window.state;
+      window.state = getScaledState(speed);
+      
+      const dm = state.dataMerge;
+      const activeVersionIdx = (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
+      
+      try {
+        if (typeof dmRunExport === 'function') {
+          await dmRunExport(activeVersionIdx, async () => {
+            await addCanvasAssetsToZip(c, zip);
+            zip.file('index.html', generateExportHTML(c, zip));
+          });
+        } else {
+          await addCanvasAssetsToZip(c, zip);
+          zip.file('index.html', generateExportHTML(c, zip));
+        }
+      } catch (e) {
+        console.error('Failed to export single banner:', e);
+        alert('Failed to export single banner.');
+        return;
+      } finally {
+        window.state = originalState;
+      }
+      
+      const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(content);
+      a.download = `${safeName}_${c.width}x${c.height}.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
     };
     
     // Update visibility based on checklists selection
@@ -1386,8 +1547,8 @@
         return;
       }
       
-      const padding = 24;
-      const gap = 24;
+      const padding = 32;
+      const gap = 40;
       const viewportWidth = Math.max(300, gridContainer.clientWidth - 2 * padding);
       
       const rectangles = visibleCards.map(card => {
@@ -1423,16 +1584,55 @@
       projectNameEl.textContent = state.projectName || 'Adflow Ad Pack';
       adCountEl.textContent = `${state.canvases.length} size${state.canvases.length > 1 ? 's' : ''}`;
       
-      // 2. Timeline Selector — "All frames" plays the full loop; picking a frame
-      // jumps every banner to it and plays forward (jump-and-play, matches editor).
-      selectFrame.innerHTML = '<option value="play" selected>All frames</option>';
-      if (state.frames) {
-        state.frames.filter(f => !f.skip).forEach((f) => {
-          const i = state.frames.indexOf(f);
-          selectFrame.innerHTML += `<option value="${f.id}">Frame ${i + 1} (${f.duration}s)</option>`;
-        });
+      const downloadAllBtn = document.getElementById('btn-download-all');
+      if (downloadAllBtn) {
+        downloadAllBtn.style.display = (state.canvases && state.canvases.length > 0) ? 'inline-flex' : 'none';
       }
-      updateRuntimeStat(null);
+      
+      const shareMetaEl = document.getElementById('preview-share-meta');
+      if (shareMetaEl) {
+        const params = new URLSearchParams(window.location.search);
+        const urlBy = params.get('by');
+        const urlAt = params.get('at');
+        
+        let username = '';
+        let formattedDate = '';
+        
+        if (urlBy && urlAt) {
+          username = urlBy;
+          const ts = parseInt(urlAt);
+          if (!isNaN(ts)) {
+            formattedDate = new Date(ts).toLocaleString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            });
+          }
+        } else if (state.previewSharedBy && state.previewSharedAt) {
+          username = state.previewSharedBy.split('@')[0] || 'Unknown';
+          formattedDate = new Date(state.previewSharedAt).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          });
+        }
+        
+        if (username && formattedDate) {
+          shareMetaEl.textContent = `Shared on ${formattedDate} by ${username}`;
+        } else {
+          shareMetaEl.textContent = '';
+        }
+      }
+      
+      // 2. Timeline Selector
+      repopulateFrameSelect();
+      if (chkLoopAd) {
+        chkLoopAd.checked = !!state.loopAd;
+      }
       
       // 3. Data Version Switcher
       selectVersion.innerHTML = '';
@@ -1443,7 +1643,7 @@
         const keyCol = state.dataMerge.versionNameKey || state.dataMerge.columns[0];
         state.dataMerge.rows.forEach((row, i) => {
           const label = row[keyCol] || `Version ${i + 1}`;
-          selectVersion.innerHTML += `<option value="${i}">${label}</option>`;
+          selectVersion.innerHTML += `<option value="${i}">${i + 1}. ${label}</option>`;
         });
       } else {
         versionGroup.style.display = 'none';
@@ -1558,9 +1758,16 @@
       }
     });
     
+    function clearUrlQuery() {
+      if (window.location.search) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
     dragOverlay.addEventListener('drop', (e) => {
       e.preventDefault();
       dragOverlay.classList.remove('active');
+      clearUrlQuery();
       
       const file = e.dataTransfer.files[0];
       if (file && (file.name.endsWith('.flow') || file.name.endsWith('.zip'))) {
@@ -1577,12 +1784,78 @@
     fileSelector.onchange = (e) => {
       const file = e.target.files[0];
       if (file) {
+        clearUrlQuery();
         const reader = new FileReader();
         reader.onload = (evt) => processProjectFile(evt.target.result);
         reader.readAsArrayBuffer(file);
       }
     };
     document.getElementById('btn-drag-trigger').onclick = () => fileSelector.click();
+    
+    // Download All Banners package
+    const downloadAllBtn = document.getElementById('btn-download-all');
+    if (downloadAllBtn) {
+      downloadAllBtn.onclick = async () => {
+        if (!state.canvases || state.canvases.length === 0) return;
+        if (typeof JSZip === 'undefined') {
+          alert('JSZip is not loaded.');
+          return;
+        }
+        
+        const span = downloadAllBtn.querySelector('span');
+        const originalText = span.textContent;
+        span.textContent = 'Zipping...';
+        downloadAllBtn.disabled = true;
+        
+        try {
+          const zip = new JSZip();
+          const projName = state.projectName || 'Ads';
+          const safePrefix = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+          
+          const speed = 1;
+          const originalState = window.state;
+          window.state = getScaledState(speed);
+          
+          const dm = state.dataMerge;
+          const activeVersionIdx = (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
+          
+          if (typeof dmRunExport === 'function') {
+            await dmRunExport(activeVersionIdx, async () => {
+              for (const c of state.canvases) {
+                const adZip = new JSZip();
+                await addCanvasAssetsToZip(c, adZip);
+                adZip.file('index.html', generateExportHTML(c, adZip));
+                const adContent = await adZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+                zip.file(`${safePrefix}_${c.width}x${c.height}.zip`, adContent);
+              }
+            });
+          } else {
+            for (const c of state.canvases) {
+              const adZip = new JSZip();
+              await addCanvasAssetsToZip(c, adZip);
+              adZip.file('index.html', generateExportHTML(c, adZip));
+              const adContent = await adZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+              zip.file(`${safePrefix}_${c.width}x${c.height}.zip`, adContent);
+            }
+          }
+          
+          window.state = originalState;
+          
+          const content = await zip.generateAsync({ type: 'blob' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(content);
+          a.download = `${safePrefix}_HTML5_Ads.zip`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+        } catch (err) {
+          console.error('Download all failed:', err);
+          alert('Failed to pack banners.');
+        } finally {
+          span.textContent = originalText;
+          downloadAllBtn.disabled = false;
+        }
+      };
+    }
     
     // Update Preview logic
     const updatePreviewBtn = document.getElementById('btn-update-preview');

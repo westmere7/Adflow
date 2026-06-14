@@ -2330,7 +2330,7 @@ ${options.previewControls ? `
     // 'jump' restarts the timeline at an arbitrary frame and plays forward; the
     // hide-all → reflow → show sequence makes the target frame's CSS entrance
     // animations fire fresh (same display:none→block trigger nextFrame relies on).
-    function adflowPlayFrom(idx) {
+    function adflowPlayFrom(idx, loopSingle) {
       if (frameTimer) { clearTimeout(frameTimer); frameTimer = null; }
       if (!frames.length) return;
       idx = idx % frames.length; if (idx < 0) idx += frames.length;
@@ -2348,14 +2348,16 @@ ${options.previewControls ? `
         cur.querySelectorAll('[data-bg-anim]').forEach(setupTextLineBgs);
       }
       updatePersistentLayersVisibility(currentFrame);
-      if (frames.length > 1 && !(!loopAd && currentFrame === frames.length - 1)) {
+      if (loopSingle) {
+        frameTimer = setTimeout(function() { adflowPlayFrom(idx, true); }, frames[currentFrame].duration * 1000);
+      } else if (frames.length > 1 && !(!loopAd && currentFrame === frames.length - 1)) {
         frameTimer = setTimeout(nextFrame, frames[currentFrame].duration * 1000);
       }
     }
     window.addEventListener('message', function (e) {
       var d = e.data;
       if (!d || typeof d !== 'object') return;
-      if (d.adflow === 'jump') adflowPlayFrom(d.frame | 0);
+      if (d.adflow === 'jump') adflowPlayFrom(d.frame | 0, d.loopSingle);
       else if (d.adflow === 'replay') adflowPlayFrom(0);
     });
 ` : ''}
