@@ -2439,18 +2439,20 @@ function renderProps() {
     const isSwipeLike = (el.animType || 'none').startsWith('swipe-');
     const isSplit = el.animType === 'split';
 
-    if (isZoomLike) {
-      const defaultZoomFrom = el.animType === 'pop-in' ? 80 : (el.animType === 'zoom-in' ? 110 : 80);
-      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
-        ${secNum('animDuration', 'Duration (s)', 1)}
-        ${secNum('animDelay', 'Delay (s)', 0)}
-        ${secNum('zoomFrom', 'From (%)', defaultZoomFrom)}
-      </div></div>`);
-    } else {
-      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
-        ${secNum('animDuration', 'Duration (s)', 1)}
-        ${secNum('animDelay', 'Delay (s)', 0)}
-      </div></div>`);
+    if (currentAnimVal !== 'none') {
+      if (isZoomLike) {
+        const defaultZoomFrom = el.animType === 'pop-in' ? 80 : (el.animType === 'zoom-in' ? 110 : 80);
+        f.push(`<div class="prop-row" style="margin-bottom:8px;"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
+          ${secNum('animDuration', 'Duration (s)', 1)}
+          ${secNum('animDelay', 'Delay (s)', 0)}
+          ${secNum('zoomFrom', 'From (%)', defaultZoomFrom)}
+        </div></div>`);
+      } else {
+        f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
+          ${secNum('animDuration', 'Duration (s)', 1)}
+          ${secNum('animDelay', 'Delay (s)', 0)}
+        </div></div>`);
+      }
     }
 
     if (isZoomLike) {
