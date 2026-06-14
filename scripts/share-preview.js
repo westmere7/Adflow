@@ -144,7 +144,10 @@ async function openSharePreviewModal() {
         // Keep the cloud copy current (also runs name-collision handling early).
         if (textEl) textEl.textContent = 'Saving latest changes to cloud...';
         const pushRes = await pushCurrentProjectToCloud();
-        if (pushRes && pushRes.collisionHandled) {
+        // A same-name collision shows a Replace/Rename prompt. If the user resolved
+        // it (pushed), keep sharing — only bail out if they cancelled, so the dialog
+        // no longer closes out from under a successful Replace/Rename.
+        if (pushRes && pushRes.collisionHandled && !pushRes.pushed) {
           closeFn();
           return;
         }

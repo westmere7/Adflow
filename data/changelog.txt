@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.22.5 (Current) - June 2026 — Engine v2.19
+v0.22.6 (Current) - June 2026 — Engine v2.19
+- Share No Longer Drops You Mid-Flow on a Name Clash: When you share a preview link and a cloud project with the same name already exists, the Replace / Rename prompt now lets sharing continue — pick one and the link is generated right away. Previously the dialog closed as soon as the prompt appeared, forcing you to resolve it and re-open Share. Cancelling the prompt still stops the share, as before.
+
+v0.22.5 - June 2026 — Engine v2.19
 - Consistent "Animation FX" naming: the continuous-effect category now reads "Animation FX" everywhere — the panel heading (was "ANIMATIONFX"), the IN/OUT/FX/TRANS toggle tooltip, the preset dropdown, the link-group sync option, and the help docs.
 
 v0.22.4 - June 2026 — Engine v2.19

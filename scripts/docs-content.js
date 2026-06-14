@@ -663,6 +663,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.22.6',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Share No Longer Drops You Mid-Flow on a Name Clash: When you share a preview link and a cloud project with the same name already exists, the Replace / Rename prompt now lets sharing continue — pick one and the link generates right away, instead of the dialog closing and forcing you to re-open Share. Cancelling the prompt still stops the share.'
+    ]
+  },
+  {
     version: 'v0.22.5',
     date: 'June 2026 — Engine v2.19',
     items: [

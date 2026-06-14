@@ -596,6 +596,10 @@ async function pushCurrentProjectToCloud(opts = {}) {
     if (dupErr) console.warn('Collision check failed:', dupErr);
     if (dupes && dupes.length > 0) {
       const existing = dupes[0];
+      // Track whether the user actually resolved the conflict by pushing (Replace
+      // or Rename) vs. cancelling, so callers (e.g. the Share dialog) can continue
+      // their flow on a successful push instead of aborting on every collision.
+      let pushed = false;
       await new Promise((resolve) => {
         showCanvasNotification(`A cloud project named "${projectName}" already exists here.`, {
           type: 'warning',
@@ -605,6 +609,7 @@ async function pushCurrentProjectToCloud(opts = {}) {
               try {
                 state.projectId = existing.id;
                 const res = await pushCurrentProjectToCloud({ ...opts, skipCollisionCheck: true });
+                pushed = true;
                 if (res && res.isFirstSave) {
                   showCanvasNotification(`"${projectName}" project saved to cloud`, { type: 'success' });
                 } else {
@@ -626,6 +631,7 @@ async function pushCurrentProjectToCloud(opts = {}) {
               try { render(); } catch (e) {}
               try {
                 const res = await pushCurrentProjectToCloud({ ...opts, skipCollisionCheck: true });
+                pushed = true;
                 if (res && res.isFirstSave) {
                   showCanvasNotification(`"${newName}" project saved to cloud`, { type: 'success' });
                 } else {
@@ -637,7 +643,9 @@ async function pushCurrentProjectToCloud(opts = {}) {
           ]
         });
       });
-      return { collisionHandled: true }; // Resolution path either pushed or cancelled.
+      // `pushed` is true only when Replace/Rename completed a save; cancelling
+      // (or a failed push) leaves it false.
+      return { collisionHandled: true, pushed };
     }
   }
 
