@@ -1908,7 +1908,7 @@ function elementNode(el, canvasCtx) {
   }
   const hasIn = (typeof animInEnabled === 'function' ? animInEnabled(el) : (el.inEnabled !== false)) && el.animType && el.animType !== 'none';
   const hasFx = (typeof animFxEnabled === 'function' ? animFxEnabled(el) : (el.fxEnabled !== false)) && el.effectType && el.effectType !== 'none';
-  const hasOut = typeof animOutEnabled === 'function' ? animOutEnabled(el) : (!!el.exitEnabled && hasIn);
+  const hasOut = typeof animOutEnabled === 'function' ? (animOutEnabled(el) && el.exitType !== 'none') : (!!el.exitEnabled && hasIn && el.exitType !== 'none');
   const isAnimated = !!(hasIn || hasFx || hasOut);
 
   if (isDynamic) d.classList.add('dynamic-el');

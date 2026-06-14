@@ -313,7 +313,7 @@ function getElementAnimationCSS(el, isImageExport, frameCtx) {
   let exitAnims = [];
   const exitType = el.exitType || 'fade-out';
   const isExitZoom = exitType === 'zoom';
-  const hasExit = animOutEnabled(el) && frameCtx && !isImageExport;
+  const hasExit = animOutEnabled(el) && exitType !== 'none' && frameCtx && !isImageExport;
   if (hasExit) {
     const delay = animInEnabled(el) ? (el.animDelay || 0) : 0;
     const start = (el.exitStart !== undefined ? el.exitStart : 1.5) + delay;
