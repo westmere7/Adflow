@@ -162,9 +162,9 @@ interface Element {
   fit?: 'contain' | 'cover' | 'fill';
   autoHug?: boolean;             // Dynamic button widths
   opacity?: number;
-  inTransition?: string; inDuration?: number;
-  continuousEffect?: string;     // pulse / wiggle / spin / pan / zoom
-  effectDuration?: number;
+  inEnabled?: boolean; animType?: string; animDuration?: number; animDelay?: number;
+  exitEnabled?: boolean; exitType?: string; exitStart?: number; exitDuration?: number;
+  fxEnabled?: boolean; effectType?: string; effDuration?: number;
 
   // Dynamic Data Opt-ins
   dmText?: boolean; dmColor?: boolean; dmBg?: boolean; dmImage?: boolean;
@@ -227,6 +227,18 @@ Additionally, a "Towards target" checkbox toggle determines the direction of the
 - **Towards target (checked)**: The element starts at its designed layout position `(0,0)` and animates towards the configured offset target `(panFromX, panFromY)`.
 - **Away from target (unchecked)**: The element starts at the configured offset start `(panFromX, panFromY)` and animates back to its designed layout position `(0,0)`.
 The keyframe calculations are dynamically baked into `@keyframes eff-pan-[id]` to prevent composition layout artifacts.
+
+### Animation Toggles & Timing
+The animation system is configured using four independent toggles (IN, OUT, FX, TRANS):
+- **IN (Entrance)**: Driven by `inEnabled` and `animType`.
+- **OUT (Exit)**: Driven by `exitEnabled` and `exitType` (requires `inEnabled` to play).
+- **FX (Continuous Effect)**: Driven by `fxEnabled` and `effectType`.
+- **TRANS (Frame Transition)**: Driven by `transition !== 'none'` on the active frame.
+
+**Exit Animation Timing**:
+To prevent exit animations from playing prematurely on elements that have entrance delays, the start time of the exit animation in CSS takes the entrance animation delay into account:
+$$\text{CSS Exit Start Delay} = (\text{animDelay} \text{ or } 0) + (\text{exitStart} \text{ or } 1.5)$$
+This ensures that the "after X seconds" delay counts from the moment the element actually begins its sequence and appears, rather than the absolute start of the frame.
 
 ### High-DPI Edge Antialiasing Hairline Fix
 To prevent 1px edge hairline bleeding caused by fractional device pixel ratios on high-DPI displays, the ad container (`#ad`) repaints its background to match the active frame's background color. The system clears the INCOMING frame's animation rule upon transition completion to prevent composition layout artifacts.

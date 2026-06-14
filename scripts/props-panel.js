@@ -621,8 +621,8 @@ function customSelect(key, options, currentVal, title, isFrameTrans = false, fra
       const favKey = favCategory + opt.val;
       const isFav = state.favoriteAnimations?.includes(favKey);
       const starColor = isFav ? 'var(--accent-base)' : 'var(--text-muted)';
-      const starFill = isFav ? 'currentColor' : 'none';
-      favHtml = `<svg class="fav-star-icon" data-fav-key="${favKey}" width="12" height="12" viewBox="0 0 24 24" fill="${starFill}" stroke="${starColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; flex-shrink: 0; padding: 2px; border-radius: 3px; cursor: pointer; opacity: ${isFav ? '1' : '0.5'}; transition: all 0.2s;" title="Toggle favorite"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+      const starFill = isFav ? 'var(--accent-base)' : 'var(--text-muted)';
+      favHtml = `<svg class="fav-star-icon" data-fav-key="${favKey}" width="14" height="14" viewBox="0 0 24 24" fill="${starFill}" stroke="${starColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: auto; flex-shrink: 0; padding: 1px; border-radius: 3px; cursor: pointer; opacity: 1; transition: all 0.2s;" title="Toggle favorite"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
     }
     let itemTitle = opt.label;
     if (favCategory) {
@@ -702,7 +702,7 @@ function getFrameTransitionHtml(currentFrame) {
     filteredPresets = presets.filter(o => o.val === 'none' || state.favoriteAnimations?.includes('frame-' + o.val));
     if (filteredPresets.length <= 1) {
       favMessageHtml = `<div style="grid-column: span 3; font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
-        No favorite transitions. Right-click presets to add to favorites.
+        No favorite transitions. Click the star icon next to presets in the dropdown to add to favorites.
       </div>`;
     }
   }
@@ -1086,6 +1086,10 @@ function wireCustomSelects(el, updateProp) {
 
     trigger.onmouseenter = () => {
       const container = trigger.closest('.custom-select-container');
+      const dropdown = container.querySelector('.custom-select-dropdown');
+      const isOpen = dropdown && dropdown.style.display === 'block';
+      if (isOpen) return;
+
       const isFrame = container.classList.contains('frame-trans-select');
       const key = isFrame ? container.dataset.frameK : container.dataset.k;
       if (isFrame) {
@@ -1107,6 +1111,30 @@ function wireCustomSelects(el, updateProp) {
           } else if ((key === 'exitType' || key === 'exitDirection') && el.exitEnabled) {
             if (startElementExitPreviewFn) startElementExitPreviewFn(el.exitType || 'fade-out');
           }
+        }
+      }
+    };
+
+    trigger.onmouseleave = () => {
+      const container = trigger.closest('.custom-select-container');
+      const dropdown = container.querySelector('.custom-select-dropdown');
+      const isOpen = dropdown && dropdown.style.display === 'block';
+      if (isOpen) return;
+
+      const isFrame = container.classList.contains('frame-trans-select');
+      const key = isFrame ? container.dataset.frameK : container.dataset.k;
+      if (isFrame) {
+        stopFrameTransitionPreview();
+      } else {
+        if (key === 'animDirection' || key === 'animType') {
+          if (stopElementAnimPreviewFn) stopElementAnimPreviewFn();
+        } else if (key === 'panDir') {
+          hoverEffectPreviewActive = false;
+          if (stopElementEffectPreviewFn) stopElementEffectPreviewFn();
+        } else if (key === 'effectType') {
+          if (stopElementEffectPreviewFn) stopElementEffectPreviewFn();
+        } else if (key === 'exitType' || key === 'exitDirection') {
+          if (stopElementExitPreviewFn) stopElementExitPreviewFn();
         }
       }
     };
@@ -1317,12 +1345,12 @@ function wireCustomSelects(el, updateProp) {
       const idx = state.favoriteAnimations.indexOf(favKey);
       if (idx > -1) {
         state.favoriteAnimations.splice(idx, 1);
-        star.setAttribute('fill', 'none');
+        star.setAttribute('fill', 'var(--text-muted)');
         star.setAttribute('stroke', 'var(--text-muted)');
-        star.style.opacity = '0.5';
+        star.style.opacity = '1';
       } else {
         state.favoriteAnimations.push(favKey);
-        star.setAttribute('fill', 'currentColor');
+        star.setAttribute('fill', 'var(--accent-base)');
         star.setAttribute('stroke', 'var(--accent-base)');
         star.style.opacity = '1';
       }
@@ -2375,11 +2403,11 @@ function renderProps() {
     </div>`);
   } else {
     const starIcon = state.filterFavorites ? `
-      <svg class="fav-filter-icon" width="12" height="12" viewBox="0 0 24 24" fill="var(--accent-base)" stroke="var(--accent-base)" stroke-width="2">
+      <svg class="fav-filter-icon" width="14" height="14" viewBox="0 0 24 24" fill="var(--accent-base)" stroke="var(--accent-base)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
       </svg>
     ` : `
-      <svg class="fav-filter-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2">
+      <svg class="fav-filter-icon" width="14" height="14" viewBox="0 0 24 24" fill="var(--text-muted)" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
       </svg>
     `;
@@ -2445,7 +2473,7 @@ function renderProps() {
       filteredOptions = animOptions.filter(o => o.val === 'none' || state.favoriteAnimations?.includes('in-' + o.val));
       if (filteredOptions.length <= 1) {
         favMessageHtml = `<div style="grid-column: span 3; font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
-          No favorite animations for this element type yet. Right-click presets to add to favorites.
+          No favorite animations for this element type yet. Click the star icon next to presets in the dropdown to add to favorites.
         </div>`;
       }
     }
@@ -2686,7 +2714,7 @@ function renderProps() {
       filteredExit = exitOptions.filter(o => o.val === exitVal || state.favoriteAnimations?.includes('out-' + o.val));
       if (filteredExit.length <= 1) {
         exitFavMessageHtml = `<div style="font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
-          No favorite exit animations yet. Right-click presets to add to favorites.
+          No favorite exit animations yet. Click the star icon next to presets in the dropdown to add to favorites.
         </div>`;
       }
     }
@@ -2699,20 +2727,23 @@ function renderProps() {
     const showDir = exitVal === 'slide' || exitVal === 'swipe';
     const showDist = exitVal === 'slide';
 
-    f.push(`<div class="prop-row" style="margin-bottom:8px;">
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-        ${secNum('exitDuration', 'Duration (s)', 0.6)}
-        <div></div>
-      </div>
-    </div>`);
-
     if (showFade) {
       f.push(`<div class="prop-row" style="margin-bottom:8px;">
-        <div style="display:flex; gap:16px; align-items:center;">
-          <div class="checkbox-row" style="margin:0;">
-            <input type="checkbox" data-k="exitFade" id="prop-exit-fade" title="Fade out while leaving" ${el.exitFade !== false ? 'checked' : ''}/>
-            <label for="prop-exit-fade" title="Fade out while leaving" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          ${secNum('exitDuration', 'Duration (s)', 0.6)}
+          <div style="display:flex; align-items:center; margin-top:14px;">
+            <div class="checkbox-row" style="margin:0;">
+              <input type="checkbox" data-k="exitFade" id="prop-exit-fade" title="Fade out while leaving" ${el.exitFade !== false ? 'checked' : ''}/>
+              <label for="prop-exit-fade" title="Fade out while leaving" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
+            </div>
           </div>
+        </div>
+      </div>`);
+    } else {
+      f.push(`<div class="prop-row" style="margin-bottom:8px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          ${secNum('exitDuration', 'Duration (s)', 0.6)}
+          <div></div>
         </div>
       </div>`);
     }
@@ -2763,7 +2794,7 @@ function renderProps() {
       filteredEffects = effectOptions.filter(o => o.val === 'none' || state.favoriteAnimations?.includes('eff-' + o.val));
       if (filteredEffects.length <= 1) {
         effFavMessageHtml = `<div style="grid-column: span 3; font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
-          No favorite continuous effects yet. Right-click presets to add to favorites.
+          No favorite continuous effects yet. Click the star icon next to presets in the dropdown to add to favorites.
         </div>`;
       }
     }

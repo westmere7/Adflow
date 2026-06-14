@@ -180,6 +180,9 @@ const DOCS_SECTIONS = [
       { id: 'entrance-animations', title: 'Entrance animations', body: `
         <p>Per-element IN animations played when a frame begins: Pop-in, Fade, Slide, Blur, Typing. Each has duration, delay, and configuration settings (such as blur radius or fade toggle depending on the preset). Stagger them by adjusting delays.</p>
       `},
+      { id: 'exit-animations', title: 'Exit animations', body: `
+        <p>Per-element OUT animations play at the end of the element's active time on a frame: Fade Out, Slide, Swipe, Zoom, Blur. The exit animation starts after the configured <b>after</b> delay. This timer automatically includes the entrance (IN) animation delay, ensuring the element remains fully visible for the specified duration before exiting.</p>
+      `},
       { id: 'continuous-effects', title: 'Continuous effects', body: `
         <p>Looping, non-destructive effects that overlay on top of the frame state: Pan, Zoom, Float, Pulse, Wiggle, Spin, Heartbeat, Flash. Toggle <b>Perform once</b> to play a single cycle instead of looping.</p>
       `},
