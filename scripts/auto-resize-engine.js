@@ -2255,7 +2255,7 @@ function openAutoResizeSettingsModal() {
               <input type="checkbox" id="ars-ll-anim" ${s.behaviour.liveLink.syncAnimations !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
               <div style="flex:1; min-width:0;">
                 <div style="font-size:11.5px; font-weight:600; color:var(--text-main); line-height:1.3;">Animations + effects</div>
-                <div style="font-size:10px; color:var(--text-muted); line-height:1.35;">In-transitions (Fade in, Slide up, etc.) and AnimationFX (Pulse, Wiggle, Spin) sync across canvases.</div>
+                <div style="font-size:10px; color:var(--text-muted); line-height:1.35;">In-transitions (Fade in, Slide up, etc.) and Animation FX (Pulse, Wiggle, Spin) sync across canvases.</div>
               </div>
             </label>
           </div>

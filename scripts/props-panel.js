@@ -29,8 +29,8 @@ const PRESET_DESCRIPTIONS = {
   'in-blur': "Fades in the element with a smooth camera blur.",
   'in-typing': "Fades/types in text characters or words sequentially.",
 
-  // AnimationFX
-  'eff-none': "No active AnimationFX.",
+  // Animation FX
+  'eff-none': "No active Animation FX.",
   'eff-pulse': "Repeatedly scales the element up and down slightly.",
   'eff-float': "Slowly floats the element up and down.",
   'eff-flash': "Flashes the opacity of the element repeatedly.",
@@ -2438,7 +2438,7 @@ function renderProps() {
         <div class="anim-mode-toggles" style="display:inline-flex; gap:4px; margin-left:4px;">
           ${modeToggle('in', showIn, `IN — entrance animation (${showIn ? 'on' : 'off'})`, AM_ICON_IN, false)}
           ${modeToggle('out', showOut, inOn ? `OUT — exit animation (${showOut ? 'on' : 'off'})` : 'OUT — turn IN on first', AM_ICON_OUT, !inOn)}
-          ${modeToggle('fx', showFx, `FX — AnimationFX (${showFx ? 'on' : 'off'})`, AM_ICON_FX, false)}
+          ${modeToggle('fx', showFx, `FX — Animation FX (${showFx ? 'on' : 'off'})`, AM_ICON_FX, false)}
         </div>
         <button class="fav-filter-btn" style="background:none; border:none; padding:4px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; outline:none; margin-left:auto;" title="${state.filterFavorites ? 'Show All Transitions' : 'Filter Favorites'}">
           ${starIcon}
@@ -2773,7 +2773,7 @@ function renderProps() {
     f.push(`</div>`); // Close out-transition-preview-area
 
     f.push(`<div id="effects-preview-area" class="animation-sub-panel" style="${showFx ? '' : 'display:none;'}">`);
-    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18489086" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;"><g fill="currentColor"><path d="m62.9545441 6.8181796v17.2727323h-60.4545455v17.2727203h95.0000014z"></path><path d="m37.0454559 75.9090881h60.4545441v-17.2727203h-95.0000014l34.5454573 34.5454559z"></path></g></svg>ANIMATIONFX</label></div>`);
+    f.push(`<div class="prop-row" style="margin-bottom:6px;"><label class="anim-sub-head"><svg id="fi_18489086" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0;"><g fill="currentColor"><path d="m62.9545441 6.8181796v17.2727323h-60.4545455v17.2727203h95.0000014z"></path><path d="m37.0454559 75.9090881h60.4545441v-17.2727203h-95.0000014l34.5454573 34.5454559z"></path></g></svg>Animation FX</label></div>`);
     const effectOptions = [
       { val: 'none', label: 'None' },
       { val: 'pulse', label: 'Pulse' },
@@ -2792,13 +2792,13 @@ function renderProps() {
       filteredEffects = effectOptions.filter(o => o.val === 'none' || state.favoriteAnimations?.includes('eff-' + o.val));
       if (filteredEffects.length <= 1) {
         effFavMessageHtml = `<div style="grid-column: span 3; font-size: 10px; color: var(--text-muted); line-height: 1.4; padding: 4px 0; text-align: center;">
-          No favorite AnimationFX yet. Click the star icon next to presets in the dropdown to add to favorites.
+          No favorite Animation FX yet. Click the star icon next to presets in the dropdown to add to favorites.
         </div>`;
       }
     }
 
     f.push(`<div style="margin-bottom:16px;">
-      ${customSelect('effectType', filteredEffects, el.effectType || 'none', 'Select AnimationFX', false, '', 'eff-')}
+      ${customSelect('effectType', filteredEffects, el.effectType || 'none', 'Select Animation FX', false, '', 'eff-')}
       ${effFavMessageHtml}
     </div>`);
 

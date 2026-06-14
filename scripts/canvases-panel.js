@@ -513,7 +513,7 @@ function renderLinkControl() {
               ${renderPropChk('opacity', 'Opacity', 'Sync opacity across linked elements')}
               ${renderPropChk('inAnim', 'IN Animation', 'Sync entry transition animation across linked elements')}
               ${renderPropChk('outAnim', 'OUT Animation', 'Sync exit animation across linked elements')}
-              ${renderPropChk('effect', 'AnimationFX', 'Sync AnimationFX across linked elements')}
+              ${renderPropChk('effect', 'Animation FX', 'Sync Animation FX across linked elements')}
             </div>`;
           } else if (cat === 'button') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
@@ -529,7 +529,7 @@ function renderLinkControl() {
               ${renderPropChk('opacity', 'Opacity', 'Sync button opacity across linked elements')}
               ${renderPropChk('inAnim', 'IN Animation', 'Sync button entry transition animation across linked elements')}
               ${renderPropChk('outAnim', 'OUT Animation', 'Sync button exit animation across linked elements')}
-              ${renderPropChk('effect', 'AnimationFX', 'Sync button AnimationFX across linked elements')}
+              ${renderPropChk('effect', 'Animation FX', 'Sync button Animation FX across linked elements')}
             </div>`;
           } else if (cat === 'image') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
@@ -543,7 +543,7 @@ function renderLinkControl() {
               ${renderPropChk('rotation', 'Rotation', 'Sync image rotation angle across linked elements')}
               ${renderPropChk('inAnim', 'IN Animation', 'Sync image entry transition animation across linked elements')}
               ${renderPropChk('outAnim', 'OUT Animation', 'Sync image exit animation across linked elements')}
-              ${renderPropChk('effect', 'AnimationFX', 'Sync image AnimationFX across linked elements')}
+              ${renderPropChk('effect', 'Animation FX', 'Sync image Animation FX across linked elements')}
             </div>`;
           } else if (cat === 'shape') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
@@ -556,7 +556,7 @@ function renderLinkControl() {
               ${renderPropChk('opacity', 'Opacity', 'Sync shape opacity across linked elements')}
               ${renderPropChk('inAnim', 'IN Animation', 'Sync shape entry transition animation across linked elements')}
               ${renderPropChk('outAnim', 'OUT Animation', 'Sync shape exit animation across linked elements')}
-              ${renderPropChk('effect', 'AnimationFX', 'Sync shape AnimationFX across linked elements')}
+              ${renderPropChk('effect', 'Animation FX', 'Sync shape Animation FX across linked elements')}
             </div>`;
           } else if (cat === 'line') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
@@ -567,7 +567,7 @@ function renderLinkControl() {
               ${renderPropChk('opacity', 'Opacity', 'Sync line opacity across linked elements')}
               ${renderPropChk('inAnim', 'IN Animation', 'Sync line entry transition animation across linked elements')}
               ${renderPropChk('outAnim', 'OUT Animation', 'Sync line exit animation across linked elements')}
-              ${renderPropChk('effect', 'AnimationFX', 'Sync line AnimationFX across linked elements')}
+              ${renderPropChk('effect', 'Animation FX', 'Sync line Animation FX across linked elements')}
             </div>`;
           }
           html += `</div>`;

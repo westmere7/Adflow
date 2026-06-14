@@ -297,19 +297,14 @@ function getElementAnimationCSS(el, isImageExport, frameCtx) {
     }
   }
 
-  // Exit ("out") animation — plays in the final moment of the element's frame,
-  // just before it hands off to the next. Fully opt-in: exitType 'none' (the
-  // default) emits nothing, so existing projects are byte-identical. It composes
-  // onto the SAME inner node as the entry animation (shared transform/opacity
-  // layer): entry's `both` fill holds the resting state through the gap, then the
-  // exit — declared LAST in the shorthand, with `forwards` fill and a delay of
-  // (frameDuration − exitDuration) — wins during its delayed active window. Each
-  // exit keyframe's 0% is the resting state, so there is no jump at handover.
-  // Opt-in via el.exitEnabled. The exit plays on its OWN timer, independent of the
-  // frame's duration: it begins el.exitStart seconds after the element appears
-  // ("In → Out" time) and runs for a fixed motion length. It composes onto the entry
-  // node's shorthand (declared last → wins during its window). frameCtx present means
-  // this is a per-frame element (persistent layers are excluded).
+  // Exit ("out") animation — opt-in via el.exitEnabled, and gated by IN
+  // (animOutEnabled). It plays on its OWN timer, independent of the frame's
+  // duration: it begins el.exitStart seconds after the element appears (plus the
+  // IN delay, the "In → Out" time) and runs for el.exitDuration. It composes onto
+  // the entry node's animation shorthand — declared LAST so it wins during its
+  // delayed active window, while the entry's `both` fill holds the resting state
+  // in the gap. Each exit keyframe's 0% is the resting state, so there's no jump.
+  // frameCtx present means this is a per-frame element (persistent layers excluded).
   let exitAnims = [];
   const exitType = el.exitType || 'fade-out';
   const isExitZoom = exitType === 'zoom';

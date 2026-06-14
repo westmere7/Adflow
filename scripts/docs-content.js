@@ -42,7 +42,7 @@ const DOCS_SECTIONS = [
           <li style="margin-bottom: 8px;"><b>Deterministic Auto-Resize</b>: Build one format, and automatically generate your entire size set. The engine uses a 9-role heuristics taxonomy to reposition and wrap copy automatically.</li>
           <li style="margin-bottom: 8px;"><b>Live-Link Groups</b>: Bidirectionally sync copy, styles, typography, and background treatments across canvases in real-time, or choose specific properties to sync/unlink.</li>
           <li style="margin-bottom: 8px;"><b>Spreadsheet Data Merge</b>: Build version sheets inline or upload CSV files. Map column headers directly to dynamic slot-bound canvas layers to auto-generate version variations.</li>
-          <li style="margin-bottom: 8px;"><b>Frame-Based Animations</b>: Sequence multi-frame banners and apply entering transitions or AnimationFX presets without manual timeline keyframing complexity.</li>
+          <li style="margin-bottom: 8px;"><b>Frame-Based Animations</b>: Sequence multi-frame banners and apply entering transitions or Animation FX presets without manual timeline keyframing complexity.</li>
           <li style="margin-bottom: 8px;"><b>Built-in Image Compressor</b>: Compress and convert JPEG/PNG assets to WebP, JPEG, or PNG depending on project configuration to meet strict ad network weight targets (150 KB standard).</li>
           <li style="margin-bottom: 8px;"><b>Layer-Based Vector Masking</b>: Use any vector shape layer (rectangles, circles, custom brand SVG pixels) to non-destructively mask images below using clean CSS clip-path logic.</li>
           <li style="margin-bottom: 8px;"><b>Supabase Team Spaces</b>: Collaborate with teammates, organize work in folders, and manage project backups with full Row-Level Security and invitation URLs.</li>
@@ -165,9 +165,9 @@ const DOCS_SECTIONS = [
     id: 'animation', title: 'Animation',
     subs: [
       { id: 'animation-intro', title: 'Introduction', body: `
-        <p>Adflow's Animation suite sequences multi-frame narratives and applies entering transitions or AnimationFX motion to layout layers. You can define sequential frames with distinct durations, adjust frame entrance styles, and apply staggered delays to establish visual pacing.</p>
-        <p>Animations are split between per-element entrance transitions (which play once when a frame enters) and AnimationFX (which play continuously while the frame remains active). This dual-layer motion model lets you create rich, dynamic banner advertisements with zero keyframing complexity.</p>
-        <p><b>Adflow's Advantage:</b> Legacy animation tools force designers to construct complex keyframe timelines for every single canvas element. Adflow abstracts this complexity: you can apply transitions like swipes, slides, or zooms, and configure AnimationFX like floating, pulsing, or typing using simple dropdown presets.</p>
+        <p>Adflow's Animation suite sequences multi-frame narratives and applies entering transitions or Animation FX motion to layout layers. You can define sequential frames with distinct durations, adjust frame entrance styles, and apply staggered delays to establish visual pacing.</p>
+        <p>Animations are split between per-element entrance transitions (which play once when a frame enters) and Animation FX (which play continuously while the frame remains active). This dual-layer motion model lets you create rich, dynamic banner advertisements with zero keyframing complexity.</p>
+        <p><b>Adflow's Advantage:</b> Legacy animation tools force designers to construct complex keyframe timelines for every single canvas element. Adflow abstracts this complexity: you can apply transitions like swipes, slides, or zooms, and configure Animation FX like floating, pulsing, or typing using simple dropdown presets.</p>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Stagger layer delays (e.g., 0.2s, 0.4s, 0.6s) for element entrance transitions to build sequential visual narratives instead of animating all layers simultaneously. Toggle the 'Skip Frame' check to test specific portions of your frame sequence in isolation.</div>
       `},
       { id: 'frames-timeline', title: 'Frames & sequencing', body: `
@@ -183,8 +183,8 @@ const DOCS_SECTIONS = [
       { id: 'exit-animations', title: 'Exit animations', body: `
         <p>Per-element OUT animations play at the end of the element's active time on a frame: Fade Out, Slide, Swipe, Zoom, Blur. The exit animation starts after the configured <b>after</b> delay. This timer automatically includes the entrance (IN) animation delay, ensuring the element remains fully visible for the specified duration before exiting.</p>
       `},
-      { id: 'continuous-effects', title: 'AnimationFX', body: `
-        <p>AnimationFX are looping, non-destructive effects that overlay on top of the frame state: Pan, Zoom, Float, Pulse, Wiggle, Spin, Heartbeat, Flash. Toggle <b>Perform once</b> to play a single cycle instead of looping.</p>
+      { id: 'continuous-effects', title: 'Animation FX', body: `
+        <p>Animation FX are looping, non-destructive effects that overlay on top of the frame state: Pan, Zoom, Float, Pulse, Wiggle, Spin, Heartbeat, Flash. Toggle <b>Perform once</b> to play a single cycle instead of looping.</p>
       `},
     ]
   },
@@ -662,6 +662,13 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.22.5',
+    date: 'June 2026 — Engine v2.19',
+    items: [
+      'Consistent "Animation FX" naming: the continuous-effect category now reads "Animation FX" everywhere — the panel heading (was "ANIMATIONFX"), the toggle tooltip, the preset dropdown, the link-group sync option, and the help docs.'
+    ]
+  },
   {
     version: 'v0.22.4',
     date: 'June 2026 — Engine v2.19',

@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.22.4 (Current) - June 2026 — Engine v2.19
+v0.22.5 (Current) - June 2026 — Engine v2.19
+- Consistent "Animation FX" naming: the continuous-effect category now reads "Animation FX" everywhere — the panel heading (was "ANIMATIONFX"), the IN/OUT/FX/TRANS toggle tooltip, the preset dropdown, the link-group sync option, and the help docs.
+
+v0.22.4 - June 2026 — Engine v2.19
 - Favorites Now Include Exit Animations: The Animation panel's "Filter Favorites" star now also filters the OUT (exit) animation list, just like it does for entrance animations, effects, and frame transitions. Previously the exit list always showed every option regardless of your favorites.
 
 v0.22.3 - June 2026 — Engine v2.19
