@@ -96,7 +96,154 @@ function generateMaskClipPathKeyframes(mask, image, presetOverride) {
   if (animType === 'none') return null;
 
   const isSlideLike = ['slide', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-in', 'zoom-in', 'zoom'].includes(animType);
-  if (!isSlideLike) return null;
+  const isOtherSupported = ['fade-in', 'fade', 'blur', 'swipe', 'swipe-up', 'swipe-down', 'swipe-left', 'swipe-right', 'split'].includes(animType);
+  if (!isSlideLike && !isOtherSupported) return null;
+
+  const relX = (mask.x + mask.width / 2) - (image.x + image.width / 2);
+  const relY = (mask.y + mask.height / 2) - (image.y + image.height / 2);
+  const mw = Math.max(1, mask.width);
+  const mh = Math.max(1, mask.height);
+  const tx = relX + image.width / 2 - mw / 2;
+  const ty = relY + image.height / 2 - mh / 2;
+  const rot = mask.rotation || 0;
+  const cx = tx + mw / 2;
+  const cy = ty + mh / 2;
+  const f = _fmtMask;
+
+  if (animType === 'fade-in' || animType === 'fade') {
+    const cp = buildMaskClipPath(mask, image);
+    const animName = `mask-anim-${mask.id}-${animType}`;
+    const dur = mask.animDuration || 1;
+    const del = mask.animDelay || 0;
+    return {
+      name: animName,
+      keyframes: `@keyframes ${animName} {
+        from { opacity: 0; clip-path: ${cp}; -webkit-clip-path: ${cp}; }
+        to { opacity: 1; clip-path: ${cp}; -webkit-clip-path: ${cp}; }
+      }`,
+      animationCss: `${animName} ${dur}s ease-out ${del}s both`
+    };
+  }
+
+  if (animType === 'blur') {
+    const cp = buildMaskClipPath(mask, image);
+    const animName = `mask-anim-${mask.id}-${animType}`;
+    const dur = mask.animDuration || 1;
+    const del = mask.animDelay || 0;
+    const blurAmount = mask.animBlurAmount !== undefined ? mask.animBlurAmount : 20;
+    const fade = mask.animFade !== false;
+    const fromOpacity = fade ? 'opacity: 0;' : '';
+    const toOpacity = fade ? 'opacity: 1;' : '';
+    return {
+      name: animName,
+      keyframes: `@keyframes ${animName} {
+        from { filter: blur(${blurAmount}px); ${fromOpacity} clip-path: ${cp}; -webkit-clip-path: ${cp}; }
+        to { filter: blur(0px); ${toOpacity} clip-path: ${cp}; -webkit-clip-path: ${cp}; }
+      }`,
+      animationCss: `${animName} ${dur}s ease-out ${del}s both`
+    };
+  }
+
+  const isSwipe = animType.startsWith('swipe') || animType === 'swipe';
+  const isSplit = animType === 'split';
+
+  if ((isSwipe || isSplit) && mask.type !== 'pixel') {
+    function getPts() {
+      if (mask.type === 'circle') {
+        const N = 36;
+        const pts = [];
+        for (let i = 0; i < N; i++) {
+          const t = (i / N) * 2 * Math.PI;
+          const px = cx + (mw/2) * Math.cos(t);
+          const py = cy + (mh/2) * Math.sin(t);
+          pts.push(_maskRotPt(px, py, cx, cy, rot));
+        }
+        return pts;
+      } else {
+        return [
+          _maskRotPt(tx, ty, cx, cy, rot),
+          _maskRotPt(tx + mw, ty, cx, cy, rot),
+          _maskRotPt(tx + mw, ty + mh, cx, cy, rot),
+          _maskRotPt(tx, ty + mh, cx, cy, rot)
+        ];
+      }
+    }
+
+    const pts = getPts();
+    const xs = pts.map(p => p[0]);
+    const ys = pts.map(p => p[1]);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+
+    let fromPts = [];
+
+    if (isSwipe) {
+      let dir = 'left';
+      if (animType.startsWith('swipe-')) {
+        dir = animType.replace('swipe-', '');
+      } else {
+        dir = mask.animDirection || 'left';
+      }
+
+      if (dir === 'left') {
+        fromPts = pts.map(p => [maxX, p[1]]);
+      } else if (dir === 'right') {
+        fromPts = pts.map(p => [minX, p[1]]);
+      } else if (dir === 'up') {
+        fromPts = pts.map(p => [p[0], maxY]);
+      } else if (dir === 'down') {
+        fromPts = pts.map(p => [p[0], minY]);
+      }
+    } else if (isSplit) {
+      const theta = (mask.animAngle || 0) * Math.PI / 180;
+      const cos = Math.cos(theta);
+      const sin = Math.sin(theta);
+      fromPts = pts.map(p => {
+        const dx = p[0] - cx;
+        const dy = p[1] - cy;
+        const d = dx * cos + dy * sin;
+        const px = cx + d * cos;
+        const py = cy + d * sin;
+        return [px, py];
+      });
+    }
+
+    const cpFrom = `polygon(${fromPts.map(p => `${f(p[0])}px ${f(p[1])}px`).join(', ')})`;
+    const cpTo = `polygon(${pts.map(p => `${f(p[0])}px ${f(p[1])}px`).join(', ')})`;
+    
+    const animName = `mask-anim-${mask.id}-${animType}`;
+    const dur = mask.animDuration || 1;
+    const del = mask.animDelay || 0;
+    const fade = mask.animFade !== false;
+    const fromOpacity = fade ? 'opacity: 0;' : '';
+    const toOpacity = fade ? 'opacity: 1;' : '';
+    
+    return {
+      name: animName,
+      keyframes: `@keyframes ${animName} {
+        from { ${fromOpacity} clip-path: ${cpFrom}; -webkit-clip-path: ${cpFrom}; }
+        to { ${toOpacity} clip-path: ${cpTo}; -webkit-clip-path: ${cpTo}; }
+      }`,
+      animationCss: `${animName} ${dur}s ease-out ${del}s both`
+    };
+  }
+
+  if ((isSwipe || isSplit) && mask.type === 'pixel') {
+    const cp = buildMaskClipPath(mask, image);
+    const animName = `mask-anim-${mask.id}-${animType}`;
+    const dur = mask.animDuration || 1;
+    const del = mask.animDelay || 0;
+    return {
+      name: animName,
+      keyframes: `@keyframes ${animName} {
+        from { opacity: 0; clip-path: ${cp}; -webkit-clip-path: ${cp}; }
+        to { opacity: 1; clip-path: ${cp}; -webkit-clip-path: ${cp}; }
+      }`,
+      animationCss: `${animName} ${dur}s ease-out ${del}s both`
+    };
+  }
 
   const fromMask = JSON.parse(JSON.stringify(mask));
   
@@ -121,12 +268,12 @@ function generateMaskClipPathKeyframes(mask, image, presetOverride) {
       if (parentCanvas) {
         const w = mask.width || 0;
         const h = mask.height || 0;
-        const cx = mask.x + w / 2;
-        const cy = mask.y + h / 2;
-        const distLeft = cx;
-        const distRight = parentCanvas.width - cx;
-        const distTop = cy;
-        const distBottom = parentCanvas.height - cy;
+        const cx_val = mask.x + w / 2;
+        const cy_val = mask.y + h / 2;
+        const distLeft = cx_val;
+        const distRight = parentCanvas.width - cx_val;
+        const distTop = cy_val;
+        const distBottom = parentCanvas.height - cy_val;
         const minDist = Math.min(distLeft, distRight, distTop, distBottom);
         if (minDist === distLeft) slideDir = 'right';
         else if (minDist === distRight) slideDir = 'left';
@@ -148,12 +295,12 @@ function generateMaskClipPathKeyframes(mask, image, presetOverride) {
     else if (dir === 'right') fromMask.x -= dist;
     fromMask.rotation = (fromMask.rotation || 0) + rOffset;
   } else if (animType === 'zoom' || animType === 'pop-in' || animType === 'zoom-in') {
-    const cx = mask.x + mask.width / 2;
-    const cy = mask.y + mask.height / 2;
+    const cx_val = mask.x + mask.width / 2;
+    const cy_val = mask.y + mask.height / 2;
     fromMask.width = Math.max(1, fromMask.width * zf);
     fromMask.height = Math.max(1, fromMask.height * zf);
-    fromMask.x = cx - fromMask.width / 2;
-    fromMask.y = cy - fromMask.width / 2;
+    fromMask.x = cx_val - fromMask.width / 2;
+    fromMask.y = cy_val - fromMask.height / 2;
     if (fromMask.radius) fromMask.radius *= zf;
   }
 
@@ -167,12 +314,12 @@ function generateMaskClipPathKeyframes(mask, image, presetOverride) {
     const dist = mask.animDistance !== undefined ? mask.animDistance : (animType.startsWith('slide-') ? 20 : 100);
     const rOffset = mask.animRotateOffset !== undefined ? mask.animRotateOffset : 0;
     const d = 4.0;
-    const f = 2.0;
+    const f_val = 2.0;
     let keyframeSteps = [];
     
     for (let pct = 0; pct <= 100; pct += 5) {
       const t = pct / 100;
-      const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * f * t);
+      const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * f_val * t);
       const currentDist = dist * x;
       const currentRot = rOffset * x;
       
@@ -196,21 +343,21 @@ function generateMaskClipPathKeyframes(mask, image, presetOverride) {
 
   if ((animType === 'zoom' || animType === 'pop-in' || animType === 'zoom-in') && mask.animBounce) {
     const d = 4.0;
-    const f = 2.0;
+    const f_val = 2.0;
     let keyframeSteps = [];
     
     for (let pct = 0; pct <= 100; pct += 5) {
       const t = pct / 100;
-      const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * f * t);
+      const x = Math.exp(-d * t) * Math.cos(2 * Math.PI * f_val * t);
       const s = (1.0 + (zf - 1.0) * x);
       
       const stepMask = JSON.parse(JSON.stringify(mask));
-      const cx = mask.x + mask.width / 2;
-      const cy = mask.y + mask.height / 2;
+      const cx_val = mask.x + mask.width / 2;
+      const cy_val = mask.y + mask.height / 2;
       stepMask.width = Math.max(1, stepMask.width * s);
       stepMask.height = Math.max(1, stepMask.height * s);
-      stepMask.x = cx - stepMask.width / 2;
-      stepMask.y = cy - stepMask.height / 2;
+      stepMask.x = cx_val - stepMask.width / 2;
+      stepMask.y = cy_val - stepMask.height / 2;
       if (stepMask.radius) stepMask.radius *= s;
       const cp = buildMaskClipPath(stepMask, image);
       keyframeSteps.push(`      ${pct}% { clip-path: ${cp}; -webkit-clip-path: ${cp}; }`);
