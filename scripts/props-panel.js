@@ -2439,20 +2439,18 @@ function renderProps() {
     const isSwipeLike = (el.animType || 'none').startsWith('swipe-');
     const isSplit = el.animType === 'split';
 
-    if (el.animType && el.animType !== 'none') {
-      if (isZoomLike) {
-        const defaultZoomFrom = el.animType === 'pop-in' ? 80 : (el.animType === 'zoom-in' ? 110 : 80);
-        f.push(`<div class="prop-row" style="margin-bottom:8px;"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
-          ${secNum('animDuration', 'Duration (s)', 1)}
-          ${secNum('animDelay', 'Delay (s)', 0)}
-          ${secNum('zoomFrom', 'From (%)', defaultZoomFrom)}
-        </div></div>`);
-      } else {
-        f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
-          ${secNum('animDuration', 'Duration (s)', 1)}
-          ${secNum('animDelay', 'Delay (s)', 0)}
-        </div></div>`);
-      }
+    if (isZoomLike) {
+      const defaultZoomFrom = el.animType === 'pop-in' ? 80 : (el.animType === 'zoom-in' ? 110 : 80);
+      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px;">
+        ${secNum('animDuration', 'Duration (s)', 1)}
+        ${secNum('animDelay', 'Delay (s)', 0)}
+        ${secNum('zoomFrom', 'From (%)', defaultZoomFrom)}
+      </div></div>`);
+    } else {
+      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
+        ${secNum('animDuration', 'Duration (s)', 1)}
+        ${secNum('animDelay', 'Delay (s)', 0)}
+      </div></div>`);
     }
 
     if (isZoomLike) {
@@ -2631,78 +2629,70 @@ function renderProps() {
       ? `Starts at ${totalExitStart}s total (${inDelay}s IN delay + ${exitValAfter}s after)`
       : `Starts at ${exitValAfter}s`;
 
-    const exitVal = el.exitType || 'fade-out';
-
-    const showAfterHtml = `
+    f.push(`<div class="prop-row" style="margin:0 0 10px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <label class="anim-sub-head" style="margin:0;"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0; transform: scaleX(-1);" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>OUT</label>
       <div style="display:flex; align-items:center; gap:4px;" title="${startTooltip}">
         <label for="prop-exit-start" style="font-size:11px; color:var(--text-muted); margin:0;">after</label>
         <input type="number" step="0.1" min="0" data-k="exitStart" id="prop-exit-start" value="${exitValAfter}" style="width:45px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 4px; font-size:11px; height:20px; outline:none;" />
         <span style="font-size:11px; color:var(--text-muted);">s</span>
       </div>
-    `;
-
-    f.push(`<div class="prop-row" style="margin:0 0 10px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-      <label class="anim-sub-head" style="margin:0;"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0; transform: scaleX(-1);" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>OUT</label>
-      ${showAfterHtml}
     </div>`);
 
     const exitOptions = [
-      { val: 'none', label: 'None' },
       { val: 'fade-out', label: 'Fade Out' },
       { val: 'slide', label: 'Slide' },
       { val: 'swipe', label: 'Swipe' },
       { val: 'zoom', label: 'Zoom' },
       { val: 'blur', label: 'Blur' }
     ];
+    const exitVal = el.exitType || 'fade-out';
     let filteredExit = exitOptions;
     f.push(`<div style="margin-bottom:8px;">
       ${customSelect('exitType', filteredExit, exitVal, 'Select Out Animation', false, '', 'out-')}
     </div>`);
 
-    if (exitVal !== 'none') {
-      const showFade = exitVal !== 'fade-out'; // Fade Out is inherently a fade
-      const showDir = exitVal === 'slide' || exitVal === 'swipe';
-      const showDist = exitVal === 'slide';
+    const showFade = exitVal !== 'fade-out'; // Fade Out is inherently a fade
+    const showDir = exitVal === 'slide' || exitVal === 'swipe';
+    const showDist = exitVal === 'slide';
 
-      if (showFade) {
-        f.push(`<div class="prop-row" style="margin-bottom:8px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-            ${secNum('exitDuration', 'Duration (s)', 0.6)}
-            <div style="display:flex; align-items:center; margin-top:14px;">
-              <div class="checkbox-row" style="margin:0;">
-                <input type="checkbox" data-k="exitFade" id="prop-exit-fade" title="Fade out while leaving" ${el.exitFade !== false ? 'checked' : ''}/>
-                <label for="prop-exit-fade" title="Fade out while leaving" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
-              </div>
+    if (showFade) {
+      f.push(`<div class="prop-row" style="margin-bottom:8px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          ${secNum('exitDuration', 'Duration (s)', 0.6)}
+          <div style="display:flex; align-items:center; margin-top:14px;">
+            <div class="checkbox-row" style="margin:0;">
+              <input type="checkbox" data-k="exitFade" id="prop-exit-fade" title="Fade out while leaving" ${el.exitFade !== false ? 'checked' : ''}/>
+              <label for="prop-exit-fade" title="Fade out while leaving" style="cursor:pointer; font-size:11px; white-space:nowrap;">Fade</label>
             </div>
           </div>
-        </div>`);
-      } else {
-        f.push(`<div class="prop-row" style="margin-bottom:8px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-            ${secNum('exitDuration', 'Duration (s)', 0.6)}
-            <div></div>
-          </div>
-        </div>`);
-      }
+        </div>
+      </div>`);
+    } else {
+      f.push(`<div class="prop-row" style="margin-bottom:8px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+          ${secNum('exitDuration', 'Duration (s)', 0.6)}
+          <div></div>
+        </div>
+      </div>`);
+    }
 
-      if (showDir) {
-        const exitDir = el.exitDirection || (exitVal === 'swipe' ? 'left' : 'down');
-        f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label>Direction</label>
-            ${customSelect('exitDirection', [
-              { val: 'up', label: 'Up' },
-              { val: 'down', label: 'Down' },
-              { val: 'left', label: 'Left' },
-              { val: 'right', label: 'Right' }
-            ], exitDir, 'Exit direction', false, 'prop-exit-direction')}
-          </div>
-          ${showDist ? `<div style="display:flex; flex-direction:column; gap:4px;">
-            <label>Dist. (px)</label>
-            <input type="number" min="1" max="500" data-k="exitDistance" value="${el.exitDistance !== undefined ? el.exitDistance : 20}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Exit slide distance in pixels" />
-          </div>` : '<div></div>'}
-        </div></div>`);
-      }
+    if (showDir) {
+      const exitDir = el.exitDirection || (exitVal === 'swipe' ? 'left' : 'down');
+      f.push(`<div class="prop-row" style="margin-bottom:8px;"><div class="prop-grid-2">
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <label>Direction</label>
+          ${customSelect('exitDirection', [
+            { val: 'up', label: 'Up' },
+            { val: 'down', label: 'Down' },
+            { val: 'left', label: 'Left' },
+            { val: 'right', label: 'Right' }
+          ], exitDir, 'Exit direction', false, 'prop-exit-direction')}
+        </div>
+        ${showDist ? `<div style="display:flex; flex-direction:column; gap:4px;">
+          <label>Dist. (px)</label>
+          <input type="number" min="1" max="500" data-k="exitDistance" value="${el.exitDistance !== undefined ? el.exitDistance : 20}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; height:24px; outline:none;" title="Exit slide distance in pixels" />
+        </div>` : '<div></div>'}
+      </div></div>`);
     }
 
     const isPersistentEl = el.persistent === 'top' || el.persistent === 'bottom';
@@ -3742,7 +3732,7 @@ function checkButtonFontSizeWarning(el) {
         inAnimProps.forEach(p => updateProp(p, undefined));
       }
       if (animOutEnabled(el)) {
-        updateProp('exitType', 'none');
+        updateProp('exitType', 'fade-out');
         const outAnimProps = ['exitDuration', 'exitStart', 'exitFade', 'exitDirection', 'exitDistance'];
         outAnimProps.forEach(p => updateProp(p, undefined));
       }
@@ -3753,7 +3743,7 @@ function checkButtonFontSizeWarning(el) {
       }
       const frame = state.frames.find(fr => fr.id === state.activeFrameId);
       if (frame && frameTransEnabled(frame)) {
-        frame.transition = 'none';
+        frame.transition = 'fade';
         const frameProps = ['transitionDuration', 'transitionFade', 'transitionDirection', 'transitionBounce', 'transitionZoomFrom', 'transitionAngle', 'transitionIrisShape', 'transitionIrisOrigin', 'transitionBlurAmount', 'transitionBlurScale', 'transitionFeather'];
         frameProps.forEach(p => delete frame[p]);
       }

@@ -317,11 +317,11 @@ function getElementAnimationCSS(el, isImageExport, frameCtx) {
   if (hasExit) {
     const delay = animInEnabled(el) ? (el.animDelay || 0) : 0;
     const start = (el.exitStart !== undefined ? el.exitStart : 1.5) + delay;
-    const dur = exitType === 'none' ? 0 : (el.exitDuration !== undefined ? el.exitDuration : DEFAULT_EXIT_MOTION_DURATION);
+    const dur = el.exitDuration !== undefined ? el.exitDuration : DEFAULT_EXIT_MOTION_DURATION;
     const fadeOn = el.exitFade !== false;
     const dir = el.exitDirection || (exitType === 'swipe' ? 'left' : 'down');
     let name = '';
-    if (exitType === 'none' || exitType === 'fade-out') name = 'anim-fade-out';
+    if (exitType === 'fade-out') name = 'anim-fade-out';
     else if (exitType === 'slide') name = `anim-slide-out-${el.id}`;
     else if (exitType === 'zoom') name = `anim-zoom-out-${el.id}`;
     else if (exitType === 'swipe') name = `anim-swipe-out-${dir}${fadeOn ? '-fade' : ''}`;
