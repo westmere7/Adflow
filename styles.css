@@ -2367,6 +2367,17 @@ body.theme-rmit-navy {
 
     }
 
+    .anim-mode-toggle:hover:not([disabled]) {
+      background: var(--border-light) !important;
+      color: var(--text-bright) !important;
+    }
+
+    .anim-mode-toggle.active:hover:not([disabled]) {
+      background: var(--accent-base) !important;
+      filter: brightness(1.1);
+    }
+
+
 
 
     .checkbox-row {

@@ -2655,11 +2655,18 @@ function renderProps() {
     // show. The exit plays on its own timer: it begins "In → Out" seconds after the
     // element appears, independent of the frame's own duration.
     f.push(`<div id="out-transition-preview-area" class="animation-sub-panel" style="${showOut ? '' : 'display:none;'}">`);
+    const inDelay = animInEnabled(el) ? (el.animDelay || 0) : 0;
+    const exitValAfter = el.exitStart !== undefined ? el.exitStart : 1.5;
+    const totalExitStart = inDelay + exitValAfter;
+    const startTooltip = inDelay > 0
+      ? `Starts at ${totalExitStart}s total (${inDelay}s IN delay + ${exitValAfter}s after)`
+      : `Starts at ${exitValAfter}s`;
+
     f.push(`<div class="prop-row" style="margin:0 0 10px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
       <label class="anim-sub-head" style="margin:0;"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0; transform: scaleX(-1);" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>OUT</label>
-      <div style="display:flex; align-items:center; gap:4px;">
+      <div style="display:flex; align-items:center; gap:4px;" title="${startTooltip}">
         <label for="prop-exit-start" style="font-size:11px; color:var(--text-muted); margin:0;">after</label>
-        <input type="number" step="0.1" min="0" data-k="exitStart" id="prop-exit-start" value="${el.exitStart !== undefined ? el.exitStart : 1.5}" style="width:45px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 4px; font-size:11px; height:20px; outline:none;" />
+        <input type="number" step="0.1" min="0" data-k="exitStart" id="prop-exit-start" value="${exitValAfter}" style="width:45px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 4px; font-size:11px; height:20px; outline:none;" />
         <span style="font-size:11px; color:var(--text-muted);">s</span>
       </div>
     </div>`);

@@ -315,7 +315,8 @@ function getElementAnimationCSS(el, isImageExport, frameCtx) {
   const isExitZoom = exitType === 'zoom';
   const hasExit = animOutEnabled(el) && frameCtx && !isImageExport;
   if (hasExit) {
-    const start = el.exitStart !== undefined ? el.exitStart : 1.5;
+    const delay = animInEnabled(el) ? (el.animDelay || 0) : 0;
+    const start = (el.exitStart !== undefined ? el.exitStart : 1.5) + delay;
     const dur = el.exitDuration !== undefined ? el.exitDuration : DEFAULT_EXIT_MOTION_DURATION;
     const fadeOn = el.exitFade !== false;
     const dir = el.exitDirection || (exitType === 'swipe' ? 'left' : 'down');
