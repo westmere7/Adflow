@@ -205,7 +205,7 @@ Deterministic, rule-based layout generator. Takes a source canvas and targets, r
 ### CSS `clip-path` Vector Masking
 Mask shapes (rectangles, circles, and custom brand SVGs) use inline CSS `clip-path` boundaries instead of brittle SVG def references.
 - **Connector lines**: A visual accent bridge connects the mask layer and target image row in the Layers panel.
-- **Inverse Animation**: Animation FX apply to the mask wrapper while the child image receives inverse animation properties, keeping the background photo stationary.
+- **Inverse Animation**: AnimationFX apply to the mask wrapper while the child image receives inverse animation properties, keeping the background photo stationary.
 
 ### Spreadsheet Data Merge
 Maps columns to dynamic element slots to batch generate banners.
@@ -232,7 +232,7 @@ The keyframe calculations are dynamically baked into `@keyframes eff-pan-[id]` t
 The animation system is configured using four independent toggles (IN, OUT, FX, TRANS):
 - **IN (Entrance)**: Driven by `inEnabled` and `animType`.
 - **OUT (Exit)**: Driven by `exitEnabled` and `exitType` (requires `inEnabled` to play).
-- **FX (Animation FX)**: Driven by `fxEnabled` and `effectType`.
+- **FX (AnimationFX)**: Driven by `fxEnabled` and `effectType`.
 - **TRANS (Frame Transition)**: Driven by `transition !== 'none'` on the active frame.
 
 **Exit Animation Timing**:

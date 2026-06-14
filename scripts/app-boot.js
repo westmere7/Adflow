@@ -143,8 +143,10 @@ document.addEventListener('contextmenu', (e) => {
     else if (effBtn) val = `eff-${rawVal}`;
     else if (frameTransBtn) val = `frame-${rawVal}`;
     
+    const isFav = state.favoriteAnimations?.includes(val);
     const menu = document.getElementById('ctx-menu');
     menu.innerHTML = `
+      <div class="ctx-item" id="ctx-toggle-fav">${isFav ? '★ Remove from Favorites' : '☆ Add to Favorites'}</div>
       <div class="ctx-item" id="ctx-reset-settings">⟲ Reset Settings</div>
     `;
     menu.style.display = 'flex';
@@ -155,6 +157,21 @@ document.addEventListener('contextmenu', (e) => {
     if (top + mh > window.innerHeight) top -= mh;
     menu.style.left = left + 'px';
     menu.style.top = top + 'px';
+    
+    const toggleBtn = document.getElementById('ctx-toggle-fav');
+    if (toggleBtn) {
+      toggleBtn.onclick = () => {
+        if (!state.favoriteAnimations) state.favoriteAnimations = [];
+        if (isFav) {
+          state.favoriteAnimations = state.favoriteAnimations.filter(x => x !== val);
+        } else {
+          state.favoriteAnimations.push(val);
+        }
+        localStorage.setItem('favoriteAnimations', JSON.stringify(state.favoriteAnimations));
+        menu.style.display = 'none';
+        renderProps();
+      };
+    }
 
     const resetBtn = document.getElementById('ctx-reset-settings');
     if (resetBtn) {
