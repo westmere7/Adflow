@@ -1,27 +1,41 @@
-# RMIT Adflow — Technical App Breakdown (Updated v0.19.15, Engine v2.19)
+# RMIT Adflow — Technical App Breakdown (Updated v0.22.7, Engine v2.19)
 
-This document is the official context dump for agents picking up the codebase. It covers the current architecture, state schemas, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), cloud backend, and workflow rules. **Read this in full before making non-trivial changes.**
+This document is the official context dump for agents (Claude, Codex, etc.) picking up the codebase cold. It covers the current architecture, state schema, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), the share/preview portal, the cloud backend, and workflow rules. **Read this in full before making non-trivial changes.**
+
+> Audit note (June 2026): the app currently uses a **frame-based** animation model (discrete `frames[]` + per-element IN/OUT/FX presets + frame transitions). There is **no continuous timeline/scrubber** in the codebase — a prototype timeline system was abandoned and never landed. The word "timeline" appears only as conceptual/legacy labels in docs and the changelog. Resume from this stable frame-based baseline.
 
 ---
 
 ## 1. Core Architecture & Tech Stack
 
-Adflow is a vanilla-JS single-page application — no framework, no bundler, no build step. Edit the files directly, refresh the browser. The whole app is:
+Adflow is a vanilla-JS single-page application — no framework, no bundler, no build step for the app. Edit the files directly, refresh the browser. The whole app is:
 
-- **Structure**: `index.html` (~620 lines).
-- **Styling**: `styles.css` (~4100 lines, CSS variables drive 5 named themes).
-- **Logic**: 21 app JS files in `scripts/` (since June 2026; previously repo root, alongside the two Node build scripts) loaded in sequential order via classic `<script>` tags sharing the global lexical scope (so declarations in earlier files are visible to later files at execution time):
-  1. `auto-resize-engine.js` (~1750 lines) — rule-based placement engine
-  2. `auto-arrange-config.js` (~300 lines) — placement coordinates and specs per size
-  3. `docs-content.js`       (~1430 lines) — in-app docs + changelog data/UI
-  4. `auth-ui.js`            (~950 lines)  — Supabase auth + Cloud Projects + Spaces
-  5. `data-merge.js`         (~825 lines)  — Live Data / Versions (CSV → ads)
-  6. `export-pipeline.js`    (~890 lines)  — HTML5 ZIP / PNG / GIF export
-  7. `color-picker.js`       (~510 lines)  — iro.js wrapper, gradient editor
-  8. Core app (~21,600 lines, formerly one `script.js`, split into 13 plain scripts loaded in order): `core-state.js`, `autosave.js`, `link-system.js`, `canvas-render.js`, `interactions.js`, `canvases-panel.js`, `layers-assets.js`, `props-panel.js`, `toolbar-import.js`, `project-io.js`, `project-dialogs.js`, `modals.js`, `app-boot.js` — state, rendering loop, panels, element transforms, history, project IO, and workspace interactions.
-- **Embedded Fonts**: brand `.woff2` files in `data/fonts/`, subset and embedded at export time by `scripts/font-subset.js`.
+- **Structure**: `index.html` (~780 lines) — shell markup + sequential `<script>` loading.
+- **Styling**: `styles.css` (~6000 lines, CSS variables drive 5 named themes).
+- **Logic**: **23 app JS files** in `scripts/`, loaded in sequential order via classic `<script>` tags that share one global lexical scope (declarations in earlier files are visible to later files at execution time). Two **Node build scripts** also live in `scripts/` but are not loaded by the browser (`build-asset-manifest.js`, `build-startup-registry.js`).
+- **Embedded Fonts**: brand `.woff2` files in `data/fonts/` (12 files), subset and embedded at export time by `scripts/font-subset.js` via HarfBuzz (`lib/hb-subset.wasm`).
 - **Persistence**: IndexedDB (`adflow-autosave` DB) for autosaves; `.flow` ZIP archives (JSZip) for project export/import.
-- **Cloud Backend**: Supabase for authentication, storage, and shared workspaces.
+- **Cloud Backend**: Supabase for authentication, project storage, shared workspaces, and share-link snapshots.
+- **External CDN deps** (in `index.html`): JSZip 3.10.1, `@jaames/iro@5` (color picker), `@supabase/supabase-js@2`.
+- **Share portal**: `preview.html` (~1980 lines) is a standalone view-only review page that loads the same `scripts/` engine files (version-pinned) plus its own inline portal code.
+- **Deployment**: Netlify (`netlify.toml`), publish root `.`, build command runs the two Node build scripts.
+
+### Script load order (from `index.html`, all version-pinned `?v=`)
+
+CDN libs first, then:
+
+```
+render-runtime.js  →  auto-resize-engine.js  →  auto-arrange-config.js  →
+docs-content.js    →  auth-ui.js             →  data-merge.js           →
+font-subset.js     →  export-pipeline.js     →  color-picker.js         →
+core-state.js      →  autosave.js            →  link-system.js          →
+canvas-render.js   →  interactions.js        →  canvases-panel.js       →
+layers-assets.js   →  props-panel.js         →  toolbar-import.js       →
+project-io.js      →  project-dialogs.js     →  modals.js               →
+share-preview.js   →  app-boot.js
+```
+
+Approximate sizes (LOC): `props-panel.js` 4190 · `export-pipeline.js` 3956 · `canvas-render.js` 2991 · `project-dialogs.js` 2598 · `docs-content.js` 2516 · `auto-resize-engine.js` 2373 · `app-boot.js` 2061 · `interactions.js` 1803 · `toolbar-import.js` 1566 · `data-merge.js` 1408 · `modals.js` 1404 · `layers-assets.js` 1315 · `auth-ui.js` 1001 · `project-io.js` 972 · `canvases-panel.js` 968 · `link-system.js` 741 · `color-picker.js` 689 · `core-state.js` 593 · `render-runtime.js` 568 · `autosave.js` 423 · `share-preview.js` 349 · `auto-arrange-config.js` 294 · `font-subset.js` 215.
 
 ---
 
@@ -31,23 +45,33 @@ When looking for specific features or bugs, refer to this table:
 
 | Feature Area | File | Notable Globals / APIs |
 | :--- | :--- | :--- |
-| **Auto-resize engine** (rules, placement, settings, picker) | [auto-resize-engine.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auto-resize-engine.js) | `ENGINE_VERSION`, `ROLE_IDS`, `runRuleBasedAutoResize`, `autoAssignRole`, `openAutoResizeModal` |
-| **Auto-arrange configurations** (coordinates, safezones, font sizes per format) | [auto-arrange-config.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auto-arrange-config.js) | `AUTO_ARRANGE_CONFIG` |
-| **In-app documentation** (Help modal) | [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/docs-content.js) | `DOCS_SECTIONS`, `openDocumentation`, `renderDocsPanel` |
-| **Changelog data & modal** | [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/docs-content.js) | `CHANGELOG_DATA`, `openChangelogModal` |
-| **Supabase client & session** | [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auth-ui.js) | `sb`, `authState`, `spacesState` |
-| **Auth UI / Cloud Projects** | [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auth-ui.js) | `openAuthModal`, `openCloudProjectsModal`, `pushCurrentProjectToCloud` |
-| **Team Spaces & Invitations** | [auth-ui.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auth-ui.js) | `openSpaceManagementModal`, `openMembersModal`, `openInviteModal` |
-| **Live Data slots & CSV** | [data-merge.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/data-merge.js) | `dm*` helpers, `openDataPanel`, `dmRenderPanel` |
-| **ZIP/PNG Export & Validation** | [export-pipeline.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/export-pipeline.js) | `exportCanvasAsZip`, `exportCanvasAsPng`, `generateExportHTML` |
-| **Color & Gradient Picker** | [color-picker.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/color-picker.js) | `openColorPicker`, `syncColorPickerWithSelection` |
-| **Core Boot, Render, Event Loop** | [core-state.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/core-state.js), [canvas-render.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/canvas-render.js), [app-boot.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/app-boot.js), [modals.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/modals.js) | `state` + `pushHistory`/`undo`/`redo` (core-state), `render` (canvas-render), `openModal` (modals), boot/splash (app-boot) |
+| **Shared render helpers** (used by both editor and preview portal) | `scripts/render-runtime.js` | render/animation helpers shared to avoid editor↔portal drift |
+| **Auto-resize engine** (rules, placement, settings, picker) | `scripts/auto-resize-engine.js` | `ENGINE_VERSION`, `ROLE_IDS`, `runRuleBasedAutoResize`, `autoAssignRole`, `openAutoResizeModal` |
+| **Auto-arrange configurations** (coordinates, safezones, font sizes per format) | `scripts/auto-arrange-config.js` | `AUTO_ARRANGE_CONFIG` |
+| **In-app documentation** (Help modal) | `scripts/docs-content.js` | `DOCS_SECTIONS`, `openDocumentation`, `renderDocsPanel` |
+| **Changelog data & modal** | `scripts/docs-content.js` | `CHANGELOG_DATA`, `openChangelogModal` |
+| **Supabase client & session** | `scripts/auth-ui.js` | `sb`, `authState`, `spacesState` |
+| **Auth UI / Cloud Projects** | `scripts/auth-ui.js` | `openAuthModal`, `openCloudProjectsModal`, `pushCurrentProjectToCloud` |
+| **Team Spaces & Invitations** | `scripts/auth-ui.js` | `openSpaceManagementModal`, `openMembersModal`, `openInviteModal` |
+| **Live Data slots & CSV** | `scripts/data-merge.js` | `dm*` helpers, `openDataPanel`, `dmRenderPanel` |
+| **ZIP/PNG/GIF Export & Validation** | `scripts/export-pipeline.js` | `exportCanvasAsZip`, `exportCanvasAsPng`, `generateExportHTML` |
+| **Font subsetting/embedding** | `scripts/font-subset.js` | HarfBuzz wasm subsetting on export |
+| **Color & Gradient Picker** | `scripts/color-picker.js` | `openColorPicker`, `syncColorPickerWithSelection` |
+| **Shareable Preview links / snapshots** | `scripts/share-preview.js`, `preview.html` | `previewShare*` state, share dialog, snapshot upload/revoke |
+| **Core state / history** | `scripts/core-state.js` | `state`, `history`, `pushHistory`/`undo`/`redo` |
+| **Render loop** | `scripts/canvas-render.js` | `render` |
+| **Workspace interactions** (drag, marquee, pan, nudge) | `scripts/interactions.js` | pointer/keyboard handlers |
+| **Element property editor** | `scripts/props-panel.js` | properties panel (largest module) |
+| **Layers & Assets panels** | `scripts/layers-assets.js` | layer tree, asset library |
+| **Project IO** (`.flow` import/export, autosave glue) | `scripts/project-io.js`, `scripts/autosave.js` | |
+| **Project/Settings dialogs, version check** | `scripts/project-dialogs.js` | `checkVersionUpdate()`, Settings modal |
+| **Modals & boot/splash** | `scripts/modals.js`, `scripts/app-boot.js` | `openModal`, splash version badge (`verEl.textContent`) |
 
 ---
 
 ## 3. Data Model & State Schema
 
-The active project configuration is managed inside a single mutable global object named `state` (declared in `core-state.js`).
+The active project configuration is a single mutable global object named `state` (declared in `core-state.js`). It is JSON-serializable; the parts that persist to `.flow`/cloud vs. the parts that are local preferences are partitioned in the project-IO save path (see `project-io.js`).
 
 ```typescript
 interface State {
@@ -59,57 +83,83 @@ interface State {
   currentVersion?: string;       // Bound row key from dataMerge rows, if any
 
   // ----- Canvas Content -----
-  canvases: Canvas[];            // Every banner size in the project
-  activeCanvasId: string;        // Currently selected canvas
-  activeFrameId: number;         // Currently active timeline frame
+  canvases: Canvas[];
+  activeCanvasId: string;
+  activeFrameId: number;
   selectedElementId: string | null;
-  layerSelection: string[];      // Multi-selected layer IDs
+  layerSelection: string[];
 
-  // ----- Timeline -----
-  frames: Frame[];               // Sequenced animation frames
+  // ----- Frames (discrete, NOT a continuous timeline) -----
+  frames: Frame[];
 
   // ----- Linking -----
   linkGroups: Record<string, LinkGroup>;
 
   // ----- Assets -----
   assets: Record<string, string>;    // assetId → base64 data URL
-  assetLibrary: AssetLibraryItem[];  // User-saved custom elements/configurations
+  assetNames: Record<string, string>;// assetId → original filename (data-merge image lookup)
+  assetLibrary: AssetLibraryItem[];
   assetFolders: AssetFolder[];
 
   // ----- Dynamic Data / Versions -----
-  dataMerge?: {
+  dataMerge: {
+    enabled: boolean;
+    columns: string[];                 // header names, in order
     rows: Array<Record<string, string>>;
-    columns: string[];
-    versionNameKey?: string;     // Which column names the export folders
-    clickTagKey?: string;        // Optional CSV → ClickTag binding
-    locked?: boolean;            // Edit-in-place lock
-    sort?: { key: string; dir: 'asc' | 'desc' };
+    keyColumn: string | null;          // column used to name exported zips
+    activeVersion: number | null;      // index into rows, or null = template defaults
+    locked: boolean;                   // dynamic slots become read-only in editor
+    mappings: Record<string, string>;  // 'slotKey::field' -> columnName
+    skipHeaders: boolean;
   };
+
+  // ----- Shareable Preview (set when a share link exists) -----
+  previewSharePath?: string;     // storage path of the snapshot serving the link
+  previewUrl?: string;           // public preview.html link
+  previewSharedBy?: string;      // email of sharer
+  previewSharedAt?: number;      // epoch ms
+  previewExpiry?: number;        // optional expiry epoch ms
+  // NOTE: cleared when creating/opening a different project (v0.22.7 fix)
 
   // ----- View & Customizations -----
   theme?: 'default' | 'rmit' | 'ocean' | 'light' | 'navy';
   showRulers?: boolean;
   showSafezones?: boolean;
-  snapEnabled?: boolean;
-  zoom?: number;
+  snapEnabled?: boolean; snapToElements?: boolean; snapToCanvas?: boolean; snapToGuides?: boolean;
+  snapDistance?: number;
+  guides?: any[];
+  zoom?: number; zoomStep?: number;
   viewScrollLeft?: number; viewScrollTop?: number;
-  bgApplyAll?: boolean;
+  loopAd?: boolean; previewCurrentOnly?: boolean;
+  outlineMode?: boolean;
+  bgApplyAll?: boolean; defaultBg?: string;
+
+  // ----- Preferences -----
+  savedHistoryLimit?: number;    // undo depth (default 50)
+  autosaveInterval?: number;     // seconds (5-60)
+  exportFormat?: 'png' | 'jpeg' | 'webp';
+  exportQuality?: number;        // %
+  compressFormat?: 'jpeg' | 'webp';  // auto-compression output (jpeg = PNG-for-alpha, ad-server safe)
+  defaultCricosCode?: string;        // RMIT compliance code (default '00122A')
+  subheadingAutoHide?: boolean;
+  favoriteAnimations?: string[];     // persisted to localStorage; filterFavorites toggles the star filter
+  filterFavorites?: boolean;
+
+  // ----- Validation & Audit toggles -----
+  validationSettings: {
+    textSize: boolean; contrast: boolean; transitionTiming: boolean;
+    infiniteMotion: boolean; cricos: boolean; logo: boolean;
+    brandColors: boolean; brandFonts: boolean;
+  };
 
   // ----- Auto-resize Engine Settings -----
   autoResizeSettings?: {
     rulesEnabled: Record<RoleId, boolean>;
     relations: { r1: boolean };
     behaviour: {
-      allowCoverFallback:  boolean;
-      includeUnassigned:   boolean;
-      liveLink: {
-        enabled:        boolean;
-        syncText:       boolean;
-        syncFont:       boolean;
-        syncColor:      boolean;
-        syncOpacity:    boolean;
-        syncAnimations: boolean;
-      };
+      allowCoverFallback: boolean;
+      includeUnassigned:  boolean;
+      liveLink: { enabled; syncText; syncFont; syncColor; syncOpacity; syncAnimations: boolean };
     };
   };
 
@@ -118,23 +168,22 @@ interface State {
 }
 
 interface Canvas {
-  id: string;
-  name: string;
+  id: string; name: string;
   width: number; height: number;
   elements: Element[];           // z-ordered, last = top
-  bgColor?: string;              // Per-canvas background color override
-  fullClickArea?: boolean;       // Bypasses CTA click checks if true
+  bgColor?: string;
+  fullClickArea?: boolean;       // bypasses CTA click checks if true
 }
 
 interface Element {
   id: string;
   type: 'text' | 'image' | 'button' | 'rect' | 'circle' | 'line' | 'pixel';
-  customName?: string;           // User-renamed label
+  customName?: string;
   x: number; y: number; width: number; height: number;
   rotation?: number;
-  persistent: 'top' | 'bottom' | false;  // Layer-panel section placement
-  frameId?: number;              // Visible frame index (when persistent === false)
-  linkGroupId?: string;          // Cross-canvas sync group
+  persistent: 'top' | 'bottom' | false;  // layer-panel section placement
+  frameId?: number;              // visible frame index (when persistent === false)
+  linkGroupId?: string;
 
   // Auto-resize Roles
   role?: 'background-image' | 'rmit-logo' | 'cta-button'
@@ -144,27 +193,28 @@ interface Element {
 
   // Masking
   isMask?: boolean;
-  maskTargetId?: string;         // Target image element ID
+  maskTargetId?: string;
 
   // Type-Specific Attributes
   text?: string; fontFamily?: string; weight?: number;
   fontSize?: number; maxFontSize?: number; autoSize?: boolean; wrapText?: boolean;
   textAlign?: 'left' | 'center' | 'right';
   verticalAlign?: 'top' | 'middle' | 'bottom';
+  lineHeight?: number | string; lineHeightAuto?: boolean;
   color?: string; bg?: string; background?: boolean;
-  paddingLR?: number; paddingTB?: number;
-  bgPadL?: number; bgPadV?: number;
+  paddingLR?: number; paddingTB?: number; bgPadL?: number; bgPadV?: number;
   bgCoverage?: number; bgOpacity?: number;
   radius?: number;
-  fill?: string; stroke?: string; strokeWidth?: number;
-  textColor?: string;
+  fill?: string; stroke?: string; strokeWidth?: number; textColor?: string;
   assetId?: string; src?: string;
   fit?: 'contain' | 'cover' | 'fill';
-  autoHug?: boolean;             // Dynamic button widths
+  autoHug?: boolean;             // dynamic button widths
   opacity?: number;
-  inEnabled?: boolean; animType?: string; animDuration?: number; animDelay?: number;
-  exitEnabled?: boolean; exitType?: string; exitStart?: number; exitDuration?: number;
-  fxEnabled?: boolean; effectType?: string; effDuration?: number;
+
+  // Animation — four independent categories (IN / OUT / FX / TRANS)
+  inEnabled?: boolean;   animType?: string;    animDuration?: number; animDelay?: number;
+  exitEnabled?: boolean; exitType?: string;    exitStart?: number;    exitDuration?: number;
+  fxEnabled?: boolean;   effectType?: string;  effDuration?: number;
 
   // Dynamic Data Opt-ins
   dmText?: boolean; dmColor?: boolean; dmBg?: boolean; dmImage?: boolean;
@@ -178,15 +228,14 @@ interface Frame {
   duration: number;              // seconds
   transition: 'none' | 'fade' | 'slide-left' | 'slide-right' | 'zoom-in' | 'zoom-out' | 'push' | 'iris' | 'split';
   transitionDuration: number;
-  skip?: boolean;                // Bypassed during exports
+  skip?: boolean;                // excluded from HTML5 exports when flagged (default)
 }
 
 interface LinkGroup {
-  id: string;
-  name: string;
+  id: string; name: string;
   category: 'text' | 'image' | 'button' | 'shape' | 'line';
-  syncProperties: Record<string, boolean>;
-  liveLink?: boolean;            // propagates updates in real-time
+  syncProperties: Record<string, boolean>;  // includes 'OUT Animation' option
+  liveLink?: boolean;
 }
 ```
 
@@ -196,72 +245,71 @@ interface LinkGroup {
 
 ### Auto-Resize Engine (v2.19) & Auto-Arrange Configurations
 Deterministic, rule-based layout generator. Takes a source canvas and targets, recalculates relative sizes, crops, and wrapping.
-- **Geometries & Parameters**: Canvas-specific placement specifications, safezones, maximum font-sizes, and brand element (Logo, Tagline, CRICOS) quadrant coordinates are managed in [auto-arrange-config.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/auto-arrange-config.js).
-- **Roles**: Positions are determined by priority (`rmit-logo` -> `cta-button` -> `heading` etc.).
-- **Crop Preservation**: For the `main-image` ("Fixed shape") role, the engine calculates normalized source cropping offsets and applies them to small target canvases, while keeping its exact aspect ratio.
-- **R1 Alignments**: Pairs the logo and the "Ready for what's next" taglines dynamically.
-- **Adjacency Post-Pass**: Employs `enforceHeadingSubheadAdjacency` to clear overlap zones between side-by-side headings and subheadings.
+- **Geometries & Parameters**: per-size placement specs, safezones, max font-sizes, and brand-element (Logo, Tagline, CRICOS) quadrant coordinates live in `auto-arrange-config.js` (`AUTO_ARRANGE_CONFIG`).
+- **Roles**: priority order (`rmit-logo` → `cta-button` → `heading` → …).
+- **Crop Preservation**: the `main-image` ("Fixed shape") role keeps exact aspect ratio, computing normalized crop offsets for small targets.
+- **R1 Alignments**: pairs the logo with the "Ready for what's next" tagline dynamically.
+- **Adjacency Post-Pass**: `enforceHeadingSubheadAdjacency` clears overlap between side-by-side headings/subheadings.
+
+### Animation System — IN / OUT / FX / TRANS toggles
+Four independent header toggles in the Animation panel (replaced the old Static/In/In+Out mode dropdown). Turning a category off **remembers** its settings; turning it back on restores them. New elements start with IN, FX, TRANS on and OUT off.
+- **IN (Entrance)** — `inEnabled` + `animType` (fade/slide/swipe/zoom/blur, with direction/fade where relevant). `animDuration`, `animDelay`. A `None` preset hides the duration/delay fields and emits nothing.
+- **OUT (Exit)** — `exitEnabled` + `exitType`. Requires IN to be enabled (OUT toggle is disabled with no entrance). Single "In → Out" time (`exitStart`) = how long the element stays after appearing before leaving; runs independently of frame duration. Not applied to persistent layers. Has its own `None` preset. Synced across linked elements via the link group's "OUT Animation" option, and included in the favorites star filter.
+  - **Exit timing**: CSS exit start delay = `(animDelay || 0) + (exitStart || 1.5)`, so the "after X seconds" counts from when the element actually appears, not the frame start.
+- **FX (Animation FX)** — `fxEnabled` + `effectType` (float, pulse, pan/Move, type, etc.). Named "Animation FX" everywhere (panel heading, tooltip, dropdown, link-sync option, docs).
+- **TRANS (Frame Transition)** — `transition !== 'none'` on the active frame; greyed out when only one frame exists.
+
+### Shareable Preview System & Standalone Review Portal
+- **Share links** (`share-preview.js` + `preview.html`): generates secure, public view-only links serving a **dedicated snapshot** in Supabase storage (`previewSharePath`), not the live cloud file.
+- **Live links**: every cloud save updates what reviewers see at the same link; local-only edits stay private until saved to cloud. "Delete Link" revokes access immediately; generating a new link invalidates the previous one.
+- **New-project hygiene** (v0.22.7): creating/opening a different project clears prior `previewShare*` metadata so the Share dialog opens to "create link", not a stale link.
+- **Name-clash flow** (v0.22.6): on a cloud name collision the Replace/Rename prompt lets sharing continue.
+- **Portal features**: sidebar size checklist, version switching (data-merge rows), "Static only" frame-by-frame isolation, Play / frame jump-and-play / Replay all / Download all (zip), per-banner restart, runtime readout (total + per-frame, ↻ when looping), checkered grid, clickTag region highlight, compliance/ad-weight audits.
+- **No drift**: shared render helpers live in `render-runtime.js` (consumed by both editor and portal); `preview.html` engine scripts are version-pinned `?v=` so reviewers never pair stale engine code with new portal code.
+
+### Full Preview Controls (editor)
+The editor's full-preview bar has a frame selector (jump-and-play across all sizes), "Replay all", "Download all" (each size as an HTML5 zip), and the total/per-frame runtime readout. These controls live only in the editor — exported files are unchanged.
+
+### Export, Font Subsetting & Validation
+- **Formats**: HTML5 ZIP, PNG, GIF. Per-version export folders for data-merge. ZIP is compressed/streamed via a background worker to avoid main-thread lockups.
+- **Font subsetting/embedding** (`font-subset.js` + `lib/hb-subset.wasm`): exported ads contain **no font files** — each required brand font is subset to the glyphs actually used and embedded as base64 in `index.html` (ad-server safe for Google Ads / Adobe DSP, keeps text editable/animatable). Graceful fallback to packing full `.woff2` if subsetting is unavailable. All live size readouts measure the subsetted output.
+- **Auto-compression** (`compressFormat`): default `jpeg` resolves to PNG when the image has an alpha channel, otherwise JPEG (avoids WebP rejection by CM360 / Google Ads / Adobe DSP). `webp` is opt-in.
+- **Validation & Audit** (`validationSettings`): text size, contrast, transition timing, infinite motion, CRICOS, logo, brand colors, brand fonts, ad-weight (KB) limit, and per-active-version clickTag URL validation. Canvas badges update live; clickTag/ad-weight changes participate in undo/redo and re-run validation.
 
 ### CSS `clip-path` Vector Masking
-Mask shapes (rectangles, circles, and custom brand SVGs) use inline CSS `clip-path` boundaries instead of brittle SVG def references.
-- **Connector lines**: A visual accent bridge connects the mask layer and target image row in the Layers panel.
-- **Inverse Animation**: AnimationFX apply to the mask wrapper while the child image receives inverse animation properties, keeping the background photo stationary.
+Mask shapes (rect/circle/custom brand SVG) use inline CSS `clip-path` instead of SVG def references. A connector line bridges the mask layer and target image row in the Layers panel. Animation FX apply to the mask wrapper while the child image receives inverse animation, keeping the background photo stationary.
 
 ### Spreadsheet Data Merge
-Maps columns to dynamic element slots to batch generate banners.
-- **Edit-in-place**: Direct canvas edits write back to the active version row cell unless Data Lock is on.
-- **Worker Exporter**: Compresses and streams ZIP files using a background thread via direct File System streaming, bypassing main-thread lockups.
+Maps columns to dynamic element slots to batch-generate banners. Edit-in-place writes back to the active version row cell unless Data Lock (`locked`) is on. Link-group sync-lock forces `text`/`textColor`/`color`/`image` sync `true` for elements bound to active dynamic slots (checkboxes replaced by a locked bolt icon in the Link Groups panel; enforced in `applyLinkSync` and `dmToggleField`).
 
-### Link Group Sync Locking
-When elements in a link group are configured with active dynamic data slots (e.g. dynamic text, color, or image), the corresponding synchronization properties (such as `text`, `textColor`, `color`, or `image`) are automatically forced to `true`. In the Link Groups settings panel, these checkboxes are replaced by a bolt icon and locked from deselection, preventing accidental deselection without graying out or reducing text legibility. This enforcement is propagated dynamically in `applyLinkSync` and when toggling fields via `dmToggleField` to maintain absolute structural integrity and layout consistency across all canvases.
-
-### Multi-Format Image Auto-Compression Settings
-Adflow supports configurable compression preferences (`state.compressFormat`). The default option `jpeg` (ad-server safe) resolves to WebP only when explicitly chosen. For ad-server compatibility (avoiding WebP rejection in CM360, Google Ads, and Adobe DSP), the default setting evaluates alpha channels: if an image contains transparency, it is compressed to PNG; otherwise, it is compressed to JPEG.
-
-### Blur Entrance Animation
-The **Blur** IN animation applies a CSS blur filter and optional opacity fade. It dynamically generates custom `@keyframes anim-blur-[id]` specifying the blur amount (1-100px) and fade properties.
-
-### Move FX Towards Target & Straight-Line Motion
-To enforce clean, predictable motion paths, the Move effect has been simplified by removing curved motion path configurations (Curve X/Y properties, midpoint drag handles, and Quadratic Bezier keyframes). The effect is now restricted to straight-line translations.
-Additionally, a "Towards target" checkbox toggle determines the direction of the translation:
-- **Towards target (checked)**: The element starts at its designed layout position `(0,0)` and animates towards the configured offset target `(panFromX, panFromY)`.
-- **Away from target (unchecked)**: The element starts at the configured offset start `(panFromX, panFromY)` and animates back to its designed layout position `(0,0)`.
-The keyframe calculations are dynamically baked into `@keyframes eff-pan-[id]` to prevent composition layout artifacts.
-
-### Animation Toggles & Timing
-The animation system is configured using four independent toggles (IN, OUT, FX, TRANS):
-- **IN (Entrance)**: Driven by `inEnabled` and `animType`.
-- **OUT (Exit)**: Driven by `exitEnabled` and `exitType` (requires `inEnabled` to play).
-- **FX (AnimationFX)**: Driven by `fxEnabled` and `effectType`.
-- **TRANS (Frame Transition)**: Driven by `transition !== 'none'` on the active frame.
-
-**Exit Animation Timing**:
-To prevent exit animations from playing prematurely on elements that have entrance delays, the start time of the exit animation in CSS takes the entrance animation delay into account:
-$$\text{CSS Exit Start Delay} = (\text{animDelay} \text{ or } 0) + (\text{exitStart} \text{ or } 1.5)$$
-This ensures that the "after X seconds" delay counts from the moment the element actually begins its sequence and appears, rather than the absolute start of the frame.
-
-### High-DPI Edge Antialiasing Hairline Fix
-To prevent 1px edge hairline bleeding caused by fractional device pixel ratios on high-DPI displays, the ad container (`#ad`) repaints its background to match the active frame's background color. The system clears the INCOMING frame's animation rule upon transition completion to prevent composition layout artifacts.
+### Undo / History
+`savedHistoryLimit` (default 50) bounds the stack. Frames (durations/transitions/skip), `activeFrameId`, `projectName`, and arrow-key nudges are undoable (a held nudge = one undo step per burst). **Settings/preferences are intentionally excluded** from undo (theme, auto-resize behaviour, view prefs, zoom/scroll, ad-weight limit, validation toggles) — though changing the ad-weight limit / clickTag still re-runs live validation.
 
 ---
 
 ## 5. Workflow Conventions
 
 ### Commit Workflow
-- **Never run `git add` or `git commit`**. Save files directly to the local checkout path. The user manages commits and branches using GitHub Desktop.
-- Do not create branches or trigger pushes.
+- **Never run `git add` / `git commit` / branch / push.** Save files directly to the local checkout. The user manages commits and branches in GitHub Desktop.
 
 ### Changelog Workflow
-After making user-visible modifications, **bump the version and add a changelog entry in these 6 locations** (the reliable method: `grep -rn "<old version>"` across `*.js *.html *.txt` and bump every live hit):
+After user-visible changes, **bump the version and update these 6 locations**. Reliable method: `grep -rn "<old version>"` across `*.js *.html *.txt` and bump every live hit.
 
-1. [data/version.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/version.txt) — Update the single-line string (e.g. `v0.16.94`).
-2. [data/changelog.txt](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/data/changelog.txt) — Add description at the top of the file.
-3. [docs-content.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/docs-content.js) — Insert the new entry details in the `CHANGELOG_DATA` array.
-4. [project-dialogs.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/project-dialogs.js) — Update `currentVersion` inside `checkVersionUpdate()`, plus the Settings-modal version label; the splash-badge version string lives in [app-boot.js](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/scripts/app-boot.js) (`verEl.textContent`).
-5. [index.html](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/index.html) — Update the footer element `#app-version-display` text label, the `.app-splash-version` span, and every local `<script src="...?v=...">` query string.
-6. [preview.html](file:///g:/My%20Drive/RMIT_WORKS/Apps/Adflow/preview.html) — Update the `?v=` query strings on its engine `<script>` tags (the shared preview portal loads the same scripts/ files and must never pair stale engine code with new inline portal code).
+1. `data/version.txt` — single-line version string (e.g. `v0.22.7`).
+2. `data/changelog.txt` — add entry at the **top** of the file.
+3. `scripts/docs-content.js` — insert into the `CHANGELOG_DATA` array.
+4. `scripts/project-dialogs.js` — `currentVersion` in `checkVersionUpdate()` + the Settings-modal version label. (Splash-badge version lives in `scripts/app-boot.js`, `verEl.textContent`.)
+5. `index.html` — `#app-version-display` footer label, the `.app-splash-version` span, **and every local `<script src="...?v=...">` query string**.
+6. `preview.html` — the `?v=` query strings on its engine `<script>` tags (portal loads the same `scripts/` files; never pair stale engine code with new portal code).
+
+Skip the bump for trivial/internal-only changes (see the project memory on changelog workflow).
 
 ### Severity Guide
-- **Patch (Z + 1)**: For bug fixes, UI polish, or algorithm tuning (e.g. `v0.16.89` -> `v0.16.90`).
-- **Minor (Y + 1)**: For new features, interface reorganizations, or major workflow changes.
-- **Major (X + 1)**: Reserved for breaking revisions.
+- **Patch (Z+1)**: bug fixes, UI polish, tuning.
+- **Minor (Y+1)**: new features, interface reorganizations, workflow changes.
+- **Major (X+1)**: breaking revisions.
+
+---
+
+## 6. Repo Hygiene Notes (June 2026)
+Loose/debug artifacts currently tracked in the repo that are **not** part of the runtime and are safe to ignore or remove: `diff_props.txt` (UTF-16 git-diff dump), `error_logs.txt` (empty), `workflow-test.txt` (write-workflow probe), `_temp/Mask animations.mp4` (~5 MB), `data/image.jpg` (loose). `Startup/registry.json` and `data/assets/manifest.json` are **build outputs** regenerated by the Node build scripts. An MP4-export tool was prototyped and reverted (see project memory) — only the `_temp` MP4 remains as a trace.
