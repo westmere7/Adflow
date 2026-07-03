@@ -1,0 +1,43 @@
+name: Supabase Keep-Alive
+
+# Supabase free-tier projects auto-pause after 7 days with no activity.
+# This workflow pings the project's Postgres (via the REST API) on a schedule
+# so the pause timer keeps resetting. A bare auth ping may not count as DB
+# activity, so we run a real (tiny) SELECT against a table — RLS returning zero
+# rows is fine; the query still executes on Postgres, which is what matters.
+
+on:
+  schedule:
+    # Every 2 days at 07:17 UTC. The odd minute avoids the top-of-hour rush
+    # when GitHub is most likely to drop scheduled runs. Even if two runs in a
+    # row are skipped, the gap stays under the 7-day pause window.
+    - cron: '17 7 */2 * *'
+  workflow_dispatch: {}   # allow manual "Run workflow" from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST (touches Postgres)
+        env:
+          # Publishable anon key — already public in scripts/auth-ui.js, so
+          # it is safe to keep here. To rotate to a repo secret instead, set
+          # SUPABASE_ANON_KEY in Settings > Secrets and reference it below.
+          SUPABASE_URL: https://qihoxgcfifqkqusblcdm.supabase.co
+          SUPABASE_ANON_KEY: sb_publishable_Vpadooi4zdATIgCYNESXwQ_sdR8esor
+        run: |
+          set -euo pipefail
+          echo "Pinging $SUPABASE_URL ..."
+          status=$(curl -sS -o /tmp/body.txt -w '%{http_code}' \
+            "$SUPABASE_URL/rest/v1/projects?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "HTTP $status"
+          echo "Body: $(cat /tmp/body.txt)"
+          # 2xx = query ran. 401/403 = RLS blocked but Postgres was still hit,
+          # which still counts as activity. Anything else means the project is
+          # unreachable (possibly already paused) and should fail loudly.
+          case "$status" in
+            2*|401|403) echo "Supabase reached — keep-alive OK." ;;
+            *) echo "Unexpected status $status — Supabase may be paused/down." >&2; exit 1 ;;
+          esac
