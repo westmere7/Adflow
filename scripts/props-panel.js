@@ -103,7 +103,7 @@ function startFrameTransitionPreview(type) {
 
   const activeIdx = state.frames.findIndex(f => f.id === state.activeFrameId);
   if (activeIdx < 0) return;
-  if (activeIdx === 0 && !(state.loopAd && state.frames.length > 1)) return;
+  if (activeIdx === 0 && !state.loopAd) return;
   const prevFrameId = activeIdx === 0
     ? state.frames[state.frames.length - 1].id
     : state.frames[activeIdx - 1].id;
@@ -1551,7 +1551,7 @@ function renderProps() {
     
     const activeIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
     let frameTransitionSectionHtml = '';
-    if (state.frames.length > 1 && (activeIdx > 0 || state.loopAd)) {
+    if (state.loopAd || (state.frames.length > 1 && activeIdx > 0)) {
       frameTransitionSectionHtml = `
         <div class="panel-section" id="panel-section-animation">
           <h3 class="panel-header-collapsible" id="header-animation" style="cursor: pointer; user-select: none;">
@@ -1880,7 +1880,7 @@ function renderProps() {
       syncColorPickerWithSelection(null, c);
     }
     const canvasActiveIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-    if (state.frames.length > 1 && (canvasActiveIdx > 0 || state.loopAd)) {
+    if (state.loopAd || (state.frames.length > 1 && canvasActiveIdx > 0)) {
       wireFrameTransitionEvents();
     }
     initCollapsiblePanels();
@@ -2423,7 +2423,7 @@ function renderProps() {
     const showFx = animFxEnabled(el);
     const _amActiveIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
     const _amFrame = state.frames[_amActiveIdx];
-    const transPossible = state.frames.length > 1 && (_amActiveIdx > 0 || state.loopAd);
+    const transPossible = state.loopAd || (state.frames.length > 1 && _amActiveIdx > 0);
     const showTrans = transPossible && frameTransEnabled(_amFrame);
 
     // Icons are the exact glyphs used by each sub-panel heading.
@@ -4135,7 +4135,7 @@ function checkButtonFontSizeWarning(el) {
     syncColorPickerWithSelection(el, null);
   }
   const canvasActiveIdx = state.frames.findIndex(fr => fr.id === state.activeFrameId);
-  if (state.frames.length > 1 && (canvasActiveIdx > 0 || state.loopAd)) {
+  if (state.loopAd || (state.frames.length > 1 && canvasActiveIdx > 0)) {
     wireFrameTransitionEvents();
   }
   initCollapsiblePanels();

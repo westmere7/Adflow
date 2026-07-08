@@ -2279,7 +2279,35 @@ ${elsTop}
       }
       frameTimer = setTimeout(nextFrame, frames[currentFrame].duration * 1000);
     }
-    
+
+    // Single-frame loop: with only one frame, nextFrame() bails, so the frame
+    // would just sit there. When Loop is on we instead re-announce it on a cycle
+    // — hide -> reflow -> show restarts every child IN animation (the same
+    // display:none->block trigger nextFrame relies on), then replay the frame's
+    // own transition-in if one is set. Powers looping single-frame ads such as
+    // animated email signatures.
+    function restartSingleFrame() {
+      var fr = frames[0];
+      var frameEl = document.getElementById('frame-' + fr.id);
+      if (!frameEl) return;
+
+      frameEl.style.animation = '';
+      frameEl.style.display = 'none';
+      void document.documentElement.offsetHeight; // flush the hide so the re-show restarts CSS animations
+      frameEl.style.display = 'block';
+      frameEl.querySelectorAll('[data-bg-anim]').forEach(setupTextLineBgs);
+
+      var t = fr.transition;
+      if (t && t !== 'none') {
+        var td = (fr.transitionDuration || 0.5) + 's';
+        var timingFunc = t === 'iris' ? 'ease-in-out' : 'ease';
+        frameEl.style.animation = 'anim-frame-trans-' + fr.id + ' ' + td + ' ' + timingFunc + ' both';
+        setTimeout(function() { frameEl.style.animation = ''; }, (fr.transitionDuration || 0.5) * 1000);
+      }
+
+      frameTimer = setTimeout(restartSingleFrame, fr.duration * 1000);
+    }
+
     ${setupTextLineBgs.toString()}
 
     function adjustAutoSizes() {
@@ -2449,6 +2477,8 @@ ${elsTop}
 
       if (frames.length > 1) {
         frameTimer = setTimeout(nextFrame, frames[0].duration * 1000);
+      } else if (loopAd && frames.length === 1) {
+        frameTimer = setTimeout(restartSingleFrame, frames[0].duration * 1000);
       }
     }
 
@@ -2499,6 +2529,8 @@ ${options.previewControls ? `
         frameTimer = setTimeout(function() { adflowPlayFrom(idx, true); }, frames[currentFrame].duration * 1000);
       } else if (frames.length > 1 && !(!loopAd && currentFrame === frames.length - 1)) {
         frameTimer = setTimeout(nextFrame, frames[currentFrame].duration * 1000);
+      } else if (loopAd && frames.length === 1) {
+        frameTimer = setTimeout(restartSingleFrame, frames[currentFrame].duration * 1000);
       }
     }
     window.addEventListener('message', function (e) {

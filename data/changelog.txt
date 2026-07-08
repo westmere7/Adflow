@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.22.7 (Current) - June 2026 — Engine v2.19
+v0.23.0 (Current) - July 2026 — Engine v2.19
+- Looping Single-Frame Ads Now Re-Animate: Turning on Loop for a single-frame ad now replays its entrance animations on a repeating cycle instead of freezing after the first play — handy for continuously animated pieces like email signatures. Previously, Loop had no effect on a single-frame ad.
+- Frame Transitions on a Single Frame: The TRANS (frame transition) toggle is now available on a single frame when Loop is on, so you can add a fade, slide, zoom, iris, or other transition that plays on each restart. The per-frame Duration sets how long each loop cycle lasts. Previously the transition control stayed greyed out until you added a second frame.
+
+v0.22.7 - June 2026 — Engine v2.19
 - New Projects No Longer Show a Stale Share Link: Creating a new project (or opening a different one) now clears the previous project's preview-share metadata, so the Share dialog correctly opens to the "create link" screen instead of showing a leftover link from the project you were just on.
 
 v0.22.6 - June 2026 — Engine v2.19

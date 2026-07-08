@@ -663,6 +663,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.23.0',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Looping Single-Frame Ads Now Re-Animate: Turning on Loop for a single-frame ad now replays its entrance animations on a repeating cycle instead of freezing after the first play — handy for continuously animated pieces like email signatures. Previously, Loop had no effect on a single-frame ad.',
+      'Frame Transitions on a Single Frame: The TRANS (frame transition) toggle is now available on a single frame when Loop is on, so you can add a fade, slide, zoom, iris, or other transition that plays on each restart. The per-frame Duration sets how long each loop cycle lasts. Previously the transition control stayed greyed out until you added a second frame.'
+    ]
+  },
+  {
     version: 'v0.22.7',
     date: 'June 2026 — Engine v2.19',
     items: [
