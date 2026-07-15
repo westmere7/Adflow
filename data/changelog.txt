@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.23.1 (Current) - July 2026 — Engine v2.19
+v0.24.0 (Current) - July 2026 — Engine v2.19
+- Revert to Cloud Version: New File-menu command (under Save) that re-downloads the last cloud-saved version of the open project and loads it, discarding local changes — with a confirmation showing when that cloud save was made. Only available when signed in; projects that have never been pushed to the cloud show a "nothing to revert to" notice instead.
+
+v0.23.1 - July 2026 — Engine v2.19
 - Mask Animations Preview on Every Linked Canvas: Hovering the IN animation controls with a mask selected now previews the mask reveal on all live-linked canvases. Previously only one canvas (the last in the project) played the preview, so it looked like hover-preview was broken and targeting the wrong canvas.
 - Mask OUT Animations Now Play: Exit animations set on a mask now actually run — in the hover preview, the in-app previews, and exported ads. The exit plays on the masked image (the visible content of the mask group); swipe exits wipe the image inside the mask shape so the mask silhouette is preserved. Previously a mask's OUT animation did nothing anywhere.
 - Mask Effect (animFX) Hover Preview Fixed: Hovering the effects controls with a mask selected now previews the effect on the masked image. Previously the preview silently did nothing for masks.
