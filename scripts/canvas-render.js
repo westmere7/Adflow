@@ -1859,7 +1859,10 @@ function startEffectPreview(el, tempVal) {
     applyEffAnim(targetNode);
 
     if (mergedEl.isMask && targetCanvas) {
-      const imgEl = targetCanvas.elements.find(x => findMaskAbove(targetCanvas, x) === mergedEl);
+      // Compare against targetEl (the original state object) — findMaskAbove
+      // returns originals, so comparing against the mergedEl spread copy never
+      // matched and the FX preview silently skipped masks.
+      const imgEl = targetCanvas.elements.find(x => findMaskAbove(targetCanvas, x) === targetEl);
       if (imgEl) {
         const imgDom = document.querySelector(`.el[data-id="${imgEl.id}"]`);
         if (imgDom) {

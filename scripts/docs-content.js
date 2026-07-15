@@ -663,6 +663,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.23.1',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Mask Animations Preview on Every Linked Canvas: Hovering the IN animation controls with a mask selected now previews the mask reveal on all live-linked canvases. Previously only one canvas (the last in the project) played the preview, so it looked like hover-preview was broken and targeting the wrong canvas.',
+      'Mask OUT Animations Now Play: Exit animations set on a mask now actually run — in the hover preview, the in-app previews, and exported ads. The exit plays on the masked image (the visible content of the mask group); swipe exits wipe the image inside the mask shape so the mask silhouette is preserved. Previously a mask\'s OUT animation did nothing anywhere.',
+      'Mask Effect (animFX) Hover Preview Fixed: Hovering the effects controls with a mask selected now previews the effect on the masked image. Previously the preview silently did nothing for masks.'
+    ]
+  },
+  {
     version: 'v0.23.0',
     date: 'July 2026 — Engine v2.19',
     items: [

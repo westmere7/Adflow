@@ -218,8 +218,10 @@ function renderAuthChip() {
   const u = authState.currentUser();
   const cloudMenuItem = document.getElementById('menu-file-cloud');
   const pushMenuItem = document.getElementById('menu-file-push');
+  const revertMenuItem = document.getElementById('menu-file-revert');
   if (cloudMenuItem) cloudMenuItem.style.display = u ? '' : 'none';
   if (pushMenuItem) pushMenuItem.style.display = u ? '' : 'none';
+  if (revertMenuItem) revertMenuItem.style.display = u ? '' : 'none';
   chip.style.display = '';
   if (!u) {
     chip.innerHTML = `
@@ -701,9 +703,9 @@ async function pushCurrentProjectToCloud(opts = {}) {
   return { isFirstSave };
 }
 
-async function pullCloudProject(row) {
-  const progress = (typeof window.showLoadingProgress === 'function') 
-    ? window.showLoadingProgress(`Opening "${row.name}"...`) 
+async function pullCloudProject(row, opts = {}) {
+  const progress = (typeof window.showLoadingProgress === 'function')
+    ? window.showLoadingProgress(opts.progressTitle || `Opening "${row.name}"...`)
     : null;
   if (progress) progress.setProgress(5, 'Downloading project from cloud...');
   try {
@@ -716,7 +718,7 @@ async function pullCloudProject(row) {
     else spacesState.setCurrent(null);
     const bg = document.querySelector('.modal-bg');
     if (bg) bg.remove();
-    showCanvasNotification(`Opened "${row.name}" from cloud`, { type: 'success' });
+    showCanvasNotification(opts.successNotice || `Opened "${row.name}" from cloud`, { type: 'success' });
   } catch (err) {
     if (progress) progress.close();
     throw err;
@@ -740,6 +742,33 @@ document.getElementById('menu-file-push')?.addEventListener('click', async () =>
     }
   }
   catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
+});
+// Revert — re-download the last cloud-saved version of the open project and
+// load it, discarding local changes. Cloud-only: projects never pushed (no
+// UUID id / no cloud row) have nothing to revert to.
+document.getElementById('menu-file-revert')?.addEventListener('click', async () => {
+  const u = authState.currentUser();
+  if (!u) return;
+  if (!_isUuid(state.projectId)) {
+    showCanvasNotification('This project has no cloud save yet — nothing to revert to.', { type: 'warning' });
+    return;
+  }
+  try {
+    const { data: row, error } = await sb.from('projects').select('*').eq('id', state.projectId).maybeSingle();
+    if (error) throw error;
+    if (!row) {
+      showCanvasNotification('This project has no cloud save yet — nothing to revert to.', { type: 'warning' });
+      return;
+    }
+    const when = row.updated_at ? new Date(row.updated_at).toLocaleString() : 'unknown time';
+    if (!confirm(`Revert "${row.name}" to the last cloud-saved version (${when})?\n\nAll changes since that save will be lost.`)) return;
+    await pullCloudProject(row, {
+      progressTitle: `Reverting "${row.name}"...`,
+      successNotice: `Reverted "${row.name}" to the cloud version from ${when}`
+    });
+  } catch (err) {
+    showCanvasNotification(`Revert failed: ${err.message || err}`, { type: 'error' });
+  }
 });
 
 // On sign-in, claim any pending invitation token sitting in sessionStorage

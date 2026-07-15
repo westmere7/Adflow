@@ -3350,6 +3350,11 @@ function checkButtonFontSizeWarning(el) {
       domNodes.forEach(node => { if (node) void node.offsetHeight; });
 
       let maxDur = 1;
+      // Mask keyframes are collected across ALL nodes and written to the style
+      // tag once after the loop. Writing the tag per-node clobbered every
+      // previous mask's keyframes, so with linked masks only the last canvas
+      // in state.canvases ever previewed.
+      const maskPreviewKeyframes = [];
       domNodes.forEach(node => {
         if (node) {
           const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
@@ -3584,13 +3589,7 @@ function checkButtonFontSizeWarning(el) {
                   if (imgDom && typeof generateMaskClipPathKeyframes === 'function') {
                     const maskAnim = generateMaskClipPathKeyframes(mergedEl, imgEl, previewVal);
                     if (maskAnim) {
-                      let styleTag = document.getElementById('dynamic-mask-styles');
-                      if (!styleTag) {
-                        styleTag = document.createElement('style');
-                        styleTag.id = 'dynamic-mask-styles';
-                        document.head.appendChild(styleTag);
-                      }
-                      styleTag.textContent = maskAnim.keyframes;
+                      maskPreviewKeyframes.push(maskAnim.keyframes);
                       imgDom.style.animation = maskAnim.animationCss;
                     }
                   }
@@ -3600,6 +3599,16 @@ function checkButtonFontSizeWarning(el) {
           }
         }
       });
+
+      if (maskPreviewKeyframes.length) {
+        let styleTag = document.getElementById('dynamic-mask-styles');
+        if (!styleTag) {
+          styleTag = document.createElement('style');
+          styleTag.id = 'dynamic-mask-styles';
+          document.head.appendChild(styleTag);
+        }
+        styleTag.textContent = maskPreviewKeyframes.join('\n');
+      }
 
       state.previewTimeoutId = setTimeout(runLoop, maxDur * 1000 + 400);
     };
@@ -3908,12 +3917,30 @@ function checkButtonFontSizeWarning(el) {
   // IN-animation hover preview. Static presets (fade/swipe/blur) use styles.css
   // keyframes; slide/zoom inject per-id keyframes into the shared dynamic style tag.
   let activeExitVal = null;
+  // A mask's own node is invisible (its geometry only drives the image's
+  // clip-path), so its exit preview plays on the masked image instead —
+  // clearing must reach that node too.
+  const clearMaskExitMirror = (node) => {
+    if (!node) return;
+    const nodeEl = state.canvases.flatMap(c => c.elements).find(x => x.id === node.dataset.id);
+    if (!nodeEl || !nodeEl.isMask) return;
+    const nodeCanvas = state.canvases.find(c => c.elements.some(x => x.id === nodeEl.id));
+    if (!nodeCanvas) return;
+    const imgEl = nodeCanvas.elements.find(x => findMaskAbove(nodeCanvas, x) === nodeEl);
+    const imgDom = imgEl && document.querySelector(`.el[data-id="${imgEl.id}"]`);
+    if (!imgDom) return;
+    imgDom.style.animation = '';
+    imgDom.style.transformOrigin = '';
+    const innerImg = imgDom.querySelector('img');
+    if (innerImg) innerImg.style.animation = '';
+  };
   const resetExitPreviewNodes = () => {
     document.body.classList.remove('previewing-animation-hover');
     getPreviewDomNodes(el, 'outAnim').forEach(node => {
       if (!node) return;
       node.style.animation = '';
       node.style.transformOrigin = '';
+      clearMaskExitMirror(node);
     });
   };
   const startExitPreviewLoop = (exitVal) => {
@@ -3930,7 +3957,7 @@ function checkButtonFontSizeWarning(el) {
     const runLoop = () => {
       if (activeExitVal !== exitVal) return;
       const domNodes = getPreviewDomNodes(el, 'outAnim');
-      domNodes.forEach(node => { if (node) { node.style.animation = ''; node.style.transformOrigin = ''; void node.offsetHeight; } });
+      domNodes.forEach(node => { if (node) { node.style.animation = ''; node.style.transformOrigin = ''; clearMaskExitMirror(node); void node.offsetHeight; } });
       domNodes.forEach(node => {
         if (!node) return;
         const nodeEl = state.canvases.flatMap(c => c.elements).find(e => e.id === node.dataset.id) || el;
@@ -3954,6 +3981,25 @@ function checkButtonFontSizeWarning(el) {
           node.style.transformOrigin = 'center';
         }
         if (name) node.style.animation = `${name} ${MOTION}s ease-in 0.35s forwards`;
+        if (name && nodeEl.isMask) {
+          // The mask node is invisible — play the exit on the masked image.
+          const nodeCanvas = state.canvases.find(cv => cv.elements.some(x => x.id === nodeEl.id)) || getActiveCanvas();
+          const imgEl = nodeCanvas && nodeCanvas.elements.find(x => findMaskAbove(nodeCanvas, x) === nodeEl);
+          const imgDom = imgEl && document.querySelector(`.el[data-id="${imgEl.id}"]`);
+          if (imgDom) {
+            if (exitVal === 'swipe') {
+              // swipe-out animates clip-path, which would clobber the mask's own
+              // clip-path on the wrapper — run it on the inner <img> instead.
+              const innerImg = imgDom.querySelector('img');
+              if (innerImg) innerImg.style.animation = `${name} ${MOTION}s ease-in 0.35s forwards`;
+            } else {
+              if (exitVal === 'zoom') {
+                imgDom.style.transformOrigin = `${nodeEl.x + nodeEl.width / 2 - imgEl.x}px ${nodeEl.y + nodeEl.height / 2 - imgEl.y}px`;
+              }
+              imgDom.style.animation = `${name} ${MOTION}s ease-in 0.35s forwards`;
+            }
+          }
+        }
       });
       // pause after the leave, then replay
       state.exitPreviewTimeoutId = setTimeout(runLoop, MOTION * 1000 + 1100);

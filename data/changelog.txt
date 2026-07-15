@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.23.0 (Current) - July 2026 — Engine v2.19
+v0.23.1 (Current) - July 2026 — Engine v2.19
+- Mask Animations Preview on Every Linked Canvas: Hovering the IN animation controls with a mask selected now previews the mask reveal on all live-linked canvases. Previously only one canvas (the last in the project) played the preview, so it looked like hover-preview was broken and targeting the wrong canvas.
+- Mask OUT Animations Now Play: Exit animations set on a mask now actually run — in the hover preview, the in-app previews, and exported ads. The exit plays on the masked image (the visible content of the mask group); swipe exits wipe the image inside the mask shape so the mask silhouette is preserved. Previously a mask's OUT animation did nothing anywhere.
+- Mask Effect (animFX) Hover Preview Fixed: Hovering the effects controls with a mask selected now previews the effect on the masked image. Previously the preview silently did nothing for masks.
+
+v0.23.0 - July 2026 — Engine v2.19
 - Looping Single-Frame Ads Now Re-Animate: Turning on Loop for a single-frame ad now replays its entrance animations on a repeating cycle instead of freezing after the first play — handy for continuously animated pieces like email signatures. Previously, Loop had no effect on a single-frame ad.
 - Frame Transitions on a Single Frame: The TRANS (frame transition) toggle is now available on a single frame when Loop is on, so you can add a fade, slide, zoom, iris, or other transition that plays on each restart. The per-frame Duration sets how long each loop cycle lasts. Previously the transition control stayed greyed out until you added a second frame.
 

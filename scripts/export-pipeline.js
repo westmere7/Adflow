@@ -1875,6 +1875,7 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
       // but renderEl only runs at export time, long after page load).
       let maskCss = '';
       let maskImgStyle = '';
+      let maskInnerExit = '';
       const maskAbove = findMaskAbove(c, el);
       if (maskAbove && typeof buildMaskClipPath === 'function') {
         const cp = buildMaskClipPath(maskAbove, el);
@@ -1916,12 +1917,35 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
           maskImgStyle += `transform-origin:${maskCenterX}px ${maskCenterY}px;`;
         }
         
+        // 3. Exit ("out") on the mask — the mask wrapper itself is dropped from
+        //    the export, so its exit must play on the masked image. Mirrors
+        //    render-runtime's timing (exitStart after the IN delay) and gating
+        //    (per-frame elements only, animOutEnabled). Swipe exits animate
+        //    clip-path and would clobber the mask shape on this node, so they
+        //    run on the inner image container instead.
+        if (frameCtx && !isImageExport && animOutEnabled(maskAbove)) {
+          const mExitType = maskAbove.exitType || 'fade-out';
+          const mDelay = animInEnabled(maskAbove) ? (maskAbove.animDelay || 0) : 0;
+          const mStart = (maskAbove.exitStart !== undefined ? maskAbove.exitStart : 1.5) + mDelay;
+          const mDur = maskAbove.exitDuration !== undefined ? maskAbove.exitDuration : DEFAULT_EXIT_MOTION_DURATION;
+          const mFade = maskAbove.exitFade !== false;
+          const mDir = maskAbove.exitDirection || (mExitType === 'swipe' ? 'left' : 'down');
+          let mName = '';
+          if (mExitType === 'fade-out') mName = 'anim-fade-out';
+          else if (mExitType === 'blur') mName = `anim-blur-out${mFade ? '' : '-nofade'}`;
+          else if (mExitType === 'slide') { mName = `anim-slide-out-${maskAbove.id}`; dynamicKeyframes += '\n' + getSlideOutKeyframes(maskAbove); }
+          else if (mExitType === 'zoom') { mName = `anim-zoom-out-${maskAbove.id}`; dynamicKeyframes += '\n' + getZoomOutKeyframes(maskAbove); }
+          else if (mExitType === 'swipe') maskInnerExit = `animation:anim-swipe-out-${mDir}${mFade ? '-fade' : ''} ${mDur}s ease-in ${mStart}s forwards;`;
+          if (mName || maskInnerExit) usesExitKeyframes = true;
+          if (mName) animations.push(`${mName} ${mDur}s ease-in ${mStart}s forwards`);
+        }
+
         if (animations.length > 0) {
           maskCss += `animation:${animations.join(', ')};`;
         }
       }
       const innerRadiusStyle = el.radius ? `border-radius:${el.radius}px;overflow:hidden;` : '';
-      return `    <div data-id="${el.id}" style="${wrapStyle}${maskCss}">${openDivs}<div style="width:100%;height:100%;${innerRadiusStyle}"><img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};${maskImgStyle}" alt="${esc(el.altText || '')}" /></div>${closeDivs}</div>`;
+      return `    <div data-id="${el.id}" style="${wrapStyle}${maskCss}">${openDivs}<div style="width:100%;height:100%;${innerRadiusStyle}${maskInnerExit}"><img src="${src}" style="width:100%;height:100%;object-fit:${el.objectFit || 'contain'};${maskImgStyle}" alt="${esc(el.altText || '')}" /></div>${closeDivs}</div>`;
     }
     return '';
   };
