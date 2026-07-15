@@ -204,6 +204,17 @@ const server = http.createServer((req, res) => {
   });
 });
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n  ERROR: port ${PORT} is already in use.`);
+    console.error('  Another dev server is probably still running in another window.');
+    console.error(`  Close it, or start on a different port:  node dev-server.js 8090\n`);
+  } else {
+    console.error('\n  Server error:', err.message, '\n');
+  }
+  process.exit(1);
+});
+
 server.listen(PORT, () => {
   console.log('');
   console.log('  RMIT Adflow - local dev server (live reload)');

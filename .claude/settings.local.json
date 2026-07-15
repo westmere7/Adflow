@@ -26,7 +26,19 @@
       "WebSearch",
       "Bash(cat .claude/launch.json)",
       "Bash(cat run-server.bat)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(git fsck *)",
+      "Bash(git count-objects *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(time node scripts/build-asset-manifest.js)",
+      "Bash(time node scripts/build-startup-registry.js)",
+      "PowerShell(Set-Location \"E:\\\\WORK_OFFLINE\\\\apps\\\\Adflow\"; $files = @\\('run-server.bat','dev-server.js','index.html','scripts\\\\props-panel.js'\\); foreach \\($f in $files\\) { $z = $null; try { $z = Get-Item $f -Stream Zone.Identifier -ErrorAction Stop } catch {}; if \\($z\\) { \"MOTW PRESENT : $f\" } else { \"clean        : $f\" } }; \"---\"; \"Total files with Zone.Identifier:\"; \\(Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { try { if \\(Get-Item $_.FullName -Stream Zone.Identifier -ErrorAction Stop\\) { 1 } } catch {} } | Measure-Object\\).Count)",
+      "PowerShell(Set-Location \"E:\\\\WORK_OFFLINE\\\\apps\\\\Adflow\"; Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | Unblock-File; \"Unblock-File complete.\"; \"Remaining files with Zone.Identifier:\"; \\(Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { try { if \\(Get-Item $_.FullName -Stream Zone.Identifier -ErrorAction Stop\\) { 1 } } catch {} } | Measure-Object\\).Count)",
+      "Bash(node dev-server.js 8188)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(curl -s -o /dev/null -w \"  index.html time_total: %{time_total}s\\\\n\" http://localhost:8188/)",
+      "Bash(kill %1)",
+      "Bash(OLD=\"/c/Users/nguye/.claude/projects/G--My-Drive-RMIT-WORKS-Apps-Adflow\"; NEW=\"/c/Users/nguye/.claude/projects/E--WORK-OFFLINE-apps-Adflow\"; echo \"=== OLD location \\($OLD\\) ===\"; ls -la \"$OLD\" 2>&1 | head; echo \"  memory files:\"; ls \"$OLD/memory\" 2>&1; echo \"\"; echo \"=== NEW location \\($NEW\\) ===\"; ls -la \"$NEW\" 2>&1 | head; echo \"  memory files:\"; ls \"$NEW/memory\" 2>&1)"
     ]
   }
 }
