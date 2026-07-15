@@ -107,7 +107,7 @@ function seqSignature() {
   if (!c) return 'nocanvas';
   const frame = seqActiveFrame();
   const els = seqVisibleElements(c).map(el => [
-    el.id, el.customName || '', el.type,
+    el.id, el.customName || '', el.type, el.isMask ? 1 : 0,
     animInEnabled(el) ? 1 : 0, el.animType || '', el.animDelay, el.animDuration,
     el.exitEnabled ? 1 : 0, el.exitType || '', el.exitStart, el.exitDuration,
     animFxEnabled(el) ? 1 : 0, el.effectType || '', el.effDelay, el.effDuration, el.effOnce ? 1 : 0,
@@ -365,7 +365,7 @@ function seqRenderBody() {
     const outChipDisabled = !inOn;
     rows += `
       <div class="seq-row-label ${selected ? 'seq-selected' : ''}" data-el="${el.id}">
-        <span class="seq-row-name"><span class="seq-row-name-inner">${seqEsc(el.customName || baseLayerLabel(el))}</span></span>
+        <span class="seq-row-name"><span class="seq-row-name-inner">${(typeof layerLabel === 'function') ? layerLabel(el) : seqEsc(baseLayerLabel(el))}</span></span>
         <button class="seq-chip seq-chip-in ${inOn ? 'on' : ''}" data-el="${el.id}" data-chip="in" title="IN: ${inOn ? seqPresetLabel('in', el.animType) : 'off'} — click to change">IN</button>
         <button class="seq-chip seq-chip-out ${outOn && inOn ? 'on' : ''} ${outChipDisabled ? 'seq-chip-disabled' : ''}" data-el="${el.id}" data-chip="out" title="${outChipDisabled ? 'OUT requires IN to be enabled' : `OUT: ${outOn ? seqPresetLabel('out', el.exitType || 'fade-out') : 'off'} — click to change`}">OUT</button>
         <button class="seq-chip seq-chip-fx ${fxOn ? 'on' : ''}" data-el="${el.id}" data-chip="fx" title="FX: ${fxOn ? seqPresetLabel('fx', el.effectType) : 'none'} — click to change">FX</button>

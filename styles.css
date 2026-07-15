@@ -6068,6 +6068,7 @@ body.fullscreen-mode #sequencer-panel { display: none; }
 .seq-scroll {
   overflow: auto;
   max-height: 260px;
+  padding-bottom: 12px;
 }
 .seq-grid {
   display: grid;
