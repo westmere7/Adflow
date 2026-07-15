@@ -359,14 +359,16 @@ function seqRenderBody() {
     const selected = state.layerSelection && state.layerSelection.includes(el.id);
     const inOn = animInEnabled(el);
     const outOn = !!el.exitEnabled;
-    const fxOn = animFxEnabled(el);
+    // FX counts as "on" only when a real effect is chosen — enabled-but-None
+    // renders faded, matching how a gated OUT chip looks.
+    const fxOn = animFxEnabled(el) && (el.effectType || 'none') !== 'none';
     const outChipDisabled = !inOn;
     rows += `
       <div class="seq-row-label ${selected ? 'seq-selected' : ''}" data-el="${el.id}">
         <span class="seq-row-name"><span class="seq-row-name-inner">${seqEsc(el.customName || baseLayerLabel(el))}</span></span>
         <button class="seq-chip seq-chip-in ${inOn ? 'on' : ''}" data-el="${el.id}" data-chip="in" title="IN: ${inOn ? seqPresetLabel('in', el.animType) : 'off'} — click to change">IN</button>
         <button class="seq-chip seq-chip-out ${outOn && inOn ? 'on' : ''} ${outChipDisabled ? 'seq-chip-disabled' : ''}" data-el="${el.id}" data-chip="out" title="${outChipDisabled ? 'OUT requires IN to be enabled' : `OUT: ${outOn ? seqPresetLabel('out', el.exitType || 'fade-out') : 'off'} — click to change`}">OUT</button>
-        <button class="seq-chip seq-chip-fx ${fxOn ? 'on' : ''}" data-el="${el.id}" data-chip="fx" title="FX: ${fxOn ? seqPresetLabel('fx', el.effectType) : 'off'} — click to change">FX</button>
+        <button class="seq-chip seq-chip-fx ${fxOn ? 'on' : ''}" data-el="${el.id}" data-chip="fx" title="FX: ${fxOn ? seqPresetLabel('fx', el.effectType) : 'none'} — click to change">FX</button>
       </div>
       <div class="seq-track" data-el="${el.id}" style="width:${trackW}px; --seq-grid-px:${gridPx}px;">
         ${overrunW > 0.5 ? `<div class="seq-overrun" style="width:${overrunW}px;"></div>` : ''}

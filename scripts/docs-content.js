@@ -663,6 +663,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.25.3',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'FX Chip Only Lights Up for Real Effects: The timeline\'s FX chip now shows as active only when an actual effect preset is selected — with "None" it renders faded (like a gated OUT chip) while staying clickable to add an effect.'
+    ]
+  },
+  {
     version: 'v0.25.2',
     date: 'July 2026 — Engine v2.19',
     items: [

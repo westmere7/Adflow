@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.25.2 (Current) - July 2026 — Engine v2.19
+v0.25.3 (Current) - July 2026 — Engine v2.19
+- FX Chip Only Lights Up for Real Effects: The timeline's FX chip now shows as active only when an actual effect preset is selected — with "None" it renders faded (like a gated OUT chip) while staying clickable to add an effect.
+
+v0.25.2 - July 2026 — Engine v2.19
 - Timeline Playhead: A subtle cursor now sweeps across the timeline during Play, showing where in the animation you are (display-only, not draggable). It fades out once the last animation finishes while looping effects continue. The red frame-end line is gone — the striped out-of-duration region now marks overruns on its own.
 - Cleaner FX Bars: Effect bars render as an unlabelled outline underneath the IN/OUT bars, so long-running effects no longer bury the entrance/exit bars.
 - Presets Via the IN/OUT/FX Chips: Hover a row's IN, OUT, or FX chip to see its selected preset; click it to change the preset (with hover-to-preview). Picking a preset on a disabled category enables it, and the OUT menu includes a "Turn OUT off" entry. Bars themselves are now drag-only — clicking one no longer pops open the preset menu.

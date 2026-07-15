@@ -6067,7 +6067,7 @@ body.fullscreen-mode #sequencer-panel { display: none; }
 
 .seq-scroll {
   overflow: auto;
-  max-height: 216px;
+  max-height: 260px;
 }
 .seq-grid {
   display: grid;
@@ -6141,7 +6141,7 @@ body.fullscreen-mode #sequencer-panel { display: none; }
   align-items: center;
   gap: 6px;
   padding: 0 8px;
-  height: 26px;
+  height: 34px;
   cursor: pointer;
   overflow: hidden;
 }
@@ -6189,7 +6189,7 @@ body.fullscreen-mode #sequencer-panel { display: none; }
 .seq-chip.seq-chip-disabled { opacity: .35; cursor: not-allowed; }
 .seq-track {
   position: relative;
-  height: 26px;
+  height: 34px;
   border-bottom: 1px solid var(--border-light);
   background-image:
     repeating-linear-gradient(90deg, var(--border-light) 0 1px, transparent 1px var(--seq-grid-px, 8px));
@@ -6208,8 +6208,8 @@ body.fullscreen-mode #sequencer-panel { display: none; }
 }
 .seq-bar {
   position: absolute;
-  top: 4px;
-  height: 18px;
+  top: 5px;
+  height: 24px;
   border-radius: 4px;
   display: flex;
   align-items: center;
