@@ -663,6 +663,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.24.0',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Revert to Cloud Version: New File-menu command (under Save) that re-downloads the last cloud-saved version of the open project and loads it, discarding local changes — with a confirmation showing when that cloud save was made. Only available when signed in; projects that have never been pushed to the cloud show a "nothing to revert to" notice instead.'
+    ]
+  },
+  {
     version: 'v0.23.1',
     date: 'July 2026 — Engine v2.19',
     items: [
