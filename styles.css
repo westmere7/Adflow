@@ -5984,10 +5984,11 @@ body.previewing-animation-hover .el.link-highlight-hover-live::after {
    props panel's animation sub-panels and stays in sync with them.
    ========================================================================== */
 #sequencer-panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* Static flex child of .canvas-viewport (not an overlay): the canvas area —
+     including its rulers and scrollbars — shrinks to make room, so nothing is
+     ever covered by the timeline. */
+  position: relative;
+  flex: 0 0 auto;
   z-index: 60;
   background: var(--bg-panel);
   border-top: 1px solid var(--border-light);
@@ -5995,7 +5996,6 @@ body.previewing-animation-hover .el.link-highlight-hover-live::after {
   flex-direction: column;
   font-size: 11px;
   color: var(--text-main);
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.25);
 }
 body.preview-active #sequencer-panel,
 body.fullscreen-mode #sequencer-panel { display: none; }
@@ -6008,6 +6008,17 @@ body.fullscreen-mode #sequencer-panel { display: none; }
   padding: 0 10px;
   flex-shrink: 0;
   user-select: none;
+  cursor: pointer; /* whole bar toggles open/collapse */
+}
+#sequencer-header:hover .seq-toggle-arrow { color: var(--text-bright); }
+.seq-toggle-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
 .seq-title {
   font-size: 10px;
@@ -6060,9 +6071,29 @@ body.fullscreen-mode #sequencer-panel { display: none; }
 }
 .seq-grid {
   display: grid;
-  grid-template-columns: 170px 1fr;
+  grid-template-columns: 232px 1fr;
   min-width: 100%;
   width: max-content;
+  position: relative; /* anchors the playback playhead */
+}
+/* Non-interactive playhead that sweeps across the tracks during Play. */
+.seq-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--accent-base);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-base) 70%, transparent);
+  opacity: .8;
+  pointer-events: none;
+  z-index: 4;
+  transition: opacity .4s ease;
+}
+.seq-playhead.seq-playhead-done { opacity: 0; }
+/* Dashed canvas outline while hovering a timeline row. */
+.el.seq-hover-outline {
+  outline: 1.5px dashed var(--accent-base) !important;
+  outline-offset: 2px;
 }
 .seq-ruler-label {
   position: sticky;
@@ -6121,8 +6152,23 @@ body.fullscreen-mode #sequencer-panel { display: none; }
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   font-size: 10.5px;
+}
+.seq-row-name-inner { display: inline-block; white-space: nowrap; }
+/* Truncated names: fade both ends and slowly ping-pong the text so the full
+   name is readable without widening the column. --seq-scroll-dist/-dur are
+   set per row after measuring. */
+.seq-row-name.seq-name-truncated {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 16px), transparent 100%);
+}
+.seq-row-name.seq-name-truncated .seq-row-name-inner {
+  padding-left: 12px;
+  animation: seq-name-scroll var(--seq-scroll-dur, 6s) ease-in-out 1.2s infinite alternate;
+}
+@keyframes seq-name-scroll {
+  0%, 12% { transform: translateX(0); }
+  88%, 100% { transform: translateX(var(--seq-scroll-dist, 0px)); }
 }
 .seq-chip {
   font-size: 8px;
@@ -6152,16 +6198,6 @@ body.fullscreen-mode #sequencer-panel { display: none; }
   background-repeat: repeat-x;
   background-position-y: 60%;
 }
-.seq-frame-end {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: #e04a3a;
-  opacity: .75;
-  pointer-events: none;
-  z-index: 1;
-}
 .seq-overrun {
   position: absolute;
   top: 0;
@@ -6190,7 +6226,13 @@ body.fullscreen-mode #sequencer-panel { display: none; }
 .seq-bar:active { cursor: grabbing; }
 .seq-bar.seq-bar-in  { background: color-mix(in srgb, var(--accent-base) 85%, transparent); }
 .seq-bar.seq-bar-out { background: rgba(224, 101, 58, 0.85); }
-.seq-bar.seq-bar-fx  { background: rgba(47, 158, 143, 0.85); }
+/* FX bars often span the whole row and would bury the IN/OUT bars — render
+   them as an unlabelled outline sitting UNDER the solid bars. */
+.seq-bar.seq-bar-fx {
+  background: transparent;
+  border: 1.5px solid rgba(47, 158, 143, 0.9);
+  z-index: 1;
+}
 .seq-bar.seq-bar-fx.seq-bar-infinite {
   border-right: none;
   border-top-right-radius: 0;
@@ -6248,6 +6290,13 @@ body.fullscreen-mode #sequencer-panel { display: none; }
 }
 .seq-popover-item:hover { background: var(--bg-input); color: var(--text-bright); }
 .seq-popover-item.seq-popover-active { color: var(--accent-base); font-weight: 600; }
+.seq-popover-check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.seq-popover-divider { height: 1px; background: var(--border-light); margin: 4px 2px; }
 .seq-empty {
   padding: 14px;
   text-align: center;

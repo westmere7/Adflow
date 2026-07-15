@@ -21,19 +21,32 @@
 // edits remains fully editable from the props panel.
 // ============================================================================
 
-const SEQ_SNAP = 0.1;              // grid resolution in seconds
 const SEQ_MIN_DUR = 0.1;           // minimum bar duration
 const SEQ_LS_KEY = 'adflow-sequencer-expanded';
+const SEQ_LS_GRID = 'adflow-sequencer-grid';
+const SEQ_LS_SHOWALL = 'adflow-sequencer-showall';
 
 let seqExpanded = localStorage.getItem(SEQ_LS_KEY) === '1';
+// Grid density (snap step) in seconds — user setting, 0.1..0.5 in 0.1 steps.
+let seqGridStep = (() => {
+  const v = parseFloat(localStorage.getItem(SEQ_LS_GRID));
+  return (v >= 0.1 && v <= 0.5) ? Math.round(v * 10) / 10 : 0.1;
+})();
+// Off by default: only elements with an animation applied get a row.
+let seqShowAll = localStorage.getItem(SEQ_LS_SHOWALL) === '1';
 let seqLastSignature = null;
 let seqPlaying = false;
 let seqPlayNodes = [];             // nodes touched by playback, for cleanup
 let seqPlayTimer = null;
 let seqPopoverEl = null;
 let seqDrag = null;
+// Playback playhead (visual only, non-interactive).
+let seqPlayStartMs = 0;
+let seqPlayMaxEnd = 0;
+let seqPlayRaf = null;
+let seqLastPxPerSec = 80;
 
-const seqSnap = (t) => Math.round(t / SEQ_SNAP) * SEQ_SNAP;
+const seqSnap = (t) => Math.round(Math.round(t / seqGridStep) * seqGridStep * 10) / 10;
 const seqFmt = (t) => (Math.round(t * 10) / 10).toFixed(1).replace(/\.0$/, '') + 's';
 const seqRound = (t) => Math.round(t * 10) / 10;
 
@@ -46,13 +59,20 @@ function seqActiveFrame() {
 }
 
 // Elements shown as rows: visible on the active canvas in the current frame,
-// ordered like the layers panel (topmost first).
-function seqVisibleElements(c) {
+// ordered like the layers panel (topmost first). By default only elements
+// with an animation applied are listed (an element whose animations are all
+// removed drops off the timeline); the settings popover can show all.
+function seqHasAnimation(el) {
+  const b = seqBars(el);
+  return !!(b.in || b.out || b.fx);
+}
+function seqVisibleElements(c, ignoreFilter) {
   const inFrame = (el) => !el.hidden && (el.persistent !== false || el.frameId === state.activeFrameId);
   const tops = c.elements.filter(e => inFrame(e) && e.persistent === 'top');
   const frame = c.elements.filter(e => inFrame(e) && e.persistent === false);
   const bottoms = c.elements.filter(e => inFrame(e) && e.persistent === 'bottom');
-  return [...tops.reverse(), ...frame.reverse(), ...bottoms.reverse()];
+  const all = [...tops.reverse(), ...frame.reverse(), ...bottoms.reverse()];
+  return (seqShowAll || ignoreFilter) ? all : all.filter(seqHasAnimation);
 }
 
 // Bar geometry (seconds) for an element's three animation categories.
@@ -95,6 +115,7 @@ function seqSignature() {
   ].join(','));
   return [c.id, c.width + 'x' + c.height, frame ? frame.id : 0, frame ? frame.duration : 0,
     (state.layerSelection || []).join('.'), seqExpanded ? 1 : 0, seqPlaying ? 1 : 0,
+    seqGridStep, seqShowAll ? 1 : 0,
     els.join('|')].join('§');
 }
 
@@ -156,6 +177,11 @@ function seqRenderHeader() {
     ? `${c.name || (c.width + '×' + c.height)} · Frame ${frameIdx + 1}/${state.frames.length} · ${seqFmt(frame && frame.duration !== undefined ? frame.duration : 2)}`
     : 'No canvas';
   header.innerHTML = `
+    <span class="seq-toggle-arrow" id="seq-toggle-btn" title="${seqExpanded ? 'Collapse timeline' : 'Expand timeline'}">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        ${seqExpanded ? '<polyline points="6 9 12 15 18 9"/>' : '<polyline points="6 15 12 9 18 15"/>'}
+      </svg>
+    </span>
     <span class="seq-title">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="15" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="11" y2="18"/></svg>
       Timeline
@@ -165,26 +191,119 @@ function seqRenderHeader() {
     </button>
     <span class="seq-info">${info}</span>
     <span class="seq-spacer"></span>
-    <span class="seq-info" style="flex:none;">grid 0.1s</span>
-    <button class="seq-btn" id="seq-toggle-btn" title="${seqExpanded ? 'Collapse timeline' : 'Expand timeline'}">${seqExpanded ? '&#9662;' : '&#9652;'}</button>`;
-  header.querySelector('#seq-toggle-btn').onclick = () => {
+    <span class="seq-info" style="flex:none;">grid ${seqGridStep.toFixed(1)}s</span>
+    <button class="seq-btn" id="seq-settings-btn" title="Timeline settings">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>`;
+  // The whole bar toggles open/collapse; buttons inside opt out.
+  header.onclick = (e) => {
+    if (e.target.closest('#seq-play-btn, #seq-settings-btn')) return;
     seqExpanded = !seqExpanded;
     localStorage.setItem(SEQ_LS_KEY, seqExpanded ? '1' : '0');
     renderSequencer(true);
   };
-  header.querySelector('#seq-play-btn').onclick = () => {
+  header.querySelector('#seq-play-btn').onclick = (e) => {
+    e.stopPropagation();
     if (seqPlaying) seqStopPlayback();
     else seqStartPlayback();
     renderSequencer(true);
   };
+  header.querySelector('#seq-settings-btn').onclick = (e) => {
+    e.stopPropagation();
+    seqOpenSettingsPopover(e.currentTarget.getBoundingClientRect());
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Settings popover — grid density + show-all toggle.
+// ---------------------------------------------------------------------------
+
+function seqOpenSettingsPopover(anchorRect) {
+  seqCloseNPopover();
+  const steps = [0.1, 0.2, 0.3, 0.4, 0.5];
+  const pop = document.createElement('div');
+  pop.className = 'seq-popover';
+  pop.innerHTML = `
+    <div class="seq-popover-title">Grid density (snap step)</div>
+    ${steps.map(s => `<div class="seq-popover-item ${Math.abs(s - seqGridStep) < 0.001 ? 'seq-popover-active' : ''}" data-step="${s}">${s.toFixed(1)}s</div>`).join('')}
+    <div class="seq-popover-divider"></div>
+    <div class="seq-popover-item seq-popover-check" data-toggle="showall">
+      <span>Show all elements</span>
+      <span>${seqShowAll ? '✓' : ''}</span>
+    </div>`;
+  document.body.appendChild(pop);
+  const rect = pop.getBoundingClientRect();
+  pop.style.left = Math.min(anchorRect.left, window.innerWidth - rect.width - 8) + 'px';
+  pop.style.top = Math.max(8, anchorRect.top - rect.height - 6) + 'px';
+  seqPopoverEl = pop;
+
+  pop.querySelectorAll('[data-step]').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const step = parseFloat(item.dataset.step);
+      if (Math.abs(step - seqGridStep) < 0.001) { seqCloseNPopover(); return; }
+      if (step > seqGridStep + 0.001) {
+        // Coarser grid re-snaps every current timing on this canvas+frame —
+        // warn before overriding the user's finer-grained setup.
+        const ok = confirm(
+          `Change the timeline grid from ${seqGridStep.toFixed(1)}s to ${step.toFixed(1)}s?\n\n` +
+          `This is a coarser grid: all animation timings on this canvas and frame will be re-snapped to ${step.toFixed(1)}s steps, overriding your current timeline setup.`);
+        if (!ok) return;
+        seqGridStep = step;
+        localStorage.setItem(SEQ_LS_GRID, String(step));
+        seqResnapVisible(step);
+      } else {
+        seqGridStep = step;
+        localStorage.setItem(SEQ_LS_GRID, String(step));
+      }
+      seqCloseNPopover();
+      renderSequencer(true);
+    });
+  });
+  pop.querySelector('[data-toggle="showall"]').addEventListener('click', (e) => {
+    e.stopPropagation();
+    seqShowAll = !seqShowAll;
+    localStorage.setItem(SEQ_LS_SHOWALL, seqShowAll ? '1' : '0');
+    seqCloseNPopover();
+    renderSequencer(true);
+  });
+}
+
+// Re-snap all animation timings of the rows currently shown to the given
+// step (used when the grid is made coarser).
+function seqResnapVisible(step) {
+  const c = getActiveCanvas();
+  if (!c) return;
+  const snapTo = (v) => Math.round(Math.round(v / step) * step * 10) / 10;
+  let changed = false;
+  seqVisibleElements(c).forEach(el => {
+    ['animDelay', 'animDuration', 'exitStart', 'exitDuration', 'effDelay', 'effDuration'].forEach(k => {
+      if (el[k] === undefined) return;
+      const snapped = Math.max(k.includes('Duration') ? SEQ_MIN_DUR : 0, snapTo(Number(el[k])));
+      if (snapped !== Number(el[k])) { el[k] = snapped; changed = true; }
+    });
+  });
+  if (changed) {
+    pushHistory();
+    render(true);
+    renderProps();
+  }
 }
 
 function seqRenderBody() {
   const body = document.getElementById('sequencer-body');
+  // A rebuild can orphan the row-hover canvas outline (the row's mouseleave
+  // never fires once the row is replaced) — clear any leftovers.
+  document.querySelectorAll('.el.seq-hover-outline').forEach(n => n.classList.remove('seq-hover-outline'));
   const c = getActiveCanvas();
   if (!c) { body.innerHTML = '<div class="seq-empty">No active canvas.</div>'; return; }
   const els = seqVisibleElements(c);
-  if (!els.length) { body.innerHTML = '<div class="seq-empty">No elements on this frame.</div>'; return; }
+  if (!els.length) {
+    body.innerHTML = seqShowAll || !seqVisibleElements(c, true).length
+      ? '<div class="seq-empty">No elements on this frame.</div>'
+      : '<div class="seq-empty">No animated elements on this frame. Enable IN / OUT / FX on an element in the Animation panel — or show all elements via the timeline’s ⚙ settings.</div>';
+    return;
+  }
 
   const frame = seqActiveFrame();
   const frameDur = frame && frame.duration !== undefined ? Number(frame.duration) : 2;
@@ -197,10 +316,11 @@ function seqRenderBody() {
     if (b.fx && b.fx.infinite) maxEnd = Math.max(maxEnd, b.fx.start + 0.5);
   });
   const neededSec = Math.max(1, Math.ceil((maxEnd + 0.201) * 10) / 10);
-  const avail = Math.max(200, body.clientWidth - 170 - 12);
+  const avail = Math.max(200, body.clientWidth - 232 - 12);
   const pxPerSec = Math.max(40, Math.min(200, avail / neededSec));
+  seqLastPxPerSec = pxPerSec;
   const trackW = Math.ceil(neededSec * pxPerSec);
-  const gridPx = pxPerSec * SEQ_SNAP;
+  const gridPx = pxPerSec * seqGridStep;
 
   // Ruler ticks: label every 1s (every 0.5s when roomy), medium tick at 0.5s.
   let ruler = '';
@@ -226,9 +346,9 @@ function seqRenderBody() {
     };
     const resizable = !(kind === 'fx' && b.infinite);
     return `<div class="seq-bar seq-bar-${kind} ${b.infinite ? 'seq-bar-infinite' : ''}" data-el="${el.id}" data-kind="${kind}"
-      style="left:${left}px; width:${w}px;" title="${labels[kind]} · ${presets[kind]} — ${seqFmt(b.start)} → ${b.infinite ? '∞' : seqFmt(b.start + b.dur)}. Drag to move, edges to resize, click for presets.">
+      style="left:${left}px; width:${w}px;" title="${labels[kind]} · ${presets[kind]} — ${seqFmt(b.start)} → ${b.infinite ? '∞' : seqFmt(b.start + b.dur)}. Drag to move, drag edges to resize. Change presets via the ${labels[kind]} chip.">
       <span class="seq-handle seq-handle-l"></span>
-      <span style="pointer-events:none;">${labels[kind]} · ${presets[kind]}</span>
+      ${kind === 'fx' ? '' : `<span style="pointer-events:none;">${labels[kind]} · ${presets[kind]}</span>`}
       ${resizable ? '<span class="seq-handle seq-handle-r"></span>' : ''}
     </div>`;
   };
@@ -243,13 +363,12 @@ function seqRenderBody() {
     const outChipDisabled = !inOn;
     rows += `
       <div class="seq-row-label ${selected ? 'seq-selected' : ''}" data-el="${el.id}">
-        <span class="seq-row-name">${seqEsc(el.customName || baseLayerLabel(el))}</span>
-        <button class="seq-chip seq-chip-in ${inOn ? 'on' : ''}" data-el="${el.id}" data-chip="in" title="Toggle IN animation">IN</button>
-        <button class="seq-chip seq-chip-out ${outOn && inOn ? 'on' : ''} ${outChipDisabled ? 'seq-chip-disabled' : ''}" data-el="${el.id}" data-chip="out" title="${outChipDisabled ? 'OUT requires IN to be enabled' : 'Toggle OUT animation'}">OUT</button>
-        <button class="seq-chip seq-chip-fx ${fxOn ? 'on' : ''}" data-el="${el.id}" data-chip="fx" title="Toggle Animation FX">FX</button>
+        <span class="seq-row-name"><span class="seq-row-name-inner">${seqEsc(el.customName || baseLayerLabel(el))}</span></span>
+        <button class="seq-chip seq-chip-in ${inOn ? 'on' : ''}" data-el="${el.id}" data-chip="in" title="IN: ${inOn ? seqPresetLabel('in', el.animType) : 'off'} — click to change">IN</button>
+        <button class="seq-chip seq-chip-out ${outOn && inOn ? 'on' : ''} ${outChipDisabled ? 'seq-chip-disabled' : ''}" data-el="${el.id}" data-chip="out" title="${outChipDisabled ? 'OUT requires IN to be enabled' : `OUT: ${outOn ? seqPresetLabel('out', el.exitType || 'fade-out') : 'off'} — click to change`}">OUT</button>
+        <button class="seq-chip seq-chip-fx ${fxOn ? 'on' : ''}" data-el="${el.id}" data-chip="fx" title="FX: ${fxOn ? seqPresetLabel('fx', el.effectType) : 'off'} — click to change">FX</button>
       </div>
       <div class="seq-track" data-el="${el.id}" style="width:${trackW}px; --seq-grid-px:${gridPx}px;">
-        <div class="seq-frame-end" style="left:${frameEndX}px;"></div>
         ${overrunW > 0.5 ? `<div class="seq-overrun" style="width:${overrunW}px;"></div>` : ''}
         ${barHtml(el, 'in', b.in)}${barHtml(el, 'out', b.out)}${barHtml(el, 'fx', b.fx)}
       </div>`;
@@ -270,15 +389,39 @@ function seqRenderBody() {
       if (e.target.closest('.seq-chip')) return;
       seqSelectElement(row.dataset.el);
     });
+    // Hovering a row outlines its element on the canvas (dashed).
+    row.addEventListener('mouseenter', () => {
+      const node = document.querySelector(`.el[data-id="${row.dataset.el}"]`);
+      if (node) node.classList.add('seq-hover-outline');
+    });
+    row.addEventListener('mouseleave', () => {
+      const node = document.querySelector(`.el[data-id="${row.dataset.el}"]`);
+      if (node) node.classList.remove('seq-hover-outline');
+    });
   });
   body.querySelectorAll('.seq-chip').forEach(chip => {
     chip.addEventListener('click', (e) => {
       e.stopPropagation();
-      seqToggleChip(chip.dataset.el, chip.dataset.chip);
+      seqChipClick(chip.dataset.el, chip.dataset.chip, chip.getBoundingClientRect());
     });
   });
   body.querySelectorAll('.seq-bar').forEach(bar => {
     bar.addEventListener('mousedown', (e) => seqBarMouseDown(e, bar, pxPerSec));
+  });
+
+  if (seqPlaying) seqEnsurePlayhead();
+
+  // Truncated layer names: fade the ends and slowly ping-pong the full text.
+  body.querySelectorAll('.seq-row-name').forEach(nameEl => {
+    const inner = nameEl.querySelector('.seq-row-name-inner');
+    if (!inner) return;
+    const overflow = inner.scrollWidth - nameEl.clientWidth;
+    if (overflow > 2) {
+      nameEl.classList.add('seq-name-truncated');
+      // padding-left (12px) is added by the truncated style; scroll past it too.
+      inner.style.setProperty('--seq-scroll-dist', `-${overflow + 14}px`);
+      inner.style.setProperty('--seq-scroll-dur', `${Math.max(4, (overflow + 14) / 18)}s`);
+    }
   });
 }
 
@@ -302,36 +445,19 @@ function seqPresetLabel(kind, val) {
 }
 
 // ---------------------------------------------------------------------------
-// Enable-toggle chips — same semantics as the panel's IN/OUT/FX toggles.
+// IN/OUT/FX chips — hover shows the selected preset (title), click opens the
+// preset menu (which is also where a category is turned off).
 // ---------------------------------------------------------------------------
 
-function seqToggleChip(elId, kind) {
+function seqChipClick(elId, kind, anchorRect) {
   const c = getActiveCanvas();
   const el = c && c.elements.find(x => x.id === elId);
   if (!el) return;
-  seqSelectElement(elId);
-  if (kind === 'in') {
-    const turningOn = !animInEnabled(el);
-    seqCommit(el, { inEnabled: turningOn });
-    // A fresh IN with no preset is invisible — take the user straight to one.
-    if (turningOn && (!el.animType || el.animType === 'none')) {
-      const bar = document.querySelector(`.seq-chip[data-el="${elId}"][data-chip="in"]`);
-      if (bar) seqOpenPresetPopover(el, 'in', bar.getBoundingClientRect());
-    }
-  } else if (kind === 'out') {
-    if (!animInEnabled(el)) {
-      showCanvasNotification('OUT animations require the IN animation to be enabled.', { type: 'warning' });
-      return;
-    }
-    seqCommit(el, { exitEnabled: !el.exitEnabled });
-  } else if (kind === 'fx') {
-    const turningOn = !animFxEnabled(el);
-    seqCommit(el, { fxEnabled: turningOn });
-    if (turningOn && (!el.effectType || el.effectType === 'none')) {
-      const bar = document.querySelector(`.seq-chip[data-el="${elId}"][data-chip="fx"]`);
-      if (bar) seqOpenPresetPopover(el, 'fx', bar.getBoundingClientRect());
-    }
+  if (kind === 'out' && !animInEnabled(el)) {
+    showCanvasNotification('OUT animations require the IN animation to be enabled.', { type: 'warning' });
+    return;
   }
+  seqOpenPresetPopover(el, kind, anchorRect);
 }
 
 // ---------------------------------------------------------------------------
@@ -361,7 +487,9 @@ function seqBarMouseDown(e, bar, pxPerSec) {
     infinite: !!b.infinite,
     pendingStart: b.start,
     pendingDur: b.dur,
-    moved: false,
+    // Pixel travel decides drag vs click — a short drag that snaps back to
+    // the original value must NOT count as a click (no popover).
+    maxPx: 0,
     tip: null
   };
   document.addEventListener('mousemove', seqBarMouseMove);
@@ -371,8 +499,11 @@ function seqBarMouseDown(e, bar, pxPerSec) {
 function seqBarMouseMove(e) {
   if (!seqDrag) return;
   const d = seqDrag;
+  d.maxPx = Math.max(d.maxPx, Math.abs(e.clientX - d.startX));
+  // Ignore sub-threshold jitter entirely so a slightly-shaky click neither
+  // moves the bar nor suppresses the popover.
+  if (d.maxPx < 4) return;
   const dx = (e.clientX - d.startX) / d.pxPerSec;
-  if (Math.abs(dx) > 0.001) d.moved = true;
 
   let start = d.origStart, dur = d.origDur;
   if (d.mode === 'move') {
@@ -414,10 +545,16 @@ function seqBarMouseUp() {
   const c = getActiveCanvas();
   const el = c && c.elements.find(x => x.id === d.elId);
   if (!el) return;
-  if (!d.moved || (d.pendingStart === d.origStart && d.pendingDur === d.origDur)) {
-    // Treated as a click: open the preset popover for this bar.
-    const bar = document.querySelector(`.seq-bar[data-el="${d.elId}"][data-kind="${d.kind}"]`);
-    if (bar) seqOpenPresetPopover(el, d.kind, bar.getBoundingClientRect());
+  if (d.maxPx < 4) {
+    // Plain click on a bar: bars are drag-only — presets are changed via the
+    // row's IN/OUT/FX chips. (Selecting the element already happened on
+    // mousedown.)
+    return;
+  }
+  if (d.pendingStart === d.origStart && d.pendingDur === d.origDur) {
+    // A real drag that snapped back to where it started: no commit, no popover
+    // — just restore the bar's visual position.
+    renderSequencer(true);
     return;
   }
   const pairs = {};
@@ -455,7 +592,9 @@ function seqPresetOptions(el, kind) {
     return opts;
   }
   if (kind === 'out') {
+    // OUT has no 'none' preset — turning the category off is its own entry.
     return [
+      { val: '__off', label: el.exitEnabled ? 'Turn OUT off' : '(OUT is off)' },
       { val: 'fade-out', label: 'Fade Out' },
       { val: 'slide', label: 'Slide' },
       { val: 'swipe', label: 'Swipe' },
@@ -505,11 +644,12 @@ function seqOpenPresetPopover(el, kind, anchorRect) {
     const val = item.dataset.val;
     // Hover preview — mirrors wireCustomSelects' item.onmouseenter semantics.
     item.addEventListener('mouseenter', () => {
+      if (val === '__off') return;
       if (kind === 'in') {
         const targetVal = val === 'swipe' ? 'swipe-right' : val;
         if (startElementAnimPreviewFn) startElementAnimPreviewFn(targetVal);
       } else if (kind === 'out') {
-        if (el.exitEnabled && startElementExitPreviewFn) startElementExitPreviewFn(val);
+        if (startElementExitPreviewFn) startElementExitPreviewFn(val);
       } else {
         if (applyElementEffectPreviewFn) applyElementEffectPreviewFn(val);
       }
@@ -525,12 +665,20 @@ function seqOpenPresetPopover(el, kind, anchorRect) {
       if (kind === 'in') {
         const targetVal = val === 'swipe' ? 'swipe-right' : val;
         up('animType', targetVal);
+        // Choosing a real preset from the timeline also turns the category on.
+        if (targetVal !== 'none' && !animInEnabled(el)) up('inEnabled', true);
         delete el.animationMode; // parity with the panel's animType handler
       } else if (kind === 'out') {
-        up('exitType', val);
+        if (val === '__off') {
+          if (el.exitEnabled) up('exitEnabled', false);
+        } else {
+          up('exitType', val);
+          if (!el.exitEnabled) up('exitEnabled', true);
+        }
       } else {
         up('effectType', val);
         if (typeof applyEffectPresetDefaults === 'function') applyEffectPresetDefaults(el, val, up);
+        if (val !== 'none' && !animFxEnabled(el)) up('fxEnabled', true);
       }
       pushHistory();
       renderProps();
@@ -577,7 +725,10 @@ function seqStartPlayback() {
   let kf = '';
   let maxEnd = 0;
   let hasInfinite = false;
-  const els = seqVisibleElements(c);
+  // Playback iterates ALL in-frame elements (ignoring the animated-only row
+  // filter): a masked image may have no animation of its own yet still play
+  // its mask's translated reveal.
+  const els = seqVisibleElements(c, true);
 
   els.forEach(el => {
     if (isActiveMask(el)) return; // translated onto the masked image below
@@ -702,6 +853,11 @@ function seqStartPlayback() {
 
   document.body.classList.add('previewing-animation-hover');
   seqPlaying = true;
+  // Sweep the (non-interactive) playhead across the timeline while playing.
+  seqPlayStartMs = performance.now();
+  seqPlayMaxEnd = Math.max(0.5, maxEnd);
+  seqEnsurePlayhead();
+  if (!seqPlayRaf) seqPlayRaf = requestAnimationFrame(seqPlayheadTick);
   // Auto-rewind once everything has finished — unless an infinite FX runs,
   // in which case Stop is the only way out (PowerPoint-style).
   if (!hasInfinite) {
@@ -709,8 +865,36 @@ function seqStartPlayback() {
   }
 }
 
+// The playhead lives inside .seq-grid so it scrolls with the tracks; the
+// 232px offset matches the label column. Visual only — pointer-events: none.
+function seqEnsurePlayhead() {
+  const grid = document.querySelector('#sequencer-body .seq-grid');
+  if (!grid || grid.querySelector('.seq-playhead')) return;
+  const ph = document.createElement('div');
+  ph.className = 'seq-playhead';
+  ph.style.left = '232px';
+  grid.appendChild(ph);
+}
+
+function seqPlayheadTick() {
+  if (!seqPlaying) { seqPlayRaf = null; return; }
+  const ph = document.querySelector('#sequencer-body .seq-playhead');
+  if (ph) {
+    const t = (performance.now() - seqPlayStartMs) / 1000;
+    if (t >= seqPlayMaxEnd) {
+      // Past the last animation (looping FX may still run): fade the cursor.
+      ph.classList.add('seq-playhead-done');
+    } else {
+      ph.style.left = (232 + t * seqLastPxPerSec) + 'px';
+    }
+  }
+  seqPlayRaf = requestAnimationFrame(seqPlayheadTick);
+}
+
 function seqStopPlayback() {
   if (seqPlayTimer) { clearTimeout(seqPlayTimer); seqPlayTimer = null; }
+  if (seqPlayRaf) { cancelAnimationFrame(seqPlayRaf); seqPlayRaf = null; }
+  document.querySelectorAll('.seq-playhead').forEach(n => n.remove());
   seqPlayNodes.forEach(node => {
     node.style.animation = '';
     node.style.transformOrigin = '';

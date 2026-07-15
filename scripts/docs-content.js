@@ -663,6 +663,26 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.25.2',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Timeline Playhead: A subtle cursor now sweeps across the timeline during Play, showing where in the animation you are (display-only, not draggable). It fades out once the last animation finishes while looping effects continue. The red frame-end line is gone — the striped out-of-duration region now marks overruns on its own.',
+      'Cleaner FX Bars: Effect bars render as an unlabelled outline underneath the IN/OUT bars, so long-running effects no longer bury the entrance/exit bars.',
+      'Presets Via the IN/OUT/FX Chips: Hover a row\'s IN, OUT, or FX chip to see its selected preset; click it to change the preset (with hover-to-preview). Picking a preset on a disabled category enables it, and the OUT menu includes a "Turn OUT off" entry. Bars themselves are now drag-only — clicking one no longer pops open the preset menu.',
+      'Timeline Row Hover Highlights the Canvas: Hovering an element\'s row on the timeline shows a dashed outline around that element on the canvas, so it\'s easy to see which layer a row belongs to.'
+    ]
+  },
+  {
+    version: 'v0.25.1',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Timeline No Longer Covers the Canvas Scrollbars: The timeline is now part of the canvas viewport\'s layout instead of floating over it, so the canvas area (including its rulers and scrollbars) shrinks to make room and nothing gets hidden behind the panel.',
+      'Timeline Shows Only Animated Elements: By default a row appears only for elements with an IN, OUT, or FX animation applied — remove all animations from an element and it leaves the timeline too. A "Show all elements" option lives in the new timeline settings.',
+      'Timeline Settings & Grid Density: New ⚙ button on the timeline bar with a grid density setting (0.1s to 0.5s snap, in 0.1s steps). Switching to a coarser grid warns first, since it re-snaps all timings on the current canvas and frame to the new step.',
+      'Timeline Usability Fixes: Click anywhere on the timeline\'s top bar to expand or collapse it (with a bigger arrow); layer names get a wider column and auto-scroll with faded edges when truncated; and the preset menu now opens only on a deliberate click on a bar — dragging (even a drag that lands back where it started) no longer pops it open.'
+    ]
+  },
+  {
     version: 'v0.25.0',
     date: 'July 2026 — Engine v2.19',
     items: [
