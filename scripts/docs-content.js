@@ -663,6 +663,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.26.0',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Reorder Timeline Rows by Drag & Drop: Timeline rows can now be dragged into any order, with the same drop indicator as the layers panel. This is a timeline-only arrangement for organizing your animation work — it does not change the element\'s stacking order or its position in the layers panel. The custom order is saved per canvas with the project and is undoable. Timeline rows also now use the exact layer names from the layers panel, including auto-numbering ("Rectangle 2") and the [mask]/[masked] tags.'
+    ]
+  },
+  {
     version: 'v0.25.4',
     date: 'July 2026 — Engine v2.19',
     items: [

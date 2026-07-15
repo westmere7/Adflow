@@ -72,7 +72,35 @@ function seqVisibleElements(c, ignoreFilter) {
   const frame = c.elements.filter(e => inFrame(e) && e.persistent === false);
   const bottoms = c.elements.filter(e => inFrame(e) && e.persistent === 'bottom');
   const all = [...tops.reverse(), ...frame.reverse(), ...bottoms.reverse()];
-  return (seqShowAll || ignoreFilter) ? all : all.filter(seqHasAnimation);
+  const list = (seqShowAll || ignoreFilter) ? all : all.filter(seqHasAnimation);
+  // Timeline-only display order (drag-and-drop on rows). Stored per canvas as
+  // c.sequencerOrder — it never touches c.elements, so the layers panel and
+  // z-order are unaffected. Elements not yet in the stored order keep their
+  // natural (layer) order after the ordered ones.
+  const order = c.sequencerOrder;
+  if (Array.isArray(order) && order.length) {
+    const pos = new Map(order.map((id, i) => [id, i]));
+    return list
+      .map((el, i) => ({ el, key: pos.has(el.id) ? pos.get(el.id) : order.length + i }))
+      .sort((a, b) => a.key - b.key)
+      .map(x => x.el);
+  }
+  return list;
+}
+
+// Reorder a timeline row relative to another (display only — see above).
+function seqApplyRowReorder(draggedId, targetId, below) {
+  const c = getActiveCanvas();
+  if (!c || draggedId === targetId) return;
+  const current = seqVisibleElements(c).map(e => e.id);
+  if (!current.includes(draggedId) || !current.includes(targetId)) return;
+  const list = current.filter(id => id !== draggedId);
+  list.splice(list.indexOf(targetId) + (below ? 1 : 0), 0, draggedId);
+  // Preserve ordering of ids not currently visible (other frames / filtered).
+  const rest = (c.sequencerOrder || []).filter(id => !list.includes(id));
+  c.sequencerOrder = [...list, ...rest];
+  pushHistory();
+  renderSequencer(true);
 }
 
 // Bar geometry (seconds) for an element's three animation categories.
@@ -364,7 +392,7 @@ function seqRenderBody() {
     const fxOn = animFxEnabled(el) && (el.effectType || 'none') !== 'none';
     const outChipDisabled = !inOn;
     rows += `
-      <div class="seq-row-label ${selected ? 'seq-selected' : ''}" data-el="${el.id}">
+      <div class="seq-row-label ${selected ? 'seq-selected' : ''}" data-el="${el.id}" draggable="true">
         <span class="seq-row-name"><span class="seq-row-name-inner">${(typeof layerLabel === 'function') ? layerLabel(el) : seqEsc(baseLayerLabel(el))}</span></span>
         <button class="seq-chip seq-chip-in ${inOn ? 'on' : ''}" data-el="${el.id}" data-chip="in" title="IN: ${inOn ? seqPresetLabel('in', el.animType) : 'off'} — click to change">IN</button>
         <button class="seq-chip seq-chip-out ${outOn && inOn ? 'on' : ''} ${outChipDisabled ? 'seq-chip-disabled' : ''}" data-el="${el.id}" data-chip="out" title="${outChipDisabled ? 'OUT requires IN to be enabled' : `OUT: ${outOn ? seqPresetLabel('out', el.exitType || 'fade-out') : 'off'} — click to change`}">OUT</button>
@@ -399,6 +427,41 @@ function seqRenderBody() {
     row.addEventListener('mouseleave', () => {
       const node = document.querySelector(`.el[data-id="${row.dataset.el}"]`);
       if (node) node.classList.remove('seq-hover-outline');
+    });
+    // Drag-and-drop row reordering — same interaction as the layers panel
+    // (top/bottom border indicates the drop side), but display-order only.
+    row.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/seq-row', row.dataset.el);
+      e.dataTransfer.effectAllowed = 'move';
+      row.style.opacity = '0.4';
+    });
+    row.addEventListener('dragend', () => { row.style.opacity = ''; });
+    row.addEventListener('dragover', (e) => {
+      if (![...e.dataTransfer.types].includes('text/seq-row')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = row.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) {
+        row.style.borderTop = '2px solid var(--accent-base)';
+        row.style.borderBottom = '';
+      } else {
+        row.style.borderTop = '';
+        row.style.borderBottom = '2px solid var(--accent-base)';
+      }
+    });
+    row.addEventListener('dragleave', () => {
+      row.style.borderTop = '';
+      row.style.borderBottom = '';
+    });
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = row.getBoundingClientRect();
+      const below = e.clientY >= rect.top + rect.height / 2;
+      row.style.borderTop = '';
+      row.style.borderBottom = '';
+      const draggedId = e.dataTransfer.getData('text/seq-row');
+      if (draggedId) seqApplyRowReorder(draggedId, row.dataset.el, below);
     });
   });
   body.querySelectorAll('.seq-chip').forEach(chip => {

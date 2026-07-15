@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.25.4 (Current) - July 2026 — Engine v2.19
+v0.26.0 (Current) - July 2026 — Engine v2.19
+- Reorder Timeline Rows by Drag & Drop: Timeline rows can now be dragged into any order, with the same drop indicator as the layers panel. This is a timeline-only arrangement for organizing your animation work — it does not change the element's stacking order or its position in the layers panel. The custom order is saved per canvas with the project and is undoable. Timeline rows also now use the exact layer names from the layers panel, including auto-numbering ("Rectangle 2") and the [mask]/[masked] tags.
+
+v0.25.4 - July 2026 — Engine v2.19
 - Taller Timeline Rows: Timeline rows grew from 26px to 34px (with chunkier bars) so labels, chips, and bars are easier to read and grab.
 - FX Chip Fade Matches OUT: An FX chip with no effect selected now uses exactly the same off-style as an inactive OUT chip.
 
