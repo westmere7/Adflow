@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.25.3 (Current) - July 2026 — Engine v2.19
+v0.25.4 (Current) - July 2026 — Engine v2.19
+- Taller Timeline Rows: Timeline rows grew from 26px to 34px (with chunkier bars) so labels, chips, and bars are easier to read and grab.
+- FX Chip Fade Matches OUT: An FX chip with no effect selected now uses exactly the same off-style as an inactive OUT chip.
+
+v0.25.3 - July 2026 — Engine v2.19
 - FX Chip Only Lights Up for Real Effects: The timeline's FX chip now shows as active only when an actual effect preset is selected — with "None" it renders faded (like a gated OUT chip) while staying clickable to add an effect.
 
 v0.25.2 - July 2026 — Engine v2.19
