@@ -663,6 +663,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.25.0',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Animation Timeline (Sequencer): New collapsible timeline anchored to the bottom of the canvas area — one row per element on the active canvas and frame, with IN / OUT / FX bars on a 0.1s-snappable grid. Drag bars to move delays, drag their edges to change durations, click a bar to switch presets (with the same hover-to-preview as the animation panels), and use the IN/OUT/FX chips to toggle each category. A red line marks the frame\'s duration so overruns are obvious. Fully two-way synced with the animation panels (including live-linked canvases and undo), and entirely optional — it starts collapsed and simple projects never need it.',
+      'Timeline Play/Stop: Replays the current frame\'s animations in place on the canvas — entrances, exits, effects, and mask reveals — without advancing to the next frame. Auto-rewinds when everything finishes (or press Stop for looping effects). Typing-style text entrances are approximated with a fade in this in-canvas playback; previews and exports remain exact.'
+    ]
+  },
+  {
     version: 'v0.24.0',
     date: 'July 2026 — Engine v2.19',
     items: [

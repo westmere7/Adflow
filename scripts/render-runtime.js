@@ -333,7 +333,11 @@ function getElementAnimationCSS(el, isImageExport, frameCtx) {
     entryConfig += ` transform-origin: ${getTransformOriginValue(anchor)};`;
   }
   const effConfig = effAnims.length > 0 ? `animation: ${effAnims.join(', ')};` : '';
-  return { entryConfig, entryVars, effConfig, effVars };
+  // Raw lists are exposed (additive) for callers that must COMBINE entry/exit/
+  // effect animations onto a single node — the editor's sequencer playback —
+  // where export's nested-wrapper approach isn't available. Joined configs
+  // above are untouched, so export/preview output is byte-identical.
+  return { entryConfig, entryVars, effConfig, effVars, entryAnimList: entryAnims, exitAnimList: exitAnims, effAnimList: effAnims };
 }
 
 

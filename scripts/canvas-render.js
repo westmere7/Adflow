@@ -441,6 +441,10 @@ function render(skipProps = false) {
   const szBtn = document.getElementById('btn-toggle-safezones');
   if (szBtn) szBtn.classList.toggle('active', !!state.showSafezones);
   if (!skipProps) renderProps();
+  // Keep the sequencer mirroring state on EVERY render — including render(true)
+  // paths that skip renderProps (prop edits, drags). renderSequencer no-ops via
+  // an internal signature check when nothing it displays has changed.
+  if (typeof renderSequencer === 'function') renderSequencer();
 
   if (state.isPreviewMode) {
     document.body.classList.add('preview-active');

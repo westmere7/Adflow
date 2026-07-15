@@ -1,0 +1,727 @@
+// ============================================================================
+// Animation Sequencer (v0.25.0) — PowerPoint-style timeline for organising
+// multi-element animations on the ACTIVE canvas + frame.
+//
+// Design contract (keeps the timeline and the props panel permanently wired):
+//   • Every interaction SELECTS the element first, so renderProps() binds the
+//     panel's closures (activeUpdatePropFn + the start/stop preview fns) to
+//     that element. The sequencer then commits edits through activeUpdatePropFn
+//     — the exact code path the props panel uses — which runs render(true) and
+//     therefore applyLinkSync for live-linked groups. Zero duplicated logic.
+//   • renderSequencer() is called from render() (canvas-render.js) on every
+//     pass, with an internal signature guard so it only rebuilds when the data
+//     it displays actually changed. Props-panel edits, undo/redo, frame or
+//     canvas switches all flow through render(), so the timeline can never go
+//     stale.
+//   • Hover previews on preset options reuse startElementAnimPreviewFn /
+//     startElementExitPreviewFn / applyElementEffectPreviewFn — identical
+//     behaviour to hovering the same presets in the animation sub-panels.
+//
+// The panel is OPTIONAL: collapsed by default (persisted), and everything it
+// edits remains fully editable from the props panel.
+// ============================================================================
+
+const SEQ_SNAP = 0.1;              // grid resolution in seconds
+const SEQ_MIN_DUR = 0.1;           // minimum bar duration
+const SEQ_LS_KEY = 'adflow-sequencer-expanded';
+
+let seqExpanded = localStorage.getItem(SEQ_LS_KEY) === '1';
+let seqLastSignature = null;
+let seqPlaying = false;
+let seqPlayNodes = [];             // nodes touched by playback, for cleanup
+let seqPlayTimer = null;
+let seqPopoverEl = null;
+let seqDrag = null;
+
+const seqSnap = (t) => Math.round(t / SEQ_SNAP) * SEQ_SNAP;
+const seqFmt = (t) => (Math.round(t * 10) / 10).toFixed(1).replace(/\.0$/, '') + 's';
+const seqRound = (t) => Math.round(t * 10) / 10;
+
+// ---------------------------------------------------------------------------
+// Data helpers
+// ---------------------------------------------------------------------------
+
+function seqActiveFrame() {
+  return state.frames.find(f => f.id === state.activeFrameId) || state.frames[0];
+}
+
+// Elements shown as rows: visible on the active canvas in the current frame,
+// ordered like the layers panel (topmost first).
+function seqVisibleElements(c) {
+  const inFrame = (el) => !el.hidden && (el.persistent !== false || el.frameId === state.activeFrameId);
+  const tops = c.elements.filter(e => inFrame(e) && e.persistent === 'top');
+  const frame = c.elements.filter(e => inFrame(e) && e.persistent === false);
+  const bottoms = c.elements.filter(e => inFrame(e) && e.persistent === 'bottom');
+  return [...tops.reverse(), ...frame.reverse(), ...bottoms.reverse()];
+}
+
+// Bar geometry (seconds) for an element's three animation categories.
+// OUT starts exitStart seconds after the element appears PLUS the IN delay —
+// the same math render-runtime uses for playback, so what you see is what
+// exports.
+function seqBars(el) {
+  const bars = {};
+  const inOn = animInEnabled(el) && (el.animType || 'none') !== 'none';
+  const inDelay = el.animDelay !== undefined ? Number(el.animDelay) : 0;
+  const inDur = el.animDuration !== undefined ? Number(el.animDuration) : 1;
+  if (inOn) bars.in = { start: inDelay, dur: inDur };
+  if (animOutEnabled(el)) {
+    const exitStart = el.exitStart !== undefined ? Number(el.exitStart) : 1.5;
+    const exitDur = el.exitDuration !== undefined ? Number(el.exitDuration) : DEFAULT_EXIT_MOTION_DURATION;
+    bars.out = { start: (animInEnabled(el) ? inDelay : 0) + exitStart, dur: exitDur };
+  }
+  if (animFxEnabled(el) && (el.effectType || 'none') !== 'none') {
+    const fxDelay = el.effDelay !== undefined ? Number(el.effDelay) : 0;
+    const durationDriven = (el.effectType === 'pan' || el.effectType === 'zoom' || el.effectType === 'spin');
+    const fxDur = el.effDuration !== undefined ? Number(el.effDuration) : 2;
+    const once = !!el.effOnce || el.effectType === 'spin';
+    bars.fx = durationDriven && once
+      ? { start: fxDelay, dur: fxDur, infinite: false }
+      : { start: fxDelay, dur: fxDur, infinite: true };
+  }
+  return bars;
+}
+
+function seqSignature() {
+  const c = getActiveCanvas();
+  if (!c) return 'nocanvas';
+  const frame = seqActiveFrame();
+  const els = seqVisibleElements(c).map(el => [
+    el.id, el.customName || '', el.type,
+    animInEnabled(el) ? 1 : 0, el.animType || '', el.animDelay, el.animDuration,
+    el.exitEnabled ? 1 : 0, el.exitType || '', el.exitStart, el.exitDuration,
+    animFxEnabled(el) ? 1 : 0, el.effectType || '', el.effDelay, el.effDuration, el.effOnce ? 1 : 0,
+    el.text ? String(el.text).slice(0, 20) : ''
+  ].join(','));
+  return [c.id, c.width + 'x' + c.height, frame ? frame.id : 0, frame ? frame.duration : 0,
+    (state.layerSelection || []).join('.'), seqExpanded ? 1 : 0, seqPlaying ? 1 : 0,
+    els.join('|')].join('§');
+}
+
+// Select an element the same way the layers panel does, so renderProps binds
+// updateProp + the preview fns to it before the sequencer commits anything.
+function seqSelectElement(id) {
+  if (state.layerSelection && state.layerSelection.length === 1 && state.layerSelection[0] === id
+      && state.selectedElementId === id) return;
+  // Same trio the layers panel sets — selectedElementId is what
+  // getSelectedElement()/renderProps actually binds to.
+  state.layerSelection = [id];
+  state.lastSelectedLayerId = id;
+  state.selectedElementId = id;
+  render();
+}
+
+// Commit a set of prop edits through the props panel's own updateProp closure
+// (fires render(true) → applyLinkSync). Falls back to direct mutation +
+// render(true) if the closure isn't bound — same wiring, minus panel-specific
+// side effects that don't apply to timing keys anyway.
+function seqCommit(el, pairs) {
+  seqSelectElement(el.id);
+  const up = (typeof activeUpdatePropFn === 'function') ? activeUpdatePropFn : (k, v) => {
+    if (v === undefined) delete el[k]; else el[k] = v;
+    render(true);
+  };
+  Object.entries(pairs).forEach(([k, v]) => up(k, v));
+  pushHistory();
+  renderProps();
+  renderSequencer(true);
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+
+function renderSequencer(force) {
+  const panel = document.getElementById('sequencer-panel');
+  if (!panel) return;
+  const sig = seqSignature();
+  if (!force && sig === seqLastSignature) return;
+  // A canvas/frame switch mid-play leaves orphaned inline animations — stop.
+  if (seqPlaying && seqLastSignature && sig.split('§').slice(0, 3).join() !== seqLastSignature.split('§').slice(0, 3).join()) {
+    seqStopPlayback();
+  }
+  seqLastSignature = sig;
+  panel.classList.toggle('sequencer-collapsed', !seqExpanded);
+  seqRenderHeader();
+  if (seqExpanded) seqRenderBody();
+  else document.getElementById('sequencer-body').innerHTML = '';
+}
+
+function seqRenderHeader() {
+  const header = document.getElementById('sequencer-header');
+  const c = getActiveCanvas();
+  const frame = seqActiveFrame();
+  const frameIdx = state.frames.findIndex(f => f.id === state.activeFrameId);
+  const info = c
+    ? `${c.name || (c.width + '×' + c.height)} · Frame ${frameIdx + 1}/${state.frames.length} · ${seqFmt(frame && frame.duration !== undefined ? frame.duration : 2)}`
+    : 'No canvas';
+  header.innerHTML = `
+    <span class="seq-title">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="15" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="11" y2="18"/></svg>
+      Timeline
+    </span>
+    <button class="seq-btn ${seqPlaying ? 'seq-playing' : ''}" id="seq-play-btn" title="${seqPlaying ? 'Stop playback' : 'Play this frame’s animations on the canvas (does not advance frames)'}">
+      ${seqPlaying ? '&#9632; Stop' : '&#9654; Play'}
+    </button>
+    <span class="seq-info">${info}</span>
+    <span class="seq-spacer"></span>
+    <span class="seq-info" style="flex:none;">grid 0.1s</span>
+    <button class="seq-btn" id="seq-toggle-btn" title="${seqExpanded ? 'Collapse timeline' : 'Expand timeline'}">${seqExpanded ? '&#9662;' : '&#9652;'}</button>`;
+  header.querySelector('#seq-toggle-btn').onclick = () => {
+    seqExpanded = !seqExpanded;
+    localStorage.setItem(SEQ_LS_KEY, seqExpanded ? '1' : '0');
+    renderSequencer(true);
+  };
+  header.querySelector('#seq-play-btn').onclick = () => {
+    if (seqPlaying) seqStopPlayback();
+    else seqStartPlayback();
+    renderSequencer(true);
+  };
+}
+
+function seqRenderBody() {
+  const body = document.getElementById('sequencer-body');
+  const c = getActiveCanvas();
+  if (!c) { body.innerHTML = '<div class="seq-empty">No active canvas.</div>'; return; }
+  const els = seqVisibleElements(c);
+  if (!els.length) { body.innerHTML = '<div class="seq-empty">No elements on this frame.</div>'; return; }
+
+  const frame = seqActiveFrame();
+  const frameDur = frame && frame.duration !== undefined ? Number(frame.duration) : 2;
+
+  // Time axis: cover the frame duration and any bar that overruns it.
+  let maxEnd = frameDur;
+  els.forEach(el => {
+    const b = seqBars(el);
+    ['in', 'out', 'fx'].forEach(k => { if (b[k] && !b[k].infinite) maxEnd = Math.max(maxEnd, b[k].start + b[k].dur); });
+    if (b.fx && b.fx.infinite) maxEnd = Math.max(maxEnd, b.fx.start + 0.5);
+  });
+  const neededSec = Math.max(1, Math.ceil((maxEnd + 0.201) * 10) / 10);
+  const avail = Math.max(200, body.clientWidth - 170 - 12);
+  const pxPerSec = Math.max(40, Math.min(200, avail / neededSec));
+  const trackW = Math.ceil(neededSec * pxPerSec);
+  const gridPx = pxPerSec * SEQ_SNAP;
+
+  // Ruler ticks: label every 1s (every 0.5s when roomy), medium tick at 0.5s.
+  let ruler = '';
+  const labelStep = pxPerSec >= 110 ? 0.5 : (pxPerSec >= 55 ? 1 : 2);
+  for (let t = 0; t <= neededSec + 1e-6; t += 0.5) {
+    const x = t * pxPerSec;
+    const isLabel = Math.abs(t / labelStep - Math.round(t / labelStep)) < 1e-6;
+    ruler += `<div class="seq-tick ${isLabel ? 'major' : ''}" style="left:${x}px;"></div>`;
+    if (isLabel) ruler += `<div class="seq-tick-label" style="left:${x}px;">${seqFmt(t)}</div>`;
+  }
+  const frameEndX = frameDur * pxPerSec;
+  const overrunW = Math.max(0, trackW - frameEndX);
+
+  const barHtml = (el, kind, b) => {
+    if (!b) return '';
+    const left = b.start * pxPerSec;
+    const w = b.infinite ? (trackW - left) : Math.max(6, b.dur * pxPerSec);
+    const labels = { in: 'IN', out: 'OUT', fx: 'FX' };
+    const presets = {
+      in: seqPresetLabel('in', el.animType),
+      out: seqPresetLabel('out', el.exitType || 'fade-out'),
+      fx: seqPresetLabel('fx', el.effectType)
+    };
+    const resizable = !(kind === 'fx' && b.infinite);
+    return `<div class="seq-bar seq-bar-${kind} ${b.infinite ? 'seq-bar-infinite' : ''}" data-el="${el.id}" data-kind="${kind}"
+      style="left:${left}px; width:${w}px;" title="${labels[kind]} · ${presets[kind]} — ${seqFmt(b.start)} → ${b.infinite ? '∞' : seqFmt(b.start + b.dur)}. Drag to move, edges to resize, click for presets.">
+      <span class="seq-handle seq-handle-l"></span>
+      <span style="pointer-events:none;">${labels[kind]} · ${presets[kind]}</span>
+      ${resizable ? '<span class="seq-handle seq-handle-r"></span>' : ''}
+    </div>`;
+  };
+
+  let rows = '';
+  els.forEach(el => {
+    const b = seqBars(el);
+    const selected = state.layerSelection && state.layerSelection.includes(el.id);
+    const inOn = animInEnabled(el);
+    const outOn = !!el.exitEnabled;
+    const fxOn = animFxEnabled(el);
+    const outChipDisabled = !inOn;
+    rows += `
+      <div class="seq-row-label ${selected ? 'seq-selected' : ''}" data-el="${el.id}">
+        <span class="seq-row-name">${seqEsc(el.customName || baseLayerLabel(el))}</span>
+        <button class="seq-chip seq-chip-in ${inOn ? 'on' : ''}" data-el="${el.id}" data-chip="in" title="Toggle IN animation">IN</button>
+        <button class="seq-chip seq-chip-out ${outOn && inOn ? 'on' : ''} ${outChipDisabled ? 'seq-chip-disabled' : ''}" data-el="${el.id}" data-chip="out" title="${outChipDisabled ? 'OUT requires IN to be enabled' : 'Toggle OUT animation'}">OUT</button>
+        <button class="seq-chip seq-chip-fx ${fxOn ? 'on' : ''}" data-el="${el.id}" data-chip="fx" title="Toggle Animation FX">FX</button>
+      </div>
+      <div class="seq-track" data-el="${el.id}" style="width:${trackW}px; --seq-grid-px:${gridPx}px;">
+        <div class="seq-frame-end" style="left:${frameEndX}px;"></div>
+        ${overrunW > 0.5 ? `<div class="seq-overrun" style="width:${overrunW}px;"></div>` : ''}
+        ${barHtml(el, 'in', b.in)}${barHtml(el, 'out', b.out)}${barHtml(el, 'fx', b.fx)}
+      </div>`;
+  });
+
+  body.innerHTML = `
+    <div class="seq-scroll">
+      <div class="seq-grid">
+        <div class="seq-ruler-label">Element</div>
+        <div class="seq-ruler" style="width:${trackW}px;">${ruler}</div>
+        ${rows}
+      </div>
+    </div>`;
+
+  // --- wiring ---
+  body.querySelectorAll('.seq-row-label').forEach(row => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.seq-chip')) return;
+      seqSelectElement(row.dataset.el);
+    });
+  });
+  body.querySelectorAll('.seq-chip').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      seqToggleChip(chip.dataset.el, chip.dataset.chip);
+    });
+  });
+  body.querySelectorAll('.seq-bar').forEach(bar => {
+    bar.addEventListener('mousedown', (e) => seqBarMouseDown(e, bar, pxPerSec));
+  });
+}
+
+function seqEsc(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function seqPresetLabel(kind, val) {
+  const v = val || 'none';
+  if (kind === 'in') {
+    if (v.startsWith('swipe')) return 'Swipe';
+    if (v === 'slide' || v.startsWith('slide-')) return 'Slide';
+    if (v === 'zoom' || v === 'zoom-in' || v === 'pop-in') return 'Zoom';
+    if (v === 'typing' || v === 'fade-typing' || v === 'word-fade') return 'Typing';
+    return { 'none': 'None', 'fade-in': 'Fade In', 'split': 'Split', 'blur': 'Blur' }[v] || v;
+  }
+  if (kind === 'out') {
+    return { 'fade-out': 'Fade Out', 'slide': 'Slide', 'swipe': 'Swipe', 'zoom': 'Zoom', 'blur': 'Blur' }[v] || v;
+  }
+  return { 'none': 'None', 'pulse': 'Pulse', 'float': 'Float', 'flash': 'Flash', 'wiggle': 'Wiggle', 'spin': 'Spin', 'heartbeat': 'Heartbeat', 'pan': 'Move', 'zoom': 'Zoom' }[v] || v;
+}
+
+// ---------------------------------------------------------------------------
+// Enable-toggle chips — same semantics as the panel's IN/OUT/FX toggles.
+// ---------------------------------------------------------------------------
+
+function seqToggleChip(elId, kind) {
+  const c = getActiveCanvas();
+  const el = c && c.elements.find(x => x.id === elId);
+  if (!el) return;
+  seqSelectElement(elId);
+  if (kind === 'in') {
+    const turningOn = !animInEnabled(el);
+    seqCommit(el, { inEnabled: turningOn });
+    // A fresh IN with no preset is invisible — take the user straight to one.
+    if (turningOn && (!el.animType || el.animType === 'none')) {
+      const bar = document.querySelector(`.seq-chip[data-el="${elId}"][data-chip="in"]`);
+      if (bar) seqOpenPresetPopover(el, 'in', bar.getBoundingClientRect());
+    }
+  } else if (kind === 'out') {
+    if (!animInEnabled(el)) {
+      showCanvasNotification('OUT animations require the IN animation to be enabled.', { type: 'warning' });
+      return;
+    }
+    seqCommit(el, { exitEnabled: !el.exitEnabled });
+  } else if (kind === 'fx') {
+    const turningOn = !animFxEnabled(el);
+    seqCommit(el, { fxEnabled: turningOn });
+    if (turningOn && (!el.effectType || el.effectType === 'none')) {
+      const bar = document.querySelector(`.seq-chip[data-el="${elId}"][data-chip="fx"]`);
+      if (bar) seqOpenPresetPopover(el, 'fx', bar.getBoundingClientRect());
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bar drag / resize — 0.1s snapped; commits through updateProp on release.
+// ---------------------------------------------------------------------------
+
+function seqBarMouseDown(e, bar, pxPerSec) {
+  e.preventDefault();
+  e.stopPropagation();
+  const elId = bar.dataset.el;
+  const kind = bar.dataset.kind;
+  const c = getActiveCanvas();
+  const el = c && c.elements.find(x => x.id === elId);
+  if (!el) return;
+  seqSelectElement(elId);
+
+  const b = seqBars(el)[kind];
+  if (!b) return;
+  const mode = e.target.classList.contains('seq-handle-l') ? 'l'
+    : e.target.classList.contains('seq-handle-r') ? 'r' : 'move';
+
+  seqDrag = {
+    elId, kind, mode, pxPerSec,
+    startX: e.clientX,
+    origStart: b.start,
+    origDur: b.dur,
+    infinite: !!b.infinite,
+    pendingStart: b.start,
+    pendingDur: b.dur,
+    moved: false,
+    tip: null
+  };
+  document.addEventListener('mousemove', seqBarMouseMove);
+  document.addEventListener('mouseup', seqBarMouseUp);
+}
+
+function seqBarMouseMove(e) {
+  if (!seqDrag) return;
+  const d = seqDrag;
+  const dx = (e.clientX - d.startX) / d.pxPerSec;
+  if (Math.abs(dx) > 0.001) d.moved = true;
+
+  let start = d.origStart, dur = d.origDur;
+  if (d.mode === 'move') {
+    start = Math.max(0, seqSnap(d.origStart + dx));
+  } else if (d.mode === 'r') {
+    dur = Math.max(SEQ_MIN_DUR, seqSnap(d.origDur + dx));
+  } else if (d.mode === 'l') {
+    const end = d.origStart + d.origDur;
+    start = Math.max(0, Math.min(seqSnap(d.origStart + dx), end - SEQ_MIN_DUR));
+    dur = seqRound(end - start);
+  }
+  d.pendingStart = seqRound(start);
+  d.pendingDur = seqRound(dur);
+
+  const bar = document.querySelector(`.seq-bar[data-el="${d.elId}"][data-kind="${d.kind}"]`);
+  if (bar) {
+    bar.style.left = (d.pendingStart * d.pxPerSec) + 'px';
+    if (!d.infinite) bar.style.width = Math.max(6, d.pendingDur * d.pxPerSec) + 'px';
+  }
+  if (!d.tip) {
+    d.tip = document.createElement('div');
+    d.tip.className = 'seq-drag-tip';
+    document.body.appendChild(d.tip);
+  }
+  d.tip.style.left = (e.clientX + 12) + 'px';
+  d.tip.style.top = (e.clientY - 26) + 'px';
+  d.tip.textContent = d.infinite
+    ? `${seqFmt(d.pendingStart)} → ∞`
+    : `${seqFmt(d.pendingStart)} → ${seqFmt(d.pendingStart + d.pendingDur)} (${seqFmt(d.pendingDur)})`;
+}
+
+function seqBarMouseUp() {
+  const d = seqDrag;
+  seqDrag = null;
+  document.removeEventListener('mousemove', seqBarMouseMove);
+  document.removeEventListener('mouseup', seqBarMouseUp);
+  if (!d) return;
+  if (d.tip) d.tip.remove();
+  const c = getActiveCanvas();
+  const el = c && c.elements.find(x => x.id === d.elId);
+  if (!el) return;
+  if (!d.moved || (d.pendingStart === d.origStart && d.pendingDur === d.origDur)) {
+    // Treated as a click: open the preset popover for this bar.
+    const bar = document.querySelector(`.seq-bar[data-el="${d.elId}"][data-kind="${d.kind}"]`);
+    if (bar) seqOpenPresetPopover(el, d.kind, bar.getBoundingClientRect());
+    return;
+  }
+  const pairs = {};
+  if (d.kind === 'in') {
+    if (d.pendingStart !== d.origStart) pairs.animDelay = d.pendingStart;
+    if (d.pendingDur !== d.origDur) pairs.animDuration = d.pendingDur;
+  } else if (d.kind === 'out') {
+    const inDelay = animInEnabled(el) && el.animDelay !== undefined ? Number(el.animDelay) : 0;
+    if (d.pendingStart !== d.origStart) pairs.exitStart = Math.max(0, seqRound(d.pendingStart - inDelay));
+    if (d.pendingDur !== d.origDur) pairs.exitDuration = d.pendingDur;
+  } else if (d.kind === 'fx') {
+    if (d.pendingStart !== d.origStart) pairs.effDelay = d.pendingStart;
+    if (!d.infinite && d.pendingDur !== d.origDur) pairs.effDuration = d.pendingDur;
+  }
+  if (Object.keys(pairs).length) seqCommit(el, pairs);
+}
+
+// ---------------------------------------------------------------------------
+// Preset popover — same preset lists as the animation sub-panels, with the
+// same hover-to-preview behaviour (via the panel's registered preview fns).
+// ---------------------------------------------------------------------------
+
+function seqPresetOptions(el, kind) {
+  if (kind === 'in') {
+    const opts = [
+      { val: 'none', label: 'None' },
+      { val: 'fade-in', label: 'Fade In' },
+      { val: 'slide', label: 'Slide' },
+      { val: 'swipe', label: 'Swipe' },
+      { val: 'zoom', label: 'Zoom' },
+      { val: 'split', label: 'Split' },
+      { val: 'blur', label: 'Blur' }
+    ];
+    if (el.type === 'text' || el.type === 'button') opts.push({ val: 'typing', label: 'Typing' });
+    return opts;
+  }
+  if (kind === 'out') {
+    return [
+      { val: 'fade-out', label: 'Fade Out' },
+      { val: 'slide', label: 'Slide' },
+      { val: 'swipe', label: 'Swipe' },
+      { val: 'zoom', label: 'Zoom' },
+      { val: 'blur', label: 'Blur' }
+    ];
+  }
+  return [
+    { val: 'none', label: 'None' },
+    { val: 'pulse', label: 'Pulse' },
+    { val: 'float', label: 'Float' },
+    { val: 'flash', label: 'Flash' },
+    { val: 'wiggle', label: 'Wiggle' },
+    { val: 'spin', label: 'Spin' },
+    { val: 'heartbeat', label: 'Heartbeat' },
+    { val: 'pan', label: 'Move' },
+    { val: 'zoom', label: 'Zoom' }
+  ];
+}
+
+function seqCloseNPopover() {
+  if (seqPopoverEl) { seqPopoverEl.remove(); seqPopoverEl = null; }
+  if (typeof stopAllAnimationPreviews === 'function') stopAllAnimationPreviews();
+}
+
+function seqOpenPresetPopover(el, kind, anchorRect) {
+  seqCloseNPopover();
+  seqSelectElement(el.id); // binds updateProp + preview fns to this element
+
+  const titles = { in: 'IN animation', out: 'OUT animation', fx: 'Animation FX' };
+  const currentRaw = kind === 'in' ? (el.animType || 'none') : kind === 'out' ? (el.exitType || 'fade-out') : (el.effectType || 'none');
+  const current = seqPresetLabel(kind, currentRaw);
+
+  const pop = document.createElement('div');
+  pop.className = 'seq-popover';
+  pop.innerHTML = `<div class="seq-popover-title">${titles[kind]}</div>` +
+    seqPresetOptions(el, kind).map(o =>
+      `<div class="seq-popover-item ${o.label === current ? 'seq-popover-active' : ''}" data-val="${o.val}">${o.label}</div>`
+    ).join('');
+  document.body.appendChild(pop);
+  const rect = pop.getBoundingClientRect();
+  pop.style.left = Math.min(anchorRect.left, window.innerWidth - rect.width - 8) + 'px';
+  pop.style.top = Math.max(8, anchorRect.top - rect.height - 6) + 'px';
+  seqPopoverEl = pop;
+
+  pop.querySelectorAll('.seq-popover-item').forEach(item => {
+    const val = item.dataset.val;
+    // Hover preview — mirrors wireCustomSelects' item.onmouseenter semantics.
+    item.addEventListener('mouseenter', () => {
+      if (kind === 'in') {
+        const targetVal = val === 'swipe' ? 'swipe-right' : val;
+        if (startElementAnimPreviewFn) startElementAnimPreviewFn(targetVal);
+      } else if (kind === 'out') {
+        if (el.exitEnabled && startElementExitPreviewFn) startElementExitPreviewFn(val);
+      } else {
+        if (applyElementEffectPreviewFn) applyElementEffectPreviewFn(val);
+      }
+    });
+    item.addEventListener('mouseleave', () => {
+      if (kind === 'in') { if (stopElementAnimPreviewFn) stopElementAnimPreviewFn(); }
+      else if (kind === 'out') { if (stopElementExitPreviewFn) stopElementExitPreviewFn(); }
+      else { if (stopElementEffectPreviewFn) stopElementEffectPreviewFn(); }
+    });
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const up = (typeof activeUpdatePropFn === 'function') ? activeUpdatePropFn : (k, v) => { el[k] = v; render(true); };
+      if (kind === 'in') {
+        const targetVal = val === 'swipe' ? 'swipe-right' : val;
+        up('animType', targetVal);
+        delete el.animationMode; // parity with the panel's animType handler
+      } else if (kind === 'out') {
+        up('exitType', val);
+      } else {
+        up('effectType', val);
+        if (typeof applyEffectPresetDefaults === 'function') applyEffectPresetDefaults(el, val, up);
+      }
+      pushHistory();
+      renderProps();
+      renderSequencer(true);
+      seqCloseNPopover();
+    });
+  });
+}
+
+document.addEventListener('mousedown', (e) => {
+  if (seqPopoverEl && !e.target.closest('.seq-popover')) seqCloseNPopover();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && seqPopoverEl) seqCloseNPopover();
+});
+
+// ---------------------------------------------------------------------------
+// Playback — replays the current frame's animations in place on the editor
+// canvas using the SAME animation CSS the export/preview runtime generates
+// (getElementAnimationCSS + the shared keyframe builders + mask translation).
+// Deliberately does NOT advance to the next frame.
+// ---------------------------------------------------------------------------
+
+const SEQ_PLAY_VARS = ['--pan-x', '--pan-y', '--pan-rotate', '--pan-opacity-start', '--zoom-target',
+  '--spin-target', '--pulse-scale', '--pulse-scale-inverse', '--heartbeat-scale', '--heartbeat-scale-inverse',
+  '--float-x', '--float-y', '--float-x-inverse', '--float-y-inverse', '--zoom-target-inverse', '--spin-target-inverse'];
+
+function seqApplyVars(node, varsStr) {
+  String(varsStr || '').split(';').forEach(pair => {
+    const i = pair.indexOf(':');
+    if (i < 0) return;
+    const k = pair.slice(0, i).trim();
+    const v = pair.slice(i + 1).trim();
+    if (k) node.style.setProperty(k, v);
+  });
+}
+
+function seqStartPlayback() {
+  const c = getActiveCanvas();
+  if (!c) return;
+  seqStopPlayback();
+  if (typeof stopAllAnimationPreviews === 'function') stopAllAnimationPreviews();
+
+  let kf = '';
+  let maxEnd = 0;
+  let hasInfinite = false;
+  const els = seqVisibleElements(c);
+
+  els.forEach(el => {
+    if (isActiveMask(el)) return; // translated onto the masked image below
+    const node = document.querySelector(`.el[data-id="${el.id}"]`);
+    if (!node) return;
+    const frameCtx = el.persistent === false ? { seqPlay: true } : undefined;
+    const animType = animInEnabled(el) ? (el.animType || 'none') : 'none';
+
+    // Per-id keyframes — mirrors the export pipeline's emission block.
+    if (animType === 'split') {
+      const fromPoly = getSplitClipPath(el.animAngle || 0);
+      const fadeFrom = el.animFade !== false ? 'opacity: 0;' : '';
+      const fadeTo = el.animFade !== false ? 'opacity: 1;' : '';
+      kf += `\n@keyframes anim-split-${el.id} { from { clip-path: ${fromPoly}; ${fadeFrom} } to { clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); ${fadeTo} } }`;
+    }
+    if (animType === 'zoom' || animType === 'zoom-in' || animType === 'pop-in') {
+      const tempEl = { ...el };
+      if (animType === 'pop-in') { tempEl.zoomFrom = 80; tempEl.animFade = true; }
+      else if (animType === 'zoom-in') { tempEl.zoomFrom = 110; tempEl.animFade = true; }
+      kf += '\n' + getZoomKeyframes(tempEl);
+    }
+    if (animType === 'blur') kf += '\n' + getBlurKeyframes(el);
+    if (animType === 'slide' || animType.startsWith('slide-')) {
+      const tempEl = { ...el };
+      if (animType === 'slide-up') { tempEl.animDirection = 'up'; tempEl.animDistance = 20; }
+      else if (animType === 'slide-down') { tempEl.animDirection = 'down'; tempEl.animDistance = 20; }
+      else if (animType === 'slide-left') { tempEl.animDirection = 'left'; tempEl.animDistance = 20; }
+      else if (animType === 'slide-right') { tempEl.animDirection = 'right'; tempEl.animDistance = 20; }
+      kf += '\n' + getSlideKeyframes(tempEl);
+    }
+    if (animFxEnabled(el) && el.effectType === 'pan' && (el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined))) {
+      kf += '\n' + getPanCurveKeyframes(el);
+    }
+    if (frameCtx && animOutEnabled(el)) {
+      if (el.exitType === 'slide') kf += '\n' + getSlideOutKeyframes(el);
+      else if (el.exitType === 'zoom') kf += '\n' + getZoomOutKeyframes(el);
+    }
+
+    const a = getElementAnimationCSS(el, false, frameCtx);
+    let anims = [...(a.entryAnimList || []), ...(a.exitAnimList || []), ...(a.effAnimList || [])];
+
+    // Typing-family text entrances are span-driven in export; in-canvas play
+    // approximates them with a fade of the same duration/delay.
+    if ((el.type === 'text' || el.type === 'button') && ['typing', 'fade-typing', 'word-fade'].includes(animType)) {
+      anims.unshift(`anim-fade-in ${el.animDuration || 1}s ease-out ${el.animDelay || 0}s both`);
+    }
+
+    // Mask group: translate the mask's IN/OUT/FX onto this image node, exactly
+    // like the export pipeline does (the mask's own node is invisible).
+    const m = findMaskAbove(c, el);
+    const innerImg = node.querySelector('img');
+    if (m) {
+      const mk = generateMaskClipPathKeyframes(m, el);
+      if (mk) { kf += '\n' + mk.keyframes; anims.push(mk.animationCss); }
+      if (frameCtx && animOutEnabled(m)) {
+        const mExitType = m.exitType || 'fade-out';
+        const mDelay = animInEnabled(m) ? (m.animDelay || 0) : 0;
+        const mStart = (m.exitStart !== undefined ? m.exitStart : 1.5) + mDelay;
+        const mDur = m.exitDuration !== undefined ? m.exitDuration : DEFAULT_EXIT_MOTION_DURATION;
+        const mFade = m.exitFade !== false;
+        const mDir = m.exitDirection || (mExitType === 'swipe' ? 'left' : 'down');
+        if (mExitType === 'fade-out') anims.push(`anim-fade-out ${mDur}s ease-in ${mStart}s forwards`);
+        else if (mExitType === 'blur') anims.push(`anim-blur-out${mFade ? '' : '-nofade'} ${mDur}s ease-in ${mStart}s forwards`);
+        else if (mExitType === 'slide') { kf += '\n' + getSlideOutKeyframes(m); anims.push(`anim-slide-out-${m.id} ${mDur}s ease-in ${mStart}s forwards`); }
+        else if (mExitType === 'zoom') { kf += '\n' + getZoomOutKeyframes(m); anims.push(`anim-zoom-out-${m.id} ${mDur}s ease-in ${mStart}s forwards`); }
+        else if (mExitType === 'swipe' && innerImg) {
+          innerImg.style.animation = `anim-swipe-out-${mDir}${mFade ? '-fade' : ''} ${mDur}s ease-in ${mStart}s forwards`;
+          seqPlayNodes.push(innerImg);
+        }
+        maxEnd = Math.max(maxEnd, mStart + mDur);
+      }
+      const me = getElementAnimationCSS(m, false);
+      if (me.effAnimList && me.effAnimList.length) {
+        anims.push(...me.effAnimList);
+        seqApplyVars(node, me.effVars);
+        const maskCenterX = m.x + m.width / 2 - el.x;
+        const maskCenterY = m.y + m.height / 2 - el.y;
+        node.style.transformOrigin = `${maskCenterX}px ${maskCenterY}px`;
+        if (innerImg && typeof getInverseElementAnimationCSS === 'function') {
+          const inv = getInverseElementAnimationCSS(m, false, el);
+          if (inv.effConfig) {
+            innerImg.style.animation = inv.effConfig.replace(/^animation:\s*/, '').replace(/;$/, '');
+            seqApplyVars(innerImg, inv.effVars);
+            innerImg.style.transformOrigin = `${maskCenterX}px ${maskCenterY}px`;
+            seqPlayNodes.push(innerImg);
+          }
+        }
+        hasInfinite = true;
+      }
+    }
+
+    if (!anims.length) return;
+
+    // Track total runtime for auto-stop.
+    const b = seqBars(el);
+    ['in', 'out'].forEach(k => { if (b[k]) maxEnd = Math.max(maxEnd, b[k].start + b[k].dur); });
+    if (b.fx) { if (b.fx.infinite) hasInfinite = true; else maxEnd = Math.max(maxEnd, b.fx.start + b.fx.dur); }
+    if (m && (m.animType || 'none') !== 'none') maxEnd = Math.max(maxEnd, (m.animDelay || 0) + (m.animDuration || 1));
+
+    node.style.animation = anims.join(', ');
+    seqApplyVars(node, (a.entryVars || '') + (a.effVars || ''));
+    if (animType === 'zoom' || animType === 'zoom-in' || animType === 'pop-in') {
+      node.style.transformOrigin = getTransformOriginValue(el.zoomAnchor || 'center');
+    } else if (frameCtx && animOutEnabled(el) && el.exitType === 'zoom') {
+      node.style.transformOrigin = getTransformOriginValue(el.exitZoomAnchor || 'center');
+    }
+    seqPlayNodes.push(node);
+  });
+
+  if (!seqPlayNodes.length) {
+    showCanvasNotification('Nothing to play — no enabled animations on this frame.', { type: 'info' });
+    return;
+  }
+
+  let styleTag = document.getElementById('sequencer-play-styles');
+  if (!styleTag) {
+    styleTag = document.createElement('style');
+    styleTag.id = 'sequencer-play-styles';
+    document.head.appendChild(styleTag);
+  }
+  styleTag.textContent = kf;
+
+  document.body.classList.add('previewing-animation-hover');
+  seqPlaying = true;
+  // Auto-rewind once everything has finished — unless an infinite FX runs,
+  // in which case Stop is the only way out (PowerPoint-style).
+  if (!hasInfinite) {
+    seqPlayTimer = setTimeout(() => { seqStopPlayback(); renderSequencer(true); }, (maxEnd + 0.6) * 1000);
+  }
+}
+
+function seqStopPlayback() {
+  if (seqPlayTimer) { clearTimeout(seqPlayTimer); seqPlayTimer = null; }
+  seqPlayNodes.forEach(node => {
+    node.style.animation = '';
+    node.style.transformOrigin = '';
+    SEQ_PLAY_VARS.forEach(v => node.style.removeProperty(v));
+  });
+  seqPlayNodes = [];
+  const styleTag = document.getElementById('sequencer-play-styles');
+  if (styleTag) styleTag.remove();
+  if (seqPlaying) document.body.classList.remove('previewing-animation-hover');
+  seqPlaying = false;
+}
+
+// Re-fit the time axis when the viewport changes.
+window.addEventListener('resize', () => renderSequencer(true));

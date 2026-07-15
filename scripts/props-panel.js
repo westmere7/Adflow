@@ -9,6 +9,12 @@ let framePreviewTimeoutId = null;
 let stopElementAnimPreviewFn = null;
 let stopElementEffectPreviewFn = null;
 let stopElementExitPreviewFn = null;
+// updateProp closure for the CURRENTLY selected element, registered by
+// renderProps so the sequencer can commit edits through the exact same code
+// path as the props panel (multi-select fan-out, side effects, render(true)
+// link-sync). Null whenever nothing is selected — callers must select +
+// renderProps() first.
+let activeUpdatePropFn = null;
 // startPreviewLoop is a closure inside renderProps(); register it so the
 // top-level wireCustomSelects() (animDirection dropdown) can drive the preview.
 let startElementAnimPreviewFn = null;
@@ -85,7 +91,7 @@ function stopAllAnimationPreviews() {
 // every preview as soon as the pointer hovers anything outside the 3 sub-panels.
 document.addEventListener('mouseover', (e) => {
   const t = e.target;
-  if (t && t.closest && t.closest('#in-transition-preview-area, #out-transition-preview-area, #effects-preview-area, #frame-transition-preview-area')) return;
+  if (t && t.closest && t.closest('#in-transition-preview-area, #out-transition-preview-area, #effects-preview-area, #frame-transition-preview-area, #sequencer-panel')) return;
   stopAllAnimationPreviews();
 });
 document.addEventListener('mouseleave', () => stopAllAnimationPreviews());
@@ -1070,6 +1076,47 @@ function wireFrameTransitionEvents() {
   }
 }
 
+// First-time defaults when an effect preset is chosen — shared by the props
+// panel's dropdown and the sequencer's preset popover so both entry points
+// initialise a preset identically.
+function applyEffectPresetDefaults(el, val, updateProp) {
+  if (val === 'pan') {
+    if (el.panFromX === undefined && el.panFromY === undefined) {
+      const dist = el.panDist !== undefined ? el.panDist : 50;
+      if (el.panDir === 'L') { updateProp('panFromX', dist); updateProp('panFromY', 0); }
+      else if (el.panDir === 'R') { updateProp('panFromX', -dist); updateProp('panFromY', 0); }
+      else if (el.panDir === 'U') { updateProp('panFromX', 0); updateProp('panFromY', dist); }
+      else if (el.panDir === 'D') { updateProp('panFromX', 0); updateProp('panFromY', -dist); }
+      else { updateProp('panFromX', 0); updateProp('panFromY', -50); }
+    }
+    if (el.effDuration === undefined) updateProp('effDuration', 5);
+    if (el.effOnce === undefined) updateProp('effOnce', true);
+  } else if (val === 'zoom') {
+    if (el.zoomTarget === undefined) updateProp('zoomTarget', 150);
+    if (el.effDuration === undefined) updateProp('effDuration', 5);
+  } else if (val === 'spin') {
+    if (el.spinTarget === undefined) updateProp('spinTarget', 360);
+    if (el.spinRepeat === undefined) updateProp('spinRepeat', 1);
+    if (el.effDuration === undefined) updateProp('effDuration', 2);
+    if (el.effEase === undefined) updateProp('effEase', true);
+  } else if (val === 'pulse') {
+    if (el.pulseScale === undefined) updateProp('pulseScale', 105);
+    if (el.effSpeed === undefined) updateProp('effSpeed', 100);
+  } else if (val === 'heartbeat') {
+    if (el.heartbeatScale === undefined) updateProp('heartbeatScale', 130);
+    if (el.effSpeed === undefined) updateProp('effSpeed', 100);
+  } else if (val === 'float') {
+    if (el.floatRange === undefined) updateProp('floatRange', 10);
+    if (el.floatDirection === undefined) updateProp('floatDirection', 'up');
+    if (el.effSpeed === undefined) updateProp('effSpeed', 100);
+  } else if (val !== 'none') {
+    if (el.effSpeed === undefined) updateProp('effSpeed', 100);
+  }
+  if (val !== 'none' && el.effDelay === undefined) {
+    updateProp('effDelay', 0);
+  }
+}
+
 function wireCustomSelects(el, updateProp) {
   // Wire Custom Styled Select Dropdowns & Preview on Hover
   propsEl.querySelectorAll('.custom-select-trigger').forEach(trigger => {
@@ -1199,41 +1246,7 @@ function wireCustomSelects(el, updateProp) {
             delete el.animationMode; // legacy field retired; IN is driven by animType
           } else if (key === 'effectType') {
             updateProp('effectType', val);
-            if (val === 'pan') {
-              if (el.panFromX === undefined && el.panFromY === undefined) {
-                const dist = el.panDist !== undefined ? el.panDist : 50;
-                if (el.panDir === 'L') { updateProp('panFromX', dist); updateProp('panFromY', 0); }
-                else if (el.panDir === 'R') { updateProp('panFromX', -dist); updateProp('panFromY', 0); }
-                else if (el.panDir === 'U') { updateProp('panFromX', 0); updateProp('panFromY', dist); }
-                else if (el.panDir === 'D') { updateProp('panFromX', 0); updateProp('panFromY', -dist); }
-                else { updateProp('panFromX', 0); updateProp('panFromY', -50); }
-              }
-              if (el.effDuration === undefined) updateProp('effDuration', 5);
-              if (el.effOnce === undefined) updateProp('effOnce', true);
-            } else if (val === 'zoom') {
-              if (el.zoomTarget === undefined) updateProp('zoomTarget', 150);
-              if (el.effDuration === undefined) updateProp('effDuration', 5);
-            } else if (val === 'spin') {
-              if (el.spinTarget === undefined) updateProp('spinTarget', 360);
-              if (el.spinRepeat === undefined) updateProp('spinRepeat', 1);
-              if (el.effDuration === undefined) updateProp('effDuration', 2);
-              if (el.effEase === undefined) updateProp('effEase', true);
-            } else if (val === 'pulse') {
-              if (el.pulseScale === undefined) updateProp('pulseScale', 105);
-              if (el.effSpeed === undefined) updateProp('effSpeed', 100);
-            } else if (val === 'heartbeat') {
-              if (el.heartbeatScale === undefined) updateProp('heartbeatScale', 130);
-              if (el.effSpeed === undefined) updateProp('effSpeed', 100);
-            } else if (val === 'float') {
-              if (el.floatRange === undefined) updateProp('floatRange', 10);
-              if (el.floatDirection === undefined) updateProp('floatDirection', 'up');
-              if (el.effSpeed === undefined) updateProp('effSpeed', 100);
-            } else if (val !== 'none') {
-              if (el.effSpeed === undefined) updateProp('effSpeed', 100);
-            }
-            if (val !== 'none' && el.effDelay === undefined) {
-              updateProp('effDelay', 0);
-            }
+            applyEffectPresetDefaults(el, val, updateProp);
           } else {
             updateProp(key, val);
           }
@@ -1372,6 +1385,9 @@ function wireCustomSelects(el, updateProp) {
 }
 
 function renderProps() {
+  // Stale-closure guard: cleared on every pass, re-registered further down
+  // only when a selected element's wiring (updateProp) is actually bound.
+  activeUpdatePropFn = null;
   const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   let el = getSelectedElement();
   const c = getActiveCanvas();
@@ -3088,6 +3104,8 @@ function checkButtonFontSizeWarning(el) {
     checkButtonFontSizeWarning(el);
     render(true);
   };
+  // Expose to the sequencer (see declaration at top of file).
+  activeUpdatePropFn = updateProp;
 
   const clampNum = (inp, n) => {
     if (Number.isNaN(n)) return n;
