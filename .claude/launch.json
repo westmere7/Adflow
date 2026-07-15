@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "adflow",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8123"],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["dev-server.js", "8123"],
       "port": 8123
     }
   ]

@@ -25,7 +25,8 @@
       "PowerShell(node --check \"G:\\\\My Drive\\\\RMIT_WORKS\\\\Apps\\\\Adflow\\\\script.js\")",
       "WebSearch",
       "Bash(cat .claude/launch.json)",
-      "Bash(cat run-server.bat)"
+      "Bash(cat run-server.bat)",
+      "Bash(git checkout *)"
     ]
   }
 }
