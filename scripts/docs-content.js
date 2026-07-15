@@ -663,6 +663,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.25.4',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Taller Timeline Rows: Timeline rows grew from 26px to 34px (with chunkier bars) so labels, chips, and bars are easier to read and grab.',
+      'FX Chip Fade Matches OUT: An FX chip with no effect selected now uses exactly the same off-style as an inactive OUT chip.'
+    ]
+  },
+  {
     version: 'v0.25.3',
     date: 'July 2026 — Engine v2.19',
     items: [
