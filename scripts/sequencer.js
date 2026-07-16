@@ -295,14 +295,14 @@ function seqRenderHeader() {
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="3" y1="6" x2="15" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="11" y2="18"/></svg>
       Timeline
     </span>
-    <button class="seq-btn ${seqPlaying ? 'seq-playing' : ''}" id="seq-play-btn" title="${seqPlaying ? 'Stop playback' : 'Play this frame’s animations on the canvas (does not advance frames)'}">
-      ${seqPlaying ? '&#9632; Stop' : '&#9654; Play'}
-    </button>
     <span class="seq-info">${info}</span>
     <span class="seq-spacer"></span>
     <span class="seq-info" style="flex:none;">grid ${seqGridStep.toFixed(1)}s</span>
     <button class="seq-btn" id="seq-settings-btn" title="Timeline settings">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <button class="seq-btn seq-play-cta ${seqPlaying ? 'seq-playing' : ''}" id="seq-play-btn" title="${seqPlaying ? 'Stop playback' : 'Play this frame’s animations on the canvas (does not advance frames)'}">
+      ${seqPlaying ? '&#9632; Stop' : '&#9654; Play'}
     </button>`;
   // The whole bar toggles open/collapse; buttons inside opt out.
   header.onclick = (e) => {
@@ -313,9 +313,7 @@ function seqRenderHeader() {
   };
   header.querySelector('#seq-play-btn').onclick = (e) => {
     e.stopPropagation();
-    if (seqPlaying) seqStopPlayback();
-    else seqStartPlayback();
-    renderSequencer(true);
+    seqTogglePlayback();
   };
   header.querySelector('#seq-settings-btn').onclick = (e) => {
     e.stopPropagation();
@@ -946,6 +944,13 @@ function seqApplyVars(node, varsStr) {
     const v = pair.slice(i + 1).trim();
     if (k) node.style.setProperty(k, v);
   });
+}
+
+// Play/stop toggle — shared by the header button and the Space-tap shortcut.
+function seqTogglePlayback() {
+  if (seqPlaying) seqStopPlayback();
+  else seqStartPlayback();
+  renderSequencer(true);
 }
 
 function seqStartPlayback() {

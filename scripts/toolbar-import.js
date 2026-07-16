@@ -797,6 +797,15 @@ function deselectNonPersistentLayers() {
 // ============================================================================
 // Keyboard shortcuts
 // ============================================================================
+// Space-tap → timeline Play/Stop. Space is ALSO the pan modifier (space + drag),
+// so we only fire play/stop on a deliberate quick tap: short press-release with
+// no mouse press in between. spaceTapStart is stamped on the initial keydown;
+// any mousedown while space is held (i.e. a pan) disqualifies the tap.
+let spaceTapStart = 0;
+let spaceTapMoused = false;
+const SPACE_TAP_MAX_MS = 350;
+window.addEventListener('mousedown', () => { if (isSpaceDown) spaceTapMoused = true; }, true);
+
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Alt') {
     e.preventDefault();
@@ -963,6 +972,8 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (!isSpaceDown) {
       isSpaceDown = true;
+      spaceTapStart = Date.now();
+      spaceTapMoused = false;
       if (!isPanning) canvasArea.style.cursor = 'var(--cur-grab, grab)';
       canvasArea.classList.add('panning-active');
       document.querySelectorAll('.preview-iframe').forEach(ifr => ifr.style.pointerEvents = 'none');
@@ -1354,6 +1365,13 @@ document.addEventListener('keyup', (e) => {
     }
     document.querySelectorAll('.preview-iframe').forEach(ifr => ifr.style.pointerEvents = 'auto');
     checkCanvasesInView();
+    // Deliberate quick tap (no pan) → toggle timeline playback. A held space,
+    // or space used with a mouse drag to pan, does not trigger it.
+    const t = e.target;
+    const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+    if (!typing && !spaceTapMoused && (Date.now() - spaceTapStart) < SPACE_TAP_MAX_MS) {
+      if (typeof seqTogglePlayback === 'function') seqTogglePlayback();
+    }
   }
 });
 

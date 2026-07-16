@@ -6055,6 +6055,18 @@ body.fullscreen-mode #sequencer-panel { display: none; }
 }
 .seq-btn:hover { border-color: var(--accent-base); color: var(--text-bright); }
 .seq-btn.seq-playing { background: var(--accent-base); color: #fff; border-color: var(--accent-base); }
+/* Prominent accent-filled Play CTA, anchored at the far right of the bar. */
+.seq-btn.seq-play-cta {
+  background: var(--accent-base);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 700;
+  height: 24px;
+  padding: 0 12px;
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--accent-base) 45%, transparent);
+}
+.seq-btn.seq-play-cta:hover { filter: brightness(1.12); color: #fff; border-color: transparent; }
+.seq-btn.seq-play-cta.seq-playing { background: #e0653a; box-shadow: 0 1px 6px rgba(224, 101, 58, 0.45); }
 .seq-spacer { flex: 1; }
 
 #sequencer-body {

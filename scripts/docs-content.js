@@ -663,6 +663,20 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.29.2',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Spacebar Plays/Stops the Timeline: A quick tap of the Space bar now toggles timeline playback. Because holding Space is the pan shortcut, play/stop only fires on a deliberate quick press-and-release — holding Space, or Space with a mouse drag to pan, won\'t trigger it (and it\'s ignored while typing in a field).'
+    ]
+  },
+  {
+    version: 'v0.29.1',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Prominent Timeline Play Button: The timeline\'s Play control is now an accent-coloured button anchored at the far right of the bar (after the settings gear), turning orange while playing so it\'s easy to find and read at a glance.'
+    ]
+  },
+  {
     version: 'v0.29.0',
     date: 'July 2026 — Engine v2.19',
     items: [
