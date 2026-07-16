@@ -2192,7 +2192,12 @@ ${dynamicKeyframes}
      as a contained block in the top-left and the browser shows its
      default page bg around it. The ad's own container div carries
      the explicit pixel size and bg colour. */
-  html, body { margin: 0; padding: 0; overflow: hidden; background: transparent; }
+  /* The viewport bg (html/body) always covers the FULL iframe box, including
+     the sub-pixel sliver at right/bottom edges that #ad can miss under
+     fractional devicePixelRatio / browser zoom. Painting it the active frame's
+     colour (kept in sync by the runtime) stops any underlying colour — e.g.
+     the preview iframe's first-frame bg — bleeding through as a hairline. */
+  html, body { margin: 0; padding: 0; overflow: hidden; background: ${initialAdBg || c.bgColor}; }
   #ad {
     width: ${c.width}px;
     height: ${c.height}px;
@@ -2289,6 +2294,7 @@ ${elsTop}
           nextFrameEl.style.zIndex = '';
           nextFrameEl.style.animation = '';
           if (adEl) adEl.style.background = nextFrameEl.style.background;
+          document.documentElement.style.background = nextFrameEl.style.background;
         }, transDurationMs);
       } else {
         prevFrameEl.style.display = 'none';
@@ -2296,6 +2302,7 @@ ${elsTop}
         prevFrameEl.style.zIndex = '';
         nextFrameEl.style.zIndex = '';
         if (adEl) adEl.style.background = nextFrameEl.style.background;
+        document.documentElement.style.background = nextFrameEl.style.background;
       }
       
       if (!loopAd && currentFrame === frames.length - 1) {
@@ -2546,6 +2553,7 @@ ${options.previewControls ? `
         cur.style.display = 'block';
         var adEl = document.getElementById('ad');
         if (adEl) adEl.style.background = cur.style.background;
+        document.documentElement.style.background = cur.style.background;
         cur.querySelectorAll('[data-bg-anim]').forEach(setupTextLineBgs);
       }
       updatePersistentLayersVisibility(currentFrame);

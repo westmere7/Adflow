@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.30.2 (Current) - July 2026 — Engine v2.19
+v0.30.3 (Current) - July 2026 — Engine v2.19
+- Fixed Hairline Colour Bleed at Canvas Edges: On displays with fractional scaling (e.g. Windows at 125%) or browser zoom, the full preview could show a 1px line of the FIRST frame's background colour along a canvas's right or bottom edge after the ad moved to a later frame. The ad document itself now paints its full viewport in the active frame's colour (kept in sync through transitions and frame jumps), so nothing beneath can bleed through the sub-pixel gap. Applies to previews and exported ads alike.
+
+v0.30.2 - July 2026 — Engine v2.19
 - Accurate "Template Saved" Message: On browsers that download the template file directly (no save dialog), Adflow no longer claims "Template saved successfully" the instant you click — since a plain download can't be confirmed, it now says the download has started. Browsers that show a save dialog still confirm "saved successfully" only after the file is actually written.
 
 v0.30.1 - July 2026 — Engine v2.19

@@ -663,6 +663,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.30.3',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Fixed Hairline Colour Bleed at Canvas Edges: On displays with fractional scaling (e.g. Windows at 125%) or browser zoom, the full preview could show a 1px line of the FIRST frame\'s background colour along a canvas\'s right or bottom edge after the ad moved to a later frame. The ad document itself now paints its full viewport in the active frame\'s colour (kept in sync through transitions and frame jumps), so nothing beneath can bleed through the sub-pixel gap. Applies to previews and exported ads alike.'
+    ]
+  },
+  {
     version: 'v0.30.2',
     date: 'July 2026 — Engine v2.19',
     items: [
