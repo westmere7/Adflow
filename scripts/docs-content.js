@@ -663,6 +663,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.30.2',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Accurate "Template Saved" Message: On browsers that download the template file directly (no save dialog), Adflow no longer claims "Template saved successfully" the instant you click — since a plain download can\'t be confirmed, it now says the download has started. Browsers that show a save dialog still confirm "saved successfully" only after the file is actually written.'
+    ]
+  },
+  {
     version: 'v0.30.1',
     date: 'July 2026 — Engine v2.19',
     items: [

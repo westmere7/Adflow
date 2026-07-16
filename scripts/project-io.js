@@ -181,7 +181,11 @@ async function saveTemplateAsFlow() {
     a.download = suggestedName;
     a.click();
     URL.revokeObjectURL(a.href);
-    showCanvasNotification('Template saved successfully', { type: 'success' });
+    // Anchor-download gives no completion/cancel signal, so we can't claim a
+    // confirmed save here — only report that the download was handed off.
+    // (The showSaveFilePicker branch above shows "saved successfully" because
+    // it awaits the actual write.)
+    showCanvasNotification('Template download started — check your downloads.', { type: 'info' });
     _fileSaveStatus = 'saved';
     _lastFileSaveTime = new Date();
     updateSaveStatusUI();
