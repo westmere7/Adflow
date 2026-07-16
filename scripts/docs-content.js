@@ -663,6 +663,29 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.26.3',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Consistent "None" on Timeline Chips: The timeline\'s OUT chip and its preset menu now use "None" for no exit animation, matching the IN and FX chips (previously OUT said "off" / "Turn OUT off").'
+    ]
+  },
+  {
+    version: 'v0.26.2',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Frame Duration Follows the Timeline: Dragging an animation past the end of the frame now automatically extends the frame\'s duration to fit it, with a notification. Pull the animation back in and the duration returns to what it was before the extension. Applies to the canvas and frame you\'re editing.',
+      'Timeline Layer Names Simplified: Timeline rows show the plain layer name (with auto-numbering like "Rectangle 2") — the [mask]/[masked] tags have been removed. Long names now scroll only while you hover the row, instead of animating constantly.',
+      'Layer Panel Name Scrolling Fixed: Long names in the Layers panel scroll noticeably faster on hover (previously they barely moved) and now ping-pong with a brief pause at each end.'
+    ]
+  },
+  {
+    version: 'v0.26.1',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Clearer Timeline Selection & Hover: Selecting an element now highlights both its timeline name and its bars (with an accent tint, an accent edge on the row, and slightly brighter bars). Hovering a row — over either the name or the track — highlights the whole row and shows the dashed outline on the canvas.'
+    ]
+  },
+  {
     version: 'v0.26.0',
     date: 'July 2026 — Engine v2.19',
     items: [

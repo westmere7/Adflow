@@ -46,6 +46,11 @@ let seqPlayMaxEnd = 0;
 let seqPlayRaf = null;
 let seqLastPxPerSec = 80;
 
+// Remembers the frame duration BEFORE the timeline auto-extended it, so moving
+// the animation back can restore it. Runtime-only (keyed by frame id); a
+// reloaded project just keeps whatever duration was saved.
+const seqFrameDurBase = {};
+
 const seqSnap = (t) => Math.round(Math.round(t / seqGridStep) * seqGridStep * 10) / 10;
 const seqFmt = (t) => (Math.round(t * 10) / 10).toFixed(1).replace(/\.0$/, '') + 's';
 const seqRound = (t) => Math.round(t * 10) / 10;
@@ -164,16 +169,62 @@ function seqSelectElement(id) {
 // (fires render(true) → applyLinkSync). Falls back to direct mutation +
 // render(true) if the closure isn't bound — same wiring, minus panel-specific
 // side effects that don't apply to timing keys anyway.
-function seqCommit(el, pairs) {
+function seqCommit(el, pairs, opts = {}) {
   seqSelectElement(el.id);
   const up = (typeof activeUpdatePropFn === 'function') ? activeUpdatePropFn : (k, v) => {
     if (v === undefined) delete el[k]; else el[k] = v;
     render(true);
   };
   Object.entries(pairs).forEach(([k, v]) => up(k, v));
+  // Keep the frame long enough for the moved animation (same undo entry).
+  if (opts.syncFrame) seqSyncFrameDuration();
   pushHistory();
   renderProps();
   renderSequencer(true);
+}
+
+// Longest finite animation end (seconds) among the timeline's displayed rows.
+function seqFrameContentEnd(c) {
+  let maxEnd = 0;
+  seqVisibleElements(c, true).forEach(el => {
+    const b = seqBars(el);
+    ['in', 'out', 'fx'].forEach(k => {
+      if (b[k] && !b[k].infinite) maxEnd = Math.max(maxEnd, b[k].start + b[k].dur);
+    });
+  });
+  return Math.round(maxEnd * 10) / 10;
+}
+
+// Make the active frame's duration follow the animations: extend to fit when
+// one runs past the end, and shrink back toward the pre-extension duration (but
+// never below it) when it's pulled back in. Notifies on any change. Mutates
+// frame.duration without its own history push, so it rides the caller's commit.
+function seqSyncFrameDuration() {
+  const c = getActiveCanvas();
+  const frame = seqActiveFrame();
+  if (!c || !frame) return;
+  const contentEnd = seqFrameContentEnd(c);
+  const curDur = frame.duration !== undefined ? Number(frame.duration) : 2;
+  let base = seqFrameDurBase[frame.id];
+
+  if (contentEnd > curDur + 1e-6) {
+    if (base === undefined) { base = curDur; seqFrameDurBase[frame.id] = base; }
+    frame.duration = contentEnd;
+    showCanvasNotification(`Frame duration extended to ${seqFmt(contentEnd)} to fit the animation.`, { type: 'info' });
+    render(true);
+  } else if (base !== undefined) {
+    const target = Math.max(base, contentEnd);
+    if (Math.abs(target - curDur) > 1e-6) {
+      frame.duration = target;
+      if (target <= base + 1e-6) {
+        delete seqFrameDurBase[frame.id];
+        showCanvasNotification(`Frame duration restored to ${seqFmt(base)}.`, { type: 'info' });
+      } else {
+        showCanvasNotification(`Frame duration adjusted to ${seqFmt(target)}.`, { type: 'info' });
+      }
+      render(true);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -393,12 +444,12 @@ function seqRenderBody() {
     const outChipDisabled = !inOn;
     rows += `
       <div class="seq-row-label ${selected ? 'seq-selected' : ''}" data-el="${el.id}" draggable="true">
-        <span class="seq-row-name"><span class="seq-row-name-inner">${(typeof layerLabel === 'function') ? layerLabel(el) : seqEsc(baseLayerLabel(el))}</span></span>
-        <button class="seq-chip seq-chip-in ${inOn ? 'on' : ''}" data-el="${el.id}" data-chip="in" title="IN: ${inOn ? seqPresetLabel('in', el.animType) : 'off'} — click to change">IN</button>
-        <button class="seq-chip seq-chip-out ${outOn && inOn ? 'on' : ''} ${outChipDisabled ? 'seq-chip-disabled' : ''}" data-el="${el.id}" data-chip="out" title="${outChipDisabled ? 'OUT requires IN to be enabled' : `OUT: ${outOn ? seqPresetLabel('out', el.exitType || 'fade-out') : 'off'} — click to change`}">OUT</button>
-        <button class="seq-chip seq-chip-fx ${fxOn ? 'on' : ''}" data-el="${el.id}" data-chip="fx" title="FX: ${fxOn ? seqPresetLabel('fx', el.effectType) : 'none'} — click to change">FX</button>
+        <span class="seq-row-name"><span class="seq-row-name-inner">${seqEsc(seqLayerName(el))}</span></span>
+        <button class="seq-chip seq-chip-in ${inOn ? 'on' : ''}" data-el="${el.id}" data-chip="in" title="IN: ${inOn ? seqPresetLabel('in', el.animType) : 'None'} — click to change">IN</button>
+        <button class="seq-chip seq-chip-out ${outOn && inOn ? 'on' : ''} ${outChipDisabled ? 'seq-chip-disabled' : ''}" data-el="${el.id}" data-chip="out" title="${outChipDisabled ? 'OUT requires IN to be enabled' : `OUT: ${outOn ? seqPresetLabel('out', el.exitType || 'fade-out') : 'None'} — click to change`}">OUT</button>
+        <button class="seq-chip seq-chip-fx ${fxOn ? 'on' : ''}" data-el="${el.id}" data-chip="fx" title="FX: ${fxOn ? seqPresetLabel('fx', el.effectType) : 'None'} — click to change">FX</button>
       </div>
-      <div class="seq-track" data-el="${el.id}" style="width:${trackW}px; --seq-grid-px:${gridPx}px;">
+      <div class="seq-track ${selected ? 'seq-selected' : ''}" data-el="${el.id}" style="width:${trackW}px; --seq-grid-px:${gridPx}px;">
         ${overrunW > 0.5 ? `<div class="seq-overrun" style="width:${overrunW}px;"></div>` : ''}
         ${barHtml(el, 'in', b.in)}${barHtml(el, 'out', b.out)}${barHtml(el, 'fx', b.fx)}
       </div>`;
@@ -413,21 +464,28 @@ function seqRenderBody() {
       </div>
     </div>`;
 
+  // Hovering either the label OR the track of a row highlights both cells
+  // (they're separate grid items, so CSS :hover can't do it) plus a dashed
+  // outline on the element's node on the canvas.
+  const setRowHover = (elId, on) => {
+    body.querySelectorAll(`.seq-row-label[data-el="${elId}"], .seq-track[data-el="${elId}"]`)
+      .forEach(cell => cell.classList.toggle('seq-row-hover', on));
+    const node = document.querySelector(`.el[data-id="${elId}"]`);
+    if (node) node.classList.toggle('seq-hover-outline', on);
+  };
+  body.querySelectorAll('.seq-track').forEach(track => {
+    track.addEventListener('mouseenter', () => setRowHover(track.dataset.el, true));
+    track.addEventListener('mouseleave', () => setRowHover(track.dataset.el, false));
+  });
+
   // --- wiring ---
   body.querySelectorAll('.seq-row-label').forEach(row => {
     row.addEventListener('click', (e) => {
       if (e.target.closest('.seq-chip')) return;
       seqSelectElement(row.dataset.el);
     });
-    // Hovering a row outlines its element on the canvas (dashed).
-    row.addEventListener('mouseenter', () => {
-      const node = document.querySelector(`.el[data-id="${row.dataset.el}"]`);
-      if (node) node.classList.add('seq-hover-outline');
-    });
-    row.addEventListener('mouseleave', () => {
-      const node = document.querySelector(`.el[data-id="${row.dataset.el}"]`);
-      if (node) node.classList.remove('seq-hover-outline');
-    });
+    row.addEventListener('mouseenter', () => setRowHover(row.dataset.el, true));
+    row.addEventListener('mouseleave', () => setRowHover(row.dataset.el, false));
     // Drag-and-drop row reordering — same interaction as the layers panel
     // (top/bottom border indicates the drop side), but display-order only.
     row.addEventListener('dragstart', (e) => {
@@ -483,15 +541,30 @@ function seqRenderBody() {
     const overflow = inner.scrollWidth - nameEl.clientWidth;
     if (overflow > 2) {
       nameEl.classList.add('seq-name-truncated');
-      // padding-left (12px) is added by the truncated style; scroll past it too.
-      inner.style.setProperty('--seq-scroll-dist', `-${overflow + 14}px`);
-      inner.style.setProperty('--seq-scroll-dur', `${Math.max(4, (overflow + 14) / 18)}s`);
+      const dist = overflow + 16; // clear the trailing fade too
+      inner.style.setProperty('--seq-scroll-dist', `-${dist}px`);
+      // ~40px/s travel, min 2.5s so short overflows aren't jarringly quick.
+      inner.style.setProperty('--seq-scroll-dur', `${Math.max(2.5, dist / 40)}s`);
     }
   });
 }
 
 function seqEsc(s) {
   return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+// Plain layer name for a timeline row: the layers panel's label WITH its
+// auto-numbering ("Rectangle 2") but WITHOUT the [mask]/[masked] tags.
+function seqLayerName(el) {
+  const c = getActiveCanvas();
+  const base = baseLayerLabel(el);
+  if (!c) return base;
+  let count = 1;
+  for (let i = 0; i < c.elements.length; i++) {
+    if (c.elements[i].id === el.id) break;
+    if (baseLayerLabel(c.elements[i]) === base) count++;
+  }
+  return count > 1 ? `${base} ${count}` : base;
 }
 
 function seqPresetLabel(kind, val) {
@@ -634,7 +707,7 @@ function seqBarMouseUp() {
     if (d.pendingStart !== d.origStart) pairs.effDelay = d.pendingStart;
     if (!d.infinite && d.pendingDur !== d.origDur) pairs.effDuration = d.pendingDur;
   }
-  if (Object.keys(pairs).length) seqCommit(el, pairs);
+  if (Object.keys(pairs).length) seqCommit(el, pairs, { syncFrame: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -659,7 +732,7 @@ function seqPresetOptions(el, kind) {
   if (kind === 'out') {
     // OUT has no 'none' preset — turning the category off is its own entry.
     return [
-      { val: '__off', label: el.exitEnabled ? 'Turn OUT off' : '(OUT is off)' },
+      { val: '__off', label: 'None' },
       { val: 'fade-out', label: 'Fade Out' },
       { val: 'slide', label: 'Slide' },
       { val: 'swipe', label: 'Swipe' },
@@ -690,8 +763,12 @@ function seqOpenPresetPopover(el, kind, anchorRect) {
   seqSelectElement(el.id); // binds updateProp + preview fns to this element
 
   const titles = { in: 'IN animation', out: 'OUT animation', fx: 'Animation FX' };
-  const currentRaw = kind === 'in' ? (el.animType || 'none') : kind === 'out' ? (el.exitType || 'fade-out') : (el.effectType || 'none');
-  const current = seqPresetLabel(kind, currentRaw);
+  // "current" is the label to mark active. When a category is off, that's the
+  // "None" entry (OUT has no real 'none' preset, so an off OUT maps to None too).
+  let current;
+  if (kind === 'in') current = seqPresetLabel('in', animInEnabled(el) ? (el.animType || 'none') : 'none');
+  else if (kind === 'out') current = el.exitEnabled ? seqPresetLabel('out', el.exitType || 'fade-out') : 'None';
+  else current = seqPresetLabel('fx', animFxEnabled(el) ? (el.effectType || 'none') : 'none');
 
   const pop = document.createElement('div');
   pop.className = 'seq-popover';

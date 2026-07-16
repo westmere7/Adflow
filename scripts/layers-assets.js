@@ -928,16 +928,17 @@ function renderLayers() {
 
         const nameSpan = div.querySelector('.layer-name');
         if (nameSpan.contentEditable === 'true') return;
-        if (nameSpan.scrollWidth > nameSpan.clientWidth) {
-          let pos = 0;
+        const maxScroll = nameSpan.scrollWidth - nameSpan.clientWidth;
+        if (maxScroll > 2) {
+          // Ping-pong the full name at ~90px/s with a short pause at each end,
+          // so even long names reveal quickly (was 33px/s + reset — barely moved).
+          let pos = 0, dir = 1, pause = 10;
           nameSpan.dataset.scrollInterval = setInterval(() => {
-            pos += 1;
-            if (pos > nameSpan.scrollWidth - nameSpan.clientWidth + 20) {
-              pos = 0;
-              nameSpan.scrollLeft = 0;
-            } else {
-              nameSpan.scrollLeft = pos;
-            }
+            if (pause > 0) { pause--; return; }
+            pos += dir * 3;
+            if (pos >= maxScroll) { pos = maxScroll; dir = -1; pause = 14; }
+            else if (pos <= 0) { pos = 0; dir = 1; pause = 14; }
+            nameSpan.scrollLeft = pos;
           }, 30);
         }
       });

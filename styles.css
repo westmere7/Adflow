@@ -6146,8 +6146,18 @@ body.fullscreen-mode #sequencer-panel { display: none; }
   cursor: pointer;
   overflow: hidden;
 }
-.seq-row-label:hover { background: var(--bg-input); }
-.seq-row-label.seq-selected { background: var(--bg-input); box-shadow: inset 2px 0 0 var(--accent-base); }
+/* Row hover + selection. Label and track are separate grid cells, so a shared
+   .seq-row-hover / .seq-selected class is toggled on BOTH via JS (CSS :hover
+   can't span the two cells). */
+.seq-row-label.seq-row-hover,
+.seq-track.seq-row-hover { background: var(--bg-input); }
+.seq-row-label.seq-selected,
+.seq-track.seq-selected { background: color-mix(in srgb, var(--accent-base) 14%, var(--bg-panel)); }
+.seq-row-label.seq-selected { box-shadow: inset 3px 0 0 var(--accent-base); font-weight: 600; }
+.seq-track.seq-selected { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-base) 35%, transparent); }
+/* Bars in the selected row read stronger. */
+.seq-track.seq-selected .seq-bar { filter: brightness(1.12); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
+.seq-track.seq-selected .seq-bar-fx { filter: none; border-color: rgba(47, 158, 143, 1); box-shadow: none; }
 .seq-row-name {
   flex: 1;
   min-width: 0;
@@ -6160,16 +6170,17 @@ body.fullscreen-mode #sequencer-panel { display: none; }
    name is readable without widening the column. --seq-scroll-dist/-dur are
    set per row after measuring. */
 .seq-row-name.seq-name-truncated {
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 16px), transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 16px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent 100%);
 }
-.seq-row-name.seq-name-truncated .seq-row-name-inner {
-  padding-left: 12px;
-  animation: seq-name-scroll var(--seq-scroll-dur, 6s) ease-in-out 1.2s infinite alternate;
+/* Only scroll the full name while the row is hovered; parks at the start
+   otherwise. --seq-scroll-dist/-dur are measured per row in JS. */
+.seq-row-label:hover .seq-row-name.seq-name-truncated .seq-row-name-inner {
+  animation: seq-name-scroll var(--seq-scroll-dur, 5s) linear 0.4s infinite alternate;
 }
 @keyframes seq-name-scroll {
-  0%, 12% { transform: translateX(0); }
-  88%, 100% { transform: translateX(var(--seq-scroll-dist, 0px)); }
+  0%, 8% { transform: translateX(0); }
+  92%, 100% { transform: translateX(var(--seq-scroll-dist, 0px)); }
 }
 .seq-chip {
   font-size: 8px;

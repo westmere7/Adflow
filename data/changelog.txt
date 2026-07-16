@@ -1,6 +1,17 @@
 RMIT Adflow - Version & Changelog History
 
-v0.26.0 (Current) - July 2026 — Engine v2.19
+v0.26.3 (Current) - July 2026 — Engine v2.19
+- Consistent "None" on Timeline Chips: The timeline's OUT chip and its preset menu now use "None" for no exit animation, matching the IN and FX chips (previously OUT said "off" / "Turn OUT off").
+
+v0.26.2 - July 2026 — Engine v2.19
+- Frame Duration Follows the Timeline: Dragging an animation past the end of the frame now automatically extends the frame's duration to fit it, with a notification. Pull the animation back in and the duration returns to what it was before the extension. Applies to the canvas and frame you're editing.
+- Timeline Layer Names Simplified: Timeline rows show the plain layer name (with auto-numbering like "Rectangle 2") — the [mask]/[masked] tags have been removed. Long names now scroll only while you hover the row, instead of animating constantly.
+- Layer Panel Name Scrolling Fixed: Long names in the Layers panel scroll noticeably faster on hover (previously they barely moved) and now ping-pong with a brief pause at each end.
+
+v0.26.1 - July 2026 — Engine v2.19
+- Clearer Timeline Selection & Hover: Selecting an element now highlights both its timeline name and its bars (with an accent tint, an accent edge on the row, and slightly brighter bars). Hovering a row — over either the name or the track — highlights the whole row and shows the dashed outline on the canvas.
+
+v0.26.0 - July 2026 — Engine v2.19
 - Reorder Timeline Rows by Drag & Drop: Timeline rows can now be dragged into any order, with the same drop indicator as the layers panel. This is a timeline-only arrangement for organizing your animation work — it does not change the element's stacking order or its position in the layers panel. The custom order is saved per canvas with the project and is undoable. Timeline rows also now use the exact layer names from the layers panel, including auto-numbering ("Rectangle 2") and the [mask]/[masked] tags.
 
 v0.25.4 - July 2026 — Engine v2.19
