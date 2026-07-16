@@ -663,6 +663,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.30.1',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Maintenance release — no functional changes.'
+    ]
+  },
+  {
     version: 'v0.30.0',
     date: 'July 2026 — Engine v2.19',
     items: [
