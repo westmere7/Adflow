@@ -1182,7 +1182,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.29.2';
+        verEl.textContent = 'v0.30.0';
         logoEl.appendChild(verEl);
       }
     }
@@ -1386,6 +1386,7 @@ async function loadStartupTemplate(fileName, customProjectName, customCompressFo
   initCollapsiblePanels();
   appSplash.setPhase(4);
   checkVersionUpdate();
+  initVersionWatch();
   queueSizeUpdate();
   // Always boot to a centered view, regardless of last saved scroll. If the
   // user had a non-default position saved, offer a toast to jump back to it
@@ -1536,6 +1537,60 @@ function showCanvasNotification(message, options = {}) {
   window.canvasNotificationTimeout = setTimeout(() => {
     toast.classList.remove('show');
   }, duration);
+}
+
+// ---------------------------------------------------------------------------
+// New-version watch — detects a newer deploy while the app is open and shows a
+// persistent, non-blocking banner. Never force-reloads; the banner stays until
+// the user refreshes. (The post-refresh changelog splash is separate: see
+// checkVersionUpdate.)
+// ---------------------------------------------------------------------------
+let _appBootVersion = null;
+let _appUpdatePollTimer = null;
+
+async function _fetchDeployedVersion() {
+  try {
+    // Cache-bust so we read the freshly-deployed file, not a cached copy.
+    const r = await fetch('data/version.txt?_=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return null;
+    return (await r.text()).trim() || null;
+  } catch (e) { return null; }
+}
+
+function showAppUpdateBanner(newVer) {
+  let el = document.getElementById('app-update-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'app-update-banner';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `
+    <span class="aub-dot"></span>
+    <span>A new version (<b>${newVer}</b>) is available.</span>
+    <button class="aub-refresh" title="Reload to update">Refresh</button>`;
+  el.querySelector('.aub-refresh').onclick = () => location.reload();
+  void el.offsetWidth; // reflow so the transition plays
+  el.classList.add('show');
+}
+
+function initVersionWatch() {
+  const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+  const check = async () => {
+    const latest = await _fetchDeployedVersion();
+    if (!latest) return;                       // offline / fetch failed — try again next tick
+    if (!_appBootVersion) { _appBootVersion = latest; return; } // establish baseline
+    if (latest !== _appBootVersion) {
+      showAppUpdateBanner(latest);
+      // One notice is enough — stop watching; the banner persists until refresh.
+      if (_appUpdatePollTimer) { clearInterval(_appUpdatePollTimer); _appUpdatePollTimer = null; }
+      document.removeEventListener('visibilitychange', onVisible);
+    }
+  };
+  // Establish the running version now, then watch on an interval + on tab focus
+  // (so a deploy that happens while the tab is backgrounded is caught on return).
+  check();
+  _appUpdatePollTimer = setInterval(check, 120000);
+  document.addEventListener('visibilitychange', onVisible);
 }
 
 function showSyncLayersMenu(anchorEl, initialTab = 'canvas') {

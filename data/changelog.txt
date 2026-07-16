@@ -1,6 +1,9 @@
 RMIT Adflow - Version & Changelog History
 
-v0.29.2 (Current) - July 2026 — Engine v2.19
+v0.30.0 (Current) - July 2026 — Engine v2.19
+- Update Available Notice: When a newer version of Adflow is deployed while you have it open, a small banner appears offering a Refresh button. It never reloads on its own — your work is never interrupted — and the notice stays put until you choose to refresh (or reload later on your own). Adflow checks periodically and whenever you return to the tab.
+
+v0.29.2 - July 2026 — Engine v2.19
 - Spacebar Plays/Stops the Timeline: A quick tap of the Space bar now toggles timeline playback. Because holding Space is the pan shortcut, play/stop only fires on a deliberate quick press-and-release — holding Space, or Space with a mouse drag to pan, won't trigger it (and it's ignored while typing in a field).
 
 v0.29.1 - July 2026 — Engine v2.19

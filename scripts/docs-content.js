@@ -663,6 +663,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.30.0',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Update Available Notice: When a newer version of Adflow is deployed while you have it open, a small banner appears offering a Refresh button. It never reloads on its own — your work is never interrupted — and the notice stays put until you choose to refresh (or reload later on your own). Adflow checks periodically and whenever you return to the tab.'
+    ]
+  },
+  {
     version: 'v0.29.2',
     date: 'July 2026 — Engine v2.19',
     items: [

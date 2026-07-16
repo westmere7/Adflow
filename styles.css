@@ -6327,3 +6327,50 @@ body.fullscreen-mode #sequencer-panel { display: none; }
   color: var(--text-muted);
   font-size: 11px;
 }
+
+/* ============================================================================
+   New-version available banner (v0.30.0) — persistent, non-blocking notice
+   shown when a newer deploy is detected while the app is open. Stays until the
+   user refreshes; never force-reloads.
+   ========================================================================== */
+#app-update-banner {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  z-index: 99990;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent-base);
+  color: var(--text-main);
+  font-size: 12px;
+  padding: 8px 10px 8px 15px;
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 4px color-mix(in srgb, var(--accent-base) 12%, transparent);
+  opacity: 0;
+  transition: opacity .3s ease, transform .3s ease;
+}
+#app-update-banner.show { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); }
+body.preview-active #app-update-banner,
+body.fullscreen-mode #app-update-banner { display: none !important; }
+#app-update-banner .aub-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--accent-base);
+  box-shadow: 0 0 8px var(--accent-base);
+  animation: aub-pulse 1.8s ease-in-out infinite;
+}
+@keyframes aub-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+#app-update-banner .aub-refresh {
+  background: var(--accent-base);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+#app-update-banner .aub-refresh:hover { filter: brightness(1.12); }
