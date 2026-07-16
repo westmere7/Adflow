@@ -438,7 +438,7 @@ function openNewProjectDialog() {
 
       const presetIndices = [...bg.querySelectorAll('.np-canvas:checked')].map(b => +b.dataset.idx);
       if (presetIndices.length === 0) {
-        alert('Pick at least one canvas size.');
+        showAdflowAlert('Pick at least one canvas size.');
         setButtonsLoading(false);
         return;
       }
@@ -455,7 +455,7 @@ function openNewProjectDialog() {
     } catch (err) {
       console.error(err);
       setButtonsLoading(false);
-      alert('Error creating project: ' + err.message);
+      showAdflowAlert('Error creating project: ' + err.message);
     }
   };
 }
@@ -1882,7 +1882,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
       .shortcuts-table b { color: #fff; font-weight: 500; }
     </style>
     <table class="shortcuts-table">
-      <tr><td><b>Push to Cloud</b> <span style="color:var(--text-muted);">(falls back to local save when signed out)</span></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">S</span></td></tr>
+      <tr><td><b>Save (Cloud)</b> <span style="color:var(--text-muted);">(falls back to local save when signed out)</span></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">S</span></td></tr>
       <tr><td><b>Save Project locally (.flow)</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">S</span></td></tr>
       <tr><td><b>Copy Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">C</span></td></tr>
       <tr><td><b>Cut Elements</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">X</span></td></tr>
@@ -1921,7 +1921,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.26.3';
+  const currentVersion = 'v0.29.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -1972,7 +1972,7 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.26.3';
+  const currentVersion = 'v0.29.0';
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;"><strong>RMIT Adflow</strong> is a specialized, lightweight HTML5 display advertisement creation and automation platform. Designed to eliminate the overhead and complexities of legacy ad builders, Adflow offers a fast, precise, and visual environment for building, validating, and exporting high-performance advertising creatives.</p>
@@ -2147,7 +2147,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.26.3</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.29.0</span>
               <button id="settings-changelog" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close">Close</button>

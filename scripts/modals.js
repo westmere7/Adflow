@@ -1315,8 +1315,8 @@ function openImageCropModal(el) {
 
   // Restore original — drop any prior crop/rotation, revert to the
   // uncropped asset. Doesn't apply changes; user can still Cancel.
-  bg.querySelector('#crop-reset-all').onclick = () => {
-    if (!confirm('Drop the crop and rotation, restoring the original image?')) return;
+  bg.querySelector('#crop-reset-all').onclick = async () => {
+    if (!(await showAdflowConfirm('Drop the crop and rotation, restoring the original image?'))) return;
     if (el.cropOriginalAssetId) {
       const orig = el.cropOriginalAssetId;
       const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');

@@ -780,10 +780,10 @@ function renderLinkControl() {
   });
 
   panel.querySelectorAll('.lg-delete-btn').forEach(btn => {
-    btn.onclick = (e) => {
+    btn.onclick = async (e) => {
       e.stopPropagation();
       const gid = btn.dataset.groupId;
-      if (confirm(`Are you sure you want to unlink all elements in the group "${state.linkGroups[gid]?.name || ''}"?`)) {
+      if (await showAdflowConfirm(`Are you sure you want to unlink all elements in the group "${state.linkGroups[gid]?.name || ''}"?`)) {
         removeGroupEntirely(gid);
       }
     };
@@ -928,8 +928,8 @@ function renderLinkControl() {
       bind('ctx-lg-push', () => {
         pushGroupChangesForId(gid);
       });
-      bind('ctx-lg-unlink', () => {
-        if (confirm(`Are you sure you want to remove link group "${group.name}"? This will unlink all its elements.`)) {
+      bind('ctx-lg-unlink', async () => {
+        if (await showAdflowConfirm(`Are you sure you want to remove link group "${group.name}"? This will unlink all its elements.`)) {
           removeGroupEntirely(gid);
         }
       });

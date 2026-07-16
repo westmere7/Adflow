@@ -804,11 +804,11 @@ document.getElementById('btn-asset-folder')?.addEventListener('click', (e) => { 
         return false;
       });
       if (hasReadOnlyAsset) {
-        alert("Pre-loaded read-only assets cannot be moved.");
+        showAdflowAlert("Pre-loaded read-only assets cannot be moved.");
         return;
       }
       if (isTargetReadOnly) {
-        alert("Cannot move assets into a read-only folder.");
+        showAdflowAlert("Cannot move assets into a read-only folder.");
         return;
       }
       let changed = false;

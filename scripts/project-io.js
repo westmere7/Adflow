@@ -120,7 +120,7 @@ async function buildFlowBlob(isTemplate = false) {
 async function saveProjectAsFlow() {
   let built;
   try { built = await buildFlowBlob(); }
-  catch (e) { alert(e.message || 'Save failed'); return; }
+  catch (e) { showAdflowAlert(e.message || 'Save failed'); return; }
   const { blob, exportState, suggestedName } = built;
 
   if (window.showSaveFilePicker) {
@@ -153,7 +153,7 @@ async function saveProjectAsFlow() {
 async function saveTemplateAsFlow() {
   let built;
   try { built = await buildFlowBlob(true); }
-  catch (e) { alert(e.message || 'Save failed'); return; }
+  catch (e) { showAdflowAlert(e.message || 'Save failed'); return; }
   const { blob, exportState, suggestedName } = built;
 
   if (window.showSaveFilePicker) {
@@ -219,7 +219,7 @@ async function addRecentProject(exportState) {
 // hover of the "Open Recent" parent menu item so the cloud list stays
 // fresh as the user signs in/out.
 async function clearRecentProjects() {
-  if (!confirm('Clear recent list and keep only the latest project for each category?')) return;
+  if (!await showAdflowConfirm('Clear recent list and keep only the latest project for each category?')) return;
   
   // 1. Clear local
   try {
@@ -349,7 +349,7 @@ async function updateRecentProjectsMenu() {
     } else {
       localRecents.forEach(item => {
         appendItem(item.name, item.timestamp, async () => {
-          if (confirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
+          if (await showAdflowConfirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
             await loadProjectFromState(item.stateSnapshot);
           }
         });
@@ -376,7 +376,7 @@ async function updateRecentProjectsMenu() {
       };
       cloudData.forEach(row => {
         appendItem(row.name || '(untitled)', fmt(row.updated_at), async () => {
-          if (!confirm(`Open cloud project "${row.name || 'untitled'}"? Any unsaved changes will be lost.`)) return;
+          if (!await showAdflowConfirm(`Open cloud project "${row.name || 'untitled'}"? Any unsaved changes will be lost.`)) return;
           if (typeof pullCloudProject !== 'function') {
             showCanvasNotification('Cloud open not available.', { type: 'error' });
             return;
@@ -645,7 +645,7 @@ async function openProjectFromZip() {
     await loadProjectFromBlob(file);
   } catch (err) {
     console.error(err);
-    alert('Failed to load project. Ensure it is a valid .flow or .cook file.');
+    showAdflowAlert('Failed to load project. Ensure it is a valid .flow or .cook file.');
   }
 }
 

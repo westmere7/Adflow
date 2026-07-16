@@ -9,7 +9,7 @@ function groupSelection() {
   const first = els[0];
   const sameContext = els.every(e => e.persistent === first.persistent && (e.persistent !== false || e.frameId === first.frameId));
   if (!sameContext) {
-    alert('Cannot group elements from different frames or persistent layers.');
+    showAdflowAlert('Cannot group elements from different frames or persistent layers.');
     return;
   }
 
@@ -1182,7 +1182,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.26.3';
+        verEl.textContent = 'v0.29.0';
         logoEl.appendChild(verEl);
       }
     }

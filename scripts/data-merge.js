@@ -326,7 +326,7 @@ function dmToCSV() {
 function dmImportCSV(text) {
   const skipHeaders = !!document.getElementById('dm-skip-headers')?.checked;
   const matrix = dmParseCSV(text);
-  if (!matrix.length) { alert('No rows found in the file.'); return false; }
+  if (!matrix.length) { showAdflowAlert('No rows found in the file.'); return false; }
 
   let headers;
   let rows;
@@ -345,7 +345,7 @@ function dmImportCSV(text) {
     });
   } else {
     headers = matrix[0].map(h => h.trim()).filter(h => h !== '');
-    if (!headers.length) { alert('No column headers found in the first row.'); return false; }
+    if (!headers.length) { showAdflowAlert('No column headers found in the first row.'); return false; }
     rows = matrix.slice(1).map(r => {
       const o = { _selected: true };
       headers.forEach((h, idx) => {
@@ -676,7 +676,7 @@ async function dmExportAllVersions(selectedCanvases, filenamePrefix) {
   if (typeof dmExportAllVersionsStreaming === 'function') {
     return await dmExportAllVersionsStreaming(selectedCanvases, filenamePrefix);
   }
-  alert('Export pipeline is not loaded.');
+  showAdflowAlert('Export pipeline is not loaded.');
 }
 
 // ---- Column / row mutations ----
@@ -684,7 +684,7 @@ function dmAddColumn(name) {
   name = (name || '').trim();
   const dm = state.dataMerge;
   if (!name) return;
-  if (dm.columns.includes(name)) { alert('A column named "' + name + '" already exists.'); return; }
+  if (dm.columns.includes(name)) { showAdflowAlert('A column named "' + name + '" already exists.'); return; }
   dm.columns.push(name);
   dm.rows.forEach(r => { if (r[name] === undefined) r[name] = ''; });
   if (!dm.keyColumn) dm.keyColumn = name;
@@ -694,7 +694,7 @@ function dmRenameColumn(oldName, newName) {
   const dm = state.dataMerge;
   if (!newName || newName === oldName) return false;
   if (!dm.columns.includes(oldName)) return false;
-  if (dm.columns.includes(newName)) { alert('A column named "' + newName + '" already exists.'); return false; }
+  if (dm.columns.includes(newName)) { showAdflowAlert('A column named "' + newName + '" already exists.'); return false; }
   const idx = dm.columns.indexOf(oldName);
   dm.columns[idx] = newName;
   dm.rows.forEach(r => { if (r[oldName] !== undefined) { r[newName] = r[oldName]; delete r[oldName]; } });
@@ -1054,13 +1054,13 @@ function dmWirePanel(bg) {
     };
   }
   if (q('#dm-export')) q('#dm-export').onclick = () => dmExportCSV();
-  if (q('#dm-table-addcol')) q('#dm-table-addcol').onclick = () => { const n = prompt('New column name:'); if (n) { dmAddColumn(n); pushHistory(); reRender(); } };
+  if (q('#dm-table-addcol')) q('#dm-table-addcol').onclick = async () => { const n = await showAdflowPrompt('New column name:'); if (n) { dmAddColumn(n); pushHistory(); reRender(); } };
   if (q('#dm-table-addrow')) q('#dm-table-addrow').onclick = () => { dmAddRow(); pushHistory(); reRender(); };
   if (q('#dm-table-delselected')) {
-    q('#dm-table-delselected').onclick = () => {
+    q('#dm-table-delselected').onclick = async () => {
       const selectedCount = state.dataMerge.rows.filter(r => r._selected !== false).length;
       if (selectedCount === 0) return;
-      if (confirm(`Delete ${selectedCount} selected row(s)?`)) {
+      if (await showAdflowConfirm(`Delete ${selectedCount} selected row(s)?`)) {
         dmDeleteSelectedRows();
         pushHistory();
         reRender();
@@ -1181,8 +1181,8 @@ function dmWirePanel(bg) {
   });
 
   // Delete column
-  all('.dm-delcol').forEach(b => b.onclick = () => {
-    if (confirm(`Delete column "${b.dataset.col}"?`)) { dmDeleteColumn(b.dataset.col); if (dms.sortCol === b.dataset.col) { dms.sortCol = null; dms.sortDir = null; } pushHistory(); reRender(); }
+  all('.dm-delcol').forEach(b => b.onclick = async () => {
+    if (await showAdflowConfirm(`Delete column "${b.dataset.col}"?`)) { dmDeleteColumn(b.dataset.col); if (dms.sortCol === b.dataset.col) { dms.sortCol = null; dms.sortDir = null; } pushHistory(); reRender(); }
   });
 
   // Delete row

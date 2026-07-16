@@ -165,6 +165,36 @@ function seqSelectElement(id) {
   render();
 }
 
+// Timeline row selection — mirrors the layers panel: plain click selects one,
+// Ctrl/Cmd toggles membership, Shift selects the range in the timeline's shown
+// order. A >1 selection drives group bar dragging (preset chips stay single).
+function seqRowClickSelect(elId, e) {
+  const c = getActiveCanvas();
+  if (!c) return;
+  if (!state.layerSelection) state.layerSelection = [];
+  if (e.ctrlKey || e.metaKey) {
+    state.layerSelection = state.layerSelection.includes(elId)
+      ? state.layerSelection.filter(id => id !== elId)
+      : [...state.layerSelection, elId];
+    state.lastSelectedLayerId = elId;
+  } else if (e.shiftKey && state.lastSelectedLayerId) {
+    const order = seqVisibleElements(c).map(x => x.id);
+    const a = order.indexOf(state.lastSelectedLayerId);
+    const b = order.indexOf(elId);
+    if (a >= 0 && b >= 0) {
+      state.layerSelection = order.slice(Math.min(a, b), Math.max(a, b) + 1);
+    } else {
+      state.layerSelection = [elId];
+      state.lastSelectedLayerId = elId;
+    }
+  } else {
+    state.layerSelection = [elId];
+    state.lastSelectedLayerId = elId;
+  }
+  state.selectedElementId = state.layerSelection.length === 1 ? state.layerSelection[0] : null;
+  render();
+}
+
 // Commit a set of prop edits through the props panel's own updateProp closure
 // (fires render(true) → applyLinkSync). Falls back to direct mutation +
 // render(true) if the closure isn't bound — same wiring, minus panel-specific
@@ -317,14 +347,14 @@ function seqOpenSettingsPopover(anchorRect) {
   seqPopoverEl = pop;
 
   pop.querySelectorAll('[data-step]').forEach(item => {
-    item.addEventListener('click', (e) => {
+    item.addEventListener('click', async (e) => {
       e.stopPropagation();
       const step = parseFloat(item.dataset.step);
       if (Math.abs(step - seqGridStep) < 0.001) { seqCloseNPopover(); return; }
       if (step > seqGridStep + 0.001) {
         // Coarser grid re-snaps every current timing on this canvas+frame —
         // warn before overriding the user's finer-grained setup.
-        const ok = confirm(
+        const ok = await showAdflowConfirm(
           `Change the timeline grid from ${seqGridStep.toFixed(1)}s to ${step.toFixed(1)}s?\n\n` +
           `This is a coarser grid: all animation timings on this canvas and frame will be re-snapped to ${step.toFixed(1)}s steps, overriding your current timeline setup.`);
         if (!ok) return;
@@ -482,7 +512,7 @@ function seqRenderBody() {
   body.querySelectorAll('.seq-row-label').forEach(row => {
     row.addEventListener('click', (e) => {
       if (e.target.closest('.seq-chip')) return;
-      seqSelectElement(row.dataset.el);
+      seqRowClickSelect(row.dataset.el, e);
     });
     row.addEventListener('mouseenter', () => setRowHover(row.dataset.el, true));
     row.addEventListener('mouseleave', () => setRowHover(row.dataset.el, false));
@@ -610,12 +640,32 @@ function seqBarMouseDown(e, bar, pxPerSec) {
   const c = getActiveCanvas();
   const el = c && c.elements.find(x => x.id === elId);
   if (!el) return;
-  seqSelectElement(elId);
+
+  // Multi-select group drag: if the grabbed element is part of a >1 selection,
+  // keep the selection and move/resize every selected element's bar of this
+  // kind together (relative delta, like a canvas group move). Otherwise the
+  // grab collapses selection to just this element.
+  const inMulti = state.layerSelection && state.layerSelection.length > 1 && state.layerSelection.includes(elId);
+  if (!inMulti) seqSelectElement(elId);
 
   const b = seqBars(el)[kind];
   if (!b) return;
   const mode = e.target.classList.contains('seq-handle-l') ? 'l'
     : e.target.classList.contains('seq-handle-r') ? 'r' : 'move';
+
+  // Group members that actually have a bar of this kind (an element without,
+  // say, an OUT animation is simply unaffected by dragging OUT bars).
+  let group = null;
+  if (inMulti) {
+    group = [];
+    state.layerSelection.forEach(id => {
+      const mEl = c.elements.find(x => x.id === id);
+      if (!mEl) return;
+      const mb = seqBars(mEl)[kind];
+      if (!mb) return;
+      group.push({ elId: id, origStart: mb.start, origDur: mb.dur, infinite: !!mb.infinite, pendingStart: mb.start, pendingDur: mb.dur });
+    });
+  }
 
   seqDrag = {
     elId, kind, mode, pxPerSec,
@@ -625,6 +675,7 @@ function seqBarMouseDown(e, bar, pxPerSec) {
     infinite: !!b.infinite,
     pendingStart: b.start,
     pendingDur: b.dur,
+    group,
     // Pixel travel decides drag vs click — a short drag that snaps back to
     // the original value must NOT count as a click (no popover).
     maxPx: 0,
@@ -641,26 +692,40 @@ function seqBarMouseMove(e) {
   // Ignore sub-threshold jitter entirely so a slightly-shaky click neither
   // moves the bar nor suppresses the popover.
   if (d.maxPx < 4) return;
-  const dx = (e.clientX - d.startX) / d.pxPerSec;
+  const rawDelta = seqSnap((e.clientX - d.startX) / d.pxPerSec);
 
-  let start = d.origStart, dur = d.origDur;
+  // Effective member list — the whole selection group, or just the grabbed
+  // bar. One snapped delta is computed and clamped so NO member crosses an
+  // edge, then applied to every member (relative move/resize).
+  const gl = d.group || [{ elId: d.elId, origStart: d.origStart, origDur: d.origDur, infinite: d.infinite, pendingStart: d.origStart, pendingDur: d.origDur }];
+  const finite = gl.filter(m => !m.infinite);
+  let startDelta = 0, durDelta = 0;
   if (d.mode === 'move') {
-    start = Math.max(0, seqSnap(d.origStart + dx));
+    const minStart = Math.min(...gl.map(m => m.origStart));
+    startDelta = Math.max(-minStart, rawDelta);
   } else if (d.mode === 'r') {
-    dur = Math.max(SEQ_MIN_DUR, seqSnap(d.origDur + dx));
+    const minDur = Math.min(...finite.map(m => m.origDur));
+    durDelta = Math.max(SEQ_MIN_DUR - minDur, rawDelta);
   } else if (d.mode === 'l') {
-    const end = d.origStart + d.origDur;
-    start = Math.max(0, Math.min(seqSnap(d.origStart + dx), end - SEQ_MIN_DUR));
-    dur = seqRound(end - start);
+    const lo = -Math.min(...gl.map(m => m.origStart));
+    const hi = Math.min(...finite.map(m => m.origDur - SEQ_MIN_DUR));
+    const delta = Math.max(lo, Math.min(hi, rawDelta));
+    startDelta = delta; durDelta = -delta;
   }
-  d.pendingStart = seqRound(start);
-  d.pendingDur = seqRound(dur);
 
-  const bar = document.querySelector(`.seq-bar[data-el="${d.elId}"][data-kind="${d.kind}"]`);
-  if (bar) {
-    bar.style.left = (d.pendingStart * d.pxPerSec) + 'px';
-    if (!d.infinite) bar.style.width = Math.max(6, d.pendingDur * d.pxPerSec) + 'px';
-  }
+  gl.forEach(m => {
+    m.pendingStart = seqRound(m.origStart + startDelta);
+    m.pendingDur = m.infinite ? m.origDur : seqRound(m.origDur + durDelta);
+    const mbar = document.querySelector(`.seq-bar[data-el="${m.elId}"][data-kind="${d.kind}"]`);
+    if (mbar) {
+      mbar.style.left = (m.pendingStart * d.pxPerSec) + 'px';
+      if (!m.infinite) mbar.style.width = Math.max(6, m.pendingDur * d.pxPerSec) + 'px';
+    }
+  });
+  const anchor = gl.find(m => m.elId === d.elId) || gl[0];
+  d.pendingStart = anchor.pendingStart;
+  d.pendingDur = anchor.pendingDur;
+
   if (!d.tip) {
     d.tip = document.createElement('div');
     d.tip.className = 'seq-drag-tip';
@@ -668,9 +733,8 @@ function seqBarMouseMove(e) {
   }
   d.tip.style.left = (e.clientX + 12) + 'px';
   d.tip.style.top = (e.clientY - 26) + 'px';
-  d.tip.textContent = d.infinite
-    ? `${seqFmt(d.pendingStart)} → ∞`
-    : `${seqFmt(d.pendingStart)} → ${seqFmt(d.pendingStart + d.pendingDur)} (${seqFmt(d.pendingDur)})`;
+  const range = d.infinite ? `${seqFmt(d.pendingStart)} → ∞` : `${seqFmt(d.pendingStart)} → ${seqFmt(d.pendingStart + d.pendingDur)} (${seqFmt(d.pendingDur)})`;
+  d.tip.textContent = (d.group && d.group.length > 1) ? `${range}  ·  ${d.group.length} layers` : range;
 }
 
 function seqBarMouseUp() {
@@ -689,25 +753,51 @@ function seqBarMouseUp() {
     // mousedown.)
     return;
   }
-  if (d.pendingStart === d.origStart && d.pendingDur === d.origDur) {
-    // A real drag that snapped back to where it started: no commit, no popover
-    // — just restore the bar's visual position.
+  const gl = d.group || [{ elId: d.elId, origStart: d.origStart, origDur: d.origDur, infinite: d.infinite, pendingStart: d.pendingStart, pendingDur: d.pendingDur }];
+  const changed = gl.filter(m => m.pendingStart !== m.origStart || m.pendingDur !== m.origDur);
+  if (!changed.length) {
+    // A real drag that snapped back to where it started: no commit.
     renderSequencer(true);
     return;
   }
-  const pairs = {};
-  if (d.kind === 'in') {
-    if (d.pendingStart !== d.origStart) pairs.animDelay = d.pendingStart;
-    if (d.pendingDur !== d.origDur) pairs.animDuration = d.pendingDur;
-  } else if (d.kind === 'out') {
-    const inDelay = animInEnabled(el) && el.animDelay !== undefined ? Number(el.animDelay) : 0;
-    if (d.pendingStart !== d.origStart) pairs.exitStart = Math.max(0, seqRound(d.pendingStart - inDelay));
-    if (d.pendingDur !== d.origDur) pairs.exitDuration = d.pendingDur;
-  } else if (d.kind === 'fx') {
-    if (d.pendingStart !== d.origStart) pairs.effDelay = d.pendingStart;
-    if (!d.infinite && d.pendingDur !== d.origDur) pairs.effDuration = d.pendingDur;
+
+  if (d.group && d.group.length > 1) {
+    // Group commit: write each member's OWN values directly (updateProp's
+    // multi-select fan-out would force one shared value — wrong here), then a
+    // single render(true) propagates link-sync for every selected element.
+    changed.forEach(m => {
+      const mEl = c.elements.find(x => x.id === m.elId);
+      if (!mEl) return;
+      const pairs = seqComputeBarPairs(d.kind, mEl, m);
+      Object.entries(pairs).forEach(([k, v]) => { if (v === undefined) delete mEl[k]; else mEl[k] = v; });
+    });
+    seqSyncFrameDuration();
+    pushHistory();
+    render(true);
+    renderProps();
+    renderSequencer(true);
+  } else {
+    const pairs = seqComputeBarPairs(d.kind, el, gl[0]);
+    if (Object.keys(pairs).length) seqCommit(el, pairs, { syncFrame: true });
   }
-  if (Object.keys(pairs).length) seqCommit(el, pairs, { syncFrame: true });
+}
+
+// Prop edits for a dragged bar of the given kind, from a member's orig→pending
+// geometry. OUT's exitStart is stored relative to the element's own IN delay.
+function seqComputeBarPairs(kind, el, m) {
+  const pairs = {};
+  if (kind === 'in') {
+    if (m.pendingStart !== m.origStart) pairs.animDelay = m.pendingStart;
+    if (m.pendingDur !== m.origDur) pairs.animDuration = m.pendingDur;
+  } else if (kind === 'out') {
+    const inDelay = animInEnabled(el) && el.animDelay !== undefined ? Number(el.animDelay) : 0;
+    if (m.pendingStart !== m.origStart) pairs.exitStart = Math.max(0, seqRound(m.pendingStart - inDelay));
+    if (m.pendingDur !== m.origDur) pairs.exitDuration = m.pendingDur;
+  } else if (kind === 'fx') {
+    if (m.pendingStart !== m.origStart) pairs.effDelay = m.pendingStart;
+    if (!m.infinite && m.pendingDur !== m.origDur) pairs.effDuration = m.pendingDur;
+  }
+  return pairs;
 }
 
 // ---------------------------------------------------------------------------

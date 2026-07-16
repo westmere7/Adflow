@@ -4112,7 +4112,7 @@ function checkButtonFontSizeWarning(el) {
         // Dynamic image slot: write to the active version's cell, or do nothing when
         // locked (read-only) — never overwrite the template default.
         if (!state.dataMerge.locked) dmWriteCell(el, 'image', id);
-        else { alert('Data lock is on — unlock to change this version’s image.'); }
+        else { showAdflowAlert('Data lock is on — unlock to change this version’s image.'); }
       } else {
         el.assetId = id;
       }
@@ -4137,7 +4137,7 @@ function checkButtonFontSizeWarning(el) {
         await autoCompressImage(el);
       } catch (err) {
         console.error(err);
-        alert('Failed to auto-compress image: ' + err.message);
+        showAdflowAlert('Failed to auto-compress image: ' + err.message);
       } finally {
         btnCompress.textContent = origText;
         btnCompress.disabled = false;
@@ -4159,7 +4159,7 @@ function checkButtonFontSizeWarning(el) {
       e.stopPropagation();
       const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
       if (_imgDyn && state.dataMerge && state.dataMerge.locked) {
-        alert('Data lock is on — unlock to crop this version’s image.');
+        showAdflowAlert('Data lock is on — unlock to crop this version’s image.');
         return;
       }
       openImageCropModal(el);
@@ -4173,7 +4173,7 @@ function checkButtonFontSizeWarning(el) {
       e.stopPropagation();
       const _imgDyn = typeof dmIsDynamicEditable === 'function' && dmIsDynamicEditable(el, 'image');
       if (_imgDyn && state.dataMerge && state.dataMerge.locked) {
-        alert('Data lock is on — unlock to remove this version’s image.');
+        showAdflowAlert('Data lock is on — unlock to remove this version’s image.');
         return;
       }
       delete el.assetId;

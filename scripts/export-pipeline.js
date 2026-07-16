@@ -1156,7 +1156,7 @@ async function addCanvasAssetsToZip(c, zip) {
 // flips the default "skip frames marked with f.skip" behaviour off, so
 // the user can force-include flagged frames when they want.
 async function exportCanvasAsZip(c, options = {}) {
-  if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
+  if (typeof JSZip === 'undefined') { showAdflowAlert('JSZip is not loaded.'); return; }
   const zip = new JSZip();
   const projName = state.projectName || 'Ad';
   const fallbackSafe = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -1212,7 +1212,7 @@ async function getFontAsDataUrl(filename) {
 
 async function exportCanvasAsPng(c, options = {}) {
   if (window.location.protocol === 'file:') {
-    alert('Local asset fetching is blocked on the file:// protocol due to browser CORS security rules. Please run the local development server (e.g., python -m http.server 8080) and open http://localhost:8080/ to export PNGs with custom fonts.');
+    showAdflowAlert('Local asset fetching is blocked on the file:// protocol due to browser CORS security rules. Please run the local development server (e.g., python -m http.server 8080) and open http://localhost:8080/ to export PNGs with custom fonts.');
   }
 
   let recorderIframe = null;
@@ -1489,7 +1489,7 @@ ${styles}
     a.click();
   } catch (err) {
     console.error('PNG export failed:', err);
-    alert('PNG export failed. Try the ZIP export instead.');
+    showAdflowAlert('PNG export failed. Try the ZIP export instead.');
   } finally {
     if (recorderIframe) recorderIframe.remove();
     if (cnv && cnv.parentNode) cnv.remove();
@@ -2975,7 +2975,7 @@ function openExportModal() {
     // 1. Get selected canvases
     const selectedCids = Array.from(modalBg.querySelectorAll('.export-chk:checked')).map(chk => chk.dataset.cid);
     if (selectedCids.length === 0) {
-      alert('Please select at least one canvas size to compress.');
+      showAdflowAlert('Please select at least one canvas size to compress.');
       return;
     }
     const selectedCanvases = selectedCids.map(id => state.canvases.find(x => x.id === id)).filter(Boolean);
@@ -3003,7 +3003,7 @@ function openExportModal() {
     }
 
     if (versionIndices.length === 0) {
-      alert('No versions selected for compression.');
+      showAdflowAlert('No versions selected for compression.');
       return;
     }
 
@@ -3118,7 +3118,7 @@ function openExportModal() {
       updateProgress(100, 'Scan complete. No oversized canvases found.');
       setTimeout(() => {
         progressModalBg.remove();
-        alert('All selected versions and canvases are already under the size limit!');
+        showAdflowAlert('All selected versions and canvases are already under the size limit!');
       }, 1200);
       return;
     }
@@ -3149,7 +3149,7 @@ function openExportModal() {
       }
     } catch (error) {
       console.error('Batch compression error:', error);
-      alert('An error occurred during compression: ' + error.message);
+      showAdflowAlert('An error occurred during compression: ' + error.message);
     } finally {
       if (dm) {
         dm.locked = originalLockState;
@@ -3178,7 +3178,7 @@ function openExportModal() {
 
   modalBg.querySelector('#btn-export-selected').addEventListener('click', async () => {
     const selectedIds = Array.from(chks).filter(c => c.checked).map(c => c.dataset.cid);
-    if (selectedIds.length === 0) { alert('No ads selected.'); return; }
+    if (selectedIds.length === 0) { showAdflowAlert('No ads selected.'); return; }
 
     const fnameInput = modalBg.querySelector('#exp-filename');
     const filenamePrefix = (fnameInput && fnameInput.value.trim()) ? fnameInput.value.trim() : defaultPrefix;
@@ -3218,7 +3218,7 @@ function openExportModal() {
     }
 
     // ZIP path: outer-zip of per-canvas inner-zips.
-    if (typeof JSZip === 'undefined') { alert('JSZip is not loaded.'); return; }
+    if (typeof JSZip === 'undefined') { showAdflowAlert('JSZip is not loaded.'); return; }
     const safePrefix = filenamePrefix.replace(/[^a-zA-Z0-9_-]/g, '_');
 
     const prevIncludeSkipped = state._exportIncludeSkippedFrames;
@@ -3518,8 +3518,8 @@ function showExportProgressModal(onCancel) {
   
   document.body.appendChild(overlay);
   
-  overlay.querySelector('#export-progress-cancel').onclick = () => {
-    if (confirm('Cancel the current export session? Partials written will be discarded.')) {
+  overlay.querySelector('#export-progress-cancel').onclick = async () => {
+    if (await showAdflowConfirm('Cancel the current export session? Partials written will be discarded.')) {
       onCancel();
       document.body.removeChild(overlay);
     }
@@ -3547,7 +3547,7 @@ function showExportProgressModal(onCancel) {
  */
 async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, filenamePrefix = null) {
   const dm = state.dataMerge;
-  if (!dm || !dm.rows.length) { alert('No versions to export. Import a data sheet first.'); return; }
+  if (!dm || !dm.rows.length) { showAdflowAlert('No versions to export. Import a data sheet first.'); return; }
   
   const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
   const safeProj = (filenamePrefix || state.projectName || 'Ad').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -3697,7 +3697,7 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
     }
   } catch (err) {
     console.error('Streaming version export failure:', err);
-    alert('Version export failed: ' + err.message);
+    showAdflowAlert('Version export failed: ' + err.message);
   } finally {
     // Restore clean window environment
     window.fetch = originalFetch;
@@ -3715,7 +3715,7 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
 function runAllVersionsValidator() {
   const dm = state.dataMerge;
   if (!dm || !dm.enabled || !dm.rows || !dm.rows.length) {
-    alert('Data Merge is not enabled or contains no versions to validate.');
+    showAdflowAlert('Data Merge is not enabled or contains no versions to validate.');
     return;
   }
 

@@ -663,6 +663,28 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.29.0',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Multi-Select on the Timeline: Select multiple elements (Ctrl/Cmd-click or Shift-click rows, or select them on the canvas) and drag or resize any of their bars to move/resize them all together — each bar shifts by the same amount, keeping their relative timing, just like moving a group on the canvas. Changing a preset still applies to a single layer only (clicking an IN/OUT/FX chip focuses that one element).'
+    ]
+  },
+  {
+    version: 'v0.28.0',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Consistent Cloud Save Names: Cloud saving is now just "Save (Cloud)" (Ctrl+S) and "Save as (Cloud)…" throughout the menus, buttons, and notifications — replacing the mix of "Push to Cloud" / "Push current" / "Save a Copy to Cloud" wording.',
+      'App Dialogs Everywhere: Every remaining browser pop-up (confirmations, prompts, and alerts) has been replaced with Adflow\'s own in-app dialog. Browsers let you silence repeated native pop-ups ("prevent this page from creating more dialogs"), which could break confirmations mid-task; the in-app dialogs are always reliable and match the app\'s look.'
+    ]
+  },
+  {
+    version: 'v0.27.0',
+    date: 'July 2026 — Engine v2.19',
+    items: [
+      'Save as (Cloud): New File ▸ Save option that saves the current design as a brand-new cloud project under a name you choose, in your current space, and switches you to editing that copy — the original cloud project is left untouched. Available when signed in. Previously the only way to make a cloud copy was to hit a name clash and choose Rename.'
+    ]
+  },
+  {
     version: 'v0.26.3',
     date: 'July 2026 — Engine v2.19',
     items: [

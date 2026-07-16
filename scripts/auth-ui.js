@@ -219,9 +219,11 @@ function renderAuthChip() {
   const cloudMenuItem = document.getElementById('menu-file-cloud');
   const pushMenuItem = document.getElementById('menu-file-push');
   const revertMenuItem = document.getElementById('menu-file-revert');
+  const copyMenuItem = document.getElementById('menu-file-cloud-copy');
   if (cloudMenuItem) cloudMenuItem.style.display = u ? '' : 'none';
   if (pushMenuItem) pushMenuItem.style.display = u ? '' : 'none';
   if (revertMenuItem) revertMenuItem.style.display = u ? '' : 'none';
+  if (copyMenuItem) copyMenuItem.style.display = u ? '' : 'none';
   chip.style.display = '';
   if (!u) {
     chip.innerHTML = `
@@ -274,7 +276,7 @@ function renderAuthChip() {
     }));
     menu.querySelector('#auth-chip-create-space').addEventListener('click', async (e) => {
       e.stopPropagation(); menu.style.display = 'none';
-      const name = (prompt('Name your new space (e.g. "Marketing Team"):') || '').trim();
+      const name = (await showAdflowPrompt('Name your new space (e.g. "Marketing Team"):') || '').trim();
       if (!name) return;
       try { await spacesState.createSpace(name); showCanvasNotification(`Space "${name}" created`, { type: 'success' }); }
       catch (err) { showCanvasNotification(err.message || String(err), { type: 'error' }); }
@@ -426,7 +428,7 @@ async function openCloudProjectsModal() {
       <div style="flex:1; display:flex; flex-direction:column; gap:10px; min-width:0;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:9px 11px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:6px;">
           <div id="cloud-push-note" style="font-size:11px; color:var(--text-muted);">Loading…</div>
-          <button class="btn primary" id="cloud-push-btn" style="padding:6px 12px; font-size:11px; font-weight:600;">Push current</button>
+          <button class="btn primary" id="cloud-push-btn" style="padding:6px 12px; font-size:11px; font-weight:600;">Save (Cloud)</button>
         </div>
         <div id="cloud-list" style="display:flex; flex-direction:column; gap:6px; min-height:200px;">
           <div style="font-size:11px; color:var(--text-muted); text-align:center; padding:20px;">Loading projects…</div>
@@ -466,7 +468,7 @@ async function openCloudProjectsModal() {
       e.stopPropagation();
       const id = btn.dataset.delFolder;
       const f = folderRows.find(r => r.id === id);
-      if (!confirm(`Delete folder "${f.name}"? Projects inside will move to "All projects".`)) return;
+      if (!await showAdflowConfirm(`Delete folder "${f.name}"? Projects inside will move to "All projects".`)) return;
       const { error } = await sb.from('folders').delete().eq('id', id);
       if (error) { showCanvasNotification(error.message, { type: 'error' }); return; }
       if (selectedFolderId === id) selectedFolderId = null;
@@ -528,7 +530,7 @@ async function openCloudProjectsModal() {
     list.querySelectorAll('[data-act="del"]').forEach(btn => btn.addEventListener('click', async () => {
       const id = btn.closest('[data-id]').dataset.id;
       const row = data.find(r => r.id === id);
-      if (!confirm(`Delete "${row.name}" from the cloud? This cannot be undone.`)) return;
+      if (!await showAdflowConfirm(`Delete "${row.name}" from the cloud? This cannot be undone.`)) return;
       const { error: e1 } = await sb.from('projects').delete().eq('id', id);
       if (e1) { showCanvasNotification(e1.message, { type: 'error' }); return; }
       await sb.storage.from('projects').remove([row.storage_path]).catch(() => {});
@@ -538,7 +540,7 @@ async function openCloudProjectsModal() {
 
   document.getElementById('cloud-push-btn').addEventListener('click', async () => {
     const btn = document.getElementById('cloud-push-btn');
-    btn.disabled = true; btn.textContent = 'Pushing…';
+    btn.disabled = true; btn.textContent = 'Saving…';
     try {
       const res = await pushCurrentProjectToCloud({ folderId: selectedFolderId });
       if (res && res.collisionHandled) {
@@ -546,18 +548,18 @@ async function openCloudProjectsModal() {
       } else if (res && res.isFirstSave) {
         showCanvasNotification(`"${state.projectName}" project saved to cloud`, { type: 'success' });
       } else {
-        showCanvasNotification(`Pushed to ${ctxLabel}`, { type: 'success' });
+        showCanvasNotification(`Saved to ${ctxLabel}`, { type: 'success' });
       }
-      btn.disabled = false; btn.textContent = 'Push current';
+      btn.disabled = false; btn.textContent = 'Save (Cloud)';
       refreshProjects();
     } catch (err) {
-      showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' });
-      btn.disabled = false; btn.textContent = 'Push current';
+      showCanvasNotification(`Save (Cloud) failed: ${err.message || err}`, { type: 'error' });
+      btn.disabled = false; btn.textContent = 'Save (Cloud)';
     }
   });
 
   document.getElementById('cloud-new-folder-btn')?.addEventListener('click', async () => {
-    const name = (prompt('Folder name:') || '').trim();
+    const name = (await showAdflowPrompt('Folder name:') || '').trim();
     if (!name) return;
     const { error } = await sb.from('folders').insert({ space_id: spaceId, name });
     if (error) { showCanvasNotification(error.message, { type: 'error' }); return; }
@@ -622,7 +624,7 @@ async function pushCurrentProjectToCloud(opts = {}) {
             }},
             { text: 'Rename', onClick: async () => {
               const proposed = `${projectName} (copy)`;
-              const newName = (prompt('Save this push as:', proposed) || '').trim();
+              const newName = (await showAdflowPrompt('Save this push as:', proposed) || '').trim();
               if (!newName) { resolve(); return; }
               if (newName === projectName) {
                 showCanvasNotification('Name unchanged — push cancelled. Pick a different name or use Replace.', { type: 'warning' });
@@ -637,9 +639,9 @@ async function pushCurrentProjectToCloud(opts = {}) {
                 if (res && res.isFirstSave) {
                   showCanvasNotification(`"${newName}" project saved to cloud`, { type: 'success' });
                 } else {
-                  showCanvasNotification(`Pushed as "${newName}"`, { type: 'success' });
+                  showCanvasNotification(`Saved as "${newName}"`, { type: 'success' });
                 }
-              } catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
+              } catch (err) { showCanvasNotification(`Save (Cloud) failed: ${err.message || err}`, { type: 'error' }); }
               finally { resolve(); }
             }}
           ]
@@ -738,10 +740,53 @@ document.getElementById('menu-file-push')?.addEventListener('click', async () =>
     } else if (res && res.isFirstSave) {
       showCanvasNotification(`"${state.projectName}" project saved to cloud`, { type: 'success' });
     } else {
-      showCanvasNotification('Pushed to cloud', { type: 'success' });
+      showCanvasNotification('Saved to cloud', { type: 'success' });
     }
   }
-  catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
+  catch (err) { showCanvasNotification(`Save (Cloud) failed: ${err.message || err}`, { type: 'error' }); }
+});
+// Save as (Cloud) — push the current design as a BRAND-NEW
+// cloud project (fresh id, new name, in the current space) and switch to
+// editing that copy. The original cloud entry is untouched. Restores the
+// original project identity if the push is cancelled or fails.
+document.getElementById('menu-file-cloud-copy')?.addEventListener('click', async () => {
+  const u = authState.currentUser();
+  if (!u) return;
+  const base = state.projectName || 'RMIT_ad';
+  const newName = (await showAdflowPrompt('Save a copy to the cloud as:', `${base} copy`) || '').trim();
+  if (!newName) return;
+
+  // Snapshot the current identity so we can roll back on cancel/failure.
+  const orig = {
+    id: state.projectId, name: state.projectName,
+    sharePath: state.previewSharePath, expiry: state.previewExpiry
+  };
+  const restore = () => {
+    state.projectId = orig.id; state.projectName = orig.name;
+    state.previewSharePath = orig.sharePath; state.previewExpiry = orig.expiry;
+    try { render(true); } catch (e) {}
+  };
+
+  // Become a new project: undefined id → push assigns a fresh UUID; drop the
+  // inherited share link so the copy starts without one.
+  state.projectId = undefined;
+  state.projectName = newName;
+  state.previewSharePath = undefined;
+  state.previewExpiry = undefined;
+
+  try {
+    const res = await pushCurrentProjectToCloud();
+    // Name clash the user cancelled → nothing was saved; undo the rename.
+    if (res && res.collisionHandled && !res.pushed) { restore(); return; }
+    try { render(true); } catch (e) {}
+    // collisionHandled+pushed already toasted inside the push (Replace/Rename).
+    if (!(res && res.collisionHandled)) {
+      showCanvasNotification(`Saved a copy to the cloud as "${state.projectName}" — now editing the copy.`, { type: 'success' });
+    }
+  } catch (err) {
+    restore();
+    showCanvasNotification(`Save as (Cloud) failed: ${err.message || err}`, { type: 'error' });
+  }
 });
 // Revert — re-download the last cloud-saved version of the open project and
 // load it, discarding local changes. Cloud-only: projects never pushed (no
@@ -761,7 +806,7 @@ document.getElementById('menu-file-revert')?.addEventListener('click', async () 
       return;
     }
     const when = row.updated_at ? new Date(row.updated_at).toLocaleString() : 'unknown time';
-    if (!confirm(`Revert "${row.name}" to the last cloud-saved version (${when})?\n\nAll changes since that save will be lost.`)) return;
+    if (!await showAdflowConfirm(`Revert "${row.name}" to the last cloud-saved version (${when})?\n\nAll changes since that save will be lost.`)) return;
     await pullCloudProject(row, {
       progressTitle: `Reverting "${row.name}"...`,
       successNotice: `Reverted "${row.name}" to the cloud version from ${when}`
@@ -913,7 +958,7 @@ async function openSpaceManagementModal() {
     listEl.querySelectorAll('[data-act="rename"]').forEach(btn => btn.addEventListener('click', async () => {
       const id = btn.closest('[data-space-id]').dataset.spaceId;
       const sp = sps.find(s => s.id === id);
-      const name = (prompt(`Rename "${sp.name}" to:`, sp.name) || '').trim();
+      const name = (await showAdflowPrompt(`Rename "${sp.name}" to:`, sp.name) || '').trim();
       if (!name || name === sp.name) return;
       try { await spacesState.renameSpace(id, name); showCanvasNotification(`Renamed to "${name}"`, { type: 'success' }); render(); }
       catch (err) { showCanvasNotification(err.message || String(err), { type: 'error' }); }
@@ -921,7 +966,7 @@ async function openSpaceManagementModal() {
     listEl.querySelectorAll('[data-act="duplicate"]').forEach(btn => btn.addEventListener('click', async () => {
       const id = btn.closest('[data-space-id]').dataset.spaceId;
       const sp = sps.find(s => s.id === id);
-      if (!confirm(`Duplicate "${sp.name}"? All folders and projects will be copied to a new space.`)) return;
+      if (!await showAdflowConfirm(`Duplicate "${sp.name}"? All folders and projects will be copied to a new space.`)) return;
       const origText = btn.textContent;
       btn.disabled = true;
       try {
@@ -937,7 +982,7 @@ async function openSpaceManagementModal() {
     listEl.querySelectorAll('[data-act="delete"]').forEach(btn => btn.addEventListener('click', async () => {
       const id = btn.closest('[data-space-id]').dataset.spaceId;
       const sp = sps.find(s => s.id === id);
-      const confirmed = prompt(`Permanently delete space "${sp.name}"?\n\nAll projects, folders, members, and invitations will be removed.\n\nType the space name to confirm:`);
+      const confirmed = await showAdflowPrompt(`Permanently delete space "${sp.name}"?\n\nAll projects, folders, members, and invitations will be removed.\n\nType the space name to confirm:`);
       if (confirmed !== sp.name) { if (confirmed != null) showCanvasNotification('Name did not match — delete cancelled.', { type: 'warning' }); return; }
       try { await spacesState.deleteSpace(id); showCanvasNotification('Space deleted'); render(); }
       catch (err) { showCanvasNotification(err.message || String(err), { type: 'error' }); }
@@ -945,13 +990,13 @@ async function openSpaceManagementModal() {
     listEl.querySelectorAll('[data-act="leave"]').forEach(btn => btn.addEventListener('click', async () => {
       const id = btn.closest('[data-space-id]').dataset.spaceId;
       const sp = sps.find(s => s.id === id);
-      if (!confirm(`Leave space "${sp.name}"? You'll lose access to its projects.`)) return;
+      if (!await showAdflowConfirm(`Leave space "${sp.name}"? You'll lose access to its projects.`)) return;
       try { await spacesState.leaveSpace(id); showCanvasNotification('Left space'); render(); }
       catch (err) { showCanvasNotification(err.message || String(err), { type: 'error' }); }
     }));
   };
   document.getElementById('space-create-btn').addEventListener('click', async () => {
-    const name = (prompt('Name your new space:') || '').trim();
+    const name = (await showAdflowPrompt('Name your new space:') || '').trim();
     if (!name) return;
     try { await spacesState.createSpace(name); showCanvasNotification(`Space "${name}" created`, { type: 'success' }); render(); }
     catch (err) { showCanvasNotification(err.message || String(err), { type: 'error' }); }

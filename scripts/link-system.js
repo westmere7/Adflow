@@ -605,10 +605,10 @@ function pushGroupChanges() {
 }
 
 
-function deleteGroupAndElements(gid) {
+async function deleteGroupAndElements(gid) {
   if (!gid || !state.linkGroups[gid]) return;
   const gName = state.linkGroups[gid].name;
-  if (!confirm(`Are you sure you want to delete the link group "${gName}" AND delete all elements belonging to it across all canvases?`)) {
+  if (!(await showAdflowConfirm(`Are you sure you want to delete the link group "${gName}" AND delete all elements belonging to it across all canvases?`))) {
     return;
   }
   delete state.linkGroups[gid];

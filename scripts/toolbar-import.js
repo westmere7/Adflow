@@ -871,10 +871,10 @@ window.addEventListener('keydown', (e) => {
             } else if (res && res.isFirstSave) {
               showCanvasNotification(`"${state.projectName}" project saved to cloud`, { type: 'success' });
             } else {
-              showCanvasNotification('Pushed to cloud', { type: 'success' });
+              showCanvasNotification('Saved to cloud', { type: 'success' });
             }
           }
-          catch (err) { showCanvasNotification(`Push failed: ${err.message || err}`, { type: 'error' }); }
+          catch (err) { showCanvasNotification(`Save (Cloud) failed: ${err.message || err}`, { type: 'error' }); }
         })();
       } else {
         showCanvasNotification('Cloud save failed: Please sign in to save projects to the cloud.', { type: 'warning' });
@@ -986,7 +986,7 @@ window.addEventListener('keydown', (e) => {
         return false;
       });
       if (hasReadOnly) {
-        alert("Pre-loaded read-only assets cannot be deleted.");
+        showAdflowAlert("Pre-loaded read-only assets cannot be deleted.");
         return;
       }
       state.assetLibrary = (state.assetLibrary || []).filter(x => !state.assetSelection.includes(x.id));
@@ -1399,10 +1399,10 @@ function _toggleSafezones() {
 // "Clear all" helpers — surfaced from the canvas context menu and the
 // canvas Properties panel. The legacy Tools-panel "Clear everything" button
 // was removed in v0.16.0; these are the only entry points now.
-function clearCurrentCanvasContents() {
+async function clearCurrentCanvasContents() {
   const c = getActiveCanvas();
   if (!c) return;
-  if (!confirm(`Clear every element on "${c.name || c.width + '×' + c.height}"? This cannot be undone (use Ctrl+Z to restore).`)) return;
+  if (!(await showAdflowConfirm(`Clear every element on "${c.name || c.width + '×' + c.height}"? This cannot be undone (use Ctrl+Z to restore).`))) return;
   c.elements = [];
   state.selectedElementId = null;
   state.layerSelection = [];
@@ -1412,8 +1412,8 @@ function clearCurrentCanvasContents() {
   render();
 }
 
-function clearAllCanvasesContents() {
-  if (!confirm("Clear every element on EVERY canvas? This cannot be undone (use Ctrl+Z to restore).")) return;
+async function clearAllCanvasesContents() {
+  if (!(await showAdflowConfirm("Clear every element on EVERY canvas? This cannot be undone (use Ctrl+Z to restore)."))) return;
   state.canvases.forEach(c => { c.elements = []; });
   state.linkGroups = {};
   state.selectedElementId = null;
@@ -1424,7 +1424,7 @@ function clearAllCanvasesContents() {
 
 // Clear every canvas except the active one. Selection stays put because it
 // only ever lives on the active canvas, which we're preserving.
-function clearOtherCanvasesContents() {
+async function clearOtherCanvasesContents() {
   const active = getActiveCanvas();
   if (!active) return;
   const others = state.canvases.filter(c => c.id !== active.id);
@@ -1433,7 +1433,7 @@ function clearOtherCanvasesContents() {
     return;
   }
   const activeLabel = active.name || (active.width + '×' + active.height);
-  if (!confirm(`Clear every element on EVERY canvas EXCEPT "${activeLabel}"? This cannot be undone (use Ctrl+Z to restore).`)) return;
+  if (!(await showAdflowConfirm(`Clear every element on EVERY canvas EXCEPT "${activeLabel}"? This cannot be undone (use Ctrl+Z to restore).`))) return;
   others.forEach(c => { c.elements = []; });
   if (typeof cleanupLinkGroups === 'function') cleanupLinkGroups();
   pushHistory();
