@@ -27,7 +27,7 @@ const DOCS_SECTIONS = [
           <img src="data/Elements/Adflow_logo.svg" alt="Adflow Logo" data-adflow-logo style="max-width: 280px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));">
         </div>
         <p>Adflow is a professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. Lay out your entire banner size set side-by-side on an infinite workspace, coordinate them with Link Groups, merge spreadsheet version rows to generate dozens of creative variants, and export standards-compliant ZIP packages in a single click.</p>
-        <p>Adflow cuts out the heavy installation requirements and complex build pipelines of legacy applications, allowing creative teams to collaborate in real-time within shared team spaces, manage cloud projects, and audit ad package weights before publication.</p>
+        <p>Adflow cuts out the heavy installation requirements and complex build pipelines of legacy applications, allowing creative teams to work entirely in the browser with no account, keep projects as portable .flow files, and audit ad package weights before publication.</p>
         <p style="color:var(--text-muted); font-weight: 500;">Two core concepts to get started with:</p>
         <ul>
           <li><b>Multi-Canvas & Link Groups</b>: Lay out all dimensions side-by-side in one workspace. Editing a text string or changing a border style on one canvas propagates the update to all other formats automatically when Live-Link is active.</li>
@@ -46,7 +46,7 @@ const DOCS_SECTIONS = [
           <li style="margin-bottom: 8px;"><b>Drag-to-Retime Timeline</b>: A sequencer along the bottom of the workspace shows every layer's IN, OUT and FX spans as bars you can drag, resize, and retime several layers at a time — with a Play button that replays the frame using the exported ad's own animation code.</li>
           <li style="margin-bottom: 8px;"><b>Built-in Image Compressor</b>: Compress and convert JPEG/PNG assets to WebP, JPEG, or PNG depending on project configuration to meet strict ad network weight targets (150 KB standard).</li>
           <li style="margin-bottom: 8px;"><b>Layer-Based Vector Masking</b>: Use any vector shape layer (rectangles, circles, custom brand SVG pixels) to non-destructively mask images below using clean CSS clip-path logic.</li>
-          <li style="margin-bottom: 8px;"><b>Supabase Team Spaces</b>: Collaborate with teammates, organize work in folders, and manage project backups with full Row-Level Security and invitation URLs.</li>
+          <li style="margin-bottom: 8px;"><b>Fully Local, No Accounts</b>: Nothing to sign in to and nothing uploaded. Work autosaves to the browser, travels as portable <code>.flow</code> files, and the whole app runs from a static host or a single Docker container with no internet access required.</li>
           <li style="margin-bottom: 8px;"><b>Pre-Flight Audit & Export</b>: Package ready-to-run compliant ZIP bundles. Adflow validates clicktags and asset constraints automatically.</li>
           <li style="margin-bottom: 8px;"><b>Batch Operation Portal</b>: Hand a template to another team and let them produce the whole pack themselves — open template, import data sheet, export every version, in three steps and no editor knowledge.</li>
           <li style="margin-bottom: 8px;"><b>Preview Portal</b>: A dedicated review page for stepping through every size, frame and data version — and for playing up to 10 standalone HTML5 ads built outside Adflow side by side.</li>
@@ -393,43 +393,6 @@ const DOCS_SECTIONS = [
     ]
   },
   {
-    id: 'cloud-spaces', title: 'Cloud & Spaces',
-    subs: [
-      { id: 'cloud-spaces-intro', title: 'Introduction', body: `
-        <p>Cloud & Spaces layers collaborative cloud capabilities on top of Adflow's local-first storage. It supports authenticated cloud backups, secure project pulls, and team workspaces (Spaces) where multiple designers can manage and organize files.</p>
-        <p>Inside team spaces, users can create folder directories, move project files between folders, duplicate cloud records, and generate secure one-time invite tokens. Invite links let teammates join shared spaces instantly and edit files in a shared folder structure.</p>
-        <p><b>Adflow's Advantage:</b> While cloud tools usually enforce continuous internet connection, Adflow functions offline, using cloud sync as an on-demand collaboration channel. If a filename collision occurs, Adflow prompts the user to Replace or Rename the push, preventing accidental overwrites.</p>
-        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Check the 'Remember me' option during sign-in to persist your authenticated session token across browser tabs. Share invite links via copy-paste to Slack or email to quickly add new team members.</div>
-      `},
-      { id: 'sign-in', title: 'Signing in', body: `
-        <p>The splash screen now doubles as a sign-in gate. New users tap <b>Sign up</b>, enter email + password (≥6 chars), check inbox if email confirmation is on, then sign in.</p>
-        <ul>
-          <li><b>Remember me on this device</b> (default on) — session token stored in localStorage and persists across tabs. Uncheck to scope the session to the current tab only.</li>
-          <li><b>Use locally without signing in</b> — skip the cloud, work entirely against IndexedDB autosave. You can sign in later from the top-bar chip.</li>
-        </ul>
-      `},
-      { id: 'cloud-projects', title: 'Cloud Projects', body: `
-        <p>When signed in, click the chip → <b>My Cloud Projects</b>. Push the current project to the cloud, open one back, or delete. Cloud projects use the same <code>.flow</code> format as local saves, so nothing needs re-importing.</p>
-        <p><b>Same-name push:</b> if a project with the same name already exists in the current context, a toast appears with <b>Replace</b> (overwrite) and <b>Rename</b> (push as a new project with a different name).</p>
-        <p><b>Revert to Cloud Version</b> (File menu, under Save) re-downloads the last cloud-saved copy of the open project and loads it, discarding local changes. It confirms first, showing when that cloud save was made. Only available when signed in; a project that has never been pushed says there's nothing to revert to.</p>
-        <p><b>A save is always what you get back.</b> Project files are stored and read with caching disabled, so saving over an existing cloud project and reopening it hands back that save — never an older copy. The same guarantee covers Revert, duplicating a space, and refreshing a share link's snapshot.</p>
-      `},
-      { id: 'spaces', title: 'Spaces (team workspaces)', body: `
-        <p>Spaces are shared pools. The chip dropdown lists all spaces you belong to plus "Personal". The current space's name appears next to your email in the top bar.</p>
-        <ul>
-          <li><b>+ Create new space…</b> spins up a new shared workspace you own.</li>
-          <li><b>Manage Spaces…</b> opens a list with per-space actions: <b>Members</b>, <b>Invite</b>, <b>Rename</b> (owner), <b>Duplicate</b> (clones folders + projects to a new space you own), <b>Delete</b> (owner — type the name to confirm), <b>Leave</b> (non-owner).</li>
-        </ul>
-      `},
-      { id: 'invitations', title: 'Inviting members', body: `
-        <p>From Manage Spaces → <b>Invite</b>, type the teammate's email. Adflow generates a one-time join URL and copies it to your clipboard. Paste it into Slack or email yourself. When the recipient opens it and signs in with the same email, they're auto-added.</p>
-      `},
-      { id: 'cloud-folders', title: 'Folders in spaces', body: `
-        <p>Inside a space, the Cloud Projects modal shows a folder tree on the left. <b>+ New folder</b> creates one, hover a folder to delete, and use the per-row dropdown to move a project between folders.</p>
-      `},
-    ]
-  },
-  {
     id: 'projects', title: 'Saving & Projects',
     subs: [
       { id: 'projects-intro', title: 'Introduction', body: `
@@ -444,7 +407,7 @@ const DOCS_SECTIONS = [
       `},
       { id: 'flow-files', title: '.flow files', body: `
         <p><b>File → Save → Save to File (.flow)</b> from the menu writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> force-saves the project silently to the browser's IndexedDB database.</p>
-        <p><b>Ctrl</b>+<b>S</b> pushes the project to Supabase Cloud when you're signed in (see <i>Cloud &amp; Spaces</i>). If you are signed out, Adflow displays a warning toast reminding you to sign in.</p>
+        <p><b>Ctrl</b>+<b>S</b> does the same as <b>Save to File (.flow)</b>: the browser's native save dialog where it offers one (Chrome, Edge), otherwise a download to your downloads folder.</p>
         <p><b>Open Recent</b> in the File menu shows your last manually-saved projects.</p>
       `},
       { id: 'new-project-wizard', title: 'New Project wizard', body: `
@@ -544,8 +507,6 @@ const DOCS_SECTIONS = [
           <li><b>Presentation Grid / BG</b> — a real Adflow theme for the backdrop (Adflow, Obsidian, Nordic, Light), and a separate checkered option you can layer over any of them for reviewing ads with transparent edges.</li>
         </ul>
         <p>Each banner card carries its own <b>Restart</b> and <b>Download HTML5</b> buttons; <b>Download All (.zip)</b> in the header packages every visible size at once.</p>
-        <p><b>Share links</b> open this same page pointed at a snapshot in the cloud — see <a href="#" data-doc-sec="cloud-spaces" data-doc-sub="cloud-projects" style="color:var(--text-accent); font-weight: 500;">Cloud &amp; Spaces</a>. When a link is open, <b>Update Preview</b> re-fetches the latest snapshot. An expired link now says so and still lets you open a file instead of dead-ending.</p>
-        <p><b>Is this the latest?</b> Saving the project to the cloud also refreshes any live share link's snapshot, so a reviewer's existing link keeps showing your current work. The line under the project name says which they are looking at: <i>Shared on …</i> when nothing has changed since the link was made, or <i>Updated …</i> when a newer save has landed — hover that for the original share date.</p>
       `},
       { id: 'external-ads', title: 'Reviewing non-Adflow HTML5 ads', body: `
         <p>The Preview Portal can also review a <b>standalone HTML5 ad built outside Adflow</b> — anything supplied as a zip containing an <code>index.html</code> plus its assets. Use <b>Open HTML5 Ad (.zip)…</b>, or drop the zips on the page.</p>
@@ -584,7 +545,7 @@ const DOCS_SECTIONS = [
           <thead><tr><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Shortcut</th><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Action</th></tr></thead>
           <tbody>
           ${[
-            ['Ctrl + S','Save to cloud (requires sign in — warns instead of saving locally when signed out)'],
+            ['Ctrl + S','Save project to a .flow file (native save dialog where available, otherwise a download)'],
             ['Ctrl + Shift + S','Save project silently to browser database (IndexedDB)'],
             ['Ctrl + Z / Ctrl + Shift + Z','Undo / Redo'],
             ['Ctrl + C / X / V','Copy / Cut / Paste'],
@@ -662,7 +623,7 @@ const DOCS_SECTIONS = [
         <ul>
           <li><b>IndexedDB Autosave</b>: Every modification (dragging, resizing, typing, recolouring) triggers a debounced save directly to your browser's IndexedDB database.</li>
           <li><b>Auto-Restoration</b>: Reopening the page or reloading the tab reads from IndexedDB, restoring your canvases, scroll positions, zoom level, and 50-state undo stack.</li>
-          <li><b>Cloud Saves</b>: If signed in, pressing <span class="kbd">Ctrl</span>+<span class="kbd">S</span> pushes project packages to Supabase cloud workspaces for server-side backup.</li>
+          <li><b>File Saves</b>: Pressing <span class="kbd">Ctrl</span>+<span class="kbd">S</span> saves the project as a portable <code>.flow</code> file — the copy to keep, share by email or file server, and reopen on any machine.</li>
           <li><b>Force Browser Save</b>: Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> immediately saves the active project state to the browser's IndexedDB.</li>
         </ul>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save to File (.flow)</b> from the file menu to download a local backup file to your computer before clearing browser caches or switching machines.</div>
@@ -729,13 +690,13 @@ const DOCS_SECTIONS = [
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Avoid uploading large, complex SVGs as elements. Embed simple vector shapes or compress assets beforehand to ensure network compliance.</div>
       `},
       { id: 'faq-offline', title: 'Offline usage', body: `
-        <p><b>Question:</b> Can I use Adflow completely offline without signing in?</p>
-        <p><b>Answer:</b> Yes, Adflow is local-first:</p>
+        <p><b>Question:</b> Does Adflow need an internet connection or an account?</p>
+        <p><b>Answer:</b> No. The local edition has no accounts and makes no network requests beyond loading its own files:</p>
         <ul>
-          <li><b>Local Bypass</b>: Click <b>Use locally without signing in</b> at the bottom of the splash gate.</li>
-          <li><b>No Feature Loss</b>: All layout design, link syncing, spreadsheet merges, and ZIP exports operate fully in the browser offline.</li>
-          <li><b>Force Browser Save</b>: Press <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> to force-save the project silently to IndexedDB local storage while working offline.</li>
-          <li><b>Sync Later</b>: You can sign in from the top bar at any time to upload local projects to the cloud.</li>
+          <li><b>No Sign-In</b>: The app opens straight into the workspace. There is nothing to register for and no personal data is collected.</li>
+          <li><b>No Feature Loss</b>: All layout design, link syncing, spreadsheet merges, Auto-Resize and every export format (ZIP, PNG, video, GIF) run fully in the browser. Every library and font ships with the app.</li>
+          <li><b>Force Browser Save</b>: Press <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> to force-save the project silently to IndexedDB browser storage.</li>
+          <li><b>Moving Between Machines</b>: Your work lives in this browser profile. To take a project elsewhere, save a <code>.flow</code> file (<span class="kbd">Ctrl</span>+<span class="kbd">S</span>) and open it on the other machine.</li>
         </ul>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save to File (.flow)</b> from the file menu to download local backup files onto your hard drive when working offline.</div>
       `}
@@ -745,8 +706,8 @@ const DOCS_SECTIONS = [
     id: 'technical-stack', title: 'Technical Stack',
     subs: [
       { id: 'technical-stack-intro', title: 'Introduction', body: `
-        <p>Technical Stack details the code architecture, data structure, and layout mechanics for engineering and IT administrators. It covers the vanilla script loading sequence, global state schemas, CSS clip-path masking, and Supabase integration.</p>
-        <p>The guide outlines how Adflow operates as a zero-dependency, compilation-free application, mapping coordinate states, handling RLS database policies, and bypassing policy loops with PostgreSQL security helper functions.</p>
+        <p>Technical Stack details the code architecture, data structure, and layout mechanics for engineering and IT administrators. It covers the vanilla script loading sequence, global state schemas, CSS clip-path masking, browser-side persistence, and deployment as a static site or Docker container.</p>
+        <p>The guide outlines how Adflow operates as a zero-dependency, compilation-free application with no server-side component: every byte it needs ships in the repository, and nothing a user makes leaves their browser unless they save or export a file.</p>
         <p><b>Adflow's Advantage:</b> Clean, vanilla coding standards and structured documentation ensure easy deployment and code readability, facilitating internal IT audits and development integration.</p>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Review the individual specification tabs in this section to understand how data flows through the application. Developers can serve the project folder using a simple Python or Node HTTP server to test code edits locally.</div>
       `},
@@ -757,11 +718,10 @@ const DOCS_SECTIONS = [
           <li><b>render-runtime.js</b>: Render and animation helpers shared by the editor, both portals, and the exporter — including the single animation-preset registry, so no surface can offer a preset another doesn't.</li>
           <li><b>auto-resize-engine.js</b> → <b>auto-arrange-config.js</b>: Placement mathematics, collision resolver, and the per-format coordinate specs it reads.</li>
           <li><b>docs-content.js</b>: Internal documentation and changelog history structures.</li>
-          <li><b>auth-ui.js</b>: Supabase backend integration controller.</li>
           <li><b>data-merge.js</b>: CSV merges and version preview state interpolation.</li>
           <li><b>font-subset.js</b> → <b>export-pipeline.js</b>: HarfBuzz glyph subsetting, then the ZIP bundle generator (JSZip) and PNG rasterizer.</li>
           <li><b>color-picker.js</b>: Color palette and gradient stops controller.</li>
-          <li><b>Core app</b> (formerly one <code>script.js</code>, split into 14 files in this order): core-state, autosave, link-system, canvas-render, interactions, canvases-panel, layers-assets, props-panel, <b>sequencer</b>, toolbar-import, project-io, project-dialogs, modals, then share-preview and app-boot last.</li>
+          <li><b>Core app</b> (formerly one <code>script.js</code>, split into 14 files in this order): core-state, autosave, <b>local-library</b> (base project + remembered placements in browser storage), link-system, canvas-render, interactions, canvases-panel, layers-assets, props-panel, <b>sequencer</b>, toolbar-import, project-io, project-dialogs, modals, then share-preview and app-boot last.</li>
         </ol>
         <p><b>Sandbox Preview Engine:</b> Isolation is achieved using dynamic <code>&lt;iframe&gt;</code> sandboxing with <code>srcdoc</code> injection, which prevents style or script leaks. The editor renders canvases at high performance using CSS <code>transform: translateZ(0)</code> (forces GPU layers) and <code>clip-path: inset(0)</code> to prevent subpixel hairline leaks during viewport pans and zooms.</p>
         <p><b>Portal pages:</b> <code>preview.html</code> and <code>batch.html</code> are standalone documents that load the same version-pinned <code>scripts/</code> engine files plus their own inline page code, and link the app's own <code>styles.css</code> rather than carrying a private palette. A third-party ad zip opened in the Preview Portal is flattened into one self-contained document — stylesheets and scripts inlined, every other asset rewritten to a data URL — and mounted through the same <code>srcdoc</code> sandbox as an Adflow banner.</p>
@@ -769,7 +729,7 @@ const DOCS_SECTIONS = [
       { id: 'tech-state-schema', title: 'Global State Schema', body: `
         <p>A single mutable object named <code>state</code> governs the application's runtime. A TypeScript-style summary of the schema includes:</p>
         <ul>
-          <li><b>projectId</b>: String uuid promoted on first cloud save.</li>
+          <li><b>projectId</b>: String id assigned when a project is created or first saved.</li>
           <li><b>projectName</b>: File display name (defaults to "RMIT_ad").</li>
           <li><b>canvases</b>: Array of canvas elements holding dimensions, fallback backgrounds, and child layer configurations.</li>
           <li><b>activeCanvasId / activeFrameId</b>: Active focal viewport indicators.</li>
@@ -795,14 +755,16 @@ const DOCS_SECTIONS = [
         <p><b>Vector Masking:</b> Adflow uses CSS <code>clip-path</code> (revamped from brittle SVG mask nodes to resolve cross-browser rendering bugs). A shape layer directly above an image is marked with <code>isMask: true</code> and tied to the image's <code>maskTargetId</code>. Rotations and dimensions are calculated relative to the target image and baked directly into the SVG polygon or path definition strings during rendering/export.</p>
         <p><b>Link Groups Synchronisation:</b> Changes are propagated through the <code>applyLinkSync</code> method, covering text content, font family, sizes, colors, fills, borders, radius, and continuous animations. When <code>liveLink</code> is enabled, property modifications in the editor trigger a loop that overwrites sibling attributes across all canvases in real time.</p>
       `},
-      { id: 'tech-persistence-security', title: 'Persistence & Cloud Security', body: `
+      { id: 'tech-persistence-security', title: 'Persistence & Local Storage', body: `
         <p><b>Local Storage & History:</b> Persistence uses a debounced autosave queue targeting the <code>adflow-autosave</code> IndexedDB database, storing state snapshots and the 50-state history stack. Portable project saves use the <code>.flow</code> file format (a zipped bundle using JSZip 3.10 containing raw state JSON, metadata files, and base64-decoded binary assets).</p>
-        <p><b>Supabase Cloud & RLS Security:</b> Cloud saves write project files to a private bucket hierarchy (<code>/projects/{user_id}/{projectId}.flow</code>) and upload metadata rows to a PostgreSQL <code>projects</code> table. Row-level security (RLS) is strictly enforced.</p>
-        <p><b>SELECT Policy Recursion Workaround:</b> To query team memberships in the <code>space_members</code> table without triggering infinite database recursion, the schema utilizes PostgreSQL helper functions configured with <code>SECURITY DEFINER</code> (executing with the database owner's privileges):</p>
-        <ul>
-          <li><code>user_is_space_member(p_space_id)</code>: Validates if the active JWT session email belongs to the targeted space.</li>
-          <li><code>current_user_email()</code>: Safely decodes email claims from Supabase auth JWTs.</li>
-        </ul>
+        <p><b>Base project &amp; remembered placements:</b> the two cross-project preferences live in the same browser profile as autosave. The base project (Settings ▸ Startup) is a <code>.flow</code> blob in the <code>adflow-autosave</code> IndexedDB store under a fixed key, with a small localStorage hint so the New Project dialog can paint its row synchronously. Remembered placements are a compact JSON map keyed <code>&lt;width&gt;x&lt;height&gt;</code> → role in localStorage, read synchronously by the Auto-Resize engine. Both are implemented in <code>scripts/local-library.js</code>.</p>
+        <p><b>No server-side state:</b> the local edition has no accounts, no database and no upload path. Nothing a user makes leaves the browser except as a file they chose to save or export. Clearing site data for the Adflow origin removes autosaves, recents, the base project and remembered placements together — keep <code>.flow</code> backups of anything that matters.</p>
+      `},
+      { id: 'tech-deployment', title: 'Deployment (Docker & static hosting)', body: `
+        <p>Adflow is a static site: HTML, CSS, vanilla JavaScript and a handful of vendored binaries. There is no server-side code, so any static host can serve it, and the repository ships two ready-made targets.</p>
+        <p><b>Docker (the RMIT ITS deployment):</b> a two-stage <code>Dockerfile</code> runs the two Node generator scripts, then serves the result from <code>nginxinc/nginx-unprivileged</code> — non-root, listening on port <b>8080</b>, with a <code>/healthz</code> endpoint and a container health check. <code>docker compose up -d --build</code> starts it in one command; the container holds no state, so it can be recreated freely. The server block in <code>docker/nginx.conf</code> pins MIME types for <code>.wasm</code> and <code>.mjs</code> and sets the cache policy: pages and <code>data/version.txt</code> are never cached, version-pinned code for an hour, binaries and fonts for 30 days.</p>
+        <p><b>Vercel or any static host:</b> <code>vercel.json</code> declares the same build command and output root with matching headers. The requirements for any other host are the same three: serve <code>.wasm</code> as <code>application/wasm</code>, serve <code>.mjs</code> as JavaScript, and do not cache <code>index.html</code> or <code>data/version.txt</code>. Serving over <code>file://</code> is not supported because the sandboxed preview iframes need an HTTP origin.</p>
+        <p><b>No outbound requests:</b> every library (JSZip, iro.js, mediabunny, gifenc, HarfBuzz) and every font (the brand fonts and the portals' Inter and Outfit) is in the repository, so the deployed app works on a network with no internet egress. Operator notes, including how to change the port and put it behind a reverse proxy, are in <code>DEPLOYMENT.md</code>.</p>
       `}
     ]
   }
@@ -890,6 +852,20 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.60.0',
+    date: 'September 2026 — Engine v3.0',
+    items: [
+      'Adflow Now Runs Entirely in Your Browser, With No Account: the sign-in gate, the account chip, Cloud Projects, Team Spaces, invitations, Revert to Cloud Version and Share Preview are gone, along with the Supabase backend behind them. Nothing you make leaves your machine unless you save or export a file. Autosave, Open Recent, Save to Browser, .flow files, templates, both portals and every export format work exactly as before. This is the edition RMIT deploys internally; the cloud-connected build stays on its own branch.',
+      'Ctrl+S Saves a .flow File: it used to push to the cloud and only warn when you were signed out. It now does what File ▸ Save ▸ Save to File does — the native save dialog where the browser has one, a download otherwise — and the Save menu and the shortcut reference both say so. Ctrl+Shift+S still saves silently to the browser.',
+      'Base Project and Remembered Placements Now Live in This Browser: both used to be stored on your account. The base project is kept in the browser database alongside autosave, remembered placements in local storage. Settings shows the same two blocks as before, always, and every message says "in this browser" rather than "on your account". They do not follow you to another machine — save a .flow of your base project if you need it elsewhere.',
+      'Nothing Is Fetched From the Internet Any More: JSZip and the iro colour picker ship inside the app instead of loading from a CDN, the export worker uses that same copy, and the two portals carry their own Inter and Outfit fonts instead of asking Google Fonts. The app renders identically on a network with no internet access.',
+      'Preview Portal Opens Files Only: with share links gone, the portal no longer accepts a snapshot URL, and the Update Preview button and the "Shared on …" line under the project name are removed. Drag-and-drop and Open still work for .flow projects and for third-party HTML5 ad zips.',
+      'Old Files Still Open Cleanly: .flow files saved by the cloud edition may carry share pointers and cloud stamps. They are dropped on open, so nothing stale is carried into a new save, a template or the base project.',
+      'The RMIT Logo Now Loads on Linux Hosting: the default white logo was referenced as RMIT_White.svg while the file is RMIT_white.svg. Windows never noticed the difference; a Linux web server (the Docker image, Vercel) does, and the logo came up missing. Every reference now uses the real filename, projects and autosaves saved by older builds are corrected as they open, and both servers alias the old spelling as well.',
+      'Docker-Ready: the repository now includes a Dockerfile, docker-compose.yml and nginx configuration that serve the app from a non-root nginx container on port 8080 with a health check, plus a vercel.json for static hosting and a DEPLOYMENT.md for operators.'
+    ]
+  },
   {
     version: 'v0.53.0',
     date: 'August 2026 — Engine v3.0',

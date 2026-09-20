@@ -3,7 +3,7 @@
 // ============================================================================
 const escHtml = (s) => String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 function getAppVersion() {
-  return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : 'v0.53.0';
+  return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : 'v0.60.0';
 }
 
 // Stack a list of {width, height} into one block of rows on the board and return
@@ -121,14 +121,9 @@ async function createNewProject({ name, sizes, presetIndices, sizeLimitKb, bgCol
   state.comment = '';
   state.createdAt = new Date().toISOString();
   state.createdAtVersion = getAppVersion();
-  // A brand-new project has never been shared — drop any preview-share metadata
-  // carried over from the previously open project, so the Share dialog opens to
-  // the "create link" screen instead of showing a stale active link.
-  stripShareLink(state);
-  // Same reasoning for the cloud-save stamp: a brand-new project has never been
-  // pushed, so it must not inherit the last project's "Updated ..." line.
-  delete state.cloudSavedAt;
-  delete state.cloudSavedBy;
+  // A brand-new project must not inherit identity fields from the previously
+  // open one (legacy share pointers / cloud stamps carried by older files).
+  stripLegacyCloudFields(state);
   state.clickTag = (clickTag || 'https://www.rmit.edu.au/').trim();
   state.adSizeLimit = Math.max(1, parseInt(sizeLimitKb, 10) || 150);
   state.defaultBg = bg;
@@ -185,18 +180,12 @@ async function createNewProject({ name, sizes, presetIndices, sizeLimitKb, bgCol
 // EXISTENCE of the saved default is the switch. There is deliberately no separate
 // preference any more.
 //
-// The original design gated it on localStorage, which broke the moment a second
-// origin was involved: the blob lives on the Supabase account and is visible from
-// anywhere, but localStorage is scoped per origin, so a default saved on
-// localhost:8123 did not exist as far as rmit-adflow.netlify.app was concerned —
-// and each new browser or profile started from scratch again. Deriving it from the
-// account removes the whole class of problem. New Project always offers an explicit
-// blank board, so "saved" never means "forced".
+// The base project lives in this browser's IndexedDB (local-library.js). New
+// Project always offers an explicit blank board, so "saved" never means "forced".
 //
 // This is the synchronous HINT only, for painting the dialog without a flash; the
 // authority is getDefaultStartupInfo(), which every caller probes and corrects
-// itself against. On a first visit to a new origin the hint is absent, so the
-// option appears a moment after the dialog opens rather than instantly.
+// itself against.
 function defaultStartupLikelyExists() {
   return !!(typeof readDefaultStartupMeta === 'function' && readDefaultStartupMeta());
 }
@@ -220,16 +209,11 @@ async function createProjectFromDefaultStartup({ name, compressFormat, overrides
   }
   if (overrides.bgColor) state.defaultBg = overrides.bgColor;
 
-  // Belt and braces: buildFlowBlob strips these when the default is saved, but a
-  // snapshot written by an older build could still carry them, and inheriting a
-  // share link or a cloud stamp is exactly the confusion this must not create.
-  stripShareLink(state);
-  delete state.cloudSavedAt;
-  delete state.cloudSavedBy;
-  delete state.spaceId;
+  // Belt and braces: a snapshot written by an older build could still carry
+  // share pointers or cloud stamps, and a new project must not inherit them.
+  stripLegacyCloudFields(state);
   state.projectId = uid('proj_');
 
-  if (typeof initializeCloudSaveStatus === 'function') initializeCloudSaveStatus();
   pushHistory();
   render();
   if (typeof writeAutosave === 'function') await writeAutosave();
@@ -469,8 +453,7 @@ function openNewProjectDialog() {
   //   blank board       — everything below is live, as it always was.
   // Leaving a control enabled but ignored is the failure this avoids: the reason
   // the whole block dims for a template is that its values genuinely lose.
-  // Painted from the local hint, then corrected by the account probe below — so a
-  // first visit on a new origin reveals the choice a beat late rather than never.
+  // Painted from the localStorage hint, then corrected by the IndexedDB probe below.
   let defaultExists = defaultStartupLikelyExists();
   let userPickedStart = false;
   const startChoice = bg.querySelector('#np-start-choice');
@@ -516,7 +499,7 @@ function openNewProjectDialog() {
   setStartFrom(defaultExists ? 'default' : (templatePreferred ? 'template' : 'blank'));
 
   // "RMIT_ad · 1 frame · 6 canvases" then the sizes on their own line. Sourced from
-  // the cloud sidecar, so it reads the same on a machine that has never saved one.
+  // the metadata stored alongside the base project.
   const metaEl = bg.querySelector('#np-default-meta');
   const describeDefault = (info) => {
     if (!info || !info.exists) { if (metaEl) metaEl.textContent = ''; return; }
@@ -536,7 +519,7 @@ function openNewProjectDialog() {
     const had = defaultExists;
     defaultExists = !!(info && info.exists);
     describeDefault(info);
-    // Correct the opening selection once the account answers — but never overrule a
+    // Correct the opening selection once IndexedDB answers — but never overrule a
     // choice the user has already made in the meantime.
     if (!userPickedStart && defaultExists && !had) {
       setStartFrom('default');
@@ -546,9 +529,8 @@ function openNewProjectDialog() {
     }
     updateFieldsVisibility();
   };
-  // The account is the authority, not this browser. Runs unconditionally so the
-  // hint can be corrected in BOTH directions: a default saved on another origin
-  // appears here, and one cleared elsewhere stops being offered.
+  // IndexedDB is the authority, not the localStorage hint. Runs unconditionally so
+  // the hint can be corrected in both directions.
   if (typeof getDefaultStartupInfo === 'function') {
     getDefaultStartupInfo().then(applyDefaultInfo).catch(() => {});
   }
@@ -981,11 +963,6 @@ function openProjectSettingsDialog() {
   bg.className = 'modal-bg';
 
   const localConf = localMap[_localSaveStatus] || localMap.saved;
-  let currentCloudStatus = _cloudSaveStatus;
-  if (typeof authState !== 'undefined' && authState.enabled && !authState.currentUser()) {
-    currentCloudStatus = 'none';
-  }
-  const cloudConf = cloudMap[currentCloudStatus] || cloudMap.none;
 
   const fileConf = {
     class: _fileSaveStatus === 'saved' ? 'status-saved' : (_fileSaveStatus === 'unsaved' ? 'status-unsaved' : 'status-none'),
@@ -994,20 +971,7 @@ function openProjectSettingsDialog() {
     lastTime: _lastFileSaveTime ? _formatSaveTime(_lastFileSaveTime) : 'Never'
   };
 
-  const isCloudProject = currentCloudStatus !== 'none';
-  const secondStatusHtml = isCloudProject ? `
-            <div style="display:flex; align-items:flex-start; gap:8px;">
-              <div style="margin-top:2px;">
-                <svg class="save-icon-status cloud ${cloudConf.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; flex-shrink:0;">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <div style="display:flex; flex-direction:column; gap:2px;">
-                <span style="font-size:11px; font-weight:600; color:var(--text-bright);">Cloud Backup: ${cloudConf.text}</span>
-                <span style="font-size:10px; color:var(--text-muted);">${cloudConf.title}</span>
-                <span style="font-size:10px; color:var(--text-muted); font-style:italic;">Last Synced: ${_formatSaveTime(_lastCloudSaveTime)}</span>
-              </div>
-            </div>` : `
+  const secondStatusHtml = `
             <div style="display:flex; align-items:flex-start; gap:8px;">
               <div style="margin-top:2px;">
                 <svg class="save-icon-status file ${fileConf.class}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; flex-shrink:0;">
@@ -1311,7 +1275,7 @@ async function autoCompressCanvasImages(canvasId) {
       const _dm = (typeof dmDisplay === 'function') ? dmDisplay(el) : {};
       const activeAssetId = _dm.assetId !== undefined ? _dm.assetId : el.assetId;
       if (activeAssetId && typeof activeAssetId === 'string' && activeAssetId.startsWith('img_')) {
-        let restoredAssetId = 'data/Elements/RMIT_White.svg';
+        let restoredAssetId = 'data/Elements/RMIT_white.svg';
         if (el.customName && el.customName.toLowerCase().includes('full color')) {
           restoredAssetId = 'data/Elements/RMIT_full.svg';
         } else if (el.customName && el.customName.toLowerCase().includes('red pixel')) {
@@ -1721,7 +1685,7 @@ const AUTO_ARRANGE_ROLES = Object.freeze(['heading', 'subheading', 'cta-button',
 // does, in the same order of precedence, so the menu can never promise something the run
 // would not deliver:
 //   1. a placement pinned on this canvas in this project
-//   2. a placement remembered for this canvas SIZE on your account
+//   2. a placement remembered for this canvas SIZE in this browser
 //   3. a built-in rule, which exists for the six configured sizes and those roles only
 function autoArrangePlacementDefined(canvas, role) {
   if (!canvas || !role || role === 'misc') return false;
@@ -2549,7 +2513,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
     </style>
     <table class="shortcuts-table">
       <tr class="shortcuts-sec"><td colspan="2">Saving &amp; history</td></tr>
-      <tr><td><b>Save to Cloud</b> <span style="color:var(--text-muted);">(warns if you're signed out — nothing is written locally)</span></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">S</span></td></tr>
+      <tr><td><b>Save to File (.flow)</b> <span style="color:var(--text-muted);">(native save dialog where the browser has one, otherwise a download)</span></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">S</span></td></tr>
       <tr><td><b>Save to browser database</b> <span style="color:var(--text-muted);">(silent IndexedDB force-save)</span></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">S</span></td></tr>
       <tr><td><b>Undo</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
       <tr><td><b>Redo</b></td><td style="text-align: right;"><span class="kbd">⇧</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
@@ -2615,7 +2579,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.53.0';
+  const currentVersion = 'v0.60.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -2683,7 +2647,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
             <span style="color: var(--text-main);">GitHub</span>
             
             <span style="color: var(--text-muted); font-weight: 500;">Hosting &amp; Deployment:</span>
-            <span style="color: var(--text-main);">Netlify</span>
+            <span style="color: var(--text-main);">Static site — Docker (nginx) or any static host, no backend</span>
           </div>
         </div>
 
@@ -2847,7 +2811,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.53.0</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.60.0</span>
               <button id="settings-changelog" title="See what changed in this and previous versions of Adflow" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close" title="Close without keeping any change made since the dialog opened">Close</button>
@@ -2896,12 +2860,8 @@ function openSettings() {
                     </select>
                   </div>
 
-                  <!-- Base project. Saved to your cloud account (not as a Cloud
-                       Project — it is invisible to that list on purpose), so it
-                       follows you to another machine when you sign in. -->
-                  <!-- Hidden outright in guest mode — renderAuthChip() owns that, keyed on
-                       this id, so this block never appears as a row explaining that it
-                       cannot be used. -->
+                  <!-- Base project. Kept in this browser's IndexedDB (local-library.js),
+                       so it applies to every new project made in this browser profile. -->
                   <div id="set-default-startup-block" style="display:flex; flex-direction:column; gap:8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:6px; padding:10px 12px;">
                     <div style="display:flex; align-items:center; gap:12px;">
                       <span style="flex:1; font-size:12px; color:var(--text-main);">Base project</span>
@@ -2910,23 +2870,22 @@ function openSettings() {
                     </div>
                     <div id="set-default-startup-status" style="font-size:11px; color:var(--text-muted); line-height:1.5;">Checking…</div>
                     <div style="font-size:11px; color:var(--text-muted); line-height:1.5;">
-                      New projects start from this instead of an empty board, on every machine you sign in to. It supplies the canvases and their content; ClickTag, max ad size and background stay under your control in the New Project dialog and are applied on top. <b>Blank board</b> is always offered there as well. Layout guides, selection, zoom, undo history, share links and cloud stamps are not carried over.
+                      New projects made in this browser start from this instead of an empty board. It supplies the canvases and their content; ClickTag, max ad size and background stay under your control in the New Project dialog and are applied on top. <b>Blank board</b> is always offered there as well. Layout guides, selection, zoom and undo history are not carried over. It is stored in this browser only — save a .flow of it if you need it on another machine.
                     </div>
                   </div>
 
-                  <!-- Remembered placements. Account-only for the same reason as the base
-                       project, and gated by the same id list. It exists chiefly so this
-                       state is not invisible: it changes auto-resize in projects you have
-                       not opened yet, so there has to be somewhere that says how much of
-                       it there is and one switch that undoes all of it. -->
+                  <!-- Remembered placements. Kept in this browser's localStorage. It exists
+                       chiefly so this state is not invisible: it changes auto-resize in
+                       projects you have not opened yet, so there has to be somewhere that
+                       says how much of it there is and one switch that undoes all of it. -->
                   <div id="set-placement-library-block" style="display:flex; flex-direction:column; gap:8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:6px; padding:10px 12px;">
                     <div style="display:flex; align-items:center; gap:12px;">
                       <span style="flex:1; font-size:12px; color:var(--text-main);">Remembered placements</span>
-                      <button class="btn" id="set-placement-forget-all" title="Forget every remembered placement, for every canvas size, on your account" style="padding:4px 10px; font-size:11px; white-space:nowrap;">Forget all</button>
+                      <button class="btn" id="set-placement-forget-all" title="Forget every remembered placement, for every canvas size, in this browser" style="padding:4px 10px; font-size:11px; white-space:nowrap;">Forget all</button>
                     </div>
                     <div id="set-placement-library-status" style="font-size:11px; color:var(--text-muted); line-height:1.5;">Checking…</div>
                     <div style="font-size:11px; color:var(--text-muted); line-height:1.5;">
-                      Right-click a canvas or a layer and use <b>Save placement</b> ▸ <b>All projects</b> to record where a role belongs at that canvas size. Auto-Resize then starts from your placement instead of its built-in rule, in every project on this account. A placement saved to a project only is not listed here — it lives in that .flow file.
+                      Right-click a canvas or a layer and use <b>Save placement</b> ▸ <b>All projects</b> to record where a role belongs at that canvas size. Auto-Resize then starts from your placement instead of its built-in rule, in every project opened in this browser. A placement saved to a project only is not listed here — it lives in that .flow file.
                     </div>
                   </div>
                 </section>
@@ -3254,13 +3213,8 @@ function openSettings() {
   }
 
   // ---- Base project (the saved starting point for new projects) ----------------
-  // Built on demand, so it missed the auth event that hides account-only controls — run
-  // the gate now. In guest mode the block below is hidden and its probe never fires.
-  if (typeof syncAccountOnlyUi === 'function') syncAccountOnlyUi();
-  if (typeof accountFeaturesAvailable === 'function' && !accountFeaturesAvailable()) {
-    // Nothing to wire: the row is not on screen, and probing the account for a base
-    // project we could not offer anyway is a request for no reason.
-  } else {
+  // Kept in this browser's IndexedDB (local-library.js); the probe below reads it.
+  {
     const saveBtn = bg.querySelector('#set-default-startup-save');
     const clearBtn = bg.querySelector('#set-default-startup-clear');
     const statusEl = bg.querySelector('#set-default-startup-status');
@@ -3277,14 +3231,14 @@ function openSettings() {
     const refresh = async () => {
       const info = (typeof getDefaultStartupInfo === 'function')
         ? await getDefaultStartupInfo()
-        : { exists: false, reason: 'no-cloud' };
+        : { exists: false, reason: 'error' };
 
       if (info.exists) {
         const when = fmtWhen(info.updatedAt);
         statusEl.textContent = (info.name
           ? `Saved from “${info.name}”${when ? ` on ${when}` : ''}${fmtKb(info.sizeBytes)}.`
-          : `A base project is saved to your account${when ? ` (${when})` : ''}${fmtKb(info.sizeBytes)}.`)
-          + ' New projects start from it on every machine you sign in to, unless you pick Blank board.';
+          : `A base project is saved in this browser${when ? ` (${when})` : ''}${fmtKb(info.sizeBytes)}.`)
+          + ' New projects made in this browser start from it, unless you pick Blank board.';
         clearBtn.style.display = '';
         saveBtn.textContent = 'Replace with current';
         return;
@@ -3292,18 +3246,8 @@ function openSettings() {
 
       clearBtn.style.display = 'none';
       saveBtn.textContent = 'Use current project';
-      if (info.reason === 'signed-out') {
-        statusEl.textContent = 'Sign in to save a base project — it is stored on your account, so it follows you between machines.';
-        saveBtn.disabled = true;
-        saveBtn.style.opacity = '0.55';
-        saveBtn.style.cursor = 'not-allowed';
-      } else if (info.reason === 'no-cloud') {
-        statusEl.textContent = 'Cloud is not configured in this build, so a base project cannot be saved.';
-        saveBtn.disabled = true;
-        saveBtn.style.opacity = '0.55';
-        saveBtn.style.cursor = 'not-allowed';
-      } else if (info.reason === 'error') {
-        statusEl.textContent = 'Could not reach your account to check for a base project.';
+      if (info.reason === 'error') {
+        statusEl.textContent = 'Could not read browser storage to check for a base project.';
       } else {
         statusEl.textContent = 'None saved. New projects start from an empty board.';
       }
@@ -3319,7 +3263,7 @@ function openSettings() {
         // Nothing else to commit: the upload IS the switch. No dialog Save needed,
         // and nothing origin-scoped to get out of step — which is what made a
         // default saved on localhost invisible to the deployed site.
-        showCanvasNotification(`“${meta.name}” is now your base project, everywhere you sign in.`, { type: 'success' });
+        showCanvasNotification(`“${meta.name}” is now the base project for new projects in this browser.`, { type: 'success' });
       } catch (e) {
         console.error(e);
         showCanvasNotification(e.message || 'Could not save the base project.', { type: 'error' });
@@ -3366,13 +3310,13 @@ function openSettings() {
 
       pForget.addEventListener('click', async () => {
         if (pForget.disabled) return;
-        if (!(await showAdflowConfirm('Forget every remembered placement on your account? Auto-Resize will go back to its built-in rules for all canvas sizes. Placements saved to a project stay in that project.'))) return;
+        if (!(await showAdflowConfirm('Forget every placement remembered in this browser? Auto-Resize will go back to its built-in rules for all canvas sizes. Placements saved to a project stay in that project.'))) return;
         try {
           await forgetAllPlacements();
           showCanvasNotification('All remembered placements forgotten.', { type: 'info' });
         } catch (e) {
           console.error(e);
-          showCanvasNotification(e.message || 'Could not update your account.', { type: 'error' });
+          showCanvasNotification(e.message || 'Could not update the remembered placements.', { type: 'error' });
         }
         describe();
       });

@@ -1,8 +1,10 @@
-# RMIT Adflow — Technical App Breakdown (Updated v0.51.2, Engine v3.0)
+# RMIT Adflow — Technical App Breakdown (Local edition — updated v0.60.0, Engine v3.0)
 
-This document is the official context dump for agents (Claude, Codex, etc.) picking up the codebase cold. It covers the current architecture, state schema, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), the animation sequencer, the three page surfaces (editor + two portals), the cloud backend, and workflow rules. **Read this in full before making non-trivial changes.**
+This document is the official context dump for agents (Claude, Codex, etc.) picking up the codebase cold. It covers the current architecture, state schema, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), the animation sequencer, the three page surfaces (editor + two portals), browser-side persistence, deployment (Docker / static hosting), and workflow rules. **Read this in full before making non-trivial changes.**
 
 > Animation model (July 2026): the app is **frame-based** — discrete `frames[]` plus per-element IN/OUT/FX presets and per-frame transitions. There is still **no continuous scrubber or keyframe editor**. What *does* exist, since v0.25.0, is `scripts/sequencer.js`: a PowerPoint-style **Timeline panel** that visualises the active canvas+frame's existing IN/OUT/FX timings as draggable bars. It is a *view over the element model*, not a second model — it commits every edit through the properties panel's own `updateProp` closure. Do not mistake it for the abandoned continuous-timeline prototype.
+
+> **Local edition (September 2026, v0.60.0):** this branch has **no cloud**. The Supabase auth / Cloud Projects / Team Spaces / Share Preview stack (`auth-ui.js`, `share-preview.js`) was removed; the app is a static site with no backend, no accounts and no third-party requests. The cloud-connected build lives on `main`. Anything below that mentions the cloud is history, not current behaviour.
 
 ---
 
@@ -15,31 +17,31 @@ Adflow is a vanilla-JS single-page application — no framework, no bundler, no 
 - **Logic**: **26 app JS files** in `scripts/`, loaded in sequential order via classic `<script>` tags that share one global lexical scope (declarations in earlier files are visible to later files at execution time) — **the tag order *is* the dependency graph**. Three **Node build scripts** also live in `scripts/` but are not loaded by the browser (`build-asset-manifest.js`, `build-startup-registry.js`, `build-docs-screenshots.mjs`).
 - **Embedded Fonts**: brand fonts in `data/fonts/` (6 `.woff2` served + the 6 `.otf` sources), subset and embedded at export time by `scripts/font-subset.js` via HarfBuzz (`lib/hb-subset.wasm`).
 - **Persistence**: IndexedDB (`adflow-autosave` DB) for autosaves; `.flow` ZIP archives (JSZip) for project export/import. Both portals also keep their own IndexedDB list of recently opened files.
-- **Cloud Backend**: Supabase for authentication, project storage, shared workspaces, and share-link snapshots. Project blobs are uploaded `cacheControl: '0'` and read via a short-lived signed URL fetched `cache: 'no-store'` — an in-place save reuses the same storage path, so the old `max-age=3600` default served stale copies back and made saves look like no-ops. Applies to the save path, `pullCloudProject` (which also backs *Revert to Cloud Version*), space duplication, and share-snapshot refresh.
-- **External CDN deps** (in `index.html`): JSZip 3.10.1, `@jaames/iro@5` (color picker), `@supabase/supabase-js@2`.
+- **No backend**: no accounts, no database, no uploads. The two cross-project preferences that used to live on the account — the base project and remembered placements — are in the browser (`scripts/local-library.js`: IndexedDB + localStorage). Legacy `.flow` files may still carry cloud/share fields; `stripLegacyCloudFields()` in `project-io.js` drops them on every load.
+- **No CDN deps**: JSZip 3.10.1 and `@jaames/iro` 5.5.2 are vendored in `lib/` (the export Web Worker imports the same JSZip via an absolute same-origin URL). The portals' Inter/Outfit UI fonts are self-hosted in `data/fonts/ui/` with `ui-fonts.css`.
 - **Three page surfaces**, all loading the same version-pinned `scripts/` engine files plus their own inline page code:
   - `index.html` — the editor.
   - `preview.html` (~2500 lines) — **Preview Portal**: standalone review page, share-link viewer, and third-party HTML5 ad player.
   - `batch.html` (~2400 lines) — **Batch Operation Portal**: template → data sheet → export ZIP, for non-designer teams.
-- **Deployment**: Netlify (`netlify.toml`), publish root `.`, build command runs the two Node build scripts.
+- **Deployment**: static. `Dockerfile` (node:20-alpine build stage runs the two generators → `nginxinc/nginx-unprivileged` on 8080, `/healthz`, `docker/nginx.conf` for MIME + cache policy) with `docker-compose.yml`; `vercel.json` for a separate Vercel project; `DEPLOYMENT.md` is the operator guide. No `package.json`, nothing to install.
 
 ### Script load order (from `index.html`, all version-pinned `?v=`)
 
-CDN libs first, then:
+Vendored libs first (`lib/jszip.min.js`, `lib/iro.min.js`), then:
 
 ```
 numeric-wheel.js   →  render-runtime.js      →  auto-resize-engine.js   →
-auto-arrange-config.js → docs-content.js     →  auth-ui.js              →
-data-merge.js      →  font-subset.js         →  export-pipeline.js      →
+auto-arrange-config.js → docs-content.js     →  data-merge.js           →
+font-subset.js     →  export-pipeline.js     →  video-export.js         →
 color-picker.js    →  core-state.js          →  autosave.js             →
-link-system.js     →  canvas-render.js       →  interactions.js         →
-canvases-panel.js  →  layers-assets.js       →  props-panel.js          →
-sequencer.js       →  toolbar-import.js      →  project-io.js           →
-project-dialogs.js →  modals.js              →  share-preview.js        →
-video-export.js    →  app-boot.js
+local-library.js   →  link-system.js         →  canvas-render.js        →
+interactions.js    →  canvases-panel.js      →  layers-assets.js        →
+props-panel.js     →  sequencer.js           →  toolbar-import.js       →
+project-io.js      →  project-dialogs.js     →  modals.js               →
+app-boot.js
 ```
 
-Approximate sizes (LOC): `props-panel.js` 4799 · `export-pipeline.js` 4731 · `docs-content.js` 3305 · `canvas-render.js` 3158 · `project-dialogs.js` 2661 · `auto-resize-engine.js` 2373 · `app-boot.js` 2213 · `interactions.js` 1810 · `toolbar-import.js` 1771 · `data-merge.js` 1478 · `modals.js` 1404 · `layers-assets.js` 1355 · `sequencer.js` 1351 · `render-runtime.js` 1412 · `video-export.js` 1202 · `link-system.js` 1202 · `auth-ui.js` 1119 · `project-io.js` 1022 · `canvases-panel.js` 974 · `color-picker.js` 751 · `core-state.js` 468 · `autosave.js` 423 · `share-preview.js` 351 · `auto-arrange-config.js` 294 · `font-subset.js` 215 · `numeric-wheel.js` 89.
+Approximate sizes (LOC): `props-panel.js` 4799 · `export-pipeline.js` 4731 · `docs-content.js` 3305 · `canvas-render.js` 3158 · `project-dialogs.js` 2661 · `auto-resize-engine.js` 2373 · `app-boot.js` 2213 · `interactions.js` 1810 · `toolbar-import.js` 1771 · `data-merge.js` 1478 · `modals.js` 1404 · `layers-assets.js` 1355 · `sequencer.js` 1351 · `render-runtime.js` 1412 · `video-export.js` 1202 · `link-system.js` 1202 · `project-io.js` 1022 · `canvases-panel.js` 974 · `color-picker.js` 751 · `core-state.js` 468 · `autosave.js` 395 · `local-library.js` 236 · `auto-arrange-config.js` 294 · `font-subset.js` 215 · `numeric-wheel.js` 89.
 
 ### Vendored libraries (`lib/`, no build step, no npm)
 
@@ -65,16 +67,14 @@ When looking for specific features or bugs, refer to this table:
 | **Auto-arrange configurations** (coordinates, safezones, font sizes per format) | `scripts/auto-arrange-config.js` | `AUTO_ARRANGE_CONFIG` |
 | **In-app documentation** (Help modal) | `scripts/docs-content.js` | `DOCS_SECTIONS`, `openDocumentation`, `renderDocsPanel` |
 | **Changelog data & modal** | `scripts/docs-content.js` | `CHANGELOG_DATA`, `openChangelogModal` |
-| **Supabase client & session** | `scripts/auth-ui.js` | `sb`, `authState`, `spacesState` |
-| **Auth UI / Cloud Projects** | `scripts/auth-ui.js` | `openAuthModal`, `openCloudProjectsModal`, `pushCurrentProjectToCloud` |
-| **Team Spaces & Invitations** | `scripts/auth-ui.js` | `openSpaceManagementModal`, `openMembersModal`, `openInviteModal` |
+| **Base project & remembered placements** (browser storage) | `scripts/local-library.js` | `getDefaultStartupInfo`, `saveDefaultStartupProject`, `fetchDefaultStartupBlob`, `clearDefaultStartupProject`, `getGlobalPlacement`, `savePlacementsToLibrary`, `forgetPlacementsFromLibrary`, `describePlacementLibrary` |
 | **Live Data slots & CSV** | `scripts/data-merge.js` | `dm*` helpers, `openDataPanel`, `dmRenderPanel` |
 | **ZIP/PNG Export & Validation** | `scripts/export-pipeline.js` | `exportCanvasAsZip`, `exportCanvasAsPng`, `generateExportHTML`, `openExportModal`, `inlineFontsIntoHtml`, `prepareSnapshotHtml`, `buildAdSnapshotSvg` |
 | **Video / GIF export** (virtual clock, capture pump, preview panel) | `scripts/video-export.js` | `VIRTUAL_CLOCK_SRC`, `captureCanvasFrames`, `captureCanvasVideo`, `captureCanvasGif`, `exportSelectedVideos`, `openVideoExportSettingsPopup`, `prepareCanvasBundle`, `buildVideoSettingsHTML`/`wireVideoSettings`/`readVideoSettings` |
 | **Shift+scroll on numeric inputs** (app-wide, delegated) | `scripts/numeric-wheel.js` | single capture-phase `wheel` listener; opt-out via `data-wheel-plain` |
 | **Font subsetting/embedding** | `scripts/font-subset.js` | HarfBuzz wasm subsetting on export |
 | **Color & Gradient Picker** | `scripts/color-picker.js` | `openColorPicker`, `syncColorPickerWithSelection` |
-| **Shareable Preview links / snapshots** | `scripts/share-preview.js`, `preview.html` | `previewShare*` state, share dialog, snapshot upload/revoke |
+| **Legacy cloud/share field hygiene** | `scripts/project-io.js` | `LEGACY_CLOUD_FIELDS`, `stripLegacyCloudFields` (runs on load, template, new project, base project) |
 | **Animation Timeline (sequencer)** | `scripts/sequencer.js` | `renderSequencer`, `seqBars`, `seqBarMouseDown`, `seqComputeBarPairs`, `seqFxEditId`, `seqTogglePlayback` |
 | **Shared animation-preset registry** | `scripts/render-runtime.js` | `ANIM_IN_PRESETS`, `ANIM_OUT_PRESETS`, `ANIM_FX_PRESETS`, `getInAnimPresets`, `animInEnabled`/`animOutEnabled`/`animFxEnabled` |
 | **Preview Portal + third-party ad player** | `preview.html` (inline) | `portalMode`/`applyPortalMode`, `EXT_MAX`, `externalAds`, `parseExternalAd`, `loadExternalAds`, `renderExternalAds`, `mountExternalIframe` |
@@ -92,12 +92,12 @@ When looking for specific features or bugs, refer to this table:
 
 ## 3. Data Model & State Schema
 
-The active project configuration is a single mutable global object named `state` (declared in `core-state.js`). It is JSON-serializable; the parts that persist to `.flow`/cloud vs. the parts that are local preferences are partitioned in the project-IO save path (see `project-io.js`).
+The active project configuration is a single mutable global object named `state` (declared in `core-state.js`). It is JSON-serializable; the parts that persist to `.flow` vs. the parts that are local preferences are partitioned in the project-IO save path (see `project-io.js`).
 
 ```typescript
 interface State {
   // ----- Project Identity -----
-  projectId?: string;            // UUID; promoted from short uid on first cloud push
+  projectId?: string;            // short uid assigned on create / first save (older files may carry a UUID from the cloud edition)
   projectName: string;
   adSizeLimit: number;           // KB cap for the ad-weight validator (default: 150)
   spaceId?: string | null;       // Current space context (null = Personal)
@@ -325,19 +325,15 @@ A collapsible PowerPoint-style panel along the bottom of the workspace, listing 
 
 **Preset chips**: `seqOpenPresetPopover` reads the shared registry via `getInAnimPresets`/`getOutAnimPresets`/`getFxPresets`, with the same hover-preview fns as the panel. Picking a real preset also flips the category's enable flag on. OUT is gated on `animInEnabled`.
 
-### Shareable Preview System & Standalone Review Portal
-- **Share links** (`share-preview.js` + `preview.html`): generates secure, public view-only links serving a **dedicated snapshot** in Supabase storage (`previewSharePath`), not the live cloud file.
-- **Live links**: every cloud save updates what reviewers see at the same link; local-only edits stay private until saved to cloud. "Delete Link" revokes access immediately; generating a new link invalidates the previous one.
-- **New-project hygiene** (v0.22.7): creating/opening a different project clears prior `previewShare*` metadata so the Share dialog opens to "create link", not a stale link.
-- **Snapshot lifecycle / storage leak** (v0.51.0): a snapshot lives at `<uid>/shares/<token>.flow`, and **no database column points at it** — `previewSharePath` exists only inside the project blob. Deleting a project therefore had to read the blob first or the snapshot orphaned permanently (storage objects don't expire; only the signed URL does). `snapshotPathForProjectBlob()` in `auth-ui.js` does that read, and `removeProjectStorage()` removes blob + snapshot together; both the single-project delete and `deleteSpace` use it. The path is validated against `^<our uid>/shares/[A-Za-z0-9_-]+\.flow$` before any delete, since it comes from a user-supplied file — that rejects traversal and skips other members' snapshots (under their prefix, not ours, and not ours to delete).
-- **Name-clash flow** (v0.22.6): on a cloud name collision the Replace/Rename prompt lets sharing continue.
-- **Portal features**: sidebar size checklist, version switching (data-merge rows), "Static only" frame-by-frame isolation, Play / frame jump-and-play / Replay all / Download all (zip), per-banner restart, runtime readout (total + per-frame, ↻ when looping), checkered grid, clickTag region highlight, compliance/ad-weight audits.
+### Shareable Preview System (removed in the local edition)
+- Share links, cloud snapshots, `share-preview.js`, the `?url=` loader in `preview.html`, the *Update Preview* button and the *Shared on … / Updated …* line were all removed in v0.60.0 along with the Supabase backend. The portal is a local-file tool only (drop / Open).
+- The `previewShare*` / `cloudSaved*` / `spaceId` fields can still appear in `.flow` files saved by the cloud edition. `stripLegacyCloudFields()` (`project-io.js`) removes them on load, on template save, on new project and on base-project snapshot, so they never propagate.
 - **No drift**: shared render helpers live in `render-runtime.js` (consumed by the editor and both portals); portal engine scripts are version-pinned `?v=` so reviewers never pair stale engine code with new portal code.
 
 ### Standalone Portals — Preview & Batch (v0.34.5)
 Both are opened from the editor's **File** menu (`#menu-file-preview`, `#menu-file-batch`, `window.open(...)`), link the app's own `styles.css`, and run fully client-side.
 
-**Preview Portal (`preview.html`)** — now opens standalone with nothing loaded (`bootPortal()` shows `#pv-empty` unless a `?url=` share snapshot is present). Two ways in: an Adflow `.flow`, or a zipped standalone HTML5 ad. Cloud projects are deliberately **not** offered — local-file tool only. `portalMode` (`'adflow' | 'external' | null`) plus `applyPortalMode()` swap the control set; the two modes never mix.
+**Preview Portal (`preview.html`)** — now opens standalone with nothing loaded (`bootPortal()` shows `#pv-empty`). Two ways in: an Adflow `.flow`, or a zipped standalone HTML5 ad. Local-file tool only. `portalMode` (`'adflow' | 'external' | null`) plus `applyPortalMode()` swap the control set; the two modes never mix.
 
 **Third-party ad player** (`EXT_MAX = 10`, `externalAds[]`):
 - `parseExternalAd(file)` picks the shallowest `index.html` (else shallowest `.html`) as the entry, then **flattens the zip into one document**: `<link>`/`<script src>` replaced with inline `<style>`/`<script>`, every other asset rewritten to a `data:` URL. Path variants tried per asset: `rel`, `./rel`, `/rel`, and the bare basename **when unambiguous** — that last one is what makes references built at runtime by the ad's own JS resolve. Assets are substituted longest-path-first.
@@ -390,7 +386,7 @@ Fully client-side, no server, no plugins. **Read this before touching anything i
 6. **GIF FPS options must divide 100 evenly** (10/20/25) because GIF delays are in hundredths of a second.
 7. `gifenc`'s `applyPalette` third argument is a **pixel format**, not a dither mode. `prequantize` (the `GIF_COMPRESSION` map) is the only real size lever; it is kept but **not exposed in the UI** and exports run at `none`.
 
-**Nothing is uploaded.** The blob lives in a closure and a `blob:` URL, never in `state`, so project autosave cannot serialise it. The only Supabase writes in the codebase are `share-preview.js` (Share button) and `auth-ui.js` (project sync).
+**Nothing is uploaded.** The blob lives in a closure and a `blob:` URL, never in `state`, so project autosave cannot serialise it. There is no upload path anywhere in the codebase.
 
 **Single-canvas export previews in-panel** (`openVideoExportSettingsPopup`): Render → play at 1:1 in the panel → Download / drag-out / Copy. Layout is neutral until a preview exists, then portrait goes beside the controls (all controls, so panel height ≈ preview height) and landscape stacks. Getting a file out to another app: **`DownloadURL` drag** is the only route that preserves animation — the clipboard cannot (browsers accept only `image/png` and re-encode, and even native Copy Image flattens GIFs because the Windows clipboard has no GIF flavour). `Copy` therefore copies a still and says so.
 

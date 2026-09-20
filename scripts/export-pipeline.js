@@ -4183,9 +4183,13 @@ class ZipStreamWriter {
   }
 }
 
-// Background Worker Code String
+// Background Worker Code String.
+// The worker is created from a blob: URL, so a relative path inside it would
+// resolve against the blob origin and fail — hand it the absolute URL of the
+// vendored JSZip instead. Local edition: no CDN, exports work with no internet.
+const EXPORT_WORKER_JSZIP_URL = new URL('lib/jszip.min.js', document.baseURI).href;
 const EXPORT_WORKER_CODE = `
-  importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  importScripts(${JSON.stringify(EXPORT_WORKER_JSZIP_URL)});
 
   self.onmessage = async (e) => {
     const { type, versionIndex, canvasId, files } = e.data;

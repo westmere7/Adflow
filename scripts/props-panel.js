@@ -2668,9 +2668,9 @@ function renderProps() {
       const variantOptions = [
         { val: 'data/Elements/RMIT_full.svg', label: 'Full Color', img: 'data/Elements/RMIT_full.svg' },
         { val: 'data/Elements/RMIT_RedPixel.svg', label: 'Red Pixel', img: 'data/Elements/RMIT_RedPixel.svg' },
-        { val: 'data/Elements/RMIT_White.svg', label: 'White', img: 'data/Elements/RMIT_White.svg' }
+        { val: 'data/Elements/RMIT_white.svg', label: 'White', img: 'data/Elements/RMIT_white.svg' }
       ];
-      const currentVariantVal = el.assetId || 'data/Elements/RMIT_White.svg';
+      const currentVariantVal = el.assetId || 'data/Elements/RMIT_white.svg';
       f.push(`<div class="prop-row">
         <label>Variant</label>
         ${customSelect('logoVariant', variantOptions, currentVariantVal, 'RMIT Logo Variant')}

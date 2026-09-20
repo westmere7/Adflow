@@ -1,3 +1,0 @@
-[build]
-  command = "node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js"
-  publish = "."

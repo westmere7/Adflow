@@ -6,19 +6,17 @@
   <title>Batch Operation Portal - RMIT Adflow</title>
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
-  <!-- Premium Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.60.0" />
   
-  <!-- JSZip for unzipping .flow files -->
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
+  <script src="lib/jszip.min.js?v=0.60.0"></script>
 
   <!-- The app's real stylesheet, so this page shares the editor's palette,
        themes, buttons, modals and Data & Versions sheet styling rather than
        maintaining a parallel look. Loaded BEFORE the page-specific block below
        so the portal layout rules can still override where they must. -->
-  <link rel="stylesheet" href="styles.css?v=0.53.0" />
+  <link rel="stylesheet" href="styles.css?v=0.60.0" />
 
   <style>
     /* This page's layout was written against its own palette names. Rather
@@ -714,7 +712,6 @@
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:nowrap; overflow:hidden; flex-shrink:1;">
         <div class="project-name-title" id="project-name" style="margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No Project Loaded</div>
         <span style="font-size:10px; font-weight:700; text-transform:uppercase; border:1px solid var(--accent-base); color:var(--accent-light); padding:2px 6px; border-radius:4px; white-space:nowrap; letter-spacing:0.04em;">Batch</span>
-        <div id="preview-share-meta" style="display:none;"></div>
       </div>
       <!-- Opening a template is offered in the sidebar (step 1) and on the
            empty-canvas prompt; a third copy up here was just noise. -->
@@ -895,15 +892,15 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/render-runtime.js?v=0.53.0"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.53.0"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.53.0"></script>
+  <script src="scripts/render-runtime.js?v=0.60.0"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.60.0"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.60.0"></script>
   <!-- modals.js supplies openModal + showAdflowAlert/Confirm/Prompt, which the
        Data & Versions panel (data-merge.js) opens on this page. -->
-  <script src="scripts/modals.js?v=0.53.0"></script>
-  <script src="scripts/data-merge.js?v=0.53.0"></script>
-  <script src="scripts/font-subset.js?v=0.53.0"></script>
-  <script src="scripts/export-pipeline.js?v=0.53.0"></script>
+  <script src="scripts/modals.js?v=0.60.0"></script>
+  <script src="scripts/data-merge.js?v=0.60.0"></script>
+  <script src="scripts/font-subset.js?v=0.60.0"></script>
+  <script src="scripts/export-pipeline.js?v=0.60.0"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>

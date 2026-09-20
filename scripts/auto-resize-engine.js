@@ -1516,13 +1516,10 @@ function _shrinkToClear(low, high, gap) {
 // priority order — when two collide, the lower-priority one shrinks /
 // shifts to clear the higher-priority one.
 // True when the user has explicitly pinned this role's geometry for this canvas — either
-// on the canvas itself (this project, via c.layoutOverrides) or in the account-wide
-// placement library for this canvas SIZE. Both are the same statement of intent, so every
-// post-pass that used to check layoutOverrides now asks this instead: a placement you
-// chose is left exactly where you put it, whichever way you saved it.
-//
-// In guest mode getGlobalPlacement always answers null, so this reduces to the original
-// layoutOverrides check and the engine behaves precisely as it did before.
+// on the canvas itself (this project, via c.layoutOverrides) or in the browser-wide
+// placement library for this canvas SIZE (local-library.js). Both are the same statement
+// of intent, so every post-pass that used to check layoutOverrides now asks this instead:
+// a placement you chose is left exactly where you put it, whichever way you saved it.
 function hasPinnedPlacement(target, role) {
   if (!target || !role) return false;
   if (target.layoutOverrides && target.layoutOverrides[role]) return true;
@@ -1824,9 +1821,8 @@ function runRuleBasedAutoResize(settings) {
       }
 
       // Three tiers, most specific first: this canvas in this project, then the placement
-      // you remembered for this SIZE across your account, then the built-in rule. The
-      // middle tier is what makes a placement outlive the project it was set in; it is
-      // absent in guest mode, where this collapses back to the original two.
+      // you remembered for this SIZE in this browser, then the built-in rule. The middle
+      // tier is what makes a placement outlive the project it was set in.
       let geom = null;
       if (target.layoutOverrides && target.layoutOverrides[role]) {
         geom = Object.assign({}, target.layoutOverrides[role]);

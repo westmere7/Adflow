@@ -4,8 +4,9 @@
 
 # RMIT Adflow
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-rmit--adflow.netlify.app-brightgreen?style=for-the-badge&logo=netlify)](https://rmit-adflow.netlify.app/)
-[![Version](https://img.shields.io/badge/version-v0.51.2-7c5cff?style=for-the-badge)](data/changelog.txt)
+[![Edition](https://img.shields.io/badge/edition-local%20%C2%B7%20no%20cloud-brightgreen?style=for-the-badge)](DEPLOYMENT.md)
+[![Docker](https://img.shields.io/badge/docker-ready-2496ed?style=for-the-badge&logo=docker&logoColor=white)](DEPLOYMENT.md#1-docker)
+[![Version](https://img.shields.io/badge/version-v0.60.0-7c5cff?style=for-the-badge)](data/changelog.txt)
 [![Engine](https://img.shields.io/badge/engine-v3.0-000f4b?style=for-the-badge)](knowledge_base.md)
 [![Dependencies](https://img.shields.io/badge/npm%20install-not%20required-e61e2b?style=for-the-badge)](#getting-started)
 
@@ -15,6 +16,8 @@ Designed to replace bloated legacy tools like Google Web Designer, this applicat
 
 **No framework. No bundler. No build step for the app itself.** Clone it, serve it, edit the files, refresh the browser.
 
+**Local edition.** This branch has no accounts, no cloud storage and no third-party requests: every project stays in the browser or in the `.flow` files you save, every library and font ships in the repository, and the whole app deploys as a static site or a single Docker container. See [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ---
 
 ## Table of Contents
@@ -23,7 +26,7 @@ Designed to replace bloated legacy tools like Google Web Designer, this applicat
 - [Headline Feature: Auto-Resize](#headline-feature-auto-resize)
 - [Headline Feature: Data & Versions](#headline-feature-data--versions-dynamic-creative)
 - [Headline Feature: Video & GIF Export](#headline-feature-video--gif-export)
-- [Headline Feature: Cloud Projects & Team Spaces](#headline-feature-cloud-projects--team-spaces)
+- [Headline Feature: Local-First, No Accounts](#headline-feature-local-first-no-accounts)
 - [Headline Feature: Portals](#headline-feature-portals-preview--batch-operation)
 - [Key Features](#key-features)
 - [Technical Specifications](#technical-specifications)
@@ -106,21 +109,19 @@ The same renderer that builds the HTML5 package also produces **MP4 video** and 
 
 ---
 
-## Headline Feature: Cloud Projects & Team Spaces
+## Headline Feature: Local-First, No Accounts
 
-Optional Supabase-backed cloud sync, layered on top of the local-first model. Anonymous local use is fully supported and unchanged — the cloud only activates when you sign in.
+Adflow keeps everything in the browser that made it. There is no sign-in, no server-side storage and no network traffic beyond loading the app's own files.
 
-- **Email + password auth** — sign in / sign up from the splash screen on first load, or from the top-bar chip later. Remember-me (default on) persists sessions across tabs; uncheck to scope the session to the current tab only. "Use locally without signing in" keeps the splash from being a hard gate.
-- **Cloud Projects** — push the current project to the cloud with one click, open any saved project back, delete from the cloud. Same `.flow` ZIP format as local saves, so nothing needs re-importing.
-  - **Same-name conflict prevention** — if a cloud project already carries the name, Adflow offers **Replace** or **Rename** rather than overwriting silently.
-  - **Save toast** — a first-time save confirms with `"<project name>" project saved to cloud`.
-- **Team Spaces** — shared pools for collaborating across a creative team. The chip dropdown lists every space you belong to plus "Personal". Each space has owners and members, a per-space members panel, an invitation flow (Adflow generates a one-time join URL and copies it to your clipboard — paste into Slack or email), and Duplicate / Rename / Delete / Leave actions per role.
-- **Folders inside spaces** — organise space projects into a tree, with a per-row dropdown to move projects between folders.
-- **Base project** — Settings ▸ Startup ▸ **Use current project** saves whatever you have open as the thing New Project starts from, in place of an empty board. Stored on your account (not as a Cloud Project, so it never clutters that list), one per user, replaced whenever you press the button again, and cleared with one click. **Its existence is the switch** — there is no per-browser preference, so it applies on every machine and origin you sign in to. New Project offers three peers: *Base project* (preselected when you have one), *Use template*, and *Blank board*. The base project supplies the canvases; ClickTag, max ad size and background stay editable and are applied on top.
-- **Revert to Cloud Version** — File menu, under Save: re-downloads the last cloud-saved copy of the open project and loads it, discarding local changes, after a confirmation that shows when that save was made.
-- **Read-after-write correctness** — project blobs are stored and fetched with caching disabled, so an in-place save is always what comes back. Same guarantee for Revert, space duplication, and share-snapshot refresh.
+- **Autosave to the browser** — every change is debounced into IndexedDB and restored on reload, including zoom, scroll position and the undo stack. **Open Recent** lists the last projects saved in this browser.
+- **Portable `.flow` files** — `Ctrl+S` (or **File → Save → Save to File**) writes a self-contained ZIP holding the project JSON and every embedded asset. It reopens on any machine and any deployment; this is the copy to keep and to hand to colleagues. `Ctrl+Shift+S` force-saves silently to the browser database.
+- **Templates** — **File → Save → Save template** marks a `.flow` as a template for the Batch Operation portal and the New Project dialog. Templates in the repository's `Startup/` folder are offered to everyone.
+- **Base project** — Settings ▸ Startup ▸ **Use current project** saves whatever you have open as the thing New Project starts from, in place of an empty board. Stored in this browser's IndexedDB, one per browser profile, replaced whenever you press the button again, cleared with one click. **Its existence is the switch.** New Project offers three peers: *Base project* (preselected when you have one), *Use template*, and *Blank board*. The base project supplies the canvases; ClickTag, max ad size and background stay editable and are applied on top.
+- **Remembered placements** — right-click ▸ **Save placement ▸ All projects** records where a role belongs at a canvas size; Auto-Resize and Auto-arrange start from it in every project opened in this browser. Settings shows how many are held and forgets them all with one button.
+- **Old files open cleanly** — `.flow` files saved by the cloud-connected edition may carry share pointers and cloud stamps; they are dropped on open so nothing stale rides into a new save.
+- **Nothing fetched from the internet** — JSZip, iro.js, mediabunny, gifenc and HarfBuzz are vendored in `lib/`; the brand fonts and the portals' Inter/Outfit are in `data/fonts/`. The app renders identically on a network with no egress.
 
-`Ctrl+S` saves the project to the cloud; `Ctrl+Shift+S` force-saves silently to browser database storage (IndexedDB). Use **File → Save → Save to File (.flow)** to download a local package to your computer.
+The cloud-connected edition (Supabase accounts, Cloud Projects, Team Spaces, Share Preview links) lives on the `main` branch and is deployed separately. Nothing here talks to it.
 
 ---
 
@@ -234,25 +235,26 @@ A collapsible sequencer along the bottom of the workspace, showing the animation
 
 ### Architecture
 - **Core Technology** — 100% Vanilla JavaScript, HTML5 and CSS3. Zero framework overhead (no React/Vue/Angular) and zero npm dependencies at runtime.
-- **Application Size** — **26 browser-loaded JS files** in `scripts/`, plus **3 Node build scripts** that never reach the browser. Classic `<script>` tags, no bundler, no build step for the app itself.
+- **Application Size** — **25 browser-loaded JS files** in `scripts/`, plus **3 Node build scripts** that never reach the browser. Classic `<script>` tags, no bundler, no build step for the app itself.
 - **Cache-busting** — every local `<script src>` and `<link href>` in `index.html`, `preview.html` and `batch.html` is version-pinned with `?v=<app version>`, so a browser can never pair stale engine code with new page code.
 - **DOM Rendering Strategy** — direct DOM manipulation, with dynamic `<iframe>` sandboxing for live ad previews.
-- **Asset Bundling** — real-time client-side zipping via [JSZip 3.10](https://stuk.github.io/jszip/).
-- **Colour Processing** — native colour integration via [Iro.js 5](https://iro.js.org/).
+- **Asset Bundling** — real-time client-side zipping via [JSZip 3.10](https://stuk.github.io/jszip/), vendored in `lib/` (also used by the export Web Worker).
+- **Colour Processing** — [Iro.js 5](https://iro.js.org/), vendored in `lib/`.
 - **Media Encoding** — `mediabunny` (MP4/WebM muxing over WebCodecs) and `gifenc`, both vendored in `lib/` and lazily imported only when an export starts.
-- **Cloud Backend (optional)** — [Supabase](https://supabase.com/) for auth, project storage and team spaces. RLS-protected; the publishable anon key is safe to embed.
+- **Fonts** — brand fonts (Museo, Helvetica Neue LT Pro) and the portals' UI fonts (Inter, Outfit) are self-hosted under `data/fonts/`. No Google Fonts.
+- **No backend** — no accounts, no database, no uploads. The runtime makes no request to any host other than the one serving the app.
 
 ### Project Structure
 
 ```text
 RMIT-Adflow/
 ├── index.html                 # Editor shell: splash, top bar, panels, timeline, script load order
-├── preview.html               # Preview Portal — review page + share-link viewer
+├── preview.html               # Preview Portal — review page
 │                              #   + third-party HTML5 ad player (up to 10 side by side)
 ├── batch.html                 # Batch Operation Portal — template → data sheet → export ZIP
 ├── styles.css                 # UI styles, 13 named themes, responsive rules (shared by all three pages)
 │
-├── scripts/                   # 26 browser modules, loaded in index.html order
+├── scripts/                   # 25 browser modules, loaded in index.html order
 │   │                          #   (classic <script> tags sharing one global scope)
 │   │
 │   │  ── Shared engine (also loaded by both portals) ──
@@ -261,7 +263,6 @@ RMIT-Adflow/
 │   ├── auto-resize-engine.js  # Rule-based 10-role resize engine
 │   ├── auto-arrange-config.js # Placement coordinates, safezones and sizes per format
 │   ├── docs-content.js        # In-app docs (DOCS_SECTIONS) + changelog (CHANGELOG_DATA)
-│   ├── auth-ui.js             # Supabase auth + Cloud Projects + Team Spaces
 │   ├── data-merge.js          # Live Data / Versions (CSV → ads)
 │   ├── font-subset.js         # HarfBuzz glyph subsetting at export time
 │   ├── export-pipeline.js     # HTML5 ZIP + PNG export, validation, the in-ad runtime
@@ -271,6 +272,7 @@ RMIT-Adflow/
 │   │  ── Editor core ──
 │   ├── core-state.js          # The `state` object, element factories, undo history
 │   ├── autosave.js            # IndexedDB autosave + save-status indicator
+│   ├── local-library.js       # Base project (IndexedDB) + remembered placements (localStorage)
 │   ├── link-system.js         # Link groups and cross-canvas sync
 │   ├── canvas-render.js       # render(), canvas frames, rulers, masks
 │   ├── interactions.js        # Element/canvas drag, resize, rotate, marquee, validator
@@ -286,7 +288,6 @@ RMIT-Adflow/
 │   ├── project-io.js          # Save/load .flow, recent projects, menu wiring
 │   ├── project-dialogs.js     # New Project / Settings dialogs, validation, version check
 │   ├── modals.js              # Modal / alert / confirm / prompt, image compress + crop
-│   ├── share-preview.js       # "Share Preview" live link dialog (revocable, synced on save)
 │   ├── app-boot.js            # Group ops, splash, notifications, initial render
 │   │
 │   │  ── Node build scripts (never loaded by the browser) ──
@@ -294,7 +295,9 @@ RMIT-Adflow/
 │   ├── build-startup-registry.js  # Writes Startup/registry.json
 │   └── build-docs-screenshots.mjs # Regenerates the in-app documentation images
 │
-├── lib/                       # Vendored, committed rather than CDN — exports must work offline
+├── lib/                       # Vendored, committed rather than CDN — the app must work offline
+│   ├── jszip.min.js           # ZIP read/write for .flow files and exports (MIT, 3.10.1)
+│   ├── iro.min.js             # Colour picker (MPL-2.0, 5.5.2)
 │   ├── hb-subset.wasm         # HarfBuzz font subsetting (578 KB)
 │   ├── mediabunny.min.mjs     # MP4/WebM muxing + WebCodecs wrappers (MPL-2.0)
 │   └── gifenc.esm.min.js      # GIF quantise + LZW encode (MIT)
@@ -303,6 +306,7 @@ RMIT-Adflow/
 │   ├── version.txt            # Current app version (single line)
 │   ├── changelog.txt          # Human-readable changelog
 │   ├── fonts/                 # Museo 300/500/700 + Helvetica Neue LT Pro (.woff2 + .otf sources)
+│   │   └── ui/                # Inter + Outfit woff2 for the portals, with ui-fonts.css (OFL)
 │   ├── Elements/              # Application assets and SVG brand elements
 │   │   ├── Adflow_logo.svg            # Dark-theme wordmark
 │   │   ├── Adflow_lighttheme.svg      # Light-theme wordmark
@@ -314,7 +318,11 @@ RMIT-Adflow/
 ├── Startup/registry.json      # Generated startup-template index
 ├── dev-server.js              # Zero-dependency local server with SSE live reload
 ├── run-server.bat             # Windows helper: rebuilds assets, then starts the server
-├── netlify.toml               # Deploy config: publish root ".", two Node build steps
+├── Dockerfile                 # Two-stage image: Node generators → unprivileged nginx on 8080
+├── docker-compose.yml         # One-command start, hardened defaults
+├── docker/nginx.conf          # Server block: MIME types, cache policy, /healthz
+├── vercel.json                # Static deploy config for a separate Vercel project
+├── DEPLOYMENT.md              # Operator guide: Docker, Vercel, other hosts, troubleshooting
 └── knowledge_base.md          # Architecture reference for engineers and coding agents
 ```
 
@@ -330,10 +338,13 @@ See `knowledge_base.md` §2 for the full file-routing table — which feature li
 
 No build tools, `npm install`, or server configuration required.
 
-### Hosted Environment
+### Docker (recommended for teams)
 
-Access the application immediately via the live deployment:
-**[rmit-adflow.netlify.app](https://rmit-adflow.netlify.app/)**
+```bash
+docker compose up -d --build
+```
+
+Open <http://localhost:8080/>. The image runs unprivileged nginx on port 8080 with a health check and needs no internet access at runtime. Port changes, reverse-proxy notes and hardening options are in [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Local Environment
 
@@ -363,13 +374,19 @@ Access the application immediately via the live deployment:
 
 ### Deployment
 
-Netlify, publish root `.`, with no bundling or minification — the deployed files are byte-identical to the repository. The build command runs only the two generators:
+The app is a static site; deploying it means serving the repository files with the right MIME types and cache headers. Three routes, all documented in [DEPLOYMENT.md](DEPLOYMENT.md):
+
+- **Docker** — `Dockerfile` + `docker-compose.yml` + `docker/nginx.conf`. The build stage runs the two generators, the runtime stage is `nginxinc/nginx-unprivileged` on port 8080.
+- **Vercel** — `vercel.json` sets the build command, output root `.` and matching headers. Use a *new* Vercel project for this branch.
+- **Any static host** — run the two generators, then serve the root. `.wasm` must be `application/wasm`, `.mjs` must be JavaScript, and HTML plus `data/version.txt` must not be cached.
+
+The two generators, wherever they run:
 
 ```bash
 node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js
 ```
 
-> **Operational note:** a failed Netlify build leaves the *previous* deploy live rather than taking the site down, so the app can look healthy while serving older code. Verify a change on the deployed URL after every deploy.
+> **Operational note:** every `<script>` tag is version-pinned and the app polls `data/version.txt` to notice a new deploy, so a proxy or CDN that caches HTML can pair old pages with new code. Verify a change on the deployed URL after every deploy.
 
 ---
 
@@ -379,7 +396,7 @@ node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl + S` / `Cmd + S` | Save current project to Supabase Cloud (requires being signed in — warns instead of falling back to a local save) |
+| `Ctrl + S` / `Cmd + S` | Save the project to a `.flow` file (native save dialog where the browser has one, otherwise a download) |
 | `Ctrl + Shift + S` / `Cmd + Shift + S` | Force-save project silently to the browser's IndexedDB database |
 | `Ctrl + Z` / `Cmd + Z` | Undo |
 | `Ctrl + Shift + Z` / `Cmd + Shift + Z` | Redo |
@@ -528,13 +545,12 @@ Uncompressed image assets are the main cause of weight flags. Use the built-in I
 
 Fonts are already subset per export, so they are rarely the problem.
 
-### 11. Can I use Adflow completely offline without signing in?
-Yes — Adflow is local-first.
-- **Local bypass** — **Use locally without signing in** at the bottom of the splash gate.
-- **No feature loss** — layout design, link syncing, spreadsheet merges and every export format run fully in the browser. Both media encoders are vendored, so video and GIF work offline too.
-- **Force browser save** — `Ctrl + Shift + S` saves silently to IndexedDB while working offline.
-- **File backups** — **File → Save → Save to File (.flow)**.
-- **Sync later** — sign in from the top bar at any time to upload local projects to the cloud.
+### 11. Does Adflow need an internet connection or an account?
+No. The local edition has no accounts and makes no network request beyond loading its own files.
+- **No sign-in** — the app opens straight into the workspace.
+- **No feature loss** — layout design, link syncing, spreadsheet merges and every export format run fully in the browser. Every library and font is vendored, so it renders identically with no internet egress.
+- **Force browser save** — `Ctrl + Shift + S` saves silently to IndexedDB.
+- **Moving between machines** — work lives in this browser profile. Save a `.flow` (`Ctrl + S`) and open it on the other machine.
 
 ---
 
@@ -550,10 +566,10 @@ All logic lives in modular JS files loaded sequentially via classic `<script>` t
 
 | # | Stage | Files, in load order |
 |---|---|---|
-| 1–11 | **Shared engine** (also loaded by both portals) | [numeric-wheel.js](scripts/numeric-wheel.js) → [render-runtime.js](scripts/render-runtime.js) → [auto-resize-engine.js](scripts/auto-resize-engine.js) → [auto-arrange-config.js](scripts/auto-arrange-config.js) → [docs-content.js](scripts/docs-content.js) → [auth-ui.js](scripts/auth-ui.js) → [data-merge.js](scripts/data-merge.js) → [font-subset.js](scripts/font-subset.js) → [export-pipeline.js](scripts/export-pipeline.js) → [video-export.js](scripts/video-export.js) → [color-picker.js](scripts/color-picker.js) |
-| 12–16 | **Editor core** | [core-state.js](scripts/core-state.js) → [autosave.js](scripts/autosave.js) → [link-system.js](scripts/link-system.js) → [canvas-render.js](scripts/canvas-render.js) → [interactions.js](scripts/interactions.js) |
+| 1–10 | **Shared engine** (also loaded by both portals) | [numeric-wheel.js](scripts/numeric-wheel.js) → [render-runtime.js](scripts/render-runtime.js) → [auto-resize-engine.js](scripts/auto-resize-engine.js) → [auto-arrange-config.js](scripts/auto-arrange-config.js) → [docs-content.js](scripts/docs-content.js) → [data-merge.js](scripts/data-merge.js) → [font-subset.js](scripts/font-subset.js) → [export-pipeline.js](scripts/export-pipeline.js) → [video-export.js](scripts/video-export.js) → [color-picker.js](scripts/color-picker.js) |
+| 11–16 | **Editor core** | [core-state.js](scripts/core-state.js) → [autosave.js](scripts/autosave.js) → [local-library.js](scripts/local-library.js) → [link-system.js](scripts/link-system.js) → [canvas-render.js](scripts/canvas-render.js) → [interactions.js](scripts/interactions.js) |
 | 17–21 | **Panels & UI** | [canvases-panel.js](scripts/canvases-panel.js) → [layers-assets.js](scripts/layers-assets.js) → [props-panel.js](scripts/props-panel.js) → [sequencer.js](scripts/sequencer.js) → [toolbar-import.js](scripts/toolbar-import.js) |
-| 22–26 | **Project, dialogs, boot** | [project-io.js](scripts/project-io.js) → [project-dialogs.js](scripts/project-dialogs.js) → [modals.js](scripts/modals.js) → [share-preview.js](scripts/share-preview.js) → [app-boot.js](scripts/app-boot.js) |
+| 22–25 | **Project, dialogs, boot** | [project-io.js](scripts/project-io.js) → [project-dialogs.js](scripts/project-dialogs.js) → [modals.js](scripts/modals.js) → [app-boot.js](scripts/app-boot.js) |
 
 `render-runtime.js` deliberately holds everything three surfaces have to agree on — the animation-preset registry (`ANIM_IN_PRESETS` / `ANIM_OUT_PRESETS` / `ANIM_FX_PRESETS`), the render helpers, and the Auto-size fitter (`calculateAutoSize` / `measureTextFits`). It loads first, and both portals load it too, so the editor, the portals and the exported ad cannot drift.
 
@@ -686,38 +702,21 @@ Link Groups bind matching elements across canvases; updates propagate through `a
 - **Undo/Redo** — up to 100 states (default 50). History snapshots the serialisable slices (`canvases`, `frames`, `linkGroups`, `dataMerge`, …) and guards against re-entrant cycles with `_restoringHistory`. App preferences are deliberately excluded: undo must never flip the user's settings.
 - **Portable `.flow` format** — a ZIP (JSZip) containing `project.json` (the state), `meta.json` (dimensions, app version, timestamp) and `images/` (binary assets extracted from base64 data URLs). Saving a **template** additionally sets `isTemplate` and strips the asset library.
 
-### 9. Cloud Integration & Database Security (Supabase)
+### 9. Browser-Side Persistence: Base Project & Remembered Placements
 
-PostgreSQL + Auth + Storage, with Row-Level Security enforced at the database level.
+Both cross-project preferences live in the same browser profile as autosave, implemented in [`scripts/local-library.js`](scripts/local-library.js). The function names are the ones the rest of the app already called when these were account features, so the callers (boot, Settings, New Project, the Auto-Resize engine) did not change shape.
 
-**Tables**
+| Data | Store | Key | Why there |
+|---|---|---|---|
+| Base project | IndexedDB `adflow-autosave` / store `state` | `default-startup` → `{ blob, meta }` | A `.flow` blob can be many MB, past the localStorage ceiling. Shares the autosave DB so there is one database to clear. |
+| Base project hint | localStorage | `adflow-default-startup-meta` | Lets the New Project dialog paint its "Base project" row synchronously; IndexedDB is the authority and corrects it. |
+| Remembered placements | localStorage | `adflow-placement-library` | Small JSON `{ sizes: { "300x250": { role: geom } } }`; the engine reads it synchronously inside a per-element loop. |
 
-| Table | Columns in use |
-|---|---|
-| `projects` | `id` (uuid, also the storage filename) · `user_id` · `space_id` · `folder_id` · `name` · `ad_size_limit_kb` · `size_bytes` · `storage_path` |
-| `spaces` | `id` · `name` · `owner_id` |
-| `space_members` | `space_id` · `user_id` · `role` (`owner` \| `member`) |
-| `space_invitations` | `space_id` · `invited_email` · `invited_by` · `token` (single-use join link) |
-| `folders` | `id` · `space_id` · `name` |
+**Existence is the switch.** New Project offers *Base project* whenever the IndexedDB record exists; clearing it (Settings ▸ Clear) deletes the record, drops the hint, and resets a startup preference that pointed at it. Placements are keyed by **dimensions only** — a 1080 × 1080 keeps its placement whether it arrived as "Instagram Square", a typed size, or a renamed canvas.
 
-**Storage** — one private bucket, `projects`:
+**Legacy fields.** `.flow` files written by the cloud-connected edition may carry `previewSharePath`, `previewUrl`, `cloudSavedAt`, `spaceId` and friends. `LEGACY_CLOUD_FIELDS` in `project-io.js` lists them and `stripLegacyCloudFields()` runs on every load, template pass, new project and base-project snapshot, so none of them survives into a new save.
 
-| Object | Path | Referenced by |
-|---|---|---|
-| Personal project | `{user_id}/{projectId}.flow` | `projects.storage_path` |
-| Space project | `spaces/{space_id}/{projectId}.flow` | `projects.storage_path` |
-| Share-link snapshot | `{user_id}/shares/{token}.flow` | `previewSharePath` **inside** the project blob |
-| Base project (startup) | `{user_id}/default-startup.flow` | nothing — fixed path, one per user; existence is the switch |
-
-The snapshot row is the awkward one: the `projects` table has no column pointing at it, so the only record of a snapshot's location lives inside the project file. Deleting a project therefore reads that field *before* removing anything (`snapshotPathForProjectBlob`), so the snapshot goes with it instead of orphaning in the bucket — objects, unlike signed URLs, never expire on their own. Deleting a team space does the same for every project it contains.
-
-The base project deliberately has **no** `projects` row, which is what keeps it out of Cloud Projects and out of reach of the ordinary open/rename/delete actions. The storage filename stays `default-startup.flow` — it is the internal name and renaming it would orphan every base project already saved.
-
-**RLS recursion workaround** — self-referential SELECT policies on `space_members` would recurse, so membership checks route through `SECURITY DEFINER` helpers: `user_is_space_member(p_space_id uuid)` and `current_user_email()` (which reads `auth.jwt() ->> 'email'`).
-
-**Read-after-write** — blobs upload with `cacheControl: '0'` and are read through a 60-second signed URL fetched with `cache: 'no-store'`. Because an in-place save reuses the same storage path, the previous `max-age=3600` default could serve a stale copy back — which presented as "the save did nothing". Applies to the project save path, `pullCloudProject` (which also backs Revert), space duplication, and share-snapshot refresh.
-
-**Auth** — `signUp` / `signInWithPassword` / `signOut` with `persistSession` and `autoRefreshToken`. When the Supabase URL and publishable anon key are absent, every cloud control hides and the app runs local-only.
+**Nothing leaves the browser.** There is no upload path in the codebase. The only network requests are for the app's own files on its own origin (`data/version.txt` is polled to notice a new deploy).
 
 ### 10. Timeline (Sequencer) Architecture
 

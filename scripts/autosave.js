@@ -59,14 +59,9 @@ function buildStateSnapshot() {
   return snap;
 }
 
-const _LOCAL_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const _isLocalUuid = (s) => typeof s === 'string' && _LOCAL_UUID_RE.test(s);
-
 let _localSaveStatus = 'saved'; // 'saved' | 'unsaved' | 'saving' | 'error'
-let _cloudSaveStatus = 'none';  // 'none' | 'saved' | 'saving' | 'error'
 let _fileSaveStatus = 'none';   // 'none' | 'saved' | 'unsaved'
 let _lastLocalSaveTime = new Date();
-let _lastCloudSaveTime = null;
 let _lastFileSaveTime = null;
 let _autosaveTimer = null;
 let _autosaveSuspended = true;  // suppressed until the initial restore/render finishes
@@ -117,46 +112,6 @@ const localMap = {
   }
 };
 
-const cloudMap = {
-  none: {
-    text: 'Local Only',
-    title: 'Project is local-only (not synced to cloud)',
-    class: 'status-none',
-    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-             <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
-           </svg>`
-  },
-  saved: {
-    text: 'Synced',
-    title: 'Project backups are fully synced to cloud',
-    class: 'status-saved',
-    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-             <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
-             <path d="m9 13 2 2 4-4"></path>
-           </svg>`
-  },
-  saving: {
-    text: 'Syncing...',
-    title: 'Syncing backup to cloud database...',
-    class: 'status-saving',
-    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-             <path d="M16 16l-4-4-4 4"></path>
-             <path d="M12 12v9"></path>
-             <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
-           </svg>`
-  },
-  error: {
-    text: 'Sync Error',
-    title: 'Failed to back up to cloud database',
-    class: 'status-error',
-    icon: `<svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-             <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
-             <line x1="12" y1="12" x2="12" y2="15"></line>
-             <line x1="12" y1="17" x2="12.01" y2="17"></line>
-           </svg>`
-  }
-};
-
 function _formatSaveTime(date) {
   if (!date) return 'Never';
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -166,22 +121,16 @@ function updateSaveStatusUI() {
   const barEl = document.getElementById('save-progress-bar');
   if (!barEl) return;
 
-  // Determine ambient saving/progress state
-  let currentCloudStatus = _cloudSaveStatus;
-  if (typeof authState !== 'undefined' && authState.enabled && !authState.currentUser()) {
-    currentCloudStatus = 'none';
-  }
-
   // 1. Error state (takes priority)
-  if (_localSaveStatus === 'error' || currentCloudStatus === 'error') {
+  if (_localSaveStatus === 'error') {
     barEl.className = 'status-error';
   }
-  // 2. Saving/Syncing state
-  else if (_localSaveStatus === 'saving' || currentCloudStatus === 'saving') {
+  // 2. Saving state
+  else if (_localSaveStatus === 'saving') {
     barEl.className = 'status-saving';
   }
   // 3. Saved transition state
-  else if (_localSaveStatus === 'saved' && (currentCloudStatus === 'saved' || currentCloudStatus === 'none')) {
+  else if (_localSaveStatus === 'saved') {
     if (barEl.classList.contains('status-saving')) {
       barEl.className = 'status-saved';
     } else {
@@ -196,13 +145,13 @@ function updateSaveStatusUI() {
   // Update the status dot next to the project name
   const dotEl = document.getElementById('project-save-status-dot');
   if (dotEl) {
-    if (_localSaveStatus === 'error' || currentCloudStatus === 'error') {
+    if (_localSaveStatus === 'error') {
       dotEl.className = 'status-error';
       dotEl.setAttribute('title', 'Save error');
-    } else if (_localSaveStatus === 'saving' || currentCloudStatus === 'saving') {
+    } else if (_localSaveStatus === 'saving') {
       dotEl.className = 'status-saving';
       dotEl.setAttribute('title', 'Saving changes...');
-    } else if (_localSaveStatus === 'unsaved' || currentCloudStatus === 'unsaved' || _fileSaveStatus === 'unsaved') {
+    } else if (_localSaveStatus === 'unsaved' || _fileSaveStatus === 'unsaved') {
       dotEl.className = 'status-unsaved';
       dotEl.setAttribute('title', 'Unsaved changes');
     } else {
@@ -215,16 +164,13 @@ function updateSaveStatusUI() {
   const containerEl = document.getElementById('project-meta-container');
   if (containerEl) {
     const localTime = _formatSaveTime(_lastLocalSaveTime);
-    const cloudTime = _lastCloudSaveTime ? _formatSaveTime(_lastCloudSaveTime) : 'Never';
     const fileTime = _lastFileSaveTime ? _formatSaveTime(_lastFileSaveTime) : 'Never';
     const localConfText = localMap[_localSaveStatus]?.text || 'Saved';
-    const cloudConfText = cloudMap[currentCloudStatus]?.text || 'Local Only';
     const fileConfText = _fileSaveStatus === 'saved' ? 'Saved' : (_fileSaveStatus === 'unsaved' ? 'Out of Sync' : 'Not Saved');
 
-    const title = `[Save & Sync Status]\n` +
+    const title = `[Save Status]\n` +
                   `• Browser Auto-save: ${localConfText} (Last: ${localTime})\n` +
-                  `• Cloud Sync: ${cloudConfText} (Last: ${cloudTime})\n` +
-                  `• File Export: ${fileConfText} (Last: ${fileTime})\n\n` +
+                  `• File (.flow): ${fileConfText} (Last: ${fileTime})\n\n` +
                   `Click to open project settings / Double-click to rename`;
     containerEl.setAttribute('title', title);
   }
@@ -238,24 +184,8 @@ function setLocalSaveStatus(status) {
   updateSaveStatusUI();
 }
 
-function setCloudSaveStatus(status) {
-  _cloudSaveStatus = status;
-  if (status === 'saved') {
-    _lastCloudSaveTime = new Date();
-  }
-  updateSaveStatusUI();
-}
-
 function setSaveStatus(status) {
   setLocalSaveStatus(status);
-}
-
-function initializeCloudSaveStatus() {
-  if (state.projectId && _isLocalUuid(state.projectId)) {
-    setCloudSaveStatus('saved');
-  } else {
-    setCloudSaveStatus('none');
-  }
 }
 
 
@@ -281,14 +211,6 @@ function scheduleAutosave() {
   if (_autosaveSuspended) return;
   if (_localSaveStatus !== 'saving') setLocalSaveStatus('unsaved');
 
-  let currentCloudStatus = _cloudSaveStatus;
-  if (typeof authState !== 'undefined' && authState.enabled && !authState.currentUser()) {
-    currentCloudStatus = 'none';
-  }
-  if (currentCloudStatus !== 'none' && currentCloudStatus !== 'saving') {
-    setCloudSaveStatus('unsaved');
-  }
-
   if (_fileSaveStatus === 'saved') {
     _fileSaveStatus = 'unsaved';
     updateSaveStatusUI();
@@ -304,6 +226,9 @@ async function restoreAutosave() {
     const rec = await _idbGet(AUTOSAVE_KEY);
     if (rec && rec.state && Array.isArray(rec.state.canvases) && rec.state.canvases.length) {
       Object.assign(state, rec.state);
+      // Autosaves written by older builds may reference the brand logo with the
+      // wrong letter case (see normalizeBrandAssetCase in project-io.js).
+      if (typeof normalizeBrandAssetCase === 'function') normalizeBrandAssetCase(state);
       if (!state.projectId) state.projectId = uid('proj_');
       // v0.16.8 migration — default jumped from 10 → 50. Bump projects
       // that were stuck on the old default (or never had the field).

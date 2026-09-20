@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RMIT Adflow</title>
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="styles.css?v=0.53.0" />
+  <!-- Vendored libraries (lib/) — no CDN, so the app runs with no internet access. -->
+  <script src="lib/jszip.min.js?v=0.60.0"></script>
+  <script src="lib/iro.min.js?v=0.60.0"></script>
+  <link rel="stylesheet" href="styles.css?v=0.60.0" />
   <style>
     /* Splash screen — shown on initial load, faded out by initApp.
        Inlined so it paints before styles.css finishes parsing. */
@@ -133,49 +133,6 @@
       100% { transform: translateX(220%); }
     }
 
-    /* Splash auth gate — shown to signed-out users in place of the
-       quip + progress bar; logo and breathing glow continue behind it. */
-    #app-splash-gate { display: none; flex-direction: column; gap: 12px; width: 340px; max-width: 86vw; margin-top: -4px; }
-    #app-splash.app-splash-gate-active .app-splash-status,
-    #app-splash.app-splash-gate-active .app-splash-bar { display: none; }
-    #app-splash.app-splash-gate-active #app-splash-gate { display: flex; }
-    .app-splash-gate-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-light, #272c3a); }
-    .app-splash-gate-tab { flex: 1; padding: 9px 0; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-muted, #8b8f9c); font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s ease; font-family: inherit; }
-    .app-splash-gate-tab.active { color: var(--text-bright, #f1f5f9); border-bottom-color: var(--accent-base, #7c5cff); }
-    #app-splash-gate form { display: flex; flex-direction: column; gap: 10px; }
-    #app-splash-gate label { font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted, #8b8f9c); font-weight: 600; display: flex; flex-direction: column; gap: 5px; text-align: left; }
-    #app-splash-gate input[type="email"],
-    #app-splash-gate input[type="password"] {
-      width: 100%; padding: 9px 11px; font-size: 12px;
-      background: var(--bg-input, #161922); border: 1px solid var(--border-light, #272c3a);
-      color: var(--text-main, #d4d8e0); border-radius: 5px; outline: none; box-sizing: border-box;
-      font-family: inherit;
-    }
-    #app-splash-gate input:focus { border-color: var(--accent-base, #7c5cff); }
-    #app-splash-gate label.app-splash-gate-remember {
-      flex-direction: row;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-      color: var(--text-muted, #8b8f9c);
-      cursor: pointer;
-      user-select: none;
-      letter-spacing: 0;
-      text-transform: none;
-      font-weight: 400;
-      margin-top: 2px;
-    }
-    #app-splash-gate label.app-splash-gate-remember input { margin: 0; }
-    .app-splash-gate-error { font-size: 11px; color: #ef4444; min-height: 14px; text-align: left; }
-    .app-splash-gate-submit { padding: 10px; font-size: 12px; font-weight: 600; background: var(--accent-base, #7c5cff); color: var(--text-on-accent, #fff); border: none; border-radius: 5px; cursor: pointer; transition: filter .15s ease, opacity .15s ease; font-family: inherit; }
-    .app-splash-gate-submit:hover { filter: brightness(1.1); }
-    .app-splash-gate-submit:disabled { opacity: .55; cursor: not-allowed; }
-    .app-splash-gate-divider { display: flex; align-items: center; gap: 10px; color: var(--text-muted, #8b8f9c); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; margin: 2px 0; }
-    .app-splash-gate-divider::before,
-    .app-splash-gate-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-light, #272c3a); }
-    .app-splash-gate-local { padding: 9px; font-size: 11px; background: transparent; color: var(--text-muted, #8b8f9c); border: 1px solid var(--border-light, #272c3a); border-radius: 5px; cursor: pointer; transition: all .15s ease; font-family: inherit; }
-    .app-splash-gate-local:hover { color: var(--text-bright, #f1f5f9); border-color: var(--text-muted, #8b8f9c); }
-
     /* Size warning — reuses the splash visual language but is static
        (no logo pulse, no progress bar). Below-min-resolution clients land
        here instead of on the app. */
@@ -248,32 +205,10 @@
     <div class="app-splash-inner">
       <div class="app-splash-logo">
         <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo />
-        <span class="app-splash-version">v0.53.0</span>
+        <span class="app-splash-version">v0.60.0</span>
       </div>
       <div class="app-splash-status" id="app-splash-status">Warming up…</div>
       <div class="app-splash-bar"><div class="app-splash-bar-fill" id="app-splash-bar-fill"></div></div>
-      <div id="app-splash-gate">
-        <div class="app-splash-gate-tabs">
-          <button type="button" class="app-splash-gate-tab active" data-tab="signin" title="Sign in to an existing Adflow account">Sign in</button>
-          <button type="button" class="app-splash-gate-tab" data-tab="signup" title="Create a new Adflow account">Sign up</button>
-        </div>
-        <form id="app-splash-gate-form" autocomplete="on">
-          <label>Email
-            <input type="email" id="splash-gate-email" title="The email address on your Adflow account" required autocomplete="email" />
-          </label>
-          <label>Password
-            <input type="password" id="splash-gate-password" title="Your Adflow account password" required minlength="6" autocomplete="current-password" />
-          </label>
-          <label class="app-splash-gate-remember">
-            <input type="checkbox" id="splash-gate-remember" title="Stay signed in on this computer between sessions" checked />
-            <span>Remember me on this device</span>
-          </label>
-          <div class="app-splash-gate-error" id="splash-gate-error"></div>
-          <button type="submit" class="app-splash-gate-submit" id="splash-gate-submit" title="Sign in and load your cloud projects and spaces">Sign in</button>
-        </form>
-        <div class="app-splash-gate-divider">or</div>
-        <button type="button" class="app-splash-gate-local" id="splash-gate-local" title="Skip signing in. Local work, exports and both portals all still function; only cloud projects and spaces need an account">Use locally without signing in</button>
-      </div>
     </div>
   </div>
   <div id="size-overlay">
@@ -302,15 +237,12 @@
             style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
             File</div>
           <div class="dropdown-item" id="menu-file-new">New Project…</div>
-          <!-- Open ▶ — sources are local file vs cloud. The cloud item is
-               hidden until the user is signed in (auth-ui.js toggles its
-               display). -->
+          <!-- Open ▶ — a .flow file from disk. -->
           <div class="dropdown-item has-sub" id="menu-file-open-sub" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
             <span>Open</span>
             <span style="font-size: 8px; color: var(--text-muted);">▶</span>
             <div class="sub-dropdown" style="min-width: 180px;">
               <div class="dropdown-item" id="menu-file-open">From File…</div>
-              <div class="dropdown-item" id="menu-file-cloud" style="display:none;">From Cloud…</div>
             </div>
           </div>
           <!-- Open Recent ▶ — kept at the File top level (rather than
@@ -325,25 +257,18 @@
             </div>
           </div>
           <div class="dropdown-item" id="menu-file-clear-recent" style="color:#ef4444; font-weight:500;">Clear Recent</div>
-          <!-- Save ▶ — local file vs cloud push. Push is hidden until
-               the user is signed in (auth-ui.js toggles its display). -->
+          <!-- Save ▶ — browser database, a .flow file on disk, or a template. -->
           <div class="dropdown-item has-sub" id="menu-file-save-sub" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
             <span>Save</span>
             <span style="font-size: 8px; color: var(--text-muted);">▶</span>
             <div class="sub-dropdown" style="min-width: 200px;">
               <div class="dropdown-item" id="menu-file-save-browser">Save to Browser <span class="kbd"
                   style="background:transparent;border:none;padding:0">Ctrl+Shift+S</span></div>
-              <div class="dropdown-item" id="menu-file-save-file">Save to File (.flow)</div>
-              <div class="dropdown-item" id="menu-file-save-template">Save template</div>
-              <div class="dropdown-item" id="menu-file-push" style="display:none;">Save (Cloud) <span class="kbd"
+              <div class="dropdown-item" id="menu-file-save-file">Save to File (.flow) <span class="kbd"
                   style="background:transparent;border:none;padding:0">Ctrl+S</span></div>
-              <div class="dropdown-item" id="menu-file-cloud-copy" style="display:none;">Save as (Cloud)…</div>
+              <div class="dropdown-item" id="menu-file-save-template">Save template</div>
             </div>
           </div>
-          <!-- Revert — re-downloads the last cloud-saved version of the open
-               project, discarding local changes. Cloud-only, so hidden until
-               the user is signed in (auth-ui.js toggles its display). -->
-          <div class="dropdown-item" id="menu-file-revert" style="display:none;">Revert to Cloud Version</div>
 
           <div class="dropdown-divider"></div>
 
@@ -354,7 +279,6 @@
             style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
             Export</div>
           <div class="dropdown-item" id="menu-file-export">Export…</div>
-          <div class="dropdown-item" id="menu-file-share">Share Preview…</div>
           <div class="dropdown-item" id="menu-file-preview" title="Open the preview portal on its own — review a .flow project, or a standalone HTML5 ad zip from outside Adflow" onclick="window.open('preview.html', '_blank')">Preview Portal…</div>
           <div class="dropdown-item" id="menu-file-batch" title="Portal for other teams: load a certified template, import a data sheet, export all versions" onclick="window.open('batch.html', '_blank')">Batch Operation…</div>
 
@@ -516,10 +440,7 @@
           </button>
         </span>
         <button class="btn primary" id="btn-export-top" title="Export banner to HTML package" style="width:100px;">Export</button>
-        <button class="btn" id="btn-share-top" title="Share secure preview link" style="width:85px; display:inline-flex; align-items:center; justify-content:center; gap:6px; font-weight:600;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>Share</button>
       </div>
-      <!-- Auth chip: shows "Sign in" when logged out, avatar + email + dropdown when logged in. -->
-      <div id="auth-chip" style="position:relative; margin-right:8px;"></div>
     </div>
 
     <!-- ============== WORKSPACES ============== -->
@@ -707,7 +628,7 @@
         </div>
         <div class="workspace-footer" id="workspace-footer">
           <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
-          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.53.0</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.60.0</button>
         </div>
       </div>
     </div>
@@ -787,34 +708,33 @@
 
   <!-- ?v= is bumped with each release (part of the version/changelog workflow)
        so browsers and the local python server never serve stale JS. -->
-  <script src="scripts/numeric-wheel.js?v=0.53.0"></script>
-  <script src="scripts/render-runtime.js?v=0.53.0"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.53.0"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.53.0"></script>
-  <script src="scripts/docs-content.js?v=0.53.0"></script>
-  <script src="scripts/auth-ui.js?v=0.53.0"></script>
-  <script src="scripts/data-merge.js?v=0.53.0"></script>
-  <script src="scripts/font-subset.js?v=0.53.0"></script>
-  <script src="scripts/export-pipeline.js?v=0.53.0"></script>
-  <script src="scripts/video-export.js?v=0.53.0"></script>
-  <script src="scripts/color-picker.js?v=0.53.0"></script>
+  <script src="scripts/numeric-wheel.js?v=0.60.0"></script>
+  <script src="scripts/render-runtime.js?v=0.60.0"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.60.0"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.60.0"></script>
+  <script src="scripts/docs-content.js?v=0.60.0"></script>
+  <script src="scripts/data-merge.js?v=0.60.0"></script>
+  <script src="scripts/font-subset.js?v=0.60.0"></script>
+  <script src="scripts/export-pipeline.js?v=0.60.0"></script>
+  <script src="scripts/video-export.js?v=0.60.0"></script>
+  <script src="scripts/color-picker.js?v=0.60.0"></script>
   <!-- script.js was split into the 13 files below (v0.19.16 refactor). They are
        plain scripts sharing globals — load order matters and must be preserved. -->
-  <script src="scripts/core-state.js?v=0.53.0"></script>
-  <script src="scripts/autosave.js?v=0.53.0"></script>
-  <script src="scripts/link-system.js?v=0.53.0"></script>
-  <script src="scripts/canvas-render.js?v=0.53.0"></script>
-  <script src="scripts/interactions.js?v=0.53.0"></script>
-  <script src="scripts/canvases-panel.js?v=0.53.0"></script>
-  <script src="scripts/layers-assets.js?v=0.53.0"></script>
-  <script src="scripts/props-panel.js?v=0.53.0"></script>
-  <script src="scripts/sequencer.js?v=0.53.0"></script>
-  <script src="scripts/toolbar-import.js?v=0.53.0"></script>
-  <script src="scripts/project-io.js?v=0.53.0"></script>
-  <script src="scripts/project-dialogs.js?v=0.53.0"></script>
-  <script src="scripts/modals.js?v=0.53.0"></script>
-  <script src="scripts/share-preview.js?v=0.53.0"></script>
-  <script src="scripts/app-boot.js?v=0.53.0"></script>
+  <script src="scripts/core-state.js?v=0.60.0"></script>
+  <script src="scripts/autosave.js?v=0.60.0"></script>
+  <script src="scripts/local-library.js?v=0.60.0"></script>
+  <script src="scripts/link-system.js?v=0.60.0"></script>
+  <script src="scripts/canvas-render.js?v=0.60.0"></script>
+  <script src="scripts/interactions.js?v=0.60.0"></script>
+  <script src="scripts/canvases-panel.js?v=0.60.0"></script>
+  <script src="scripts/layers-assets.js?v=0.60.0"></script>
+  <script src="scripts/props-panel.js?v=0.60.0"></script>
+  <script src="scripts/sequencer.js?v=0.60.0"></script>
+  <script src="scripts/toolbar-import.js?v=0.60.0"></script>
+  <script src="scripts/project-io.js?v=0.60.0"></script>
+  <script src="scripts/project-dialogs.js?v=0.60.0"></script>
+  <script src="scripts/modals.js?v=0.60.0"></script>
+  <script src="scripts/app-boot.js?v=0.60.0"></script>
 </body>
 
 </html>

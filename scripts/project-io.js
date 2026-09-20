@@ -2,44 +2,47 @@
 // Save / Load Project
 // ============================================================================
 // Build a .flow Blob + sidecar metadata (savedAt, suggestedName, exportState).
-// Reused by both the menu Save (saveProjectAsFlow) and the cloud push.
+// Used by the menu Save (saveProjectAsFlow), Ctrl+S, Save template, and the base
+// project snapshot.
 // opts.forDefaultStartup — building the snapshot that replaces the empty board for
-// new projects (Settings ▸ "Use current project as the default"). It is a template
-// in every structural sense, so it takes the whole template stripping pass, plus a
-// second one for identity: a default that carried a share link or a cloud-save
-// stamp would hand both to every project created from it. createNewProject deletes
-// exactly these fields for the same reason.
-// The fields that bind a project to a LIVE share snapshot. They are identity,
-// not content: whoever holds them can overwrite the file a reviewer is looking
-// at, and can revoke their link by making a new one. Any copy that is not the
-// project itself must therefore not carry them — see stripShareLink callers.
-const SHARE_LINK_FIELDS = [
+// new projects (Settings ▸ Startup ▸ Base project). It is a template in every
+// structural sense, so it takes the whole template stripping pass, plus a second
+// one for identity (name, data version).
+
+// Local edition: there is no cloud and no share service, but .flow files written
+// by the cloud-era build still carry the fields below — a share pointer, a "saved
+// to cloud" stamp, a team-space binding. They are identity, not content, and none
+// of them means anything here, so every load, copy and template pass drops them.
+// One list, so a stale stamp can never sneak back into `state`.
+const LEGACY_CLOUD_FIELDS = [
   'previewUrl', 'previewExpiry', 'previewSharePath',
   'previewShareProjectId', 'previewSharedBy', 'previewSharedAt',
-  'previewNeverExpires'
+  'previewNeverExpires',
+  'cloudSavedAt', 'cloudSavedBy', 'spaceId', 'cloudId', 'cloudFolder'
 ];
-function stripShareLink(o) {
+function stripLegacyCloudFields(o) {
   if (!o) return o;
-  for (const k of SHARE_LINK_FIELDS) delete o[k];
+  for (const k of LEGACY_CLOUD_FIELDS) delete o[k];
   return o;
 }
 
-// A share snapshot belongs to exactly ONE project id (stamped as
-// previewShareProjectId when the link is made). A .flow travels — it gets
-// exported, re-imported, cloned into a team space — and every copy used to
-// arrive still claiming the original's snapshot, which meant pushing the COPY
-// overwrote what the ORIGINAL's reviewers were looking at, and sharing the copy
-// silently revoked the original's link. So on load, a pointer that names a
-// different project than the one we ended up as is somebody else's and is
-// dropped. Links made before the stamp existed have no id to compare and are
-// left alone, so existing shares keep working.
-function dropInheritedShareLink() {
-  if (!state.previewSharePath) return;
-  if (!state.previewShareProjectId) return;
-  if (state.previewShareProjectId === state.projectId) return;
-  console.warn('Dropping inherited share link', state.previewSharePath,
-    '— it belongs to project', state.previewShareProjectId, 'not', state.projectId);
-  stripShareLink(state);
+// The brand logo file on disk is `RMIT_white.svg`, but builds up to v0.53 seeded
+// elements with `RMIT_White.svg`. Windows and the dev server are case-insensitive
+// so it never showed; a Linux host (the Docker image, Vercel) is not, and the logo
+// 404s. Normalise the id on every load so files saved by older builds keep their
+// logo. The servers also alias the old spelling as belt-and-braces.
+const _LEGACY_BRAND_ASSET_CASE = Object.freeze({
+  'data/Elements/RMIT_White.svg': 'data/Elements/RMIT_white.svg'
+});
+function normalizeBrandAssetCase(st) {
+  if (!st || !Array.isArray(st.canvases)) return st;
+  st.canvases.forEach(c => {
+    (c.elements || []).forEach(el => {
+      const fixed = _LEGACY_BRAND_ASSET_CASE[el.assetId];
+      if (fixed) el.assetId = fixed;
+    });
+  });
+  return st;
 }
 
 async function buildFlowBlob(isTemplate = false, opts = {}) {
@@ -55,12 +58,7 @@ async function buildFlowBlob(isTemplate = false, opts = {}) {
     delete exportState.history;
     delete exportState.historyIndex;
     delete exportState.projectId;
-    delete exportState.cloudId;
-    delete exportState.cloudFolder;
-    // A template seeds NEW projects, and it drops projectId right above — so a
-    // share pointer riding along here would land in a project that can never be
-    // matched back to it, and would let that project revoke the real owner's link.
-    stripShareLink(exportState);
+    stripLegacyCloudFields(exportState);
 
     exportState.selectedElementId = null;
     exportState.layerSelection = [];
@@ -103,14 +101,10 @@ async function buildFlowBlob(isTemplate = false, opts = {}) {
     }
 
     if (forDefaultStartup) {
-      // Identity, not content. A default-startup snapshot is a starting point for
-      // projects that have never been shared or pushed, so it must not carry:
-      stripShareLink(exportState);            // …an active share link,
-      delete exportState.cloudSavedAt;        // …a "saved to cloud" stamp,
-      delete exportState.cloudSavedBy;
-      delete exportState.spaceId;             // …or a team-space binding.
+      // Identity, not content: a base project is a starting point, so it carries
+      // no bound data version and no name — the New Project dialog names it.
       delete exportState.currentVersion;
-      delete exportState.projectName;         // the New Project dialog names it.
+      delete exportState.projectName;
     }
   } else {
     exportState.editingElementId = null;
@@ -272,12 +266,7 @@ async function addRecentProject(exportState) {
   }
 }
 
-// Populate the Open Recent submenu with two sections — local recents
-// (IndexedDB snapshots) and cloud projects (most-recent saves on
-// Supabase). The cloud section only appears when the user is signed in
-// and the Supabase client is available. Called after each save and on
-// hover of the "Open Recent" parent menu item so the cloud list stays
-// fresh as the user signs in/out.
+// Trim the Open Recent list back to its most recent entry.
 async function clearRecentProjects() {
   if (!await showAdflowConfirm('Clear recent list and keep only the latest project for each category?')) return;
   
@@ -291,19 +280,13 @@ async function clearRecentProjects() {
     console.error('Failed to clear local recents:', err);
   }
 
-  // 2. Clear cloud (only store cleared-at timestamp in localStorage, no database deletions)
-  localStorage.setItem('cloud-recents-cleared-at', Date.now().toString());
-
   showCanvasNotification('Recent list cleared.', { type: 'success' });
   updateRecentProjectsMenu();
 }
 
-// Populate the Open Recent submenu with two sections — local recents
-// (IndexedDB snapshots) and cloud projects (most-recent saves on
-// Supabase). The cloud section only appears when the user is signed in
-// and the Supabase client is available. Called after each save and on
-// hover of the "Open Recent" parent menu item so the cloud list stays
-// fresh as the user signs in/out.
+// Populate the Open Recent submenu from the local recents list (IndexedDB
+// snapshots). Called after each save and on hover of the "Open Recent" parent
+// menu item so the list stays fresh.
 async function updateRecentProjectsMenu() {
   const container = document.getElementById('recent-projects-list');
   if (!container) return;
@@ -354,122 +337,21 @@ async function updateRecentProjectsMenu() {
     console.error('Failed to load local recents:', e);
   }
 
-  // --- 2. Fetch Cloud projects (Supabase) if user is signed in ------
-  let cloudData = null;
-  const authReady = typeof authState !== 'undefined' && authState.enabled && typeof sb !== 'undefined' && sb;
-  const user = authReady ? authState.currentUser() : null;
-  if (authReady && user) {
-    try {
-      const { data, error } = await sb
-        .from('projects')
-        .select('id, name, updated_at, storage_path, space_id, folder_id')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(10);
-      if (!error) {
-        // Filter out cloud projects older than cloud-recents-cleared-at
-        // except the very latest one (which is data[0])
-        const clearedAt = parseInt(localStorage.getItem('cloud-recents-cleared-at') || '0', 10);
-        let filtered = [];
-        if (data && data.length > 0) {
-          filtered.push(data[0]);
-          for (let i = 1; i < data.length; i++) {
-            const projTime = Date.parse(data[i].updated_at);
-            if (isNaN(projTime) || projTime >= clearedAt) {
-              filtered.push(data[i]);
-            }
-          }
-        }
-        cloudData = filtered;
-      }
-    } catch (e) {
-      console.error('Failed to load cloud projects:', e);
-    }
-  }
-
-  // Helpers to retrieve timestamp values for ordering comparison
-  const getLocalTime = (item) => {
-    if (!item) return 0;
-    if (item.updatedAtMs) return item.updatedAtMs;
-    const parsed = Date.parse(item.timestamp);
-    return isNaN(parsed) ? 0 : parsed;
-  };
-
-  const getCloudTime = (row) => {
-    if (!row || !row.updated_at) return 0;
-    const parsed = Date.parse(row.updated_at);
-    return isNaN(parsed) ? 0 : parsed;
-  };
-
-  // Render logic for local section
-  const renderLocalSection = () => {
-    appendSectionHeader('Local');
-    if (localRecents.length === 0) {
-      appendEmpty('(No recent local projects)');
-    } else {
-      localRecents.forEach(item => {
-        appendItem(item.name, item.timestamp, async () => {
-          if (await showAdflowConfirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
-            await loadProjectFromState(item.stateSnapshot);
-          }
-        });
-      });
-    }
-  };
-
-  // Render logic for cloud section
-  const renderCloudSection = () => {
-    appendSectionHeader('Cloud');
-    if (cloudData === null) {
-      appendEmpty('(Failed to load cloud projects)');
-    } else if (cloudData.length === 0) {
-      appendEmpty('(No cloud projects yet)');
-    } else {
-      const fmt = (iso) => {
-        if (!iso) return '';
-        if (typeof _formatRelativeTime === 'function') {
-          try { return _formatRelativeTime(iso); } catch (_) { /* fall through */ }
-        }
-        try {
-          return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        } catch (_) { return ''; }
-      };
-      cloudData.forEach(row => {
-        appendItem(row.name || '(untitled)', fmt(row.updated_at), async () => {
-          if (!await showAdflowConfirm(`Open cloud project "${row.name || 'untitled'}"? Any unsaved changes will be lost.`)) return;
-          if (typeof pullCloudProject !== 'function') {
-            showCanvasNotification('Cloud open not available.', { type: 'error' });
-            return;
-          }
-          try { await pullCloudProject(row); }
-          catch (err) { showCanvasNotification(`Open failed: ${err.message || err}`, { type: 'error' }); }
-        });
-      });
-    }
-  };
-
-  // --- 3. Determine Ordering & Render -------------------------------
-  const latestLocalTime = localRecents.length > 0 ? getLocalTime(localRecents[0]) : 0;
-  const latestCloudTime = (cloudData && cloudData.length > 0) ? getCloudTime(cloudData[0]) : 0;
-
-  if (cloudData !== null) {
-    if (latestCloudTime > latestLocalTime) {
-      // Cloud is latest, render Cloud on top
-      renderCloudSection();
-      appendDivider();
-      renderLocalSection();
-    } else {
-      // Local is latest, render Local on top
-      renderLocalSection();
-      appendDivider();
-      renderCloudSection();
-    }
+  // --- 2. Render -----------------------------------------------------
+  appendSectionHeader('Local');
+  if (localRecents.length === 0) {
+    appendEmpty('(No recent local projects)');
   } else {
-    // Only local rendered (signed out)
-    renderLocalSection();
+    localRecents.forEach(item => {
+      appendItem(item.name, item.timestamp, async () => {
+        if (await showAdflowConfirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
+          await loadProjectFromState(item.stateSnapshot);
+        }
+      });
+    });
   }
 
-  // --- 4. Toggle main menu "Clear Recent" visibility -----------------
+  // --- 3. Toggle main menu "Clear Recent" visibility -----------------
   // Configured to remain permanently visible per user request
 }
 
@@ -493,30 +375,19 @@ async function loadProjectFromState(loadedState) {
   loadedState = JSON.parse(JSON.stringify(loadedState));
   delete loadedState.isTemplate;
 
-  // Drop the previously open project's share-link metadata so it can't leak into
-  // the project being loaded. Object.assign restores previewSharePath/previewExpiry
-  // from the file if it has them; previewUrl is session-only (never baked) and
-  // stays cleared, so a project that was never shared shows no active link.
-  stripShareLink(state);
-  // Cleared then restored by the Object.assign below if the file carries one,
-  // exactly like the share metadata above — the preview portal's "Updated ..."
-  // line depends on this travelling inside the .flow.
-  delete state.cloudSavedAt;
-  delete state.cloudSavedBy;
-
   Object.assign(state, loadedState);
   delete state.isTemplate;
+  // Snapshots written by the cloud-era build may carry share pointers and cloud
+  // stamps; none of them mean anything in the local edition.
+  stripLegacyCloudFields(state);
+  normalizeBrandAssetCase(state);
   if (!state.projectId) state.projectId = uid('proj_');
-  // projectId is settled — now decide whether the share pointer we just merged
-  // in is actually ours.
-  dropInheritedShareLink();
 
   // Re-home legacy centre-anchored layouts onto the smaller board.
   const positionsMigrated = normalizeCanvasPositions();
 
   await syncRmitAssets();
   setLocalSaveStatus('saved');
-  initializeCloudSaveStatus();
 
   if (!positionsMigrated && restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
     history.length = 0;
@@ -631,17 +502,12 @@ async function loadProjectFromBlob(file, customProjectName, existingProgress = n
     const savedZoom = isTemplateFile ? undefined : loadedState.zoom;
   
     progress.setProgress(95, 'Syncing application assets...');
-    // Clear the previously open project's share-link metadata before merging so it
-    // can't leak into the loaded project (see loadProjectFromState). Object.assign
-    // restores previewSharePath/previewExpiry from the file if present.
-    stripShareLink(state);
-    // Cleared then restored by the Object.assign below if the file carries one,
-    // exactly like the share metadata above — the preview portal's "Updated ..."
-    // line depends on this travelling inside the .flow.
-    delete state.cloudSavedAt;
-    delete state.cloudSavedBy;
     Object.assign(state, loadedState);
     delete state.isTemplate; // Always ensure isTemplate is removed at runtime
+    // Files written by the cloud-era build may carry share pointers and cloud
+    // stamps; none of them mean anything in the local edition.
+    stripLegacyCloudFields(state);
+    normalizeBrandAssetCase(state);
   
     if (customCompressFormat) {
       state.compressFormat = customCompressFormat;
@@ -655,14 +521,10 @@ async function loadProjectFromBlob(file, customProjectName, existingProgress = n
     state.zoom = 1.0;
     state.assets = newAssets || {};
     if (!state.projectId) state.projectId = uid('proj_');
-    // projectId is settled — now decide whether the share pointer we just merged
-    // in is actually ours.
-    dropInheritedShareLink();
     // Re-home legacy centre-anchored layouts onto the smaller board.
     const positionsMigrated = normalizeCanvasPositions();
     await syncRmitAssets();
     setLocalSaveStatus('saved');
-    initializeCloudSaveStatus();
     _fileSaveStatus = 'saved';
     _lastFileSaveTime = new Date();
   
@@ -862,9 +724,8 @@ if (_clearRecentBtn) {
   });
 }
 
-// Refresh the Open Recent submenu when the user hovers it. Keeps the
-// Cloud section in sync with the live auth state — signing in mid-session
-// adds the Cloud section on the next hover without needing a save.
+// Refresh the Open Recent submenu when the user hovers it, so it reflects any
+// save made since the menu was last built.
 const _menuFileRecent = document.getElementById('menu-file-recent');
 if (_menuFileRecent) {
   _menuFileRecent.addEventListener('mouseenter', () => {
@@ -957,7 +818,8 @@ const defaultFallbackFiles = [
 
 async function fetchAssetFilenames() {
   // Prefer the committed manifest — generated by scripts/build-asset-manifest.js
-  // on Netlify build, so dropping a file into data/assets/ reflects on deploy.
+  // at deploy time (Docker build stage / Vercel build), so dropping a file into
+  // data/assets/ reflects on deploy.
   try {
     const r = await fetch('data/assets/manifest.json');
     if (r.ok) {
@@ -1016,7 +878,7 @@ async function syncRmitAssets() {
   const nonRmitLibrary = state.assetLibrary.filter(a => a.folderId !== rmitFolderId);
 
   // Fetch all RMIT assets in parallel — sequential awaits used to add N× RTT
-  // on cold Netlify loads. Preserve manifest order in the final library.
+  // on cold loads of a deployed build. Preserve manifest order in the final library.
   const results = await Promise.all(filenames.map(async (filename) => {
     const assetId = 'as_rmit_' + filename;
     const imgId = 'img_rmit_' + filename;

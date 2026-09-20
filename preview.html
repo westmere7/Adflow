@@ -6,19 +6,17 @@
   <title>Ad Preview Portal - RMIT Adflow</title>
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
-  <!-- Premium Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.60.0" />
   
-  <!-- JSZip for unzipping .flow files -->
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
+  <script src="lib/jszip.min.js?v=0.60.0"></script>
 
   <!-- The app's real stylesheet, so this portal shares the editor's palette,
        themes, buttons and dialogs instead of maintaining a parallel look.
        Loaded BEFORE the page-specific block below so the portal's own layout
        rules can still override where they must. -->
-  <link rel="stylesheet" href="styles.css?v=0.53.0" />
+  <link rel="stylesheet" href="styles.css?v=0.60.0" />
 
   <style>
     /* This page's layout was written against its own palette names. Rather than
@@ -717,16 +715,11 @@
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:nowrap; overflow:hidden; flex-shrink:1;">
         <div class="project-name-title" id="project-name" style="margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No Project Loaded</div>
         <span id="portal-mode-badge" style="font-size:10px; font-weight:700; text-transform:uppercase; border:1px solid var(--border-color); color:var(--text-muted); padding:2px 6px; border-radius:4px; white-space:nowrap; letter-spacing:0.04em;">Preview</span>
-        <div id="preview-share-meta" style="font-size:11.5px; color:var(--text-muted); font-weight:500; white-space:nowrap; flex-shrink:0;"></div>
       </div>
       <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 12px; flex-shrink:0;">
         <button class="btn primary" id="btn-download-all" title="Download every visible size as HTML5 zips in one archive" style="display: none; padding: 4px 10px; font-size: 11px; height: 26px; gap: 4px; flex-shrink: 0; align-items: center; justify-content: center; cursor: pointer; white-space: nowrap;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <span>Download All (.zip)</span>
-        </button>
-        <button class="btn" id="btn-update-preview" title="Fetch the latest saved version of this project" style="display: none; padding: 4px 10px; font-size: 11px; height: 26px; gap: 4px; flex-shrink: 0; align-items: center; justify-content: center; cursor: pointer; white-space: nowrap;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          <span>Update Preview</span>
         </button>
         <button class="btn-link" id="btn-drag-trigger" title="Choose a file from your computer" style="font-size: 12px; white-space: nowrap; flex-shrink:0;">Load Local File...</button>
       </div>
@@ -892,13 +885,13 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/numeric-wheel.js?v=0.53.0"></script>
-  <script src="scripts/render-runtime.js?v=0.53.0"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.53.0"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.53.0"></script>
-  <script src="scripts/data-merge.js?v=0.53.0"></script>
-  <script src="scripts/font-subset.js?v=0.53.0"></script>
-  <script src="scripts/export-pipeline.js?v=0.53.0"></script>
+  <script src="scripts/numeric-wheel.js?v=0.60.0"></script>
+  <script src="scripts/render-runtime.js?v=0.60.0"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.60.0"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.60.0"></script>
+  <script src="scripts/data-merge.js?v=0.60.0"></script>
+  <script src="scripts/font-subset.js?v=0.60.0"></script>
+  <script src="scripts/export-pipeline.js?v=0.60.0"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>
@@ -1701,64 +1694,6 @@
         downloadAllBtn.style.display = (state.canvases && state.canvases.length > 0) ? 'inline-flex' : 'none';
       }
       
-      // Share meta line.
-      //
-      // A share link points at a frozen snapshot, BUT every cloud save from the
-      // editor mirrors itself into that same snapshot (pushCloudProject in
-      // auth-ui.js), so what a reviewer sees can be newer than the link they
-      // were sent. Saying "Shared on <link date>" in that case is wrong — it
-      // reads as "this is the version from Monday" when it is in fact today's.
-      // So when the snapshot carries a cloud-save stamp later than the share,
-      // the line leads with the update instead, and keeps the original share
-      // date in the tooltip.
-      const shareMetaEl = document.getElementById('preview-share-meta');
-      if (shareMetaEl) {
-        const params = new URLSearchParams(window.location.search);
-        const urlBy = params.get('by');
-        const urlAtRaw = parseInt(params.get('at'), 10);
-        const urlAt = isNaN(urlAtRaw) ? null : urlAtRaw;
-
-        const fmt = (ts) => new Date(ts).toLocaleString('en-US', {
-          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
-        });
-        const nameOf = (s) => String(s || '').split('@')[0] || 'Unknown';
-
-        // The link's own params win for WHO shared and WHEN, because they were
-        // baked at link-creation time and a later save can't rewrite them.
-        let sharedBy = '';
-        let sharedAt = null;
-        if (urlBy && urlAt) {
-          sharedBy = urlBy;
-          sharedAt = urlAt;
-        } else if (state.previewSharedBy && state.previewSharedAt) {
-          sharedBy = nameOf(state.previewSharedBy);
-          sharedAt = state.previewSharedAt;
-        }
-
-        const savedAt = Number(state.cloudSavedAt) || null;
-        // 60s of slack: sharing itself builds a snapshot moments after a save,
-        // and that must not read as "updated since you were sent this".
-        const isUpdated = !!(savedAt && sharedAt && savedAt > sharedAt + 60000);
-
-        if (isUpdated) {
-          const updatedBy = nameOf(state.cloudSavedBy) || sharedBy;
-          shareMetaEl.textContent = `Updated ${fmt(savedAt)} by ${updatedBy}`;
-          shareMetaEl.title = sharedAt
-            ? `This preview reflects a newer save than the link you were sent.\nOriginally shared ${fmt(sharedAt)}${sharedBy ? ' by ' + sharedBy : ''}.`
-            : 'This preview reflects a newer save than the link you were sent.';
-        } else if (sharedBy && sharedAt) {
-          shareMetaEl.textContent = `Shared on ${fmt(sharedAt)} by ${sharedBy}`;
-          shareMetaEl.title = '';
-        } else if (savedAt) {
-          // No share metadata at all (an older link, or a file opened directly)
-          // but the project still knows when it was last saved to the cloud.
-          shareMetaEl.textContent = `Updated ${fmt(savedAt)}${state.cloudSavedBy ? ' by ' + nameOf(state.cloudSavedBy) : ''}`;
-          shareMetaEl.title = '';
-        } else {
-          shareMetaEl.textContent = '';
-          shareMetaEl.title = '';
-        }
-      }
       
       // 2. Timeline Selector
       repopulateFrameSelect();
@@ -1908,21 +1843,6 @@
         const jsonStr = await projFile.async('string');
         const loadedState = JSON.parse(jsonStr);
         
-        // Validate signed URL link state if accessed via cloud URL parameter.
-        // Snapshot shares (v0.20.4+, marked by previewSharePath) are revoked by
-        // deleting the storage object — the fetch 404s — so only the baked-in
-        // expiry needs checking here. Legacy v0.20.0 links point at the live
-        // project file and rely on this in-file metadata check for revocation.
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('url')) {
-          const isSnapshotShare = !!loadedState.previewSharePath;
-          if (!isSnapshotShare && (!loadedState.previewUrl || !loadedState.previewExpiry)) {
-            throw new Error('This preview link is expired or has been deleted by the owner.');
-          }
-          if (loadedState.previewExpiry && loadedState.previewExpiry <= Date.now()) {
-            throw new Error('This preview link is expired or has been deleted by the owner.');
-          }
-        }
         
         loaderSubtitle.textContent = 'Extracting assets';
         const newAssets = {};
@@ -2125,32 +2045,6 @@
       };
     }
     
-    // Update Preview logic
-    const updatePreviewBtn = document.getElementById('btn-update-preview');
-    updatePreviewBtn.onclick = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const url = params.get('url');
-      if (!url) return;
-      
-      loader.style.opacity = '1';
-      loader.style.display = 'flex';
-      loader.querySelector('.spinner').style.display = 'block';
-      loaderTitle.textContent = 'Updating preview...';
-      loaderSubtitle.textContent = 'Downloading latest cloud snapshot';
-      
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP error fetching project: ${res.status}`);
-        
-        const blob = await res.blob();
-        await processProjectFile(blob);
-      } catch (e) {
-        console.error(e);
-        loaderTitle.textContent = 'Update Failed';
-        loaderSubtitle.innerHTML = 'Could not fetch latest updates. The preview link may have expired.<br/><br/><button class="btn" onclick="document.getElementById(\'portal-loader\').style.display=\'none\'">Close</button>';
-        loader.querySelector('.spinner').style.display = 'none';
-      }
-    };
 
     // =====================================================================
     // Empty state + portal modes
@@ -2502,33 +2396,12 @@
     document.getElementById('ext-loop-secs')?.addEventListener('change', syncExtLoop);
     document.getElementById('btn-ext-add')?.addEventListener('click', () => extSelector.click());
 
-    // Boot: a ?url= snapshot still auto-loads; otherwise open on the prompt.
+    // Boot: open on the prompt. The local edition has no share links, so there
+    // is no ?url= snapshot path any more — files come in by drop or Open.
     async function bootPortal() {
-      const params = new URLSearchParams(window.location.search);
-      const url = params.get('url');
-
-      if (url) {
-        updatePreviewBtn.style.display = 'inline-flex';
-        try {
-          loaderSubtitle.textContent = 'Downloading cloud snapshot...';
-          const res = await fetch(url, { cache: 'no-store' });
-          if (!res.ok) throw new Error(`HTTP error fetching project: ${res.status}`);
-
-          const blob = await res.blob();
-          await processProjectFile(blob);
-        } catch (e) {
-          console.error(e);
-          loader.style.opacity = '0';
-          loader.style.display = 'none';
-          showPvEmpty(true);
-          showPvError('Could not load that preview link — it may have expired. You can still open a file below.');
-        }
-      } else {
-        updatePreviewBtn.style.display = 'none';
-        loader.style.display = 'none';
-        loader.style.opacity = '0';
-        showPvEmpty(true);
-      }
+      loader.style.display = 'none';
+      loader.style.opacity = '0';
+      showPvEmpty(true);
     }
 
     // Canvas grid panning logic

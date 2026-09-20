@@ -219,7 +219,7 @@ function defaultElements(preset) {
   const logoW = Math.max(60, Math.min(100, Math.round(w * 0.2)));
   const logoH = Math.round(logoW * 0.35); // rough aspect ratio for RMIT logo
   out.push(Object.assign(makeElement('image'),
-    { customName: 'RMIT Logo', assetId: 'data/Elements/RMIT_White.svg', x: w - logoW - pad, y: pad, width: logoW, height: logoH, persistent: 'top' }));
+    { customName: 'RMIT Logo', assetId: 'data/Elements/RMIT_white.svg', x: w - logoW - pad, y: pad, width: logoW, height: logoH, persistent: 'top' }));
 
   out.push(Object.assign(makeElement('text'),
     {

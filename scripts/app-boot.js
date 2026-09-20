@@ -131,10 +131,8 @@ document.addEventListener('mousedown', (e) => {
 //
 // Two scopes, and they are genuinely different destinations rather than a preference:
 //   Project only — c.layoutOverrides on this canvas. Travels inside the .flow.
-//   Global       — the account placement library, keyed by size. Travels with YOU,
-//                  across projects and machines. Needs an account, so it is absent in
-//                  guest mode rather than shown disabled: an option that can never work
-//                  is not information.
+//   Global       — the browser's placement library, keyed by size (local-library.js).
+//                  Travels across every project opened in this browser profile.
 const AUTO_ARRANGE_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>`;
 
 function placementLibraryOffered() {
@@ -200,7 +198,7 @@ function autoArrangeMenuHtml(scope, selCount) {
         <div class="ctx-submenu">
           <div class="ctx-item" id="${idPrefix}-project" style="white-space:nowrap;" title="Remember this placement in this project only — it travels inside the .flow file">Project only</div>`;
   if (placementLibraryOffered()) {
-    html += `<div class="ctx-item" id="${idPrefix}-global" style="white-space:nowrap;" title="Remember this placement for this canvas size in every project on your account">All projects (global)</div>`;
+    html += `<div class="ctx-item" id="${idPrefix}-global" style="white-space:nowrap;" title="Remember this placement for this canvas size in every project opened in this browser">All projects (global)</div>`;
   }
   html += `</div></div>`;
 
@@ -220,7 +218,7 @@ function autoArrangeMenuHtml(scope, selCount) {
       html += `<div class="ctx-item ctx-danger" id="${idPrefix}-clear-project" style="white-space:nowrap;" title="Forget the placement saved in this project for ${_placementRoleList(clearable.project)}">Project only</div>`;
     }
     if (clearable.global.length) {
-      html += `<div class="ctx-item ctx-danger" id="${idPrefix}-clear-global" style="white-space:nowrap;" title="Forget the placement remembered on your account for ${_placementRoleList(clearable.global)} at this canvas size">All projects (global)</div>`;
+      html += `<div class="ctx-item ctx-danger" id="${idPrefix}-clear-global" style="white-space:nowrap;" title="Forget the placement remembered in this browser for ${_placementRoleList(clearable.global)} at this canvas size">All projects (global)</div>`;
     }
     html += `</div></div>`;
   }
@@ -299,7 +297,7 @@ async function clearPlacementGlobally(scope) {
   const { c } = _placementTargets(scope);
   const roles = _placementClearable(scope).global;
   if (!c || !roles.length) {
-    showCanvasNotification('Nothing is remembered on your account for that.', { type: 'info' });
+    showCanvasNotification('Nothing is remembered in this browser for that.', { type: 'info' });
     return;
   }
   try {
@@ -307,12 +305,12 @@ async function clearPlacementGlobally(scope) {
     render();
     showCanvasNotification(
       forgotten
-        ? `No longer remembering ${_placementRoleList(roles)} for ${c.width} × ${c.height} on your account.`
+        ? `No longer remembering ${_placementRoleList(roles)} for ${c.width} × ${c.height} in this browser.`
         : `Nothing was remembered for ${_placementRoleList(roles)} at ${c.width} × ${c.height}.`,
       { type: forgotten ? 'success' : 'info' });
   } catch (err) {
     console.warn('Global placement clear failed:', err);
-    showCanvasNotification(`Could not update your account: ${err.message || err}`, { type: 'error' });
+    showCanvasNotification(`Could not update the remembered placements: ${err.message || err}`, { type: 'error' });
   }
 }
 
@@ -352,11 +350,11 @@ async function savePlacementGlobally(scope) {
   try {
     await savePlacementsToLibrary(c.width, c.height, entries);
     showCanvasNotification(
-      `Placement remembered for every ${c.width} × ${c.height} canvas on your account: ${_placementRoleList(roles)}.`,
+      `Placement remembered for every ${c.width} × ${c.height} canvas in this browser: ${_placementRoleList(roles)}.`,
       { type: 'success' });
   } catch (err) {
     console.warn('Global placement save failed:', err);
-    showCanvasNotification(`Could not save the placement to your account: ${err.message || err}`, { type: 'error' });
+    showCanvasNotification(`Could not save the placement: ${err.message || err}`, { type: 'error' });
   }
 }
 
@@ -1580,7 +1578,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.53.0';
+        verEl.textContent = 'v0.60.0';
         logoEl.appendChild(verEl);
       }
     }
@@ -1757,15 +1755,13 @@ async function loadStartupTemplate(fileName, customProjectName, customCompressFo
         console.warn('Startup template load failed, starting fresh:', e);
       }
     }
-    // No startup template took, so this would be an empty board — use the account's
-    // saved default instead, if there is one. Derived from the account rather than a
-    // stored preference, so it behaves the same in every browser and on every origin
-    // (localStorage is per-origin, which is what made this inconsistent before).
-    // Optional by design: signed out, no default, or unreachable → empty board.
+    // No startup template took, so this would be an empty board — use the base
+    // project saved in this browser instead, if there is one (Settings ▸ Startup ▸
+    // Base project, kept in IndexedDB by local-library.js). Its existence is the
+    // switch. Optional by design: no base project, or unreadable → empty board.
     if (!restored) {
       try {
-        await authState.ready;
-        if (authState.currentUser() && typeof getDefaultStartupInfo === 'function') {
+        if (typeof getDefaultStartupInfo === 'function') {
           const info = await getDefaultStartupInfo();
           if (info.exists) {
             const blob = await fetchDefaultStartupBlob();
@@ -1775,7 +1771,7 @@ async function loadStartupTemplate(fileName, customProjectName, customCompressFo
           }
         }
       } catch (e) {
-        console.warn('Default startup project load failed, starting fresh:', e);
+        console.warn('Base project load failed, starting fresh:', e);
       }
     }
   }
@@ -1822,19 +1818,8 @@ async function loadStartupTemplate(fileName, customProjectName, customCompressFo
   // project once if there was nothing to restore.
   _autosaveSuspended = false;
   setLocalSaveStatus('saved');
-  initializeCloudSaveStatus();
   if (!restored) writeAutosave();
 
-  // If auth is configured and no user is signed in, the splash sticks around
-  // showing the gate. Sign-in OR "Use locally" dismisses it. If creds are
-  // missing, or the user has a remembered session, fall through to the normal
-  // finish path.
-  if (authState.enabled) {
-    await authState.ready;
-    if (!authState.currentUser()) {
-      await new Promise(resolve => showSplashGate(resolve));
-    }
-  }
   await appSplash.finish();
   offerResumeView(savedLeft, savedTop, savedZoom);
 

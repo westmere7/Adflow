@@ -1,0 +1,25 @@
+# Keep the image to what the browser actually loads.
+.git
+.github
+.claude
+.gemini
+.vscode
+node_modules
+_temp
+
+# Dev tooling and deploy configs for other targets
+dev-server.js
+run-server.bat
+Dockerfile
+docker-compose.yml
+.dockerignore
+vercel.json
+.vercelignore
+
+# Repo docs and debris (the in-app docs live in scripts/docs-content.js)
+README.md
+DEPLOYMENT.md
+knowledge_base.md
+error_logs.txt
+diff_props.txt
+workflow-test.txt

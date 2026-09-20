@@ -312,7 +312,7 @@ function addBrandElement(type) {
     } else if (type === 'logo_white') {
       el = makeElement('image');
       el.customName = 'RMIT Logo (white)';
-      el.assetId = 'data/Elements/RMIT_White.svg';
+      el.assetId = 'data/Elements/RMIT_white.svg';
       el.role = 'rmit-logo';
       el.roleAuto = false;
       el.persistent = 'top';
@@ -428,7 +428,7 @@ function addBrandSet(setName) {
       // 1. Create the logo white element
       const logo = makeElement('image');
       logo.customName = 'RMIT Logo (white)';
-      logo.assetId = 'data/Elements/RMIT_White.svg';
+      logo.assetId = 'data/Elements/RMIT_white.svg';
       logo.role = 'rmit-logo';
       logo.roleAuto = false;
       logo.lockRatio = true;
@@ -908,24 +908,10 @@ window.addEventListener('keydown', (e) => {
         showCanvasNotification('Project saved to browser', { type: 'success' });
       })();
     } else {
-      // Ctrl/Cmd + S → Push to Cloud (no fallback to file download).
-      if (typeof authState !== 'undefined' && authState.enabled && authState.currentUser()) {
-        (async () => {
-          try {
-            const res = await pushCurrentProjectToCloud();
-            if (res && res.collisionHandled) {
-              // handled inside
-            } else if (res && res.isFirstSave) {
-              showCanvasNotification(`"${state.projectName}" project saved to cloud`, { type: 'success' });
-            } else {
-              showCanvasNotification('Saved to cloud', { type: 'success' });
-            }
-          }
-          catch (err) { showCanvasNotification(`Save (Cloud) failed: ${err.message || err}`, { type: 'error' }); }
-        })();
-      } else {
-        showCanvasNotification('Cloud save failed: Please sign in to save projects to the cloud.', { type: 'warning' });
-      }
+      // Ctrl/Cmd + S → Save to File (.flow). Same path as File ▸ Save ▸ Save to
+      // File: the native save dialog where the browser offers one, otherwise a
+      // download. Defined in project-io.js, which loads before this handler runs.
+      saveProjectAsFlow();
     }
     return;
   }

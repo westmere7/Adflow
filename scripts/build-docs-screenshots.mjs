@@ -1,7 +1,7 @@
 // ============================================================================
 // build-docs-screenshots.mjs — regenerates the in-app documentation screenshots
 // (data/docs/*.png). Node dev tool, NOT loaded by the browser and NOT part of
-// the Netlify build — run it manually whenever the UI changes enough that the
+// the deploy build — run it manually whenever the UI changes enough that the
 // docs imagery is stale:
 //
 //   1. start the dev server (run-server.bat / dev-server.js) on :8123

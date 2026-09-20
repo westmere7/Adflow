@@ -6510,48 +6510,6 @@ body.theme-rmit .outline-color-hybrid {
   }
 }
 
-/* Auth user chip toggle button styles - larger circle, no ring border, subtle background tints */
-.auth-chip-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  outline: none;
-  padding: 0;
-  flex-shrink: 0;
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
-}
-
-.auth-chip-btn:active {
-  transform: scale(0.95);
-}
-
-.auth-chip-btn.signed-out {
-  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
-  color: var(--text-muted);
-}
-
-.auth-chip-btn.signed-out:hover {
-  background: color-mix(in srgb, var(--text-muted) 22%, transparent);
-  color: var(--text-main);
-}
-
-.auth-chip-btn.signed-in {
-  background: color-mix(in srgb, var(--accent-base) 12%, transparent);
-  color: var(--accent-base);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.auth-chip-btn.signed-in:hover {
-  background: color-mix(in srgb, var(--accent-base) 22%, transparent);
-  color: var(--accent-hover);
-}
-
 /* --- Collapsed Canvases Status Header Styling --- */
 .canvases-header-status {
   display: none;

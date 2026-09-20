@@ -1,0 +1,19 @@
+# Files that should not be uploaded to the Vercel static deployment.
+.git
+.github
+.claude
+.gemini
+node_modules
+_temp
+dev-server.js
+run-server.bat
+Dockerfile
+docker-compose.yml
+docker
+.dockerignore
+README.md
+DEPLOYMENT.md
+knowledge_base.md
+error_logs.txt
+diff_props.txt
+workflow-test.txt
