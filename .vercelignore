@@ -32,3 +32,8 @@ build
 ELECTRON.md
 run-electron.bat
 run-electron.command
+
+# Repo metadata and crash debris
+.gitignore
+.gitattributes
+*.stackdump

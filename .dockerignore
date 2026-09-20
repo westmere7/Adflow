@@ -39,3 +39,7 @@ build
 ELECTRON.md
 run-electron.bat
 run-electron.command
+
+# Repo metadata and crash debris that must never reach the web root
+.gitignore
+*.stackdump

@@ -28,9 +28,16 @@ COPY . .
 
 # Generate the two indexes the app reads at boot, then remove the generators
 # and anything else that is build-time only.
+#
+# `docker/` holds this image's own nginx config. The runtime stage copies that
+# file straight from the build context, so it cannot be .dockerignore'd — but it
+# must not survive into the web root either, or the server configuration would be
+# downloadable at /docker/nginx.conf. Deleting it here is the one place that
+# satisfies both.
 RUN node scripts/build-asset-manifest.js \
  && node scripts/build-startup-registry.js \
- && rm -f scripts/build-asset-manifest.js scripts/build-startup-registry.js scripts/build-docs-screenshots.mjs
+ && rm -f scripts/build-asset-manifest.js scripts/build-startup-registry.js scripts/build-docs-screenshots.mjs \
+ && rm -rf docker
 
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
