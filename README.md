@@ -320,6 +320,8 @@ RMIT-Adflow/
 ├── run-server.bat             # Windows helper: rebuilds assets, then starts the server
 ├── Dockerfile                 # Two-stage image: Node generators → unprivileged nginx on 8080
 ├── docker-compose.yml         # One-command start, hardened defaults
+├── run-docker.bat / .command  # Double-click launchers (Windows / macOS + Linux)
+├── stop-docker.bat / .command # Double-click stop
 ├── docker/nginx.conf          # Server block: MIME types, cache policy, /healthz
 ├── vercel.json                # Static deploy config for a separate Vercel project
 ├── DEPLOYMENT.md              # Operator guide: Docker, Vercel, other hosts, troubleshooting
@@ -340,11 +342,15 @@ No build tools, `npm install`, or server configuration required.
 
 ### Docker (recommended for teams)
 
+Install Docker Desktop, then double-click `run-docker.bat` (Windows) or `run-docker.command` (macOS, Linux) — it starts Docker if needed, builds, runs and opens the browser. `stop-docker.*` stops it. Equivalent by hand:
+
 ```bash
 docker compose up -d --build
 ```
 
-Open <http://localhost:8080/>. The image runs unprivileged nginx on port 8080 with a health check and needs no internet access at runtime. Port changes, reverse-proxy notes and hardening options are in [DEPLOYMENT.md](DEPLOYMENT.md).
+Open <http://localhost:8080/>. The image runs unprivileged nginx on port 8080 with a health check, builds natively on Apple Silicon, and needs no internet access at runtime.
+
+**Only the machine that hosts it needs Docker.** Everyone else — Windows or Mac — just opens the URL in Chrome or Edge, with nothing installed. Rollout guidance, licensing notes, port changes, reverse-proxy and hardening options are in [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Local Environment
 

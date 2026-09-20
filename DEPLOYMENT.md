@@ -17,6 +17,71 @@ Any other static host works too — see [Other static hosts](#other-static-hosts
 
 ---
 
+## Rolling this out to a team (read this first)
+
+**Almost nobody should install Docker.** One machine runs the container; everyone
+else opens a link in their browser. That is the whole point of hosting it.
+
+| Who | What they install | What they do |
+|---|---|---|
+| **Everyone who makes ads** (Windows and Mac) | Nothing at all | Open the URL in Chrome or Edge, and bookmark it |
+| **Whoever hosts it** — ITS, or one nominated person | Docker | Double-click `run-docker.bat` (Windows) or `run-docker.command` (Mac), or run Compose on a server |
+| **Someone with no network at all** | Docker, or Node | Runs their own copy — see [Working with no network](#working-with-no-network) |
+
+Once it is hosted, **Windows versus Mac stops mattering**: it is a web page. No
+installer, no admin rights, no version drift, and an update reaches everyone the
+moment the host rebuilds. Tell people to use **Chrome or Edge** — Safari and
+Firefox work, but fall back on a download instead of a save dialog, and video
+export needs Chrome or Edge (GIF export works everywhere).
+
+### Why end users should not install Docker
+
+- **It is server software.** Docker Desktop is a 1–2 GB application that keeps a
+  Linux virtual machine running in the background. On Windows it also needs WSL 2
+  or Hyper-V.
+- **It needs admin rights to install**, which most staff laptops do not grant.
+- **Licensing.** Docker Desktop's subscription terms make it free for personal
+  use, education, non-commercial open source, and small businesses (fewer than
+  250 employees **and** under $10M annual revenue). Whether a large university's
+  administrative use qualifies under "education" is a question for procurement —
+  worth settling **before** putting Docker Desktop on many staff machines, and
+  avoided entirely by hosting centrally.
+- **Docker Engine on Linux** — the server package, no Desktop GUI — is Apache-2.0
+  and free with no subscription question. That is what a hosted deployment uses,
+  and another reason to run this on a server rather than on desktops.
+
+### Hosting it without a server
+
+If ITS cannot provide a server yet, one person can run the container on their own
+machine and share it with the people beside them:
+
+1. They double-click `run-docker.bat` or `run-docker.command`.
+2. They find their machine's address on the network — Windows: Settings ▸ Network
+   ▸ Properties ▸ IPv4 address. Mac: System Settings ▸ Network ▸ Details ▸ TCP/IP.
+3. Everyone else opens `http://<that address>:8080`.
+
+Caveats worth saying out loud: it only works on the **same network**, their
+machine has to be **awake and running**, and the first connection may need a
+firewall prompt approved on their machine. It is a good pilot, not a permanent
+arrangement.
+
+### Working with no network
+
+There is **no zero-install way** to run Adflow locally. Opening `index.html`
+straight from disk does not work: the sandboxed ad previews need a real HTTP
+origin, and browsers block `file://` for that. So an offline user needs one of:
+
+- **Docker Desktop** — heavier, but it is the same double-click file as everyone
+  else and needs nothing else installed.
+- **Node.js** — lighter. Install it once from [nodejs.org](https://nodejs.org/),
+  then Windows users double-click `run-server.bat`. See
+  [Local development](#6-local-development).
+
+In both cases their projects stay in that machine's browser, so they should save
+`.flow` files (`Ctrl`/`Cmd` + `S`) to move work back to a shared drive.
+
+---
+
 ## 1. Docker
 
 ### First time with Docker? Read this first
@@ -35,17 +100,39 @@ The three words you will meet:
 | **Container** | A running instance of the image. Made by `docker run` or `docker compose up`. Delete it freely; nothing is stored inside. |
 | **Compose** | `docker-compose.yml` records the `run` options (port, restart policy, hardening) so nobody has to remember flags. |
 
-**No terminal needed on Windows.** Install Docker Desktop, then double-click
-`run-docker.bat` in the repository folder. It starts Docker Desktop if it is
-not running, builds the image, starts the container and opens the browser.
-`stop-docker.bat` stops it. From then on use the Docker Desktop window:
-**Containers** tab → `rmit-adflow` row → the Play / Stop buttons, the
-`8080:8080` link to open the app, and the **Logs** tab to see requests.
+**No terminal needed.** Install Docker Desktop, then double-click the file for
+your platform in the repository folder:
+
+| Platform | Start | Stop |
+|---|---|---|
+| Windows | `run-docker.bat` | `stop-docker.bat` |
+| macOS, Linux | `run-docker.command` | `stop-docker.command` |
+
+Each one starts Docker Desktop if it is not already running, waits for it,
+builds the image, starts the container and opens the browser. From then on use
+the Docker Desktop window: **Containers** tab → `rmit-adflow` row → the Play /
+Stop buttons, the `8080:8080` link to open the app, and the **Logs** tab to see
+requests.
+
+> **macOS first run.** Git does not always preserve the executable bit through a
+> Windows checkout. If double-clicking gives *"the file could not be executed
+> because you do not have appropriate access privileges"*, run this once in
+> Terminal, then double-click works forever after:
+>
+> ```bash
+> chmod +x /path/to/Adflow/run-docker.command /path/to/Adflow/stop-docker.command
+> ```
+>
+> Whoever maintains the repository can prevent this for everyone by committing
+> the bit once: `git update-index --chmod=+x run-docker.command stop-docker.command`.
+
+Apple Silicon is fine — both base images publish `arm64`, so the build is native
+and needs no emulation.
 
 Otherwise: on Windows or macOS install **Docker Desktop** and start it (the
-whale icon in the tray must be steady, not animating). On Linux servers install
-Docker Engine and the Compose plugin. Then, in a terminal **inside the
-repository folder**:
+whale icon in the tray or menu bar must be steady, not animating). On Linux
+servers install Docker Engine and the Compose plugin. Then, in a terminal
+**inside the repository folder**:
 
 ```bash
 docker compose up -d --build

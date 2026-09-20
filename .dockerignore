@@ -25,3 +25,6 @@ diff_props.txt
 workflow-test.txt
 run-docker.bat
 stop-docker.bat
+run-docker.command
+stop-docker.command
+.gitattributes
