@@ -87,11 +87,38 @@ installer — Electron carries its own runtime.
 
 ## Building installers
 
+**Nothing rebuilds automatically.** Changing the app changes nothing in `dist/`
+until one of these is run, and each produces a different thing:
+
+| Command | Produces | Use it for |
+|---|---|---|
+| `npm start` | nothing on disk | Development. Picks up edits on restart |
+| `npm run dist:dir` | `dist/win-unpacked/` only | Fast check that packaging works, and a portable copy to run |
+| `npm run dist:win` | the **installer**, plus a fresh `win-unpacked/` | Anything you are about to send to someone |
+| `npm run dist:mac` | the `.dmg` (needs a Mac) | Same, for macOS |
+
+> **The trap:** `dist:dir` refreshes the portable folder but leaves the installer
+> untouched, so `dist/` can hold a current portable build next to a stale
+> installer. Worse, installers are named after their version, so a new build adds
+> `Setup 0.60.1.exe` beside the old `Setup 0.60.0.exe` rather than replacing it.
+> It is genuinely easy to send someone the wrong file.
+
+To remove the guesswork, build anything you intend to distribute with:
+
 ```bash
-npm run dist:win     # NSIS installer  -> dist/
-npm run dist:mac     # DMG, arm64 + x64 -> dist/
-npm run dist:dir     # unpacked folder, fastest way to test packaging
+npm run release:win
 ```
+
+That empties `dist/` first, so whatever is left in the folder afterwards is the
+build you just made and nothing else. `npm run clean` does the emptying on its
+own. Nothing outside `dist/` depends on it and the folder is git-ignored, so
+deleting it is always safe.
+
+Close the app before building. Windows will not let the build overwrite files
+that a running copy has open.
+
+Close the app before building. Windows will not let the build overwrite files
+that a running copy has open.
 
 `electron-builder` runs the two generator scripts first, so the asset manifest
 and startup registry are current in the package.

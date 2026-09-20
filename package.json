@@ -12,7 +12,9 @@
     "dist": "npm run prebuild && electron-builder",
     "dist:win": "npm run prebuild && electron-builder --win",
     "dist:mac": "npm run prebuild && electron-builder --mac",
-    "dist:dir": "npm run prebuild && electron-builder --dir"
+    "dist:dir": "npm run prebuild && electron-builder --dir",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});console.log('dist/ removed')\"",
+    "release:win": "npm run clean && npm run dist:win"
   },
   "devDependencies": {
     "electron": "^33.2.0",
