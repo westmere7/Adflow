@@ -35,10 +35,17 @@ The three words you will meet:
 | **Container** | A running instance of the image. Made by `docker run` or `docker compose up`. Delete it freely; nothing is stored inside. |
 | **Compose** | `docker-compose.yml` records the `run` options (port, restart policy, hardening) so nobody has to remember flags. |
 
-On Windows or macOS install **Docker Desktop** and start it (the whale icon
-in the tray must be steady, not animating). On Linux servers install Docker
-Engine and the Compose plugin. Then, in a terminal **inside the repository
-folder**:
+**No terminal needed on Windows.** Install Docker Desktop, then double-click
+`run-docker.bat` in the repository folder. It starts Docker Desktop if it is
+not running, builds the image, starts the container and opens the browser.
+`stop-docker.bat` stops it. From then on use the Docker Desktop window:
+**Containers** tab → `rmit-adflow` row → the Play / Stop buttons, the
+`8080:8080` link to open the app, and the **Logs** tab to see requests.
+
+Otherwise: on Windows or macOS install **Docker Desktop** and start it (the
+whale icon in the tray must be steady, not animating). On Linux servers install
+Docker Engine and the Compose plugin. Then, in a terminal **inside the
+repository folder**:
 
 ```bash
 docker compose up -d --build

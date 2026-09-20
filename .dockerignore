@@ -23,3 +23,5 @@ knowledge_base.md
 error_logs.txt
 diff_props.txt
 workflow-test.txt
+run-docker.bat
+stop-docker.bat
