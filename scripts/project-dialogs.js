@@ -3,7 +3,7 @@
 // ============================================================================
 const escHtml = (s) => String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 function getAppVersion() {
-  return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : 'v0.60.0';
+  return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : 'v0.60.1';
 }
 
 // Stack a list of {width, height} into one block of rows on the board and return
@@ -2579,7 +2579,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.60.0';
+  const currentVersion = 'v0.60.1';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -2811,7 +2811,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.60.0</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.60.1</span>
               <button id="settings-changelog" title="See what changed in this and previous versions of Adflow" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close" title="Close without keeping any change made since the dialog opened">Close</button>

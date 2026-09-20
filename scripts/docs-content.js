@@ -854,6 +854,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.60.1',
+    date: 'September 2026 — Engine v3.0',
+    items: [
+      "Scrollbars Are Thin and Themed Instead of Browser Default: every scrollable panel used the browser's own scrollbar — around 15 pixels wide with stepper arrows at each end. Inside a dark design tool that read as leftover web-page furniture, and in the desktop app, where there is no browser around it, it simply looked wrong. Every scrollbar across the editor and both portals is now a thin rounded bar that takes its colour from the active theme, brightens when you point at it and turns accent-coloured while you drag it. The arrows are gone and the track is transparent, but the bar still sits inside a 10 pixel pointer target, so it is no harder to grab than it was. The three places that had their own hand-rolled thin scrollbar — the documentation panel, dropdown lists and the export dialog — now share the one style rather than each looking slightly different."
+    ]
+  },
+  {
     version: 'v0.60.0',
     date: 'September 2026 — Engine v3.0',
     items: [

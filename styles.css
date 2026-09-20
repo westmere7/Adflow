@@ -280,6 +280,70 @@ body.theme-rmit-navy {
   --accent-dark: #4d000a;
   --text-on-accent: #ffffff;
 }
+
+/* ============================================================================
+   Scrollbars — one thin, themed bar everywhere
+   ----------------------------------------------------------------------------
+   Chromium's defaults are ~15px wide with stepper arrows at each end. Inside a
+   design tool they read as browser furniture, and in the desktop build, where
+   there is no browser around them, they simply look broken.
+
+   The thumb is painted inside a transparent border rather than across the full
+   track: the track stays a comfortable 10px pointer target while the visible bar
+   is 6px. `background-clip: padding-box` is what keeps that border transparent
+   instead of painting the thumb colour underneath it.
+
+   Colours come from the theme variables through color-mix, so all twelve themes
+   are covered by this one block — including the light ones, where the very same
+   declaration yields a dark thumb because `--text-muted` is dark there. Nothing
+   to keep in sync when a theme is added.
+
+   Deliberately NOT using the standard `scrollbar-width` / `scrollbar-color`
+   properties here: when both are present, Chromium honours the standard ones and
+   ignores these pseudo-elements entirely, which would cost the hover and active
+   states. They are applied only where the pseudo-elements are unsupported (see
+   the @supports block below, which is what Firefox falls into). The one
+   `scrollbar-width: none` elsewhere in this file is scoped to inline-editing
+   layer names, where hiding the bar outright is the intent.
+   ========================================================================== */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--text-muted) 50%, transparent);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--text-muted) 80%, transparent);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--accent-base);
+}
+
+/* Steppers, and the dead square where a vertical and horizontal bar meet.
+   Both are pure clutter at this size. */
+*::-webkit-scrollbar-button { display: none; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* Engines without the pseudo-elements (Firefox) get the standard properties
+   instead. Scoped this way round so Chromium never sees them — see above. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--text-muted) 55%, transparent) transparent;
+  }
+}
+
     @font-face {
       font-family: 'Museo';
       src: url('data/fonts/Museo300-Regular.woff2') format('woff2');
@@ -5628,12 +5692,7 @@ body.theme-light #dm-panel {
   color: var(--text-muted);
   margin: 0 0 14px;
 }
-#docs-panel #docs-sidebar::-webkit-scrollbar,
-#docs-panel #docs-content::-webkit-scrollbar { width: 6px; }
-#docs-panel #docs-sidebar::-webkit-scrollbar-thumb,
-#docs-panel #docs-content::-webkit-scrollbar-thumb {
-  background: var(--border-light); border-radius: 3px;
-}
+/* Scrollbars here use the global thin style defined near the top of this file. */
 
 
 /* ============================================================================
@@ -5793,19 +5852,7 @@ body.fullscreen-mode .workspace-isolation-outline {
   border-color: var(--text-bright);
 }
 
-.custom-select-dropdown::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-select-dropdown::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-select-dropdown::-webkit-scrollbar-thumb {
-  background: var(--border-light);
-  border-radius: 2px;
-}
-.custom-select-dropdown::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-base);
-}
+/* Scrollbar here uses the global thin style defined near the top of this file. */
 
 /* Settings tabbed interface style rules */
 .settings-tab-btn {
