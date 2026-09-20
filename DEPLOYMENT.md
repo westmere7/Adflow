@@ -15,6 +15,10 @@ with the right MIME types and cache headers. Two ready-made targets are included
 
 Any other static host works too — see [Other static hosts](#other-static-hosts).
 
+There is also a **desktop app** wrapping the same code for Windows and macOS, so
+people can run Adflow without a browser or a server at all. It is a prototype and
+is documented separately in [ELECTRON.md](ELECTRON.md).
+
 ---
 
 ## Rolling this out to a team (read this first)

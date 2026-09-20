@@ -1,0 +1,72 @@
+{
+  "name": "rmit-adflow",
+  "productName": "RMIT Adflow",
+  "version": "0.60.0",
+  "description": "Browser-based HTML5 display-ad builder. Desktop shell for the local edition.",
+  "private": true,
+  "license": "UNLICENSED",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "prebuild": "node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js",
+    "dist": "npm run prebuild && electron-builder",
+    "dist:win": "npm run prebuild && electron-builder --win",
+    "dist:mac": "npm run prebuild && electron-builder --mac",
+    "dist:dir": "npm run prebuild && electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "au.edu.rmit.adflow",
+    "productName": "RMIT Adflow",
+    "copyright": "RMIT University",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "asar": false,
+    "files": [
+      "index.html",
+      "preview.html",
+      "batch.html",
+      "styles.css",
+      "scripts/**/*",
+      "lib/**/*",
+      "data/**/*",
+      "Startup/**/*",
+      "electron/**/*",
+      "build/icon.png",
+      "!scripts/build-docs-screenshots.mjs",
+      "!**/*.map"
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RMIT Adflow"
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "icon": "build/icon.png",
+      "category": "public.app-category.graphics-design",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title": "RMIT Adflow ${version}"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "build/icon.png",
+      "category": "Graphics"
+    }
+  }
+}

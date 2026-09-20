@@ -324,7 +324,10 @@ RMIT-Adflow/
 ├── stop-docker.bat / .command # Double-click stop
 ├── docker/nginx.conf          # Server block: MIME types, cache policy, /healthz
 ├── vercel.json                # Static deploy config for a separate Vercel project
+├── electron/                  # Desktop shell: window, internal static server, preload
+├── package.json               # Electron tooling only — the web app still has no deps
 ├── DEPLOYMENT.md              # Operator guide: Docker, Vercel, other hosts, troubleshooting
+├── ELECTRON.md                # Desktop build: design notes, packaging, signing
 └── knowledge_base.md          # Architecture reference for engineers and coding agents
 ```
 
@@ -351,6 +354,16 @@ docker compose up -d --build
 Open <http://localhost:8080/>. The image runs unprivileged nginx on port 8080 with a health check, builds natively on Apple Silicon, and needs no internet access at runtime.
 
 **Only the machine that hosts it needs Docker.** Everyone else — Windows or Mac — just opens the URL in Chrome or Edge, with nothing installed. Rollout guidance, licensing notes, port changes, reverse-proxy and hardening options are in [DEPLOYMENT.md](DEPLOYMENT.md).
+
+### Desktop app (prototype)
+
+An Electron shell wraps the same code as a native Windows and macOS app, so there is no browser tab, no port to remember, and Mac users stop losing video export and the native save dialog to Safari. Double-click `run-electron.bat` or `run-electron.command`, or:
+
+```bash
+npm install && npm start
+```
+
+Installers build with `npm run dist:win` / `npm run dist:mac`. Design notes, the Electron-versus-Tauri reasoning, and what still needs doing before it can be handed to staff are in [ELECTRON.md](ELECTRON.md).
 
 ### Local Environment
 

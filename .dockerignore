@@ -28,3 +28,14 @@ stop-docker.bat
 run-docker.command
 stop-docker.command
 .gitattributes
+
+# Electron desktop shell — not part of the web deployment
+node_modules
+dist
+electron
+package.json
+package-lock.json
+build
+ELECTRON.md
+run-electron.bat
+run-electron.command
