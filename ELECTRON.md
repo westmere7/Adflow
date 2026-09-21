@@ -93,8 +93,12 @@ The desktop app is distributed as a **portable folder**, never an installer.
 deleting the folder removes the app. The build configuration has no installer
 targets at all, so there is no `Setup.exe` to send out by mistake.
 
+**No terminal needed.** Double-click **`build-app.bat`**. It closes a running
+copy if there is one, installs Electron on first use, clears `dist/`, builds the
+portable folder, and offers to zip it for sending.
+
 **Nothing rebuilds automatically.** Changing the app changes nothing in `dist/`
-until you run one of these:
+until you run `build-app.bat` or one of these:
 
 | Command | Produces | Use it for |
 |---|---|---|

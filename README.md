@@ -363,7 +363,7 @@ An Electron shell wraps the same code as a native Windows and macOS app, so ther
 npm install && npm start
 ```
 
-It is distributed as a **portable folder**, not an installer: `npm run release:win` produces `dist/win-unpacked/`, and double-clicking `RMIT Adflow.exe` inside it runs the app from anywhere. Design notes, the Electron-versus-Tauri reasoning, and what still needs doing before it can be handed to staff are in [ELECTRON.md](ELECTRON.md).
+It is distributed as a **portable folder**, not an installer. Double-click `build-app.bat` (or run `npm run release:win`) to produce `dist/win-unpacked/`; double-clicking `RMIT Adflow.exe` inside it runs the app from anywhere, with nothing installed. Design notes, the Electron-versus-Tauri reasoning, and what still needs doing before it can be handed to staff are in [ELECTRON.md](ELECTRON.md).
 
 ### Local Environment
 

@@ -43,3 +43,5 @@ run-electron.command
 # Repo metadata and crash debris that must never reach the web root
 .gitignore
 *.stackdump
+build-app.bat
+build-app.command

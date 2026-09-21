@@ -37,3 +37,5 @@ run-electron.command
 .gitignore
 .gitattributes
 *.stackdump
+build-app.bat
+build-app.command

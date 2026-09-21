@@ -2,9 +2,10 @@
   "name": "rmit-adflow",
   "productName": "RMIT Adflow",
   "version": "0.60.1",
-  "description": "Browser-based HTML5 display-ad builder. Desktop shell for the local edition — distributed as a portable folder, not an installer.",
+  "description": "Browser-based HTML5 display-ad builder. Desktop shell for the local edition \u2014 distributed as a portable folder, not an installer.",
   "private": true,
   "license": "UNLICENSED",
+  "author": "RMIT University",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -43,18 +44,35 @@
       "!**/*.map"
     ],
     "win": {
-      "target": [{ "target": "dir", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.png"
     },
     "mac": {
-      "target": [{ "target": "dir", "arch": ["arm64", "x64"] }],
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.png",
       "category": "public.app-category.graphics-design",
       "hardenedRuntime": true,
       "gatekeeperAssess": false
     },
     "linux": {
-      "target": ["dir"],
+      "target": [
+        "dir"
+      ],
       "icon": "build/icon.png",
       "category": "Graphics"
     }
