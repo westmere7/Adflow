@@ -25,7 +25,7 @@ export and the native save dialog — the exact Windows/Mac split the desktop ap
 is supposed to remove. Electron bundles its own Chromium, so both platforms get
 the full feature set, and Mac users stop losing features to Safari.
 
-The cost is installer size: roughly 150–200 MB against Tauri's ~10 MB. For an
+The cost is download size: roughly 150–200 MB against Tauri's ~10 MB. For an
 internal design tool that is not a meaningful trade.
 
 ---
@@ -81,57 +81,60 @@ npm start
 ```
 
 Node.js is required for development only. It is **not** required by the built
-installer — Electron carries its own runtime.
+portable folder — Electron carries its own runtime.
 
 ---
 
-## Building installers
+## Building the portable app
+
+The desktop app is distributed as a **portable folder**, never an installer.
+`dist/win-unpacked/` is the whole product: copy the folder anywhere, double-click
+`RMIT Adflow.exe`, done. Nothing is written to the registry or Program Files, and
+deleting the folder removes the app. The build configuration has no installer
+targets at all, so there is no `Setup.exe` to send out by mistake.
 
 **Nothing rebuilds automatically.** Changing the app changes nothing in `dist/`
-until one of these is run, and each produces a different thing:
+until you run one of these:
 
 | Command | Produces | Use it for |
 |---|---|---|
-| `npm start` | nothing on disk | Development. Picks up edits on restart |
-| `npm run dist:dir` | `dist/win-unpacked/` only | Fast check that packaging works, and a portable copy to run |
-| `npm run dist:win` | the **installer**, plus a fresh `win-unpacked/` | Anything you are about to send to someone |
-| `npm run dist:mac` | the `.dmg` (needs a Mac) | Same, for macOS |
+| `npm start` | nothing on disk | Development. Runs from source; edits show on restart |
+| `npm run release:win` | empties `dist/`, then builds `dist/win-unpacked/` | **The only command to use before handing a copy to anyone** |
+| `npm run build:win` | `dist/win-unpacked/` without clearing first | Quick rebuild while iterating |
+| `npm run release:mac` / `build:mac` | `dist/mac*/RMIT Adflow.app` (needs a Mac) | Same, for macOS |
 
-> **The trap:** `dist:dir` refreshes the portable folder but leaves the installer
-> untouched, so `dist/` can hold a current portable build next to a stale
-> installer. Worse, installers are named after their version, so a new build adds
-> `Setup 0.60.1.exe` beside the old `Setup 0.60.0.exe` rather than replacing it.
-> It is genuinely easy to send someone the wrong file.
+`release:win` clears the folder first so whatever is in `dist/` afterwards is the
+build you just made and nothing else. `npm run clean` does the emptying on its own.
 
-To remove the guesswork, build anything you intend to distribute with:
+> **Why clearing matters.** `dist/` is build output: git never tracks it, so
+> switching branches, reverting or discarding changes leaves it exactly as it was.
+> A portable folder built from code you have since thrown away will keep running
+> that old code, under the version number baked in at build time, until you
+> rebuild. If the app ever looks wrong after a revert, run `release:win` before
+> assuming the revert failed.
 
-```bash
-npm run release:win
-```
+Close the app before building. Windows will not let the build overwrite files that
+a running copy has open.
 
-That empties `dist/` first, so whatever is left in the folder afterwards is the
-build you just made and nothing else. `npm run clean` does the emptying on its
-own. Nothing outside `dist/` depends on it and the folder is git-ignored, so
-deleting it is always safe.
+### Handing it out
 
-Close the app before building. Windows will not let the build overwrite files
-that a running copy has open.
+Zip `dist/win-unpacked/` and send the zip. It is around 290 MB unzipped, so
+**do not put it in git**: GitHub refuses any file over 100 MB and the Electron
+runtime executable alone is larger than that. The right places are a **GitHub
+Release** (repository page → Releases → Draft a new release → attach the zip;
+assets can be up to 2 GB) or a shared drive.
 
-Close the app before building. Windows will not let the build overwrite files
-that a running copy has open.
+Recipients unzip anywhere and double-click the exe. Because the app is unsigned,
+the first launch of a *downloaded* copy shows Windows SmartScreen's "Windows
+protected your PC" — *More info*, then *Run anyway*, once. A copy built on your
+own machine does not trigger it. Signing is what removes that step (see below).
 
-`electron-builder` runs the two generator scripts first, so the asset manifest
-and startup registry are current in the package.
-
-**A Mac build needs a Mac.** A signed, notarized `.dmg` cannot be produced from
+**A Mac build needs a Mac.** A signed, notarized `.app` cannot be produced from
 Windows. Use a Mac, or a `macos-latest` runner on GitHub Actions.
 
 `asar` is deliberately **disabled** in `package.json` so the packaged app keeps
 its files on disk exactly as the repository has them, which keeps the internal
-server's behaviour identical to development. Re-enable it once a packaged build
-has been exercised end to end.
-
----
+server's behaviour identical to development.
 
 ## Before this goes to staff
 
