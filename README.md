@@ -4,22 +4,21 @@
 
 # RMIT Adflow
 
-[![Edition](https://img.shields.io/badge/edition-local%20%C2%B7%20no%20cloud-brightgreen?style=for-the-badge)](DEPLOYMENT.md)
-[![Docker](https://img.shields.io/badge/docker-ready-2496ed?style=for-the-badge&logo=docker&logoColor=white)](DEPLOYMENT.md#1-docker)
-[![Version](https://img.shields.io/badge/version-v0.61.0-7c5cff?style=for-the-badge)](data/changelog.txt)
 [![Desktop](https://img.shields.io/badge/desktop-windows%20%C2%B7%20macos-0078d4?style=for-the-badge)](ELECTRON.md)
+[![Edition](https://img.shields.io/badge/edition-local%20%C2%B7%20no%20cloud-brightgreen?style=for-the-badge)](SECURITY.md)
+[![Version](https://img.shields.io/badge/version-v0.61.0-7c5cff?style=for-the-badge)](data/changelog.txt)
 [![Engine](https://img.shields.io/badge/engine-v3.0-000f4b?style=for-the-badge)](knowledge_base.md)
-[![Dependencies](https://img.shields.io/badge/npm%20install-not%20required-e61e2b?style=for-the-badge)](#getting-started)
+[![Dependencies](https://img.shields.io/badge/runtime%20deps-none-e61e2b?style=for-the-badge)](DEPENDENCIES.md)
 
 A professional visual design tool engineered specifically for building animated HTML5 display ads. RMIT Adflow eliminates the need for complex build pipelines and third-party software installations, providing a streamlined environment tailored for high-volume banner production.
 
 Designed to replace bloated legacy tools like Google Web Designer, this application allows creative teams to compose multi-frame, multi-size banner campaigns on an infinite canvas and instantly export them as Google Ads-compliant HTML5 packages — or as MP4 video and animated GIF from the same renderer.
 
-**No framework. No bundler. No build step for the app itself.** Clone it, serve it, edit the files, refresh the browser.
+**A desktop application.** Adflow runs as a native app on Windows and macOS. Download the folder, double-click, work — nothing to install alongside it, no URL to open, no server to stand up. The Chromium engine it needs ships inside the download, so Windows and Mac get an identical feature set. See [The Desktop App](#the-desktop-app).
 
-**Two ways to run it, one codebase.** Adflow ships as a **desktop app** for Windows and macOS ([ELECTRON.md](ELECTRON.md)) and as a **hosted page** you serve from a container or any static host ([DEPLOYMENT.md](DEPLOYMENT.md)). Neither is the cut-down one: `scripts/`, `styles.css` and the three HTML pages are byte-identical in both, so they cannot drift apart, and a `.flow` file moves between them untouched. The only thing that differs is where your browser storage lives — see [Desktop app or hosted page](#desktop-app-or-hosted-page).
+**No framework. No bundler. No build step for the app itself.** The application is vanilla HTML, CSS and JavaScript; `electron/` is a ~300-line shell around it. Edit a file, restart the app, see the change.
 
-**Local edition.** This branch has no accounts, no cloud storage and no third-party requests: every project stays on your machine or in the `.flow` files you save, and every library and font ships in the repository.
+**Local edition.** No accounts, no cloud storage, no third-party requests. Every project stays on your machine or in the `.flow` files you save, and every library and font ships in the repository.
 
 ---
 
@@ -30,7 +29,7 @@ Designed to replace bloated legacy tools like Google Web Designer, this applicat
 - [Headline Feature: Data & Versions](#headline-feature-data--versions-dynamic-creative)
 - [Headline Feature: Video & GIF Export](#headline-feature-video--gif-export)
 - [Headline Feature: Local-First, No Accounts](#headline-feature-local-first-no-accounts)
-- [Desktop app or hosted page](#desktop-app-or-hosted-page)
+- [The Desktop App](#the-desktop-app)
 - [Headline Feature: Portals](#headline-feature-portals-preview--batch-operation)
 - [Key Features](#key-features)
 - [Technical Specifications](#technical-specifications)
@@ -117,61 +116,42 @@ The same renderer that builds the HTML5 package also produces **MP4 video** and 
 
 Adflow keeps everything on the machine that made it. There is no sign-in, no server-side storage and no network traffic beyond loading the app's own files.
 
-- **Autosave to the browser** — every change is debounced into IndexedDB and restored on reload, including zoom, scroll position and the undo stack. **Open Recent** lists the last projects saved in this browser.
-- **Portable `.flow` files** — `Ctrl+S` (or **File → Save → Save to File**) writes a self-contained ZIP holding the project JSON and every embedded asset. It reopens on any machine and any deployment; this is the copy to keep and to hand to colleagues. `Ctrl+Shift+S` force-saves silently to the browser database.
+- **Autosave** — every change is debounced into the app's local database (IndexedDB) and restored when you reopen it, including zoom, scroll position and the undo stack. **Open Recent** lists the last projects saved on this machine.
+- **Portable `.flow` files** — `Ctrl+S` (or **File → Save → Save to File**) writes a self-contained ZIP holding the project JSON and every embedded asset. It reopens on any machine; this is the copy to keep and to hand to colleagues. `Ctrl+Shift+S` force-saves silently to the browser database.
 - **Templates** — **File → Save → Save template** marks a `.flow` as a template for the Batch Operation portal and the New Project dialog. Templates in the repository's `Startup/` folder are offered to everyone.
-- **Base project** — Settings ▸ Startup ▸ **Use current project** saves whatever you have open as the thing New Project starts from, in place of an empty board. Stored in this browser's IndexedDB, one per browser profile, replaced whenever you press the button again, cleared with one click. **Its existence is the switch.** New Project offers three peers: *Base project* (preselected when you have one), *Use template*, and *Blank board*. The base project supplies the canvases; ClickTag, max ad size and background stay editable and are applied on top.
-- **Remembered placements** — right-click ▸ **Save placement ▸ All projects** records where a role belongs at a canvas size; Auto-Resize and Auto-arrange start from it in every project opened in this browser. Settings shows how many are held and forgets them all with one button.
+- **Base project** — Settings ▸ Startup ▸ **Use current project** saves whatever you have open as the thing New Project starts from, in place of an empty board. Stored locally, one per install, replaced whenever you press the button again, cleared with one click. **Its existence is the switch.** New Project offers three peers: *Base project* (preselected when you have one), *Use template*, and *Blank board*. The base project supplies the canvases; ClickTag, max ad size and background stay editable and are applied on top.
+- **Remembered placements** — right-click ▸ **Save placement ▸ All projects** records where a role belongs at a canvas size; Auto-Resize and Auto-arrange start from it in every project you open on this machine. Settings shows how many are held and forgets them all with one button.
 - **Old files open cleanly** — `.flow` files saved by the cloud-connected edition may carry share pointers and cloud stamps; they are dropped on open so nothing stale rides into a new save.
 - **Nothing fetched from the internet** — JSZip, iro.js, mediabunny, gifenc and HarfBuzz are vendored in `lib/`; the brand fonts and the portals' Inter/Outfit are in `data/fonts/`. The app renders identically on a network with no egress.
 
-The cloud-connected edition (Supabase accounts, Cloud Projects, Team Spaces, Share Preview links) lives on the `main` branch and is deployed separately. Nothing here talks to it.
+The cloud-connected edition (Supabase accounts, Cloud Projects, Team Spaces, Share Preview links) lives on the `main` branch. Nothing here talks to it, and nothing here needs it.
 
 ---
 
-## Desktop app or hosted page
+## The Desktop App
 
-Adflow ships in two forms and they are **the same application**. `scripts/`,
-`styles.css`, `index.html`, `preview.html` and `batch.html` are identical in
-both; the desktop build adds a ~300-line wrapper in `electron/` and changes
-nothing below it. A `.flow` file moves between them untouched, and a feature
-that works in one works in the other.
+Adflow is packaged with Electron. The wrapper is three files and about 300 lines; `scripts/`, `styles.css`, `index.html`, `preview.html` and `batch.html` are untouched by it, so the application and its shell cannot drift apart.
 
-| | Desktop app | Hosted page |
+| File | Role |
+|---|---|
+| `electron/main.js` | Window, menu policy, external-link handling, single-instance lock |
+| `electron/static-server.js` | Read-only HTTP server on loopback, serving the app folder |
+| `electron/preload.js` | A read-only `window.adflowDesktop` marker, and nothing else |
+
+**Why there is a server inside the app.** Electron could load `index.html` over `file://`, but Adflow cannot run that way. Every ad preview is an `<iframe srcdoc>` sandbox, and export spawns a `blob:` Worker that `importScripts()` the vendored JSZip — under `file://` both get opaque origins and the browser blocks them. Serving over `http://127.0.0.1` gives the renderer exactly the environment the app was written against, and Chromium treats loopback as a secure context, which is what keeps `showSaveFilePicker` and WebCodecs video export working. The server is read-only, bound to loopback, and reachable from nothing outside the machine.
+
+**Why the port is fixed (47823).** Local storage is keyed to the origin, and the origin includes the port. A random port each launch would hand you an empty workspace every time — autosave, recents, the base project and remembered placements all keyed to a port that no longer exists. If 47823 is genuinely taken, the app falls back to the next free port and **says so in a dialog** rather than silently appearing to have lost your work.
+
+**Why Electron and not Tauri.** Tauri produces much smaller apps, but renders in the operating system's own webview — Chromium on Windows, **Safari's engine on macOS**. Adflow depends on two Chromium-only APIs:
+
+| Feature | API | File |
 |---|---|---|
-| What you get | A packaged build for Windows and macOS | A URL |
-| Install | Download and run — the browser engine is inside it | Nothing |
-| Who needs to set anything up | Each person, once | One host machine (Docker), or a static host |
-| Browser engine | Chromium, bundled | Whatever the user opens it in |
-| Full feature set | Always | Chrome / Edge; Safari and Firefox fall back on the save dialog, and video export needs Chromium |
-| Docs | [ELECTRON.md](ELECTRON.md) | [DEPLOYMENT.md](DEPLOYMENT.md) |
+| MP4 / WebM export | WebCodecs `VideoEncoder` | `scripts/video-export.js` |
+| Native save dialog | `showSaveFilePicker` | `scripts/project-io.js`, `scripts/export-pipeline.js` |
 
-**The one thing worth knowing: storage does not cross between them.** Autosave,
-**Open Recent**, the base project and remembered placements live in browser
-storage, which is keyed to the origin the app was opened from — `127.0.0.1:47823`
-for the desktop app, and whatever URL a hosted copy is served from. Work started
-in one **does not appear** in the other. That is not a bug and it is not
-recoverable after the fact, so move projects deliberately: **File → Save → Save
-to File (.flow)**, then open the file on the other side.
+A system-webview wrapper would therefore ship a Mac build quietly missing video export and the native save dialog — the exact Windows/Mac split the desktop app exists to remove. Electron bundles its own Chromium, at a cost of roughly 150–200 MB against Tauri's ~10 MB. For an internal design tool that is not a meaningful trade.
 
-**Why the desktop app runs a server inside itself.** Electron could load
-`index.html` over `file://`, but Adflow cannot run that way: every ad preview is
-an `<iframe srcdoc>` sandbox and export spawns a `blob:` Worker that
-`importScripts()` the vendored JSZip, both of which get opaque origins under
-`file://` and are blocked. Serving over `http://127.0.0.1` gives the renderer the
-environment the app was written against, and Chromium treats loopback as a secure
-context — which is what keeps `showSaveFilePicker` and WebCodecs video export
-working. The port is **fixed** (47823) because browser storage is keyed to it; a
-random port each launch would show an empty workspace every time. If that port is
-genuinely taken the app falls back and **says so in a dialog** rather than
-quietly looking like it lost your work.
-
-**Why Electron and not Tauri.** Tauri renders in the OS webview — which on macOS
-is Safari's engine, where WebCodecs `VideoEncoder` and `showSaveFilePicker` are
-absent or unreliable. That would ship a Mac build quietly missing video export
-and the native save dialog: the exact Windows/Mac split the desktop app exists to
-remove. Electron bundles its own Chromium, at a cost of ~150–200 MB against
-Tauri's ~10 MB. For an internal tool that is not a real trade.
+**Where your work lives.** Autosave, Open Recent, the base project and remembered placements are held by the app on your machine, keyed to that loopback origin. They are per-machine and per-install: they do not sync and they do not follow you to another computer. Save a `.flow` file for anything you want to keep or move.
 
 ---
 
@@ -292,7 +272,8 @@ A collapsible sequencer along the bottom of the workspace, showing the animation
 - **Colour Processing** — [Iro.js 5](https://iro.js.org/), vendored in `lib/`.
 - **Media Encoding** — `mediabunny` (MP4/WebM muxing over WebCodecs) and `gifenc`, both vendored in `lib/` and lazily imported only when an export starts.
 - **Fonts** — brand fonts (Museo, Helvetica Neue LT Pro) and the portals' UI fonts (Inter, Outfit) are self-hosted under `data/fonts/`. No Google Fonts.
-- **No backend** — no accounts, no database, no uploads. The runtime makes no request to any host other than the one serving the app.
+- **No backend** — no accounts, no server-side database, no uploads, no telemetry. The only HTTP traffic is the app requesting its own files from the loopback server inside it.
+- **Desktop shell** — Electron, with `electron-builder` producing an unpacked portable folder. The shell is 3 files / ~300 lines and changes nothing in the application below it.
 
 ### Project Structure
 
@@ -366,21 +347,21 @@ RMIT-Adflow/
 │   └── docs/                  # Screenshots embedded in the in-app documentation
 │
 ├── Startup/registry.json      # Generated startup-template index
-├── dev-server.js              # Zero-dependency local server with SSE live reload
-├── run-server.bat             # Windows helper: rebuilds assets, then starts the server
-├── Dockerfile                 # Two-stage image: Node generators → unprivileged nginx on 8080
-├── docker-compose.yml         # One-command start, hardened defaults
-├── run-docker.bat / .command  # Double-click launchers (Windows / macOS + Linux)
-├── stop-docker.bat / .command # Double-click stop
-├── docker/nginx.conf          # Server block: MIME types, cache policy, /healthz
-├── vercel.json                # Static deploy config for a separate Vercel project
-├── electron/                  # Desktop shell: window, internal static server, preload
-├── package.json               # Electron tooling only — the web app still has no deps
-├── build/icon.png             # App icon for the packaged desktop build
-├── run-electron.bat/.command  # Double-click: run the desktop app from source
-├── build-app.bat / .command   # Double-click: package the desktop app into dist/
-├── DEPLOYMENT.md              # Operator guide: Docker, Vercel, other hosts, troubleshooting
+│
+├── electron/                  # Desktop shell — 3 files, ~300 lines
+│   ├── main.js                #   Window, menu policy, single-instance lock
+│   ├── static-server.js       #   Read-only loopback server, fixed port 47823
+│   └── preload.js             #   window.adflowDesktop marker, nothing else
+├── package.json               # Electron + electron-builder tooling (the app itself has no deps)
+├── build/icon.png             # App icon for the packaged build
+├── run-electron.bat/.command  # Double-click: run the app from source
+├── build-app.bat / .command   # Double-click: package into dist/
+│
+├── dev-server.js              # Optional: browser dev loop with live reload
+├── run-server.bat             #   Windows helper for the above
+│
 ├── ELECTRON.md                # Desktop build: design notes, packaging, signing
+├── MAC-README.txt             # macOS first run: chmod, Gatekeeper
 ├── SECURITY.md                # What an IT security review will ask about, answered
 ├── DEPENDENCIES.md            # Every vendored binary, its licence and provenance
 └── knowledge_base.md          # Architecture reference for engineers and coding agents
@@ -389,78 +370,53 @@ RMIT-Adflow/
 See `knowledge_base.md` §2 for the full file-routing table — which feature lives in which file, and the load-order rules for cross-file references.
 
 ### System Requirements
-- **Browser Compatibility** — Chromium-based browsers (Chrome 90+, Edge 90+) strongly recommended for full API support (native Eyedropper, WebCodecs video export). Firefox 88+ and Safari work with feature fallbacks; GIF export needs no encoder and works everywhere.
-- **Viewport** — minimum resolution 1366 × 768.
+- **Windows** — 10 or 11, 64-bit.
+- **macOS** — 11 (Big Sur) or later. Builds natively on Apple Silicon.
+- **Display** — 1366 × 768 minimum; the workspace wants room, so 1920 × 1080 or better is comfortable.
+- **Nothing else.** The browser engine ships inside the app, so every feature that needs Chromium — WebCodecs video export, the native save dialog, the Eyedropper — works the same on both platforms. There is no separate browser requirement and no runtime to install.
 
 ---
 
 ## Getting Started
 
-No build tools, `npm install`, or server configuration required.
+### Run it
 
-### Hosted — Docker
-
-Install Docker Desktop, then double-click `run-docker.bat` (Windows) or `run-docker.command` (macOS, Linux) — it starts Docker if needed, builds, runs and opens the browser. `stop-docker.*` stops it. Equivalent by hand:
-
-```bash
-docker compose up -d --build
-```
-
-Open <http://localhost:8080/>. The image runs unprivileged nginx on port 8080 with a health check, builds natively on Apple Silicon, and needs no internet access at runtime.
-
-**Only the machine that hosts it needs Docker.** Everyone else — Windows or Mac — just opens the URL in Chrome or Edge, with nothing installed. Rollout guidance, licensing notes, port changes, reverse-proxy and hardening options are in [DEPLOYMENT.md](DEPLOYMENT.md).
-
-### Desktop app
-
-An Electron shell wraps the same code as a native Windows and macOS app, so there is no browser tab, no URL to hand out, and Mac users stop losing video export and the native save dialog to Safari. Nothing below `electron/` is changed to make this work, so the desktop and hosted builds cannot drift. Double-click `run-electron.bat` or `run-electron.command`, or:
+Double-click **`run-electron.bat`** (Windows) or **`run-electron.command`** (macOS). The first run fetches the Electron tooling; after that it just opens. By hand:
 
 ```bash
 npm install && npm start
 ```
 
-It is distributed as a **portable folder**, not an installer. Double-click `build-app.bat` (or run `npm run release:win`) to produce `dist/win-unpacked/`; double-clicking `RMIT Adflow.exe` inside it runs the app from anywhere, with nothing installed. Design notes, the Electron-versus-Tauri reasoning, and the open items before it goes to staff — code signing and macOS notarisation chief among them — are in [ELECTRON.md](ELECTRON.md).
+On macOS the `.command` files need to be made executable once — see [MAC-README.txt](MAC-README.txt), which also covers the Gatekeeper prompt on an unsigned build.
 
-### Local Environment
+### Build something you can hand to someone
 
-1. **Clone the repository**
-
-   ```bash
-   git clone <repo-url>
-   ```
-
-2. **Start the dev server**
-
-   The repo ships a zero-dependency Node server that serves everything with `Cache-Control: no-store` and live-reloads the browser over SSE whenever you edit `scripts/`, `styles.css` or any `*.html`:
-
-   ```bash
-   node dev-server.js 8123
-   ```
-
-   On Windows, `run-server.bat` refreshes the asset manifest and startup registry, starts the same server on port **8080**, and opens a browser at it.
-
-   Any static server works if you'd rather not use Node — the app has no server-side component. Serving over `file://` is *not* supported: browser CORS rules block the `<iframe>` previews.
-
-   ```bash
-   python -m http.server 8080
-   ```
-
-3. **Open** `http://localhost:8123` (or whichever port you chose).
-
-### Deployment
-
-The app is a static site; deploying it means serving the repository files with the right MIME types and cache headers. Three routes, all documented in [DEPLOYMENT.md](DEPLOYMENT.md):
-
-- **Docker** — `Dockerfile` + `docker-compose.yml` + `docker/nginx.conf`. The build stage runs the two generators, the runtime stage is `nginxinc/nginx-unprivileged` on port 8080.
-- **Vercel** — `vercel.json` sets the build command, output root `.` and matching headers. Use a *new* Vercel project for this branch.
-- **Any static host** — run the two generators, then serve the root. `.wasm` must be `application/wasm`, `.mjs` must be JavaScript, and HTML plus `data/version.txt` must not be cached.
-
-The two generators, wherever they run:
+Double-click **`build-app.bat`** (Windows) or **`build-app.command`** (macOS), or:
 
 ```bash
-node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js
+npm run build:win     # or: npm run build:mac
 ```
 
-> **Operational note:** every `<script>` tag is version-pinned and the app polls `data/version.txt` to notice a new deploy, so a proxy or CDN that caches HTML can pair old pages with new code. Verify a change on the deployed URL after every deploy.
+The result is a **portable folder** in `dist/`, not an installer. `dist/win-unpacked/RMIT Adflow.exe` runs from anywhere — a network share, a USB stick, a user's Downloads folder — with nothing installed, no registry writes and no admin rights. Deleting the folder removes it completely.
+
+Packaging detail, the Electron-versus-Tauri reasoning, and the open items before it goes to staff (code signing and macOS notarisation chief among them) are in [ELECTRON.md](ELECTRON.md).
+
+### Working on the code
+
+`scripts/`, `styles.css` and the three HTML pages are plain files with no build step. Edit one, restart the app, and the change is there.
+
+Two things to remember:
+
+1. **Bump the `?v=` query strings** in `index.html`, `preview.html` and `batch.html` on release. Cache-busting is version-pinned, so a missed bump can pair a stale cached file with new page code — a silent and confusing failure.
+2. **Regenerate the two indexes** after adding brand assets or startup templates:
+
+   ```bash
+   node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js
+   ```
+
+See `knowledge_base.md` §2 for the file-routing table — which feature lives in which file — and §8 for the desktop shell.
+
+<sub>`dev-server.js` is also still in the repo: a zero-dependency Node server with live reload, if you prefer iterating in a browser tab to restarting the app. Nothing in the shipped product uses it.</sub>
 
 ---
 
@@ -619,11 +575,11 @@ Uncompressed image assets are the main cause of weight flags. Use the built-in I
 Fonts are already subset per export, so they are rarely the problem.
 
 ### 11. Does Adflow need an internet connection or an account?
-No. The local edition has no accounts and makes no network request beyond loading its own files.
-- **No sign-in** — the app opens straight into the workspace.
-- **No feature loss** — layout design, link syncing, spreadsheet merges and every export format run fully in the browser. Every library and font is vendored, so it renders identically with no internet egress.
-- **Force browser save** — `Ctrl + Shift + S` saves silently to IndexedDB.
-- **Moving between machines** — work lives in this browser profile. Save a `.flow` (`Ctrl + S`) and open it on the other machine.
+No. It has no accounts and makes no network request beyond its own files, which it serves to itself.
+- **No sign-in** — the app opens straight into the workspace. Nothing to register for, no personal data collected.
+- **No feature loss offline** — layout design, link syncing, spreadsheet merges and every export format run locally. Every library and font is vendored, so it behaves identically on a machine with no internet access at all.
+- **Force save** — `Ctrl + Shift + S` saves silently to the app's local database.
+- **Moving between machines** — your work lives on this machine, in this install. Save a `.flow` (`Ctrl + S`) and open it on the other computer.
 
 ---
 
@@ -787,7 +743,7 @@ Both cross-project preferences live in the same browser profile as autosave, imp
 
 **Legacy fields.** `.flow` files written by the cloud-connected edition may carry `previewSharePath`, `previewUrl`, `cloudSavedAt`, `spaceId` and friends. `LEGACY_CLOUD_FIELDS` in `project-io.js` lists them and `stripLegacyCloudFields()` runs on every load, template pass, new project and base-project snapshot, so none of them survives into a new save.
 
-**Nothing leaves the browser.** There is no upload path in the codebase. The only network requests are for the app's own files on its own origin (`data/version.txt` is polled to notice a new deploy).
+**Nothing leaves the machine.** There is no upload path in the codebase. The only network requests are for the app's own files, served by the loopback server inside the desktop shell (`data/version.txt` is polled so the app notices it has been updated).
 
 ### 10. Timeline (Sequencer) Architecture
 
@@ -819,6 +775,8 @@ Both cross-project preferences live in the same browser profile as autosave, imp
 - **In-app** — **Help → Documentation** carries the full user guide with screenshots; the footer version button opens the changelog.
 - **[knowledge_base.md](knowledge_base.md)** — the architecture context dump for engineers and coding agents: file-routing table, state schema, subsystem detail, and workflow conventions.
 - **[data/changelog.txt](data/changelog.txt)** — plain-text release history.
+- **[ELECTRON.md](ELECTRON.md)** — the desktop build: why Electron, how the internal server and fixed port work, packaging and code signing.
+- **[MAC-README.txt](MAC-README.txt)** — macOS first-run notes for end users.
 - **[SECURITY.md](SECURITY.md)** — security summary for IT review: data handling, network behaviour, the Electron runtime and known gaps.
 - **[DEPENDENCIES.md](DEPENDENCIES.md)** — every third-party library with version, upstream URL and SHA-256, plus what ships versus what only builds.
 

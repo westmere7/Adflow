@@ -1,8 +1,8 @@
 #!/bin/bash
 # =============================================================================
 # RMIT Adflow — desktop app (development run), macOS / Linux
-# Double-click in Finder. See DEPLOYMENT.md if macOS refuses on a permissions
-# error; the file needs its executable bit set once.
+# Double-click in Finder. If macOS refuses with a permissions error, the file
+# needs its executable bit set once - see MAC-README.txt.
 # =============================================================================
 set -u
 cd "$(dirname "$0")" || exit 1
