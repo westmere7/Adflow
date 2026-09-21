@@ -39,3 +39,6 @@ run-electron.command
 *.stackdump
 build-app.bat
 build-app.command
+SECURITY.md
+DEPENDENCIES.md
+*.pptx

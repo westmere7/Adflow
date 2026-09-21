@@ -7,6 +7,9 @@ cannot drift apart.
 
 For hosting the web version (Docker, Vercel), see [DEPLOYMENT.md](DEPLOYMENT.md).
 
+For an IT security review, see [SECURITY.md](SECURITY.md) and
+[DEPENDENCIES.md](DEPENDENCIES.md).
+
 ---
 
 ## Why Electron and not Tauri

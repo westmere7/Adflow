@@ -767,6 +767,8 @@ Both cross-project preferences live in the same browser profile as autosave, imp
 - **In-app** — **Help → Documentation** carries the full user guide with screenshots; the footer version button opens the changelog.
 - **[knowledge_base.md](knowledge_base.md)** — the architecture context dump for engineers and coding agents: file-routing table, state schema, subsystem detail, and workflow conventions.
 - **[data/changelog.txt](data/changelog.txt)** — plain-text release history.
+- **[SECURITY.md](SECURITY.md)** — security summary for IT review: data handling, network behaviour, the Electron runtime and known gaps.
+- **[DEPENDENCIES.md](DEPENDENCIES.md)** — every third-party library with version, upstream URL and SHA-256, plus what ships versus what only builds.
 
 ---
 
