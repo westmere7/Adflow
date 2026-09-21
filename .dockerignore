@@ -21,8 +21,6 @@ README.md
 DEPLOYMENT.md
 knowledge_base.md
 error_logs.txt
-diff_props.txt
-workflow-test.txt
 run-docker.bat
 stop-docker.bat
 run-docker.command
@@ -37,6 +35,7 @@ package.json
 package-lock.json
 build
 ELECTRON.md
+MAC-README.txt
 run-electron.bat
 run-electron.command
 
