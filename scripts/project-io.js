@@ -23,6 +23,13 @@ const LEGACY_CLOUD_FIELDS = [
 function stripLegacyCloudFields(o) {
   if (!o) return o;
   for (const k of LEGACY_CLOUD_FIELDS) delete o[k];
+  // Same idea for the theme: v0.61.0 cut eleven palettes, so a .flow saved before
+  // it can name a theme with no CSS behind it. themeBodyClass() already falls back
+  // at render time, but without this the dead id would ride along into the next
+  // save. normalizeTheme lives in canvas-render.js, which loads first.
+  if (o.theme !== undefined && typeof normalizeTheme === 'function') {
+    o.theme = normalizeTheme(o.theme);
+  }
   return o;
 }
 

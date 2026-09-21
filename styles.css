@@ -25,128 +25,6 @@
   --shadow-heavy: rgba(0, 0, 0, 0.55);
 }
 
-body.theme-rmit {
-  color-scheme: light;
-  --bg-body: #f4f4f4;
-  --bg-panel: #ffffff;
-  --bg-input: #e0e0e0;
-  --bg-btn: #e5e5e5;
-  --border-light: #d4d4d4;
-  --border-btn: #c4c4c4;
-  --text-main: #000054;
-  --text-muted: #757575;
-  --text-bright: #000000;
-  --text-label: #333333;
-  --accent-base: #e60028;
-  --accent-hover: #ff1a40;
-  --accent-light: #ff667e;
-  --accent-dark: #ffdbe0;
-  --text-on-accent: #ffffff;
-  --table-zebra-1: rgba(0, 0, 0, 0.018);
-  --table-zebra-2: rgba(0, 0, 0, 0.036);
-  --overlay-hover: rgba(0, 0, 0, 0.04);
-  --overlay-hover-subtle: rgba(0, 0, 0, 0.03);
-  --shadow-light: rgba(15, 23, 42, 0.08);
-  --shadow-medium: rgba(15, 23, 42, 0.12);
-  --shadow-heavy: rgba(15, 23, 42, 0.16);
-}
-
-body.theme-ocean {
-  --bg-body: #081119;
-  --bg-panel: #0d1b28;
-  --bg-input: #132738;
-  --bg-btn: #193348;
-  --border-light: #1e3d56;
-  --border-btn: #2a5575;
-  --text-main: #d0e3f2;
-  --text-muted: #6b8ea6;
-  --text-bright: #ffffff;
-  --text-label: #9bbcd5;
-  --accent-base: #00a3ff;
-  --accent-hover: #33b5ff;
-  --accent-light: #80d4ff;
-  --accent-dark: #004d80;
-  --text-on-accent: #ffffff;
-}
-
-body.theme-nordic-light {
-  color-scheme: light;
-  --bg-body: #eceef2;
-  --bg-panel: #ffffff;
-  --bg-input: #f3f4f6;
-  --bg-btn: #e5e7eb;
-  --border-light: #d1d5db;
-  --border-btn: #9ca3af;
-  --text-main: #374151;
-  --text-muted: #6b7280;
-  --text-bright: #111827;
-  --text-label: #4b5563;
-  --accent-base: #0284c7;
-  --accent-hover: #0ea5e9;
-  --accent-light: #38bdf8;
-  --accent-dark: #e0f2fe;
-  --text-on-accent: #ffffff;
-  --table-zebra-1: rgba(0, 0, 0, 0.018);
-  --table-zebra-2: rgba(0, 0, 0, 0.036);
-  --overlay-hover: rgba(0, 0, 0, 0.04);
-  --overlay-hover-subtle: rgba(0, 0, 0, 0.03);
-  --shadow-light: rgba(15, 23, 42, 0.08);
-  --shadow-medium: rgba(15, 23, 42, 0.12);
-  --shadow-heavy: rgba(15, 23, 42, 0.16);
-}
-
-body.theme-amber-light {
-  color-scheme: light;
-  --bg-body: #fafaf9;
-  --bg-panel: #ffffff;
-  --bg-input: #f5f5f4;
-  --bg-btn: #e7e5e4;
-  --border-light: #d6d3d1;
-  --border-btn: #a8a29e;
-  --text-main: #44403c;
-  --text-muted: #78716c;
-  --text-bright: #1c1917;
-  --text-label: #57534e;
-  --accent-base: #d97706;
-  --accent-hover: #f59e0b;
-  --accent-light: #fbbf24;
-  --accent-dark: #fef3c7;
-  --text-on-accent: #ffffff;
-  --table-zebra-1: rgba(0, 0, 0, 0.018);
-  --table-zebra-2: rgba(0, 0, 0, 0.036);
-  --overlay-hover: rgba(0, 0, 0, 0.04);
-  --overlay-hover-subtle: rgba(0, 0, 0, 0.03);
-  --shadow-light: rgba(15, 23, 42, 0.08);
-  --shadow-medium: rgba(15, 23, 42, 0.12);
-  --shadow-heavy: rgba(15, 23, 42, 0.16);
-}
-
-body.theme-sage-light {
-  color-scheme: light;
-  --bg-body: #f0f4f1;
-  --bg-panel: #ffffff;
-  --bg-input: #e8efe9;
-  --bg-btn: #dde7df;
-  --border-light: #ccd9ce;
-  --border-btn: #a3bfa7;
-  --text-main: #2f3e31;
-  --text-muted: #5d7260;
-  --text-bright: #142216;
-  --text-label: #445947;
-  --accent-base: #0d9488;
-  --accent-hover: #14b8a6;
-  --accent-light: #5eead4;
-  --accent-dark: #ccfbf1;
-  --text-on-accent: #ffffff;
-  --table-zebra-1: rgba(0, 0, 0, 0.018);
-  --table-zebra-2: rgba(0, 0, 0, 0.036);
-  --overlay-hover: rgba(0, 0, 0, 0.04);
-  --overlay-hover-subtle: rgba(0, 0, 0, 0.03);
-  --shadow-light: rgba(15, 23, 42, 0.08);
-  --shadow-medium: rgba(15, 23, 42, 0.12);
-  --shadow-heavy: rgba(15, 23, 42, 0.16);
-}
-
 body.theme-light {
   color-scheme: light;
   --bg-body: #f1f5f9;
@@ -173,114 +51,6 @@ body.theme-light {
   --shadow-heavy: rgba(15, 23, 42, 0.16);
 }
 
-body.theme-navy {
-  --bg-body: #040914;
-  --bg-panel: #0a1122;
-  --bg-input: #0f1a30;
-  --bg-btn: #162442;
-  --border-light: #203359;
-  --border-btn: #2d4575;
-  --text-main: #c4d7f5;
-  --text-muted: #6b84ab;
-  --text-bright: #ffffff;
-  --text-label: #92aed6;
-  --accent-base: #4f8bf9;
-  --accent-hover: #7caeff;
-  --accent-light: #b3cfff;
-  --accent-dark: #102a5c;
-  --text-on-accent: #ffffff;
-}
-
-body.theme-obsidian {
-  --bg-body: #050507;
-  --bg-panel: #0b0c10;
-  --bg-input: #12141c;
-  --bg-btn: #1a1d29;
-  --border-light: #202433;
-  --border-btn: #2d3347;
-  --text-main: #d1d5db;
-  --text-muted: #5e667e;
-  --text-bright: #ffffff;
-  --text-label: #9ca3af;
-  --accent-base: #00f5a0;
-  --accent-hover: #33ffb8;
-  --accent-light: #80ffd4;
-  --accent-dark: #003d28;
-  --text-on-accent: #050507;
-}
-
-body.theme-nordic {
-  --bg-body: #090e1a;
-  --bg-panel: #0f172a;
-  --bg-input: #1e293b;
-  --bg-btn: #334155;
-  --border-light: #1e293b;
-  --border-btn: #475569;
-  --text-main: #e2e8f0;
-  --text-muted: #64748b;
-  --text-bright: #f8fafc;
-  --text-label: #94a3b8;
-  --accent-base: #38bdf8;
-  --accent-hover: #7dd3fc;
-  --accent-light: #bae6fd;
-  --accent-dark: #0369a1;
-  --text-on-accent: #090e1a;
-}
-
-body.theme-amber {
-  --bg-body: #09090b;
-  --bg-panel: #18181b;
-  --bg-input: #27272a;
-  --bg-btn: #3f3f46;
-  --border-light: #27272a;
-  --border-btn: #52525b;
-  --text-main: #e4e4e7;
-  --text-muted: #71717a;
-  --text-bright: #ffffff;
-  --text-label: #a1a1aa;
-  --accent-base: #f59e0b;
-  --accent-hover: #fbbf24;
-  --accent-light: #fde68a;
-  --accent-dark: #78350f;
-  --text-on-accent: #09090b;
-}
-
-body.theme-amethyst {
-  --bg-body: #090514;
-  --bg-panel: #110924;
-  --bg-input: #1b0f39;
-  --bg-btn: #26164f;
-  --border-light: #321c68;
-  --border-btn: #472894;
-  --text-main: #e8dff5;
-  --text-muted: #7b6a9e;
-  --text-bright: #ffffff;
-  --text-label: #a79ac2;
-  --accent-base: #d946ef;
-  --accent-hover: #f472b6;
-  --accent-light: #fbcfe8;
-  --accent-dark: #4a044e;
-  --text-on-accent: #ffffff;
-}
-
-body.theme-rmit-navy {
-  --bg-body: #000022;
-  --bg-panel: #00003b;
-  --bg-input: #000054;
-  --bg-btn: #0c0c66;
-  --border-light: #151578;
-  --border-btn: #222294;
-  --text-main: #cfd7f6;
-  --text-muted: #687ab8;
-  --text-bright: #ffffff;
-  --text-label: #92a2d7;
-  --accent-base: #e60028;
-  --accent-hover: #ff1a40;
-  --accent-light: #ff667e;
-  --accent-dark: #4d000a;
-  --text-on-accent: #ffffff;
-}
-
 /* ============================================================================
    Scrollbars — one thin, themed bar everywhere
    ----------------------------------------------------------------------------
@@ -293,10 +63,10 @@ body.theme-rmit-navy {
    is 6px. `background-clip: padding-box` is what keeps that border transparent
    instead of painting the thumb colour underneath it.
 
-   Colours come from the theme variables through color-mix, so all twelve themes
-   are covered by this one block — including the light ones, where the very same
-   declaration yields a dark thumb because `--text-muted` is dark there. Nothing
-   to keep in sync when a theme is added.
+   Colours come from the theme variables through color-mix, so both themes are
+   covered by this one block — including Light, where the very same declaration
+   yields a dark thumb because `--text-muted` is dark there. Nothing to keep in
+   sync when a theme is added.
 
    Deliberately NOT using the standard `scrollbar-width` / `scrollbar-color`
    properties here: when both are present, Chromium honours the standard ones and
@@ -525,7 +295,6 @@ body.theme-rmit-navy {
     }
 
 
-
     @keyframes anim-fade-typing {
 
       0% {
@@ -545,7 +314,6 @@ body.theme-rmit-navy {
       }
 
     }
-
 
 
     @keyframes anim-bg-grow {
@@ -579,9 +347,6 @@ body.theme-rmit-navy {
     @keyframes anim-swipe-out-down-fade  { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 0 100% 0); opacity: 0; } }
 
 
-
-
-
     @keyframes eff-pulse {
 
       0% {
@@ -591,13 +356,11 @@ body.theme-rmit-navy {
       }
 
 
-
       50% {
 
         scale: var(--pulse-scale, 1.05);
 
       }
-
 
 
       100% {
@@ -607,7 +370,6 @@ body.theme-rmit-navy {
       }
 
     }
-
 
 
     @keyframes eff-float {
@@ -619,13 +381,11 @@ body.theme-rmit-navy {
       }
 
 
-
       50% {
 
         translate: var(--float-x, 0px) var(--float-y, -10px);
 
       }
-
 
 
       100% {
@@ -637,9 +397,7 @@ body.theme-rmit-navy {
     }
 
 
-
     @keyframes eff-flash {
-
 
 
       0%,
@@ -653,7 +411,6 @@ body.theme-rmit-navy {
       }
 
 
-
       25%,
 
       75% {
@@ -665,7 +422,6 @@ body.theme-rmit-navy {
     }
 
 
-
     @keyframes eff-wiggle {
       0%, 100% {
         rotate: -5deg;
@@ -674,7 +430,6 @@ body.theme-rmit-navy {
         rotate: 5deg;
       }
     }
-
 
 
     @keyframes eff-spin {
@@ -719,7 +474,6 @@ body.theme-rmit-navy {
     }
 
 
-
     @keyframes eff-heartbeat {
 
       0% {
@@ -729,13 +483,11 @@ body.theme-rmit-navy {
       }
 
 
-
       14% {
 
         scale: var(--heartbeat-scale, 1.3);
 
       }
-
 
 
       28% {
@@ -745,13 +497,11 @@ body.theme-rmit-navy {
       }
 
 
-
       42% {
 
         scale: var(--heartbeat-scale, 1.3);
 
       }
-
 
 
       70% {
@@ -761,7 +511,6 @@ body.theme-rmit-navy {
       }
 
     }
-
 
 
     @keyframes eff-pan {
@@ -776,7 +525,6 @@ body.theme-rmit-navy {
         opacity: 1;
       }
     }
-
 
 
     @keyframes eff-zoom {
@@ -818,9 +566,6 @@ body.theme-rmit-navy {
     }
 
 
-
-
-
     * {
 
       box-sizing: border-box;
@@ -830,7 +575,6 @@ body.theme-rmit-navy {
       padding: 0;
 
     }
-
 
 
     html,
@@ -852,7 +596,6 @@ body.theme-rmit-navy {
     }
 
 
-
     button {
 
       font-family: inherit;
@@ -862,13 +605,11 @@ body.theme-rmit-navy {
     }
 
 
-
     :focus {
 
       outline: none;
 
     }
-
 
 
     ::selection {
@@ -878,7 +619,6 @@ body.theme-rmit-navy {
       color: var(--text-bright);
 
     }
-
 
 
     /* ---------- layout ---------- */
@@ -898,7 +638,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .app.preview-lock .topbar,
 
     .app.preview-lock .panel {
@@ -912,13 +651,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-frame.locked * {
 
       pointer-events: none !important;
 
     }
-
 
 
     .menu-item {
@@ -938,7 +675,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .menu-item:hover {
 
       background: var(--bg-btn);
@@ -946,7 +682,6 @@ body.theme-rmit-navy {
       color: var(--text-bright);
 
     }
-
 
 
     .dropdown {
@@ -976,13 +711,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .menu-item:hover .dropdown {
 
       display: block;
 
     }
-
 
 
     .dropdown-item.has-sub {
@@ -1028,7 +761,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .dropdown-item {
 
       padding: 6px 16px;
@@ -1048,7 +780,6 @@ body.theme-rmit-navy {
       white-space: nowrap;
 
     }
-
 
 
     /* The row you are already on. Marked with a tinted background and a bright
@@ -1079,7 +810,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .dropdown-divider {
 
       height: 1px;
@@ -1089,7 +819,6 @@ body.theme-rmit-navy {
       margin: 4px 0;
 
     }
-
 
 
     .topbar {
@@ -1109,7 +838,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .topbar .title {
 
       font-size: 13px;
@@ -1125,13 +853,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .topbar .spacer {
 
       flex: 1;
 
     }
-
 
 
     .topbar input:not([type="checkbox"]) {
@@ -1144,7 +870,6 @@ body.theme-rmit-navy {
       outline: none;
       width: 280px;
     }
-
 
 
     .topbar input:focus {
@@ -1205,7 +930,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .topbar label {
 
       font-size: 11px;
@@ -1213,7 +937,6 @@ body.theme-rmit-navy {
       color: var(--text-label);
 
     }
-
 
 
     .seg {
@@ -1229,7 +952,6 @@ body.theme-rmit-navy {
       padding: 2px;
 
     }
-
 
 
     .seg button {
@@ -1253,7 +975,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .seg button.active {
 
       background: var(--accent-dark);
@@ -1263,13 +984,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .seg button:hover:not(.active) {
 
       color: var(--text-bright);
 
     }
-
 
 
     .btn {
@@ -1293,7 +1012,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .btn:hover {
 
       background: var(--border-light);
@@ -1315,13 +1033,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .btn.primary {
       background: var(--accent-base);
       border-color: var(--accent-base);
       color: var(--text-on-accent);
     }
-
 
 
     .btn.primary:hover {
@@ -1331,7 +1047,6 @@ body.theme-rmit-navy {
       border-color: var(--accent-hover);
 
     }
-
 
 
     .btn.ghost {
@@ -1361,7 +1076,6 @@ body.theme-rmit-navy {
       color: var(--text-bright);
 
     }
-
 
 
     .btn.icon {
@@ -1609,7 +1323,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .workspace {
 
       display: grid;
@@ -1623,13 +1336,11 @@ body.theme-rmit-navy {
     }
 
 
-
     body.preview-active .app {
 
       display: block;
 
     }
-
 
 
     body.preview-active .workspace {
@@ -1641,7 +1352,6 @@ body.theme-rmit-navy {
     }
 
 
-
     body.preview-active .panel,
 
     body.preview-active .menubar,
@@ -1651,7 +1361,6 @@ body.theme-rmit-navy {
       display: none !important;
 
     }
-
 
 
     body.preview-active .canvas-area {
@@ -1683,7 +1392,6 @@ body.theme-rmit-navy {
     }
 
 
-
     /* ---------- panels ---------- */
 
     .panel {
@@ -1701,7 +1409,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .panel.right {
 
       border-right: none;
@@ -1709,7 +1416,6 @@ body.theme-rmit-navy {
       border-left: 1px solid var(--border-light);
 
     }
-
 
 
     .panel h3 {
@@ -1735,7 +1441,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .panel h3 button:not(.btn) {
 
       background: transparent;
@@ -1753,13 +1458,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .panel h3 button:not(.btn):hover {
 
       color: var(--text-bright);
 
     }
-
 
 
     .panel-section {
@@ -1773,7 +1476,6 @@ body.theme-rmit-navy {
       margin: 6px 14px;
 
     }
-
 
 
     /* Each animation sub-panel (In Animations / Continuous Effect / Frame
@@ -1831,11 +1533,6 @@ body.theme-rmit-navy {
     }
 
 
-
-
-
-
-
     .panel-section.highlighted {
 
       background: var(--accent-dark);
@@ -1855,7 +1552,6 @@ body.theme-rmit-navy {
       padding: 12px 12px 8px;
 
     }
-
 
 
     /* `.panel h3.panel-header-collapsible` instead of bare class —
@@ -1880,13 +1576,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .panel-header-collapsible:hover {
 
       color: var(--text-bright) !important;
 
     }
-
 
 
     .panel-header-collapsible .collapse-icon {
@@ -1918,7 +1612,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .panel-header-collapsible:hover .collapse-icon {
 
       color: var(--text-accent);
@@ -1943,13 +1636,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .panel-section.collapsed {
 
       padding-bottom: 0 !important;
 
     }
-
 
 
     .panel-section.collapsed > *:not(h3) {
@@ -1965,7 +1656,6 @@ body.theme-rmit-navy {
        compounding with the points swap when the browser DID honour
        SVG transforms — net result: ▲ instead of ▶. So no transform
        rule here anymore; the JS-driven points swap is canonical. */
-
 
 
     .panel-scroll {
@@ -2040,7 +1730,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .add-grid {
 
       display: grid;
@@ -2050,7 +1739,6 @@ body.theme-rmit-navy {
       gap: 6px;
 
     }
-
 
 
     .add-btn {
@@ -2082,7 +1770,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .add-btn:hover {
 
       background: var(--bg-btn);
@@ -2104,7 +1791,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .add-btn:disabled {
 
       opacity: .3;
@@ -2114,7 +1800,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .add-btn svg {
 
       width: 14px;
@@ -2122,7 +1807,6 @@ body.theme-rmit-navy {
       height: 14px;
 
     }
-
 
 
     /* canvas list (in left panel) */
@@ -2148,7 +1832,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-item:hover {
 
       background: var(--bg-input);
@@ -2158,7 +1841,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-item.active {
 
       background: var(--accent-dark);
@@ -2166,7 +1848,6 @@ body.theme-rmit-navy {
       color: var(--text-bright);
 
     }
-
 
 
     .canvas-item .ci-name {
@@ -2184,7 +1865,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-item .ci-dim {
 
       font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -2196,13 +1876,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-item.active .ci-dim {
 
       color: var(--accent-base);
 
     }
-
 
 
     .canvas-item .icon-btn {
@@ -2222,7 +1900,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-item:hover .icon-btn {
 
       display: inline-flex;
@@ -2230,13 +1907,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-item .icon-btn:hover {
 
       color: var(--text-bright);
 
     }
-
 
 
     /* layers list */
@@ -2303,7 +1978,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .layer:hover {
 
       background: rgba(255, 255, 255, 0.06);
@@ -2311,7 +1985,6 @@ body.theme-rmit-navy {
       color: var(--text-main);
 
     }
-
 
 
     .layer.selected {
@@ -2330,30 +2003,16 @@ body.theme-rmit-navy {
 
     }
 
-    body.theme-rmit .layer,
-    body.theme-nordic-light .layer,
-    body.theme-amber-light .layer,
-    body.theme-sage-light .layer,
     body.theme-light .layer {
       background: rgba(0, 0, 0, 0.02);
     }
-    body.theme-rmit .layer:hover,
-    body.theme-nordic-light .layer:hover,
-    body.theme-amber-light .layer:hover,
-    body.theme-sage-light .layer:hover,
     body.theme-light .layer:hover {
       background: rgba(0, 0, 0, 0.05);
     }
 
-    body.theme-rmit .layer.selected,
-    body.theme-nordic-light .layer.selected,
-    body.theme-amber-light .layer.selected,
-    body.theme-sage-light .layer.selected,
     body.theme-light .layer.selected,
-    body.theme-rmit .link-group-row.selected,
-    body.theme-nordic-light .link-group-row.selected,
-    body.theme-amber-light .link-group-row.selected,
-    body.theme-sage-light .link-group-row.selected,
+
+
     body.theme-light .link-group-row.selected {
       background: var(--accent-light);
     }
@@ -2376,7 +2035,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .layer .layer-icon {
 
       width: 13px;
@@ -2388,7 +2046,6 @@ body.theme-rmit-navy {
       opacity: .7;
 
     }
-
 
 
     .layer .layer-name {
@@ -2406,17 +2063,11 @@ body.theme-rmit-navy {
     }
 
 
-
-
-
-
-
     .layer .layer-name::-webkit-scrollbar {
 
       display: none;
 
     }
-
 
 
     .layer .layer-name[contenteditable="true"],
@@ -2443,7 +2094,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .layer .layer-actions {
 
       display: flex;
@@ -2451,7 +2101,6 @@ body.theme-rmit-navy {
       gap: 2px;
 
     }
-
 
 
     .layer .icon-btn {
@@ -2479,13 +2128,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .layer .icon-btn.active {
 
       opacity: 1;
 
     }
-
 
 
     .layer .icon-btn svg {
@@ -2497,7 +2144,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .layer .icon-btn:hover {
 
       opacity: 1;
@@ -2505,7 +2151,6 @@ body.theme-rmit-navy {
       background: var(--border-light);
 
     }
-
 
 
     /* Role-assignment icon — gray only when role === misc (unassigned);
@@ -2518,13 +2163,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .layer .icon-btn.role-btn:hover {
 
       opacity: 1;
 
     }
-
 
 
     .layer .icon-btn.role-btn.role-assigned {
@@ -2536,13 +2179,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .layer .icon-btn.role-btn.role-assigned:hover {
 
       background: color-mix(in srgb, var(--accent-base) 14%, transparent);
 
     }
-
 
 
     /* Role-picker dropdown items */
@@ -2558,13 +2199,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .role-picker-popup .dropdown-item.role-picker-item:hover {
 
       background: var(--border-light);
 
     }
-
 
 
     .role-picker-popup .dropdown-item.role-picker-reset {
@@ -2576,7 +2215,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .role-picker-popup .dropdown-item.role-picker-reset:hover {
 
       background: var(--border-light);
@@ -2586,7 +2224,6 @@ body.theme-rmit-navy {
     }
 
 
-
     /* properties panel */
 
     .prop-row {
@@ -2594,7 +2231,6 @@ body.theme-rmit-navy {
       margin-bottom: 8px;
 
     }
-
 
 
     .prop-row label {
@@ -2614,7 +2250,6 @@ body.theme-rmit-navy {
       font-weight: 600;
 
     }
-
 
 
     .prop-row input[type="text"],
@@ -2664,8 +2299,6 @@ body.theme-rmit-navy {
     }
 
 
-
-
     .prop-row input:focus,
 
     .prop-row select:focus,
@@ -2677,13 +2310,11 @@ body.theme-rmit-navy {
     }
 
 
-
     input[type="number"] {
 
       padding-right: 0 !important;
 
     }
-
 
 
     .prop-row input[type="color"] {
@@ -2705,7 +2336,6 @@ body.theme-rmit-navy {
       flex-shrink: 0;
 
     }
-
 
 
     /* A canvas dimension that has been edited but not applied yet. Placed AFTER the
@@ -2783,8 +2413,6 @@ body.theme-rmit-navy {
     }
 
 
-
-
     .prop-empty {
 
       font-size: 12px;
@@ -2800,7 +2428,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .align-group {
 
       display: flex;
@@ -2808,7 +2435,6 @@ body.theme-rmit-navy {
       gap: 4px;
 
     }
-
 
 
     .align-btn {
@@ -2838,7 +2464,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .align-btn:hover {
 
       background: var(--border-light);
@@ -2846,7 +2471,6 @@ body.theme-rmit-navy {
       color: var(--text-bright);
 
     }
-
 
 
     .align-btn.active {
@@ -2870,8 +2494,6 @@ body.theme-rmit-navy {
     }
 
 
-
-
     .checkbox-row {
 
       display: flex;
@@ -2883,13 +2505,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .checkbox-row input {
 
       width: auto;
 
     }
-
 
 
     .checkbox-row label {
@@ -2907,7 +2527,6 @@ body.theme-rmit-navy {
       letter-spacing: 0;
 
     }
-
 
 
     /* ---------- canvas area ---------- */
@@ -2934,7 +2553,6 @@ body.theme-rmit-navy {
     }
 
 
-
     /* workspace inside canvas-area */
 
     .workspace-canvas {
@@ -2957,7 +2575,6 @@ body.theme-rmit-navy {
     }
 
 
-
     /* faint dotted grid for the workspace */
 
     .workspace-canvas {
@@ -2969,7 +2586,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-frame {
 
       position: absolute;
@@ -2977,13 +2593,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-frame.active {
 
       z-index: 10;
 
     }
-
 
 
     .canvas-header {
@@ -3013,7 +2627,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-header .name {
 
       color: var(--text-main);
@@ -3027,7 +2640,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-header .dim {
 
       color: var(--text-muted);
@@ -3035,13 +2647,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-frame.active .canvas-header .name {
 
       color: var(--accent-base);
 
     }
-
 
 
     .canvas-frame.active .canvas-header::before {
@@ -3061,7 +2671,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas {
 
       position: relative;
@@ -3071,16 +2680,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .canvas-frame.active .canvas {
 
       box-shadow: 0 0 0 1.5px var(--accent-base), 0 8px 30px rgba(0, 0, 0, 0.5);
 
     }
-
-
-
-
 
 
     /* Drop-target highlight when dragging image files over a canvas */
@@ -3128,7 +2732,6 @@ body.theme-rmit-navy {
     .img-drop-hint span { text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
 
 
-
     .el {
 
       position: absolute;
@@ -3142,7 +2745,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .el.text {
 
       display: flex;
@@ -3150,7 +2752,6 @@ body.theme-rmit-navy {
       align-items: center;
 
     }
-
 
 
     .el.text>span {
@@ -3170,7 +2771,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .el.shape-rect,
 
     .el.shape-circle,
@@ -3186,7 +2786,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .el.button {
 
       font-weight: 600;
@@ -3196,7 +2795,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .el.button span,
 
     .el.button .editable {
@@ -3204,8 +2802,6 @@ body.theme-rmit-navy {
       word-break: normal;
 
     }
-
-
 
 
     .el.image img {
@@ -3223,13 +2819,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .el.editing {
 
       cursor: text;
 
     }
-
 
 
     .el.editing>span,
@@ -3243,7 +2837,6 @@ body.theme-rmit-navy {
       cursor: text;
 
     }
-
 
 
     .editable {
@@ -3263,13 +2856,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .editable[contenteditable="true"] {
 
       caret-color: var(--accent-base);
 
     }
-
 
 
     .el.button .editable::selection {
@@ -3279,7 +2870,6 @@ body.theme-rmit-navy {
       color: inherit;
 
     }
-
 
 
     .selection-outline {
@@ -3330,8 +2920,6 @@ body.theme-rmit-navy {
     }
 
 
-
-
     .handle {
 
       position: absolute;
@@ -3351,7 +2939,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .selection-outline.group {
 
       border-color: #ffab00;
@@ -3359,13 +2946,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .selection-outline.group .handle {
 
       background: #ffab00;
 
     }
-
 
 
     .handle.nw {
@@ -3379,7 +2964,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .handle.ne {
 
       top: calc(-5px / var(--z, 1));
@@ -3389,7 +2973,6 @@ body.theme-rmit-navy {
       cursor: ne-resize;
 
     }
-
 
 
     .handle.sw {
@@ -3403,7 +2986,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .handle.se {
 
       bottom: calc(-5px / var(--z, 1));
@@ -3413,7 +2995,6 @@ body.theme-rmit-navy {
       cursor: se-resize;
 
     }
-
 
 
     .handle.n {
@@ -3429,7 +3010,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .handle.s {
 
       bottom: calc(-5px / var(--z, 1));
@@ -3441,7 +3021,6 @@ body.theme-rmit-navy {
       cursor: ns-resize;
 
     }
-
 
 
     .handle.w {
@@ -3457,7 +3036,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .handle.e {
 
       top: 50%;
@@ -3469,7 +3047,6 @@ body.theme-rmit-navy {
       cursor: ew-resize;
 
     }
-
 
 
     .handle.rot {
@@ -3487,7 +3064,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .handle.radius {
 
       border-radius: 50%;
@@ -3495,7 +3071,6 @@ body.theme-rmit-navy {
       cursor: nwse-resize;
 
     }
-
 
 
     .handle.rot,
@@ -3509,7 +3084,6 @@ body.theme-rmit-navy {
       background: #06b6d4;
 
     }
-
 
 
     /* modal */
@@ -3531,7 +3105,6 @@ body.theme-rmit-navy {
       z-index: 100;
 
     }
-
 
 
     .modal {
@@ -3557,7 +3130,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .modal-head {
 
       display: flex;
@@ -3569,7 +3141,6 @@ body.theme-rmit-navy {
       border-bottom: 1px solid var(--border-light);
 
     }
-
 
 
     .modal-head h2 {
@@ -3585,7 +3156,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .modal-body {
 
       flex: 1;
@@ -3595,7 +3165,6 @@ body.theme-rmit-navy {
       padding: 16px 18px;
 
     }
-
 
 
     .modal-body textarea {
@@ -3627,7 +3196,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .modal-foot {
 
       display: flex;
@@ -3641,7 +3209,6 @@ body.theme-rmit-navy {
       justify-content: flex-end;
 
     }
-
 
 
     /* settings panel vertical tabs and theme selector */
@@ -3667,7 +3234,6 @@ body.theme-rmit-navy {
       overflow-y: auto;
 
     }
-
 
 
     .settings-tab-btn-vertical {
@@ -3699,7 +3265,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .settings-tab-btn-vertical:hover {
 
       background: var(--bg-btn);
@@ -3707,7 +3272,6 @@ body.theme-rmit-navy {
       color: var(--text-main);
 
     }
-
 
 
     .settings-tab-btn-vertical.active {
@@ -3721,7 +3285,6 @@ body.theme-rmit-navy {
       font-weight: 600;
 
     }
-
 
 
     .settings-theme-btn {
@@ -3753,7 +3316,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .settings-theme-btn:hover {
 
       border-color: var(--text-muted);
@@ -3761,7 +3323,6 @@ body.theme-rmit-navy {
       background: var(--bg-btn);
 
     }
-
 
 
     .settings-theme-btn.active {
@@ -3775,7 +3336,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .shortcuts-table {
 
       width: 100%;
@@ -3787,7 +3347,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .shortcuts-table td {
 
       padding: 8px 0;
@@ -3797,7 +3356,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .shortcuts-table td:first-child {
 
       color: var(--text-label);
@@ -3805,13 +3363,11 @@ body.theme-rmit-navy {
     }
 
 
-
     .shortcuts-table td:last-child {
 
       text-align: right;
 
     }
-
 
 
     .kbd {
@@ -3833,7 +3389,6 @@ body.theme-rmit-navy {
       color: var(--text-bright);
 
     }
-
 
 
     /* ---------- context menu ---------- */
@@ -3863,7 +3418,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .ctx-item {
 
       padding: 6px 12px;
@@ -3877,7 +3431,6 @@ body.theme-rmit-navy {
       user-select: none;
 
     }
-
 
 
     .ctx-item.highlight {
@@ -4022,7 +3575,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .ctx-divider {
 
       height: 1px;
@@ -4071,7 +3623,6 @@ body.theme-rmit-navy {
     }
 
 
-
     /* ---------- zoom tool cursor override ---------- */
 
     .tool-zoom-active,
@@ -4091,7 +3642,6 @@ body.theme-rmit-navy {
     }
 
 
-
     /* ---------- text tool cursor and interaction override ---------- */
 
     .canvas-area.tool-text-active .el:not(.text):not(.button) {
@@ -4099,7 +3649,6 @@ body.theme-rmit-navy {
       pointer-events: none !important;
 
     }
-
 
 
     .canvas-area.tool-text-active .el.text,
@@ -4115,7 +3664,6 @@ body.theme-rmit-navy {
       pointer-events: auto !important;
 
     }
-
 
 
     /* ---------- rulers ---------- */
@@ -4153,7 +3701,6 @@ body.theme-rmit-navy {
     }
 
 
-
     #ruler-v {
 
       position: sticky;
@@ -4187,7 +3734,6 @@ body.theme-rmit-navy {
     }
 
 
-
     #ruler-corner {
 
       position: sticky;
@@ -4217,7 +3763,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .guide-h {
 
       position: absolute;
@@ -4237,7 +3782,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .guide-v {
 
       position: absolute;
@@ -4255,7 +3799,6 @@ body.theme-rmit-navy {
       cursor: col-resize;
 
     }
-
 
 
     #size-overlay {
@@ -4283,7 +3826,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .smart-guide {
 
       position: absolute;
@@ -4299,7 +3841,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .smart-guide.x {
 
       width: calc(1px / var(--z, 1));
@@ -4311,7 +3852,6 @@ body.theme-rmit-navy {
     }
 
 
-
     .smart-guide.y {
 
       height: calc(1px / var(--z, 1));
@@ -4321,7 +3861,6 @@ body.theme-rmit-navy {
       right: 0;
 
     }
-
 
 
     /* Custom Color Picker Styles */
@@ -4586,9 +4125,6 @@ body.theme-rmit-navy {
     }
 
 
-
-
-
     /* Minimum supported screen is 1366×768. Width is a hard floor — below
        1366 the chrome can't lay out without horizontal clipping, so we gate
        it. Height is forgiving (panels scroll vertically): on a real 1366×768
@@ -4606,7 +4142,6 @@ body.theme-rmit-navy {
         display: flex;
 
       }
-
 
 
       .app {
@@ -4636,7 +4171,6 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
       gap: 6px;
 
     }
-
 
 
     .automation-btn {
@@ -4670,7 +4204,6 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
     }
 
 
-
     .automation-btn:hover {
 
       background: var(--bg-btn);
@@ -4678,13 +4211,11 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
     }
 
 
-
     .automation-btn.active {
 
       color: var(--accent-base);
 
     }
-
 
 
     .automation-btn svg {
@@ -4698,13 +4229,11 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
     }
 
 
-
     .automation-btn > span:first-of-type {
 
       flex: 1;
 
     }
-
 
 
     .automation-btn.featured {
@@ -4722,13 +4251,11 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
     }
 
 
-
     .automation-btn.featured:hover {
 
       background: linear-gradient(135deg, color-mix(in srgb, var(--accent-base) 35%, transparent), color-mix(in srgb, var(--accent-hover) 20%, transparent));
 
     }
-
 
 
     .automation-btn .badge-ai {
@@ -4750,7 +4277,6 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
     }
 
 
-
     /* ---------- Safezone overlay ---------- */
 
     .safezone-overlay {
@@ -4766,7 +4292,6 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
       z-index: 49;
 
     }
-
 
 
     .safezone-cross {
@@ -4786,7 +4311,6 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
     }
 
 
-
     .safezone-cross::before,
 
     .safezone-cross::after {
@@ -4798,7 +4322,6 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
       background: #00ffff;
 
     }
-
 
 
     .safezone-cross::before {
@@ -4814,7 +4337,6 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
       transform: translateY(-50%);
 
     }
-
 
 
     .safezone-cross::after {
@@ -5495,18 +5017,10 @@ input[type="checkbox"]:disabled {
   border-bottom-left-radius: 0;
 }
 
-body.theme-rmit .link-group-row,
-body.theme-nordic-light .link-group-row,
-body.theme-amber-light .link-group-row,
-body.theme-sage-light .link-group-row,
 body.theme-light .link-group-row {
   background: rgba(0, 0, 0, 0.02);
 }
 
-body.theme-rmit .link-group-row:hover,
-body.theme-nordic-light .link-group-row:hover,
-body.theme-amber-light .link-group-row:hover,
-body.theme-sage-light .link-group-row:hover,
 body.theme-light .link-group-row:hover {
   background: rgba(0, 0, 0, 0.05);
 }
@@ -5550,10 +5064,6 @@ body.theme-light .link-group-row:hover {
   --table-zebra-1: rgba(255, 255, 255, 0.035);
   --table-zebra-2: rgba(255, 255, 255, 0.06);
 }
-body.theme-rmit #dm-panel,
-body.theme-nordic-light #dm-panel,
-body.theme-amber-light #dm-panel,
-body.theme-sage-light #dm-panel,
 body.theme-light #dm-panel {
   --table-zebra-1: rgba(0, 0, 0, 0.045);
   --table-zebra-2: rgba(0, 0, 0, 0.08);
@@ -5892,10 +5402,6 @@ body.fullscreen-mode .workspace-isolation-outline {
   --btn-val-green-color: #34d399;
 }
 
-body.theme-rmit,
-body.theme-nordic-light,
-body.theme-amber-light,
-body.theme-sage-light,
 body.theme-light {
   --text-accent: var(--accent-base);
 
@@ -6155,20 +5661,17 @@ body.outline-mode #workspace-canvas .handle {
 /* ============================================================================
    Light Outline Mode
    ============================================================================ */
-body[class*="-light"].outline-mode #workspace-canvas,
-body.theme-rmit.outline-mode #workspace-canvas {
+body.theme-light.outline-mode #workspace-canvas {
   background-color: #f1f5f9 !important; /* Light slate bg */
 }
 
-body[class*="-light"].outline-mode #workspace-canvas .canvas,
-body.theme-rmit.outline-mode #workspace-canvas .canvas {
+body.theme-light.outline-mode #workspace-canvas .canvas {
   background: transparent !important;
   border: 1px dashed rgba(15, 23, 42, 0.35) !important;
   box-shadow: none !important;
 }
 
-body[class*="-light"].outline-mode #workspace-canvas .el div,
-body.theme-rmit.outline-mode #workspace-canvas .el div {
+body.theme-light.outline-mode #workspace-canvas .el div {
   background: transparent !important;
   background-image: none !important;
   border-color: transparent !important;
@@ -6176,170 +5679,154 @@ body.theme-rmit.outline-mode #workspace-canvas .el div {
 }
 
 /* --- Color Coding (Light Mode): Standard Elements (Dark Slate) --- */
-body[class*="-light"].outline-mode #workspace-canvas .el,
-body.theme-rmit.outline-mode #workspace-canvas .el,
-body[class*="-light"].outline-mode #workspace-canvas .el.button,
-body.theme-rmit.outline-mode #workspace-canvas .el.button {
+body.theme-light.outline-mode #workspace-canvas .el,
+
+
+body.theme-light.outline-mode #workspace-canvas .el.button {
   outline: 1px solid #1e293b !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el svg rect,
-body[class*="-light"].outline-mode #workspace-canvas .el svg circle,
-body[class*="-light"].outline-mode #workspace-canvas .el svg path,
-body[class*="-light"].outline-mode #workspace-canvas .el svg line,
-body[class*="-light"].outline-mode #workspace-canvas .el svg polyline,
-body.theme-rmit.outline-mode #workspace-canvas .el svg rect,
-body.theme-rmit.outline-mode #workspace-canvas .el svg circle,
-body.theme-rmit.outline-mode #workspace-canvas .el svg path,
-body.theme-rmit.outline-mode #workspace-canvas .el svg line,
-body.theme-rmit.outline-mode #workspace-canvas .el svg polyline {
+body.theme-light.outline-mode #workspace-canvas .el svg rect,
+
+body.theme-light.outline-mode #workspace-canvas .el svg circle,
+
+body.theme-light.outline-mode #workspace-canvas .el svg path,
+
+body.theme-light.outline-mode #workspace-canvas .el svg line,
+
+body.theme-light.outline-mode #workspace-canvas .el svg polyline {
   stroke: #1e293b !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.text span,
-body[class*="-light"].outline-mode #workspace-canvas .el.text h1,
-body[class*="-light"].outline-mode #workspace-canvas .el.text h2,
-body[class*="-light"].outline-mode #workspace-canvas .el.text h3,
-body[class*="-light"].outline-mode #workspace-canvas .el.text div,
-body.theme-rmit.outline-mode #workspace-canvas .el.text span,
-body.theme-rmit.outline-mode #workspace-canvas .el.text h1,
-body.theme-rmit.outline-mode #workspace-canvas .el.text h2,
-body.theme-rmit.outline-mode #workspace-canvas .el.text h3,
-body.theme-rmit.outline-mode #workspace-canvas .el.text div,
-body[class*="-light"].outline-mode #workspace-canvas .el.button span,
-body.theme-rmit.outline-mode #workspace-canvas .el.button span {
+body.theme-light.outline-mode #workspace-canvas .el.text span,
+
+body.theme-light.outline-mode #workspace-canvas .el.text h1,
+
+body.theme-light.outline-mode #workspace-canvas .el.text h2,
+
+body.theme-light.outline-mode #workspace-canvas .el.text h3,
+
+body.theme-light.outline-mode #workspace-canvas .el.text div,
+
+body.theme-light.outline-mode #workspace-canvas .el.button span {
   color: #1e293b !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.image::before,
-body.theme-rmit.outline-mode #workspace-canvas .el.image::before {
+body.theme-light.outline-mode #workspace-canvas .el.image::before {
   background: linear-gradient(to top right, transparent calc(50% - 0.5px), #1e293b, transparent calc(50% + 0.5px)) !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.image::after,
-body.theme-rmit.outline-mode #workspace-canvas .el.image::after {
+body.theme-light.outline-mode #workspace-canvas .el.image::after {
   background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #1e293b, transparent calc(50% + 0.5px)) !important;
 }
 
 /* --- Color Coding (Light Mode): Mapped Dynamic Elements (Dark Amber) --- */
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.button,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.button {
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el,
+
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.button {
   outline: 1px solid #d97706 !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el svg rect,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el svg circle,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el svg path,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el svg line,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el svg polyline,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el svg rect,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el svg circle,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el svg path,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el svg line,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el svg polyline {
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el svg rect,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el svg circle,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el svg path,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el svg line,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el svg polyline {
   stroke: #d97706 !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.text span,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.text h1,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.text h2,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.text h3,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.text div,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.text span,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.text h1,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.text h2,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.text h3,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.text div,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.button span,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.button span {
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.text span,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.text h1,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.text h2,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.text h3,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.text div,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.button span {
   color: #d97706 !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.image::before,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.image::before {
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.image::before {
   background: linear-gradient(to top right, transparent calc(50% - 0.5px), #d97706, transparent calc(50% + 0.5px)) !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.image::after,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.image::after {
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.image::after {
   background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #d97706, transparent calc(50% + 0.5px)) !important;
 }
 
 /* --- Color Coding (Light Mode): Animated Elements (Dark Pink) --- */
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el,
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.button,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.button {
+body.theme-light.outline-mode #workspace-canvas .el.animated-el,
+
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.button {
   outline: 1px solid #db2777 !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el svg rect,
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el svg circle,
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el svg path,
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el svg line,
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el svg polyline,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el svg rect,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el svg circle,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el svg path,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el svg line,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el svg polyline {
+body.theme-light.outline-mode #workspace-canvas .el.animated-el svg rect,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el svg circle,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el svg path,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el svg line,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el svg polyline {
   stroke: #db2777 !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.text span,
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.text h1,
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.text h2,
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.text h3,
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.text div,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.text span,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.text h1,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.text h2,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.text h3,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.text div,
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.button span,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.button span {
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.text span,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.text h1,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.text h2,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.text h3,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.text div,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.button span {
   color: #db2777 !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.image::before,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.image::before {
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.image::before {
   background: linear-gradient(to top right, transparent calc(50% - 0.5px), #db2777, transparent calc(50% + 0.5px)) !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.animated-el.image::after,
-body.theme-rmit.outline-mode #workspace-canvas .el.animated-el.image::after {
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.image::after {
   background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #db2777, transparent calc(50% + 0.5px)) !important;
 }
 
 /* --- Color Coding (Light Mode): Both Dynamic & Animated Elements (Dark Purple) --- */
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.button,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button {
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el,
+
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button {
   outline: 1px solid #7c3aed !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el svg rect,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el svg circle,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el svg path,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el svg line,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el svg polyline,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg rect,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg circle,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg path,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg line,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg polyline {
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg rect,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg circle,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg path,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg line,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg polyline {
   stroke: #7c3aed !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.text span,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h1,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h2,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h3,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.text div,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text span,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h1,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h2,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h3,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text div,
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.button span,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button span {
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text span,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h1,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h2,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h3,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text div,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button span {
   color: #7c3aed !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::before,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::before {
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::before {
   background: linear-gradient(to top right, transparent calc(50% - 0.5px), #7c3aed, transparent calc(50% + 0.5px)) !important;
 }
-body[class*="-light"].outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::after,
-body.theme-rmit.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::after {
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::after {
   background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #7c3aed, transparent calc(50% + 0.5px)) !important;
 }
 
@@ -6430,35 +5917,29 @@ body.outline-mode .outline-legend {
 }
 
 /* Light mode overrides for legend container */
-body[class*="-light"] .outline-legend,
-body.theme-rmit .outline-legend {
+body.theme-light .outline-legend {
   background: rgba(248, 250, 252, 0.92);
   border-color: rgba(15, 23, 42, 0.12);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
-body[class*="-light"] .outline-legend-item,
-body.theme-rmit .outline-legend-item {
+body.theme-light .outline-legend-item {
   color: #1e293b;
 }
 
-body[class*="-light"] .outline-color-standard,
-body.theme-rmit .outline-color-standard {
+body.theme-light .outline-color-standard {
   background-color: #1e293b;
   box-shadow: none;
 }
-body[class*="-light"] .outline-color-dynamic,
-body.theme-rmit .outline-color-dynamic {
+body.theme-light .outline-color-dynamic {
   background-color: #d97706;
   box-shadow: none;
 }
-body[class*="-light"] .outline-color-animated,
-body.theme-rmit .outline-color-animated {
+body.theme-light .outline-color-animated {
   background-color: #db2777;
   box-shadow: none;
 }
-body[class*="-light"] .outline-color-hybrid,
-body.theme-rmit .outline-color-hybrid {
+body.theme-light .outline-color-hybrid {
   background-color: #7c3aed;
   box-shadow: none;
 }
@@ -6654,10 +6135,6 @@ body.previewing-animation-hover .el.link-highlight-hover-live::after {
 .preset-select-trigger:active {
   transform: translateY(0.5px);
 }
-
-
-
-
 
 
 /* ============================================================================

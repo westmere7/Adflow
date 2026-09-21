@@ -3,7 +3,7 @@
 // ============================================================================
 const escHtml = (s) => String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 function getAppVersion() {
-  return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : 'v0.60.1';
+  return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : 'v0.61.0';
 }
 
 // Stack a list of {width, height} into one block of rows on the board and return
@@ -2579,7 +2579,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
 
 
 function checkVersionUpdate() {
-  const currentVersion = 'v0.60.1';
+  const currentVersion = 'v0.61.0';
   const lastSeen = localStorage.getItem('last-seen-version');
   
   if (!lastSeen) {
@@ -2630,7 +2630,10 @@ function checkVersionUpdate() {
 
 
 document.getElementById('menu-about').addEventListener('click', () => {
-  const currentVersion = 'v0.44.0';
+  // Resolved dynamically — this was hardcoded and sat at v0.44.0 for ~17
+  // releases while the About box claimed to be it. getAppVersion() reads
+  // _appBootVersion / data/version.txt, so it cannot go stale again.
+  const currentVersion = getAppVersion();
   const body = `
       <div style="font-size:13px; line-height:1.75; color:var(--text-main); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <p style="margin: 0 0 16px 0;"><strong>RMIT Adflow</strong> is a specialized, lightweight HTML5 display advertisement creation and automation platform. Designed to eliminate the overhead and complexities of legacy ad builders, Adflow offers a fast, precise, and visual environment for building, validating, and exporting high-performance advertising creatives.</p>
@@ -2647,7 +2650,7 @@ document.getElementById('menu-about').addEventListener('click', () => {
             <span style="color: var(--text-main);">GitHub</span>
             
             <span style="color: var(--text-muted); font-weight: 500;">Hosting &amp; Deployment:</span>
-            <span style="color: var(--text-main);">Static site — Docker (nginx) or any static host, no backend</span>
+            <span style="color: var(--text-main);">Desktop app (Windows, macOS) or static site — Docker (nginx) or any static host. No backend either way.</span>
           </div>
         </div>
 
@@ -2704,20 +2707,13 @@ document.getElementById('menu-open-settings').addEventListener('click', () => { 
 // Settings panel — opens from the main menu only, doesn't live among the working
 // panels. Houses everything that's an app/view preference (rulers, snapping,
 // theme) plus the new Crop-to-Canvas toggle.
+// Two themes, and only two: the default Adflow palette (the bare :root
+// variables) and Light. The eleven extra palettes that used to live here were
+// retired — each one was a second set of tokens to keep in step with every new
+// panel, and nothing outside this list ever read them.
 const THEMES = [
   { id: 'default', label: 'Adflow' },
-  { id: 'obsidian', label: 'Obsidian' },
-  { id: 'nordic', label: 'Nordic' },
-  { id: 'amber', label: 'Amber' },
-  { id: 'amethyst', label: 'Amethyst' },
-  { id: 'rmit-navy', label: 'RMIT Navy' },
-  { id: 'ocean', label: 'Ocean' },
-  { id: 'navy', label: 'Navy' },
   { id: 'light', label: 'Light' },
-  { id: 'rmit', label: 'RMIT' },
-  { id: 'nordic-light', label: 'Nordic Light' },
-  { id: 'amber-light', label: 'Amber Light' },
-  { id: 'sage-light', label: 'Sage Light' },
 ];
 
 function openSettings() {
@@ -2729,7 +2725,7 @@ function openSettings() {
 
   // Store initial settings configuration for rollback
   const initialSettings = {
-    theme: state.theme || 'default',
+    theme: normalizeTheme(state.theme),
     startupMode: mode,
     showRulers: state.showRulers !== false,
     cropToCanvas: !!state.cropToCanvas,
@@ -2763,15 +2759,13 @@ function openSettings() {
   bg.id = 'settings-panel-bg';
   bg.className = 'modal-bg';
 
-  const lightThemeIds = new Set(['light', 'rmit', 'nordic-light', 'amber-light', 'sage-light']);
-
-  const buildThemeGrid = (filterFn) => THEMES.filter(filterFn).map(t => {
+  // One row of buttons. There used to be separate "Dark Themes" / "Light Themes"
+  // groups, which earned their keep across thirteen palettes; with two, the
+  // headings said less than the names already do.
+  const themeBtns = THEMES.map(t => {
     const active = tempSettings.theme === t.id;
     return `<button class="settings-theme-btn${active ? ' active' : ''}" data-theme="${t.id}" title="Switch the editor to the ${t.label} theme. This changes Adflow’s own interface, never your ad">${t.label}</button>`;
   }).join('');
-
-  const darkThemeBtns = buildThemeGrid(t => !lightThemeIds.has(t.id));
-  const lightThemeBtns = buildThemeGrid(t => lightThemeIds.has(t.id));
 
   const buildStartupOptions = () => {
     const opts = [];
@@ -2811,7 +2805,7 @@ function openSettings() {
           <div class="modal-head" style="border-bottom:1px solid var(--border-light); background:var(--bg-panel); flex-shrink:0;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
               <h2 style="margin:0; font-size:14px; font-weight:600; color:var(--text-bright);">Settings</h2>
-              <span style="font-size:11px; color:var(--text-muted);">v0.60.1</span>
+              <span style="font-size:11px; color:var(--text-muted);">v0.61.0</span>
               <button id="settings-changelog" title="See what changed in this and previous versions of Adflow" class="btn" style="padding:4px 8px; font-size:10px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; cursor:pointer;">Changelog</button>
             </div>
             <button class="btn" id="settings-close" title="Close without keeping any change made since the dialog opened">Close</button>
@@ -2893,15 +2887,7 @@ function openSettings() {
                 <section style="display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--border-light); padding-top:14px;">
                   <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Theme</h3>
                   
-                  <div style="display:flex; flex-direction:column; gap:6px;">
-                    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Dark Themes</span>
-                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">${darkThemeBtns}</div>
-                  </div>
-                  
-                  <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
-                    <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Light Themes</span>
-                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">${lightThemeBtns}</div>
-                  </div>
+                  <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px;">${themeBtns}</div>
                 </section>
               </div>
               
@@ -3018,7 +3004,7 @@ function openSettings() {
       if (!state.validationSettings) state.validationSettings = {};
       Object.assign(state.validationSettings, tempSettings.validationSettings);
 
-      document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
+      document.body.className = themeBodyClass(state.theme);
       syncAdflowLogos();
 
       if (state.activeCanvasId) {
@@ -3051,7 +3037,7 @@ function openSettings() {
     if (!state.validationSettings) state.validationSettings = {};
     state.validationSettings = JSON.parse(JSON.stringify(initialSettings.validationSettings));
 
-    document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
+    document.body.className = themeBodyClass(state.theme);
     syncAdflowLogos();
 
     if (state.activeCanvasId) {
@@ -3368,7 +3354,7 @@ function openSettings() {
     localStorage.setItem('adflow-startup-mode', tempSettings.startupMode);
 
     // Apply theme change on body
-    document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
+    document.body.className = themeBodyClass(state.theme);
     syncAdflowLogos();
 
     // Trigger validation and rendering

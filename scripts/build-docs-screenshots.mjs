@@ -9,8 +9,8 @@
 //
 // Zero dependencies: raw Chrome DevTools Protocol over Node's built-in
 // WebSocket (same approach as the reverted MP4 export tool). Chrome runs
-// headless against a THROWAWAY profile, so the splash sign-in gate renders
-// fresh and nothing touches your real browser storage.
+// headless against a THROWAWAY profile, so every shot is of a first-run app
+// and nothing touches your real browser storage.
 //
 // Shot types:
 //   • full   — whole 1600×940 viewport (overview / portal pages)
@@ -228,23 +228,12 @@ async function shot(name, opts = {}) {
 console.log('editor…');
 await nav(BASE + '/index.html');
 
-// 1. The sign-in gate on a fresh profile.
+// Wait for the splash to finish and PROVE it is gone — the app keeps rendering
+// behind the splash, so a weak "state exists" check passes while the splash
+// still covers everything and every later shot silently captures it.
+// (There is no sign-in gate to dismiss any more: the local edition boots
+// straight into the workspace, so this just waits the splash out.)
 await ev(`(async () => {
-  for (let i = 0; i < 100; i++) {
-    const sp = document.getElementById('app-splash');
-    if (sp && sp.classList.contains('app-splash-gate-active')) return;
-    await new Promise(r => setTimeout(r, 100));
-  }
-  throw new Error('splash gate never appeared');
-})()`);
-await sleep(400);
-await shot('splash-signin');
-
-// Dismiss the gate via its real button, then PROVE it is gone — the app keeps
-// rendering behind the gate, so a weak "state exists" check passes while the
-// splash still covers everything and every later shot silently captures it.
-await ev(`(async () => {
-  document.getElementById('splash-gate-local').click();
   for (let i = 0; i < 150; i++) {
     const sp = document.getElementById('app-splash');
     const gone = !sp || sp.classList.contains('app-splash-out') || getComputedStyle(sp).display === 'none' || getComputedStyle(sp).opacity === '0';
@@ -260,7 +249,7 @@ await ev(`(async () => {
     }
     await new Promise(r => setTimeout(r, 100));
   }
-  throw new Error('splash gate never dismissed');
+  throw new Error('splash never cleared');
 })()`);
 await sleep(800);
 

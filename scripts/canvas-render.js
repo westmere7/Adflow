@@ -287,9 +287,27 @@ function applyColorToText(node, colorVal) {
 // `<img data-adflow-logo>` in the DOM — the splash logo, the top-bar
 // logo, the size-overlay logo, and the docs-modal welcome image all have
 // this attribute. Add a new light theme by extending LIGHT_BG_THEMES below.
-const LIGHT_BG_THEMES = new Set(['light', 'rmit', 'nordic-light', 'amber-light', 'sage-light']);
+const LIGHT_BG_THEMES = new Set(['light']);
+
+// The editor ships exactly two themes: 'default' (Adflow) and 'light'. Older
+// projects and autosaves may still carry a theme id from the retired palettes
+// (obsidian, nordic, amber, rmit, …); those have no CSS left, so anything we
+// don't recognise is folded back to the default rather than leaving the body
+// class pointing at a stylesheet rule that no longer exists.
+const VALID_THEMES = new Set(['default', 'light']);
+function normalizeTheme(theme) {
+  return VALID_THEMES.has(theme) ? theme : 'default';
+}
+
+// Single source of truth for putting a theme on <body>. 'default' is the
+// bare :root palette, so it deliberately maps to no class at all.
+function themeBodyClass(theme) {
+  const t = normalizeTheme(theme);
+  return t !== 'default' ? 'theme-' + t : '';
+}
+
 function syncAdflowLogos() {
-  const isLight = LIGHT_BG_THEMES.has(state.theme);
+  const isLight = LIGHT_BG_THEMES.has(normalizeTheme(state.theme));
   const src = isLight
     ? 'data/Elements/Adflow_lighttheme.svg'
     : 'data/Elements/Adflow_logo.svg';
@@ -470,7 +488,7 @@ function render(skipProps = false) {
   // (View/Snap/Theme menu items moved into the Settings panel — no menu ticks here.)
   const isFs = document.body.classList.contains('fullscreen-mode');
   const isPreview = document.body.classList.contains('preview-active');
-  document.body.className = state.theme && state.theme !== 'default' ? 'theme-' + state.theme : '';
+  document.body.className = themeBodyClass(state.theme);
   if (isFs) document.body.classList.add('fullscreen-mode');
   if (isPreview) document.body.classList.add('preview-active');
   if (state.outlineMode) document.body.classList.add('outline-mode');

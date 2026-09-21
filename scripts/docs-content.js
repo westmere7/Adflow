@@ -26,8 +26,8 @@ const DOCS_SECTIONS = [
         <div style="text-align: center; margin-bottom: 24px;">
           <img src="data/Elements/Adflow_logo.svg" alt="Adflow Logo" data-adflow-logo style="max-width: 280px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));">
         </div>
-        <p>Adflow is a professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. Lay out your entire banner size set side-by-side on an infinite workspace, coordinate them with Link Groups, merge spreadsheet version rows to generate dozens of creative variants, and export standards-compliant ZIP packages in a single click.</p>
-        <p>Adflow cuts out the heavy installation requirements and complex build pipelines of legacy applications, allowing creative teams to work entirely in the browser with no account, keep projects as portable .flow files, and audit ad package weights before publication.</p>
+        <p>Adflow is a professional visual design tool engineered specifically for building animated HTML5 display ads. Lay out your entire banner size set side-by-side on an infinite workspace, coordinate them with Link Groups, merge spreadsheet version rows to generate dozens of creative variants, and export standards-compliant ZIP packages in a single click.</p>
+        <p>Adflow cuts out the heavy installation requirements and complex build pipelines of legacy applications, allowing creative teams to work with no account, keep projects as portable .flow files, and audit ad package weights before publication.</p>
         <p style="color:var(--text-muted); font-weight: 500;">Two core concepts to get started with:</p>
         <ul>
           <li><b>Multi-Canvas & Link Groups</b>: Lay out all dimensions side-by-side in one workspace. Editing a text string or changing a border style on one canvas propagates the update to all other formats automatically when Live-Link is active.</li>
@@ -46,7 +46,7 @@ const DOCS_SECTIONS = [
           <li style="margin-bottom: 8px;"><b>Drag-to-Retime Timeline</b>: A sequencer along the bottom of the workspace shows every layer's IN, OUT and FX spans as bars you can drag, resize, and retime several layers at a time — with a Play button that replays the frame using the exported ad's own animation code.</li>
           <li style="margin-bottom: 8px;"><b>Built-in Image Compressor</b>: Compress and convert JPEG/PNG assets to WebP, JPEG, or PNG depending on project configuration to meet strict ad network weight targets (150 KB standard).</li>
           <li style="margin-bottom: 8px;"><b>Layer-Based Vector Masking</b>: Use any vector shape layer (rectangles, circles, custom brand SVG pixels) to non-destructively mask images below using clean CSS clip-path logic.</li>
-          <li style="margin-bottom: 8px;"><b>Fully Local, No Accounts</b>: Nothing to sign in to and nothing uploaded. Work autosaves to the browser, travels as portable <code>.flow</code> files, and the whole app runs from a static host or a single Docker container with no internet access required.</li>
+          <li style="margin-bottom: 8px;"><b>Fully Local, No Accounts</b>: Nothing to sign in to and nothing uploaded. Work autosaves locally, travels as portable <code>.flow</code> files, and the whole app runs as a desktop build, from a static host, or from a single Docker container — with no internet access required.</li>
           <li style="margin-bottom: 8px;"><b>Pre-Flight Audit & Export</b>: Package ready-to-run compliant ZIP bundles. Adflow validates clicktags and asset constraints automatically.</li>
           <li style="margin-bottom: 8px;"><b>Batch Operation Portal</b>: Hand a template to another team and let them produce the whole pack themselves — open template, import data sheet, export every version, in three steps and no editor knowledge.</li>
           <li style="margin-bottom: 8px;"><b>Preview Portal</b>: A dedicated review page for stepping through every size, frame and data version — and for playing up to 10 standalone HTML5 ads built outside Adflow side by side.</li>
@@ -61,6 +61,15 @@ const DOCS_SECTIONS = [
       { id: 'auto-resize-glance', title: 'Auto-Resize at a glance', body: `
         <p>Design <b>one</b> canvas exactly how you want it. Click <b>Auto-resize</b> at the bottom of the left panel (or right-click any canvas and pick <b>Auto-Resize</b> at the top of the menu). A rule-based engine reads each element's role (heading, button, logo, background, CRICOS, RFWN, image…), wipes the other canvases, and rebuilds them with format-aware placements — auto-linking everything so future edits stay in sync.</p>
         <p style="color:var(--text-muted);">Full breakdown under <a href="#" data-doc-sec="auto-resize" data-doc-sub="auto-resize-how-it-works" style="color:var(--text-accent); font-weight: 500;">Auto-Resize</a>.</p>
+      `},
+      { id: 'how-its-run', title: 'Desktop app or hosted page', body: `
+        <p>Adflow ships in two forms, and they are the <b>same application</b> — the same <code>scripts/</code>, the same <code>styles.css</code>, the same three pages. Neither is a cut-down version of the other, and a <code>.flow</code> file moves between them untouched.</p>
+        <ul>
+          <li><b>Desktop app</b> — a packaged build for Windows and macOS. Nothing to install alongside it: the browser engine it needs is inside the download. It opens on your machine and behaves like any other desktop application.</li>
+          <li><b>Hosted page</b> — the same files served from a URL, whether that is a container your team runs or a static host. You open it in Chrome or Edge and nothing is installed at all.</li>
+        </ul>
+        <p><b>One thing to know if you use both.</b> Your work is kept by the <i>place</i> you opened Adflow from. Autosave, Open Recent, the base project and remembered placements live in that origin's storage, so the desktop app and a hosted page each keep their own. Work started in one does not appear in the other — move it with <b>File → Save → Save to File (.flow)</b> and open the file on the other side.</p>
+        <p>Whoever runs the hosted copy will find operator notes in <code>DEPLOYMENT.md</code>, and the desktop build's design and packaging notes in <code>ELECTRON.md</code>.</p>
       `},
       { id: 'first-project', title: 'Your first project', body: `
         <ol>
@@ -414,7 +423,8 @@ const DOCS_SECTIONS = [
         <p><b>File → New Project…</b> lets you pick which canvas sizes to include, the project name, ClickTag URL, default canvas background, and ad-weight limit (default 150 KB — the industry standard).</p>
       `},
       { id: 'settings', title: 'App settings', body: `
-        <p><b>File → Settings</b>: theme (Dark, RMIT Brand, Ocean, Navy, Light), rulers, snapping, Crop to Canvas, history limit, autosave behaviour. <b>File → Project Settings</b> covers per-project options (name, ClickTag, weight limit).</p>
+        <p><b>File → Settings</b>: theme (<b>Adflow</b>, the default dark palette, or <b>Light</b>), rulers, snapping, Crop to Canvas, history limit, autosave behaviour. <b>File → Project Settings</b> covers per-project options (name, ClickTag, weight limit).</p>
+        <p>The theme changes Adflow's own interface only — never your ad. Switching to Light also swaps the Adflow wordmark for its light-background variant everywhere it appears.</p>
       `},
       { id: 'startup-templates-docs', title: 'Startup Templates', body: `
         <p>Adflow supports initializing new projects from pre-defined startup templates (such as branding guides, base layouts, or canvas sets) stored inside the <code>Startup/</code> directory.</p>
@@ -504,7 +514,7 @@ const DOCS_SECTIONS = [
           <li><b>Frame Select</b> — <i>All frames</i>, or jump to and play any single frame across every size at once.</li>
           <li><b>Data Version</b> — step through the merge rows and see every size update live (shown only when the project has a data sheet).</li>
           <li><b>Banners Sizes</b> — tick which sizes to show, with Select All / Clear All, plus a per-banner KB estimate.</li>
-          <li><b>Presentation Grid / BG</b> — a real Adflow theme for the backdrop (Adflow, Obsidian, Nordic, Light), and a separate checkered option you can layer over any of them for reviewing ads with transparent edges.</li>
+          <li><b>Presentation Grid / BG</b> — a real Adflow theme for the backdrop (<b>Adflow</b> or <b>Light</b>, applied exactly as the editor applies them), and a separate checkered option you can layer over either for reviewing ads with transparent edges.</li>
         </ul>
         <p>Each banner card carries its own <b>Restart</b> and <b>Download HTML5</b> buttons; <b>Download All (.zip)</b> in the header packages every visible size at once.</p>
       `},
@@ -691,12 +701,12 @@ const DOCS_SECTIONS = [
       `},
       { id: 'faq-offline', title: 'Offline usage', body: `
         <p><b>Question:</b> Does Adflow need an internet connection or an account?</p>
-        <p><b>Answer:</b> No. The local edition has no accounts and makes no network requests beyond loading its own files:</p>
+        <p><b>Answer:</b> No. The local edition has no accounts and makes no network requests beyond loading its own files — true of the desktop build and the hosted page alike:</p>
         <ul>
           <li><b>No Sign-In</b>: The app opens straight into the workspace. There is nothing to register for and no personal data is collected.</li>
-          <li><b>No Feature Loss</b>: All layout design, link syncing, spreadsheet merges, Auto-Resize and every export format (ZIP, PNG, video, GIF) run fully in the browser. Every library and font ships with the app.</li>
+          <li><b>No Feature Loss</b>: All layout design, link syncing, spreadsheet merges, Auto-Resize and every export format (ZIP, PNG, video, GIF) run locally. Every library and font ships with the app. The desktop build carries its own browser engine, so Windows and macOS get an identical feature set.</li>
           <li><b>Force Browser Save</b>: Press <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> to force-save the project silently to IndexedDB browser storage.</li>
-          <li><b>Moving Between Machines</b>: Your work lives in this browser profile. To take a project elsewhere, save a <code>.flow</code> file (<span class="kbd">Ctrl</span>+<span class="kbd">S</span>) and open it on the other machine.</li>
+          <li><b>Moving Between Machines</b>: Your work lives wherever you opened Adflow — this browser profile, or the desktop app's own storage. The two are separate. To move a project, save a <code>.flow</code> file (<span class="kbd">Ctrl</span>+<span class="kbd">S</span>) and open it on the other side.</li>
         </ul>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save to File (.flow)</b> from the file menu to download local backup files onto your hard drive when working offline.</div>
       `}
@@ -706,14 +716,14 @@ const DOCS_SECTIONS = [
     id: 'technical-stack', title: 'Technical Stack',
     subs: [
       { id: 'technical-stack-intro', title: 'Introduction', body: `
-        <p>Technical Stack details the code architecture, data structure, and layout mechanics for engineering and IT administrators. It covers the vanilla script loading sequence, global state schemas, CSS clip-path masking, browser-side persistence, and deployment as a static site or Docker container.</p>
+        <p>Technical Stack details the code architecture, data structure, and layout mechanics for engineering and IT administrators. It covers the vanilla script loading sequence, global state schemas, CSS clip-path masking, browser-side persistence, and how the same files ship as a desktop application, a static site or a Docker container.</p>
         <p>The guide outlines how Adflow operates as a zero-dependency, compilation-free application with no server-side component: every byte it needs ships in the repository, and nothing a user makes leaves their browser unless they save or export a file.</p>
         <p><b>Adflow's Advantage:</b> Clean, vanilla coding standards and structured documentation ensure easy deployment and code readability, facilitating internal IT audits and development integration.</p>
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Review the individual specification tabs in this section to understand how data flows through the application. Developers can serve the project folder using a simple Python or Node HTTP server to test code edits locally.</div>
       `},
       { id: 'tech-architecture', title: 'Architecture & Sandbox', body: `
         <p>Adflow is engineered as a zero-dependency, compilation-free Single Page Application (SPA). It uses Vanilla JS, HTML5, and CSS3. There are no bundlers (Webpack, Vite) or compilers.</p>
-        <p><b>Script Loading Sequence:</b> The app is 24 JavaScript files loaded via sequential <code>&lt;script&gt;</code> tags — the tag order <i>is</i> the dependency graph. Since they share one global lexical scope, declarations in earlier files are visible to later ones at execution time. Every local tag is version-pinned with a <code>?v=</code> query string so a browser can never pair stale engine code with new page code. The order is:</p>
+        <p><b>Script Loading Sequence:</b> The app is 25 JavaScript files loaded via sequential <code>&lt;script&gt;</code> tags — the tag order <i>is</i> the dependency graph. Since they share one global lexical scope, declarations in earlier files are visible to later ones at execution time. Every local tag is version-pinned with a <code>?v=</code> query string so a browser can never pair stale engine code with new page code. The order is:</p>
         <ol>
           <li><b>render-runtime.js</b>: Render and animation helpers shared by the editor, both portals, and the exporter — including the single animation-preset registry, so no surface can offer a preset another doesn't.</li>
           <li><b>auto-resize-engine.js</b> → <b>auto-arrange-config.js</b>: Placement mathematics, collision resolver, and the per-format coordinate specs it reads.</li>
@@ -721,7 +731,7 @@ const DOCS_SECTIONS = [
           <li><b>data-merge.js</b>: CSV merges and version preview state interpolation.</li>
           <li><b>font-subset.js</b> → <b>export-pipeline.js</b>: HarfBuzz glyph subsetting, then the ZIP bundle generator (JSZip) and PNG rasterizer.</li>
           <li><b>color-picker.js</b>: Color palette and gradient stops controller.</li>
-          <li><b>Core app</b> (formerly one <code>script.js</code>, split into 14 files in this order): core-state, autosave, <b>local-library</b> (base project + remembered placements in browser storage), link-system, canvas-render, interactions, canvases-panel, layers-assets, props-panel, <b>sequencer</b>, toolbar-import, project-io, project-dialogs, modals, then share-preview and app-boot last.</li>
+          <li><b>Core app</b> (formerly one <code>script.js</code>, split into 14 files in this order): core-state, autosave, <b>local-library</b> (base project + remembered placements in browser storage), link-system, canvas-render, interactions, canvases-panel, layers-assets, props-panel, <b>sequencer</b>, toolbar-import, project-io, project-dialogs, modals, then app-boot last.</li>
         </ol>
         <p><b>Sandbox Preview Engine:</b> Isolation is achieved using dynamic <code>&lt;iframe&gt;</code> sandboxing with <code>srcdoc</code> injection, which prevents style or script leaks. The editor renders canvases at high performance using CSS <code>transform: translateZ(0)</code> (forces GPU layers) and <code>clip-path: inset(0)</code> to prevent subpixel hairline leaks during viewport pans and zooms.</p>
         <p><b>Portal pages:</b> <code>preview.html</code> and <code>batch.html</code> are standalone documents that load the same version-pinned <code>scripts/</code> engine files plus their own inline page code, and link the app's own <code>styles.css</code> rather than carrying a private palette. A third-party ad zip opened in the Preview Portal is flattened into one self-contained document — stylesheets and scripts inlined, every other asset rewritten to a data URL — and mounted through the same <code>srcdoc</code> sandbox as an Adflow banner.</p>
@@ -760,8 +770,9 @@ const DOCS_SECTIONS = [
         <p><b>Base project &amp; remembered placements:</b> the two cross-project preferences live in the same browser profile as autosave. The base project (Settings ▸ Startup) is a <code>.flow</code> blob in the <code>adflow-autosave</code> IndexedDB store under a fixed key, with a small localStorage hint so the New Project dialog can paint its row synchronously. Remembered placements are a compact JSON map keyed <code>&lt;width&gt;x&lt;height&gt;</code> → role in localStorage, read synchronously by the Auto-Resize engine. Both are implemented in <code>scripts/local-library.js</code>.</p>
         <p><b>No server-side state:</b> the local edition has no accounts, no database and no upload path. Nothing a user makes leaves the browser except as a file they chose to save or export. Clearing site data for the Adflow origin removes autosaves, recents, the base project and remembered placements together — keep <code>.flow</code> backups of anything that matters.</p>
       `},
-      { id: 'tech-deployment', title: 'Deployment (Docker & static hosting)', body: `
-        <p>Adflow is a static site: HTML, CSS, vanilla JavaScript and a handful of vendored binaries. There is no server-side code, so any static host can serve it, and the repository ships two ready-made targets.</p>
+      { id: 'tech-deployment', title: 'Deployment (desktop, Docker & static hosting)', body: `
+        <p>Adflow is a static site: HTML, CSS, vanilla JavaScript and a handful of vendored binaries. There is no server-side code, so any static host can serve it — and the same files also ship as a desktop application. All three targets run byte-identical app code; only the wrapper around it differs.</p>
+        <p><b>Desktop app (Electron):</b> <code>electron/</code> is roughly 300 lines across three files — a window and menu policy (<code>main.js</code>), a read-only loopback HTTP server (<code>static-server.js</code>) and a preload that exposes a single <code>window.adflowDesktop</code> marker. Nothing in <code>scripts/</code>, <code>styles.css</code> or the three HTML pages was changed to make the desktop build work, so the two editions cannot drift apart. The app serves itself over <code>http://127.0.0.1</code> on a <b>fixed port</b> rather than loading <code>file://</code>: the preview iframes and the export worker need a real origin, browser storage is keyed to that origin (a random port each launch would look like lost work), and Chromium treats loopback as a secure context, which is what keeps WebCodecs video export and the native save dialog working. Electron is used in preference to a system-webview wrapper precisely because it bundles its own Chromium — otherwise the Mac build would quietly lose video export and the native save dialog to Safari's engine. See <code>ELECTRON.md</code>.</p>
         <p><b>Docker (the RMIT ITS deployment):</b> a two-stage <code>Dockerfile</code> runs the two Node generator scripts, then serves the result from <code>nginxinc/nginx-unprivileged</code> — non-root, listening on port <b>8080</b>, with a <code>/healthz</code> endpoint and a container health check. <code>docker compose up -d --build</code> starts it in one command, or double-click <code>run-docker.bat</code> (Windows) / <code>run-docker.command</code> (macOS, Linux). The container holds no state, so it can be recreated freely, and both base images publish <code>arm64</code> so it builds natively on Apple Silicon. The server block in <code>docker/nginx.conf</code> pins MIME types for <code>.wasm</code> and <code>.mjs</code> and sets the cache policy: pages and <code>data/version.txt</code> are never cached, version-pinned code for an hour, binaries and fonts for 30 days.</p>
         <p><b>Only the host machine needs Docker.</b> Everyone else opens the URL in a browser with nothing installed, which is what makes a mixed Windows and Mac team a non-issue. Chrome and Edge get the full feature set; Safari and Firefox fall back to a download instead of a native save dialog, and video export needs Chrome or Edge (GIF export works everywhere).</p>
         <p><b>Vercel or any static host:</b> <code>vercel.json</code> declares the same build command and output root with matching headers. The requirements for any other host are the same three: serve <code>.wasm</code> as <code>application/wasm</code>, serve <code>.mjs</code> as JavaScript, and do not cache <code>index.html</code> or <code>data/version.txt</code>. Serving over <code>file://</code> is not supported because the sandboxed preview iframes need an HTTP origin.</p>
@@ -853,6 +864,18 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.61.0',
+    date: 'September 2026 — Engine v3.0',
+    items: [
+      "Two Themes Instead of Thirteen: Settings now offers Adflow, the dark palette the app has always opened in, and Light. The other eleven — Obsidian, Nordic, Amber, Amethyst, RMIT Navy, Ocean, Navy, RMIT, Nordic Light, Amber Light and Sage Light — have been removed. Each of them was a second full set of colours that had to be checked against every new panel, dialog and table, and in practice nobody was reaching past the two that shipped first. The picker is a single row now rather than two labelled groups, because with two named themes the labels said less than the names already did.",
+      "Old Projects Still Open Properly: a project saved while one of the removed themes was active would have had no palette left to apply. Any theme the app no longer recognises now folds back to the default, so an old file opens looking the way a new one does instead of on a half-styled interface.",
+      "The Preview Portal Follows: its backdrop swatches are the same two themes, applied exactly the way the editor applies them. The checkered backdrop is unchanged — still a separate toggle you can layer over either theme for reviewing ads with transparent edges.",
+      "The About Box Tells the Truth: it had been reporting v0.44.0 since that release, whatever version you were actually running, because the number was typed into the dialog by hand. It now reads the running version, so it cannot drift again.",
+      "Documentation Rewritten to Match the App: this manual, the README and the architecture reference had all drifted. They described thirteen themes, a sign-in screen, cloud projects, share links and a script file that no longer exists — all removed in earlier releases. Every one of those passages has been rewritten or deleted. The manual also gains a plain explanation of the two ways Adflow is run — as a desktop app or as a page your team hosts — and of the one thing that genuinely catches people out: the two keep separate storage, so a project started in one does not appear in the other unless you save a .flow file and open it on the other side.",
+      "Removed a Leftover From the Old Sign-In Screen: a screenshot of the sign-in gate was still sitting in the documentation images, months after the gate itself was removed. It was also quietly breaking the tool that regenerates those screenshots, which waited for a screen that never appears."
+    ]
+  },
   {
     version: 'v0.60.1',
     date: 'September 2026 — Engine v3.0',

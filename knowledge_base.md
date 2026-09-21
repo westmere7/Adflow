@@ -1,10 +1,14 @@
-# RMIT Adflow — Technical App Breakdown (Local edition — updated v0.60.0, Engine v3.0)
+# RMIT Adflow — Technical App Breakdown (Local edition — updated v0.61.0, Engine v3.0)
 
-This document is the official context dump for agents (Claude, Codex, etc.) picking up the codebase cold. It covers the current architecture, state schema, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), the animation sequencer, the three page surfaces (editor + two portals), browser-side persistence, deployment (Docker / static hosting), and workflow rules. **Read this in full before making non-trivial changes.**
+This document is the official context dump for agents (Claude, Codex, etc.) picking up the codebase cold. It covers the current architecture, state schema, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), the animation sequencer, the three page surfaces (editor + two portals), browser-side persistence, the three delivery targets (desktop app / Docker / static hosting), and workflow rules. **Read this in full before making non-trivial changes.**
 
 > Animation model (July 2026): the app is **frame-based** — discrete `frames[]` plus per-element IN/OUT/FX presets and per-frame transitions. There is still **no continuous scrubber or keyframe editor**. What *does* exist, since v0.25.0, is `scripts/sequencer.js`: a PowerPoint-style **Timeline panel** that visualises the active canvas+frame's existing IN/OUT/FX timings as draggable bars. It is a *view over the element model*, not a second model — it commits every edit through the properties panel's own `updateProp` closure. Do not mistake it for the abandoned continuous-timeline prototype.
 
 > **Local edition (September 2026, v0.60.0):** this branch has **no cloud**. The Supabase auth / Cloud Projects / Team Spaces / Share Preview stack (`auth-ui.js`, `share-preview.js`) was removed; the app is a static site with no backend, no accounts and no third-party requests. The cloud-connected build lives on `main`. Anything below that mentions the cloud is history, not current behaviour.
+>
+> **Desktop app (September 2026, `electron-app` branch):** the same files also ship as an Electron application for Windows and macOS — see §8. **Nothing** in `scripts/`, `styles.css` or the three HTML pages was changed to make it work, and that is a constraint, not an accident: the desktop and hosted builds must stay byte-identical below `electron/`. Do not add a desktop-only code path to the app itself.
+>
+> **Themes (September 2026, v0.61.0):** there are exactly **two** — `default` (the bare `:root` palette) and `light` (`body.theme-light`). The other eleven palettes were removed. `normalizeTheme()` in `canvas-render.js` folds any unrecognised id from an old `.flow` back to `default`.
 
 ---
 
@@ -13,17 +17,17 @@ This document is the official context dump for agents (Claude, Codex, etc.) pick
 Adflow is a vanilla-JS single-page application — no framework, no bundler, no build step for the app. Edit the files directly, refresh the browser. The whole app is:
 
 - **Structure**: `index.html` (~800 lines) — shell markup + sequential `<script>` loading.
-- **Styling**: `styles.css` (~6000 lines, CSS variables drive 5 named themes). Linked by **all three** pages.
-- **Logic**: **26 app JS files** in `scripts/`, loaded in sequential order via classic `<script>` tags that share one global lexical scope (declarations in earlier files are visible to later files at execution time) — **the tag order *is* the dependency graph**. Three **Node build scripts** also live in `scripts/` but are not loaded by the browser (`build-asset-manifest.js`, `build-startup-registry.js`, `build-docs-screenshots.mjs`).
+- **Styling**: `styles.css` (~6700 lines, CSS variables drive 2 named themes — see §7). Linked by **all three** pages.
+- **Logic**: **25 app JS files** in `scripts/`, loaded in sequential order via classic `<script>` tags that share one global lexical scope (declarations in earlier files are visible to later files at execution time) — **the tag order *is* the dependency graph**. Three **Node build scripts** also live in `scripts/` but are not loaded by the browser (`build-asset-manifest.js`, `build-startup-registry.js`, `build-docs-screenshots.mjs`).
 - **Embedded Fonts**: brand fonts in `data/fonts/` (6 `.woff2` served + the 6 `.otf` sources), subset and embedded at export time by `scripts/font-subset.js` via HarfBuzz (`lib/hb-subset.wasm`).
 - **Persistence**: IndexedDB (`adflow-autosave` DB) for autosaves; `.flow` ZIP archives (JSZip) for project export/import. Both portals also keep their own IndexedDB list of recently opened files.
 - **No backend**: no accounts, no database, no uploads. The two cross-project preferences that used to live on the account — the base project and remembered placements — are in the browser (`scripts/local-library.js`: IndexedDB + localStorage). Legacy `.flow` files may still carry cloud/share fields; `stripLegacyCloudFields()` in `project-io.js` drops them on every load.
 - **No CDN deps**: JSZip 3.10.1 and `@jaames/iro` 5.5.2 are vendored in `lib/` (the export Web Worker imports the same JSZip via an absolute same-origin URL). The portals' Inter/Outfit UI fonts are self-hosted in `data/fonts/ui/` with `ui-fonts.css`.
 - **Three page surfaces**, all loading the same version-pinned `scripts/` engine files plus their own inline page code:
   - `index.html` — the editor.
-  - `preview.html` (~2500 lines) — **Preview Portal**: standalone review page, share-link viewer, and third-party HTML5 ad player.
+  - `preview.html` (~2460 lines) — **Preview Portal**: standalone review page and third-party HTML5 ad player. (It was also the share-link viewer until v0.60.0; that path is gone.)
   - `batch.html` (~2400 lines) — **Batch Operation Portal**: template → data sheet → export ZIP, for non-designer teams.
-- **Deployment**: static. `Dockerfile` (node:20-alpine build stage runs the two generators → `nginxinc/nginx-unprivileged` on 8080, `/healthz`, `docker/nginx.conf` for MIME + cache policy) with `docker-compose.yml`; `vercel.json` for a separate Vercel project; `DEPLOYMENT.md` is the operator guide. No `package.json`, nothing to install.
+- **Deployment**: three targets, one codebase. **Static** — `Dockerfile` (node:20-alpine build stage runs the two generators → `nginxinc/nginx-unprivileged` on 8080, `/healthz`, `docker/nginx.conf` for MIME + cache policy) with `docker-compose.yml`, and `vercel.json` for a separate Vercel project; `DEPLOYMENT.md` is the operator guide. **Desktop** — `electron/` + electron-builder, see §8 and `ELECTRON.md`. The web app itself still has no runtime dependencies; `package.json` exists for the Electron tooling only and is not needed to run or develop the app.
 
 ### Script load order (from `index.html`, all version-pinned `?v=`)
 
@@ -41,7 +45,7 @@ project-io.js      →  project-dialogs.js     →  modals.js               →
 app-boot.js
 ```
 
-Approximate sizes (LOC): `props-panel.js` 4799 · `export-pipeline.js` 4731 · `docs-content.js` 3305 · `canvas-render.js` 3158 · `project-dialogs.js` 2661 · `auto-resize-engine.js` 2373 · `app-boot.js` 2213 · `interactions.js` 1810 · `toolbar-import.js` 1771 · `data-merge.js` 1478 · `modals.js` 1404 · `layers-assets.js` 1355 · `sequencer.js` 1351 · `render-runtime.js` 1412 · `video-export.js` 1202 · `link-system.js` 1202 · `project-io.js` 1022 · `canvases-panel.js` 974 · `color-picker.js` 751 · `core-state.js` 468 · `autosave.js` 395 · `local-library.js` 236 · `auto-arrange-config.js` 294 · `font-subset.js` 215 · `numeric-wheel.js` 89.
+Approximate sizes (LOC): `props-panel.js` 4928 · `export-pipeline.js` 4795 · `docs-content.js` 3422 · `project-dialogs.js` 3415 · `canvas-render.js` 3176 · `app-boot.js` 2477 · `auto-resize-engine.js` 2407 · `interactions.js` 1810 · `toolbar-import.js` 1790 · `data-merge.js` 1556 · `render-runtime.js` 1412 · `modals.js` 1404 · `sequencer.js` 1390 · `layers-assets.js` 1355 · `video-export.js` 1225 · `link-system.js` 1202 · `canvases-panel.js` 1103 · `project-io.js` 942 · `color-picker.js` 751 · `core-state.js` 536 · `autosave.js` 348 · `auto-arrange-config.js` 294 · `local-library.js` 263 · `font-subset.js` 215 · `numeric-wheel.js` 89.
 
 ### Vendored libraries (`lib/`, no build step, no npm)
 
@@ -87,6 +91,9 @@ When looking for specific features or bugs, refer to this table:
 | **Project IO** (`.flow` import/export, autosave glue) | `scripts/project-io.js`, `scripts/autosave.js` | |
 | **Project/Settings dialogs, version check** | `scripts/project-dialogs.js` | `checkVersionUpdate()`, Settings modal |
 | **Modals & boot/splash** | `scripts/modals.js`, `scripts/app-boot.js` | `openModal`, splash version badge (`verEl.textContent`) |
+| **Theme registry & application** | `scripts/canvas-render.js`, `scripts/project-dialogs.js` | `VALID_THEMES`, `normalizeTheme`, `themeBodyClass`, `LIGHT_BG_THEMES`, `syncAdflowLogos`; `THEMES` (Settings grid) — see §7 |
+| **Desktop shell** (not loaded by the browser) | `electron/main.js`, `electron/static-server.js`, `electron/preload.js` | `PREFERRED_PORT` (47823), `startStaticServer`, `window.adflowDesktop` — see §8 |
+| **Node build scripts** (not loaded by the browser) | `scripts/build-asset-manifest.js`, `scripts/build-startup-registry.js`, `scripts/build-docs-screenshots.mjs` | run manually or via `npm run prebuild`; the third drives Chrome over raw CDP to regenerate `data/docs/*.png` |
 
 ---
 
@@ -134,16 +141,17 @@ interface State {
     skipHeaders: boolean;
   };
 
-  // ----- Shareable Preview (set when a share link exists) -----
-  previewSharePath?: string;     // storage path of the snapshot serving the link
-  previewUrl?: string;           // public preview.html link
-  previewSharedBy?: string;      // email of sharer
-  previewSharedAt?: number;      // epoch ms
-  previewExpiry?: number;        // optional expiry epoch ms
-  // NOTE: cleared when creating/opening a different project (v0.22.7 fix)
+  // ----- LEGACY, cloud edition only. Never written here. -----
+  // These may appear in a .flow saved by the cloud build on `main`.
+  // LEGACY_CLOUD_FIELDS + stripLegacyCloudFields() (project-io.js) delete them
+  // on every load, template save, new project and base-project snapshot, so
+  // nothing downstream should ever see them. Listed only so you recognise them.
+  // previewSharePath, previewUrl, previewSharedBy, previewSharedAt,
+  // previewExpiry, previewShareProjectId, cloudSavedAt, cloudSavedBy,
+  // spaceId, cloudId, cloudFolder
 
   // ----- View & Customizations -----
-  theme?: 'default' | 'rmit' | 'ocean' | 'light' | 'navy';
+  theme?: 'default' | 'light';   // v0.61.0: two themes only; unknown ids → 'default'
   showRulers?: boolean;
   showSafezones?: boolean;
   snapEnabled?: boolean; snapToElements?: boolean; snapToCanvas?: boolean; snapToGuides?: boolean;
@@ -429,8 +437,125 @@ Skip the bump for trivial/internal-only changes (see the project memory on chang
 ---
 
 ## 6. Repo Hygiene Notes (August 2026)
-Loose/debug artifacts currently tracked in the repo that are **not** part of the runtime and are safe to ignore or remove: `diff_props.txt` (UTF-16 git-diff dump), `error_logs.txt` (resumable defect log — read it before debugging), `workflow-test.txt` (write-workflow probe), `_temp/Mask animations.mp4` (~5 MB), `data/image.jpg` (loose). `Startup/registry.json` and `data/assets/manifest.json` are **build outputs** regenerated by the Node build scripts.
+Loose/debug artifacts still tracked in the repo that are **not** part of the runtime: `error_logs.txt` (resumable defect log — read it before debugging) and `data/image.jpg` (loose). `Startup/registry.json` and `data/assets/manifest.json` are **build outputs** regenerated by the Node build scripts.
+
+Removed in v0.61.0: `diff_props.txt` (UTF-16 git-diff dump), `workflow-test.txt` (write-workflow probe), `_temp/` (the reverted MP4 prototype's leftovers) and `data/docs/splash-signin.png` — a screenshot of the sign-in gate that v0.60.0 deleted. That last one had also broken `scripts/build-docs-screenshots.mjs`: it waited for a gate that never appears, so the whole docs-screenshot regeneration threw. Fixed at the same time.
 
 `lib/` holds three vendored binaries with **no npm and no build step** — `hb-subset.wasm`, `mediabunny.min.mjs`, `gifenc.esm.min.js`. They are committed on purpose: exports have to work offline, and `npm install` has historically failed in this checkout. Update them by downloading a pinned version from jsdelivr and replacing the file.
 
-The MP4-export CLI prototype (June 2026, `tools/export-mp4/`) was reverted; its virtual-clock design shipped in-app as `scripts/video-export.js` in v0.50.0. Only the `_temp` MP4 remains as a trace of the prototype.
+The MP4-export CLI prototype (June 2026, `tools/export-mp4/`) was reverted; its virtual-clock design shipped in-app as `scripts/video-export.js` in v0.50.0. Nothing of the prototype remains.
+
+---
+
+## 7. Themes (v0.61.0)
+
+There are **two** themes and no mechanism for more without touching CSS:
+
+| id | body class | Palette source |
+|---|---|---|
+| `default` | *(none)* | the bare `:root` variable block at the top of `styles.css` |
+| `light` | `body.theme-light` | the one override block, ~20 lines |
+
+`default` deliberately maps to **no class at all** — it is the `:root` defaults, so
+"switch to Adflow" is "remove the theme class".
+
+**The three places that know about themes:**
+
+1. `THEMES` in `project-dialogs.js` — the Settings grid. Two entries, one row.
+2. `normalizeTheme()` / `themeBodyClass()` / `LIGHT_BG_THEMES` in `canvas-render.js`.
+3. `body.theme-light { … }` in `styles.css`, plus the ~70 `body.theme-light …`
+   overrides scattered through it (layer rows, link-group rows, `#dm-panel`,
+   outline mode, the outline legend).
+
+**`normalizeTheme()` is the safety net.** `state.theme` persists into `.flow`
+files and autosaves, so a project saved before v0.61.0 can still carry
+`obsidian`, `nordic`, `amber`, `amethyst`, `rmit`, `rmit-navy`, `ocean`, `navy`,
+`nordic-light`, `amber-light` or `sage-light`. Those classes no longer exist in
+the stylesheet. Everything that puts a theme on `<body>` goes through
+`themeBodyClass()`, which folds an unrecognised id back to `default` — so an old
+project opens on the default palette instead of on an unstyled body with the
+Settings grid showing nothing selected. **Do not reintroduce
+`state.theme && state.theme !== 'default' ? 'theme-' + state.theme : ''`
+inline;** that was the old idiom in four places and it is exactly what skips the
+normalisation.
+
+**Adding a theme** (if it ever comes back) is four edits: a `body.theme-<id>`
+block in `styles.css`, an entry in `THEMES`, an entry in `VALID_THEMES`, and —
+if it is light-backgrounded — an entry in `LIGHT_BG_THEMES` so the Adflow
+wordmark swaps to `Adflow_lighttheme.svg`. Also add it to the `lightThemeIds`
+set in `openSettings()` if you restore the dark/light grouping in the dialog.
+
+**Why they were removed (v0.61.0):** eleven extra palettes were eleven more sets
+of tokens to keep in step with every new panel, dialog and table, and nothing
+outside the Settings grid ever read them. The scrollbar block's comment is the
+tell — it was written to brag that one `color-mix` rule covered "all twelve
+themes", which is work that only existed because the themes did.
+
+The Preview Portal's **Presentation Grid / BG** swatches are the same two themes
+applied the same way (`preview.html` sets `body.className` exactly as
+`canvas-render.js` does), plus a **checkered** toggle that is *not* a theme — it
+is a `body.preview-checkered` class layered over whichever theme is active.
+
+---
+
+## 8. Desktop App — Electron (`electron-app` branch)
+
+The same app, packaged for Windows and macOS. **Three files, ~300 lines**, and
+nothing below them was changed to make it work:
+
+| File | Role |
+|---|---|
+| `electron/main.js` | Window, menu policy, external-link handling, single-instance lock |
+| `electron/static-server.js` | Read-only HTTP server on loopback serving the app folder |
+| `electron/preload.js` | A read-only `window.adflowDesktop` marker, nothing else |
+
+**The hard constraint:** `scripts/`, `styles.css`, `index.html`, `preview.html`
+and `batch.html` are identical in the desktop and hosted builds. Do not add a
+desktop-only branch to the app code. If the desktop build needs different
+behaviour, it belongs in `electron/`, or the feature is wrong.
+
+**Why there is an HTTP server inside a desktop app.** Electron could load
+`index.html` over `file://`, but Adflow cannot run that way: every ad preview is
+an `<iframe srcdoc>` sandbox, and export spawns a `blob:` Worker that
+`importScripts()` the vendored JSZip. Under `file://` those get opaque origins
+and are blocked — `export-pipeline.js` already refuses to export PNGs on
+`file://` for this reason. `http://127.0.0.1` gives the renderer the exact
+environment the app was written against, and Chromium treats loopback as a
+secure context, which is what keeps `showSaveFilePicker` and WebCodecs working.
+
+**Why the port is fixed (`PREFERRED_PORT = 47823`).** IndexedDB and localStorage
+are keyed to the origin, and the origin includes the port. A random port each
+launch would show an empty workspace every time — autosave, recents, the base
+project and remembered placements all keyed to a port that no longer exists. If
+the port is genuinely taken, `static-server.js` falls back to `PREFERRED_PORT +
+n` and `main.js` **says so in a dialog** rather than silently appearing to have
+lost the user's work.
+
+**Why Electron and not Tauri.** Tauri renders in the OS webview — Chromium on
+Windows, **Safari's engine on macOS**. Adflow depends on two Chromium-only APIs:
+WebCodecs `VideoEncoder` (`video-export.js`) and `showSaveFilePicker`
+(`project-io.js`, `export-pipeline.js`). A system-webview wrapper would ship a
+Mac build quietly missing video export and the native save dialog — the exact
+Windows/Mac split the desktop app exists to remove. The cost is ~150–200 MB
+against Tauri's ~10 MB, which for an internal tool is not a real trade.
+
+**Packaging.** `package.json` carries the Electron tooling and an
+`electron-builder` config (`appId: au.edu.rmit.adflow`, **`asar: false`** so the
+app files sit on disk exactly as they do in the repo). `npm run build:win` /
+`build:mac` run the two Node generators via `prebuild`, then build to
+`dist/win-unpacked` (`--dir`, unpacked — no installer). Double-click wrappers:
+`build-app.bat` / `build-app.command`, and `run-electron.bat` /
+`run-electron.command` to run from source.
+
+**`package.json` is for the desktop build only.** The web app still has no
+runtime dependencies and needs no `npm install` — that claim in the README is
+about the app, not about packaging it.
+
+**Storage does not cross the two editions.** The desktop app's origin is
+`http://127.0.0.1:47823`; a hosted copy is whatever URL it is served from.
+Autosave, recents, the base project and remembered placements are per-origin, so
+work started in one does not appear in the other. `.flow` files are the bridge.
+This is worth saying out loud to users — it reads as data loss otherwise.
+
+Not yet verified on macOS: see `ELECTRON.md` for the open items (code signing
+and notarisation are the main ones — unsigned apps are blocked by Gatekeeper).

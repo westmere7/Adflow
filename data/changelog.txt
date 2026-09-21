@@ -1,6 +1,25 @@
 RMIT Adflow - Version & Changelog History
 
-v0.60.1 (Current) - September 2026 — Engine v3.0
+v0.61.0 (Current) - September 2026 — Engine v3.0
+- Themes reduced to two: Adflow (the default) and Light. The other eleven palettes
+  (Obsidian, Nordic, Amber, Amethyst, RMIT Navy, Ocean, Navy, RMIT, Nordic Light,
+  Amber Light and Sage Light) have been removed. The Settings theme picker is now a
+  single row instead of two labelled groups.
+- A project saved with one of the removed themes now opens on the default palette
+  instead of an unstyled interface.
+- The Preview Portal's backdrop swatches follow: Adflow and Light, plus the separate
+  checkered toggle that layers over either.
+- The About box now shows the version you are actually running. It had been stuck at
+  v0.44.0 since that release.
+- Documentation brought back in line with the app: the in-app manual, README and the
+  architecture reference no longer describe the removed themes, the retired sign-in
+  and share-link features, or a script that no longer exists. Desktop and hosted
+  builds are now documented as the two equal ways to run Adflow, including the one
+  thing that trips people up — that browser storage does not carry between them.
+- Removed a leftover screenshot of the old sign-in screen, which had also been
+  breaking the tool that regenerates the documentation screenshots.
+
+v0.60.1 - September 2026 — Engine v3.0
 - Scrollbars Are Thin and Themed Instead of Browser Default: every scrollable panel used the browser's own scrollbar — around 15 pixels wide with stepper arrows at each end. Inside a dark design tool that read as leftover web-page furniture, and in the desktop app, where there is no browser around it, it simply looked wrong. Every scrollbar across the editor and both portals is now a thin rounded bar that takes its colour from the active theme, brightens when you point at it and turns accent-coloured while you drag it. The arrows are gone and the track is transparent, but the bar still sits inside a 10 pixel pointer target, so it is no harder to grab than it was. The three places that had their own hand-rolled thin scrollbar — the documentation panel, dropdown lists and the export dialog — now share the one style rather than each looking slightly different.
 
 v0.60.0 - September 2026 — Engine v3.0

@@ -5,10 +5,10 @@
 # Adflow is a static site: HTML, CSS, vanilla JS and vendored binaries. Nothing
 # runs on the server. This image therefore has two stages:
 #
-#   build    node:20-alpine     runs the two generator scripts that Netlify /
-#                               Vercel used to run at deploy time (asset
-#                               manifest + startup-template registry), then
-#                               drops files the browser never loads.
+#   build    node:20-alpine     runs the two generator scripts that a static
+#                               host runs at deploy time (asset manifest +
+#                               startup-template registry), then drops files
+#                               the browser never loads.
 #   runtime  nginx-unprivileged serves the result. Runs as the `nginx` user
 #                               (uid 101), listens on 8080, no shell needed.
 #

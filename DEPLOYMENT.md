@@ -232,7 +232,7 @@ and test Export, the Preview Portal and video export before rolling it out.
 ### Health and monitoring
 
 - `GET /healthz` → `200 ok` (served by nginx, no file access).
-- `GET /data/version.txt` → the deployed app version, e.g. `v0.60.0`.
+- `GET /data/version.txt` → the deployed app version, e.g. `v0.61.0`.
 - `docker inspect --format '{{.State.Health.Status}}' rmit-adflow` → `healthy`.
 
 ### Updating

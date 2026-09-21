@@ -6,17 +6,20 @@
 
 [![Edition](https://img.shields.io/badge/edition-local%20%C2%B7%20no%20cloud-brightgreen?style=for-the-badge)](DEPLOYMENT.md)
 [![Docker](https://img.shields.io/badge/docker-ready-2496ed?style=for-the-badge&logo=docker&logoColor=white)](DEPLOYMENT.md#1-docker)
-[![Version](https://img.shields.io/badge/version-v0.60.0-7c5cff?style=for-the-badge)](data/changelog.txt)
+[![Version](https://img.shields.io/badge/version-v0.61.0-7c5cff?style=for-the-badge)](data/changelog.txt)
+[![Desktop](https://img.shields.io/badge/desktop-windows%20%C2%B7%20macos-0078d4?style=for-the-badge)](ELECTRON.md)
 [![Engine](https://img.shields.io/badge/engine-v3.0-000f4b?style=for-the-badge)](knowledge_base.md)
 [![Dependencies](https://img.shields.io/badge/npm%20install-not%20required-e61e2b?style=for-the-badge)](#getting-started)
 
-A professional, browser-based visual design tool engineered specifically for building animated HTML5 display ads. RMIT Adflow eliminates the need for complex build pipelines and third-party software installations, providing a streamlined environment tailored for high-volume banner production.
+A professional visual design tool engineered specifically for building animated HTML5 display ads. RMIT Adflow eliminates the need for complex build pipelines and third-party software installations, providing a streamlined environment tailored for high-volume banner production.
 
 Designed to replace bloated legacy tools like Google Web Designer, this application allows creative teams to compose multi-frame, multi-size banner campaigns on an infinite canvas and instantly export them as Google Ads-compliant HTML5 packages — or as MP4 video and animated GIF from the same renderer.
 
 **No framework. No bundler. No build step for the app itself.** Clone it, serve it, edit the files, refresh the browser.
 
-**Local edition.** This branch has no accounts, no cloud storage and no third-party requests: every project stays in the browser or in the `.flow` files you save, every library and font ships in the repository, and the whole app deploys as a static site or a single Docker container. See [DEPLOYMENT.md](DEPLOYMENT.md).
+**Two ways to run it, one codebase.** Adflow ships as a **desktop app** for Windows and macOS ([ELECTRON.md](ELECTRON.md)) and as a **hosted page** you serve from a container or any static host ([DEPLOYMENT.md](DEPLOYMENT.md)). Neither is the cut-down one: `scripts/`, `styles.css` and the three HTML pages are byte-identical in both, so they cannot drift apart, and a `.flow` file moves between them untouched. The only thing that differs is where your browser storage lives — see [Desktop app or hosted page](#desktop-app-or-hosted-page).
+
+**Local edition.** This branch has no accounts, no cloud storage and no third-party requests: every project stays on your machine or in the `.flow` files you save, and every library and font ships in the repository.
 
 ---
 
@@ -27,6 +30,7 @@ Designed to replace bloated legacy tools like Google Web Designer, this applicat
 - [Headline Feature: Data & Versions](#headline-feature-data--versions-dynamic-creative)
 - [Headline Feature: Video & GIF Export](#headline-feature-video--gif-export)
 - [Headline Feature: Local-First, No Accounts](#headline-feature-local-first-no-accounts)
+- [Desktop app or hosted page](#desktop-app-or-hosted-page)
 - [Headline Feature: Portals](#headline-feature-portals-preview--batch-operation)
 - [Key Features](#key-features)
 - [Technical Specifications](#technical-specifications)
@@ -111,7 +115,7 @@ The same renderer that builds the HTML5 package also produces **MP4 video** and 
 
 ## Headline Feature: Local-First, No Accounts
 
-Adflow keeps everything in the browser that made it. There is no sign-in, no server-side storage and no network traffic beyond loading the app's own files.
+Adflow keeps everything on the machine that made it. There is no sign-in, no server-side storage and no network traffic beyond loading the app's own files.
 
 - **Autosave to the browser** — every change is debounced into IndexedDB and restored on reload, including zoom, scroll position and the undo stack. **Open Recent** lists the last projects saved in this browser.
 - **Portable `.flow` files** — `Ctrl+S` (or **File → Save → Save to File**) writes a self-contained ZIP holding the project JSON and every embedded asset. It reopens on any machine and any deployment; this is the copy to keep and to hand to colleagues. `Ctrl+Shift+S` force-saves silently to the browser database.
@@ -125,15 +129,61 @@ The cloud-connected edition (Supabase accounts, Cloud Projects, Team Spaces, Sha
 
 ---
 
+## Desktop app or hosted page
+
+Adflow ships in two forms and they are **the same application**. `scripts/`,
+`styles.css`, `index.html`, `preview.html` and `batch.html` are identical in
+both; the desktop build adds a ~300-line wrapper in `electron/` and changes
+nothing below it. A `.flow` file moves between them untouched, and a feature
+that works in one works in the other.
+
+| | Desktop app | Hosted page |
+|---|---|---|
+| What you get | A packaged build for Windows and macOS | A URL |
+| Install | Download and run — the browser engine is inside it | Nothing |
+| Who needs to set anything up | Each person, once | One host machine (Docker), or a static host |
+| Browser engine | Chromium, bundled | Whatever the user opens it in |
+| Full feature set | Always | Chrome / Edge; Safari and Firefox fall back on the save dialog, and video export needs Chromium |
+| Docs | [ELECTRON.md](ELECTRON.md) | [DEPLOYMENT.md](DEPLOYMENT.md) |
+
+**The one thing worth knowing: storage does not cross between them.** Autosave,
+**Open Recent**, the base project and remembered placements live in browser
+storage, which is keyed to the origin the app was opened from — `127.0.0.1:47823`
+for the desktop app, and whatever URL a hosted copy is served from. Work started
+in one **does not appear** in the other. That is not a bug and it is not
+recoverable after the fact, so move projects deliberately: **File → Save → Save
+to File (.flow)**, then open the file on the other side.
+
+**Why the desktop app runs a server inside itself.** Electron could load
+`index.html` over `file://`, but Adflow cannot run that way: every ad preview is
+an `<iframe srcdoc>` sandbox and export spawns a `blob:` Worker that
+`importScripts()` the vendored JSZip, both of which get opaque origins under
+`file://` and are blocked. Serving over `http://127.0.0.1` gives the renderer the
+environment the app was written against, and Chromium treats loopback as a secure
+context — which is what keeps `showSaveFilePicker` and WebCodecs video export
+working. The port is **fixed** (47823) because browser storage is keyed to it; a
+random port each launch would show an empty workspace every time. If that port is
+genuinely taken the app falls back and **says so in a dialog** rather than
+quietly looking like it lost your work.
+
+**Why Electron and not Tauri.** Tauri renders in the OS webview — which on macOS
+is Safari's engine, where WebCodecs `VideoEncoder` and `showSaveFilePicker` are
+absent or unreliable. That would ship a Mac build quietly missing video export
+and the native save dialog: the exact Windows/Mac split the desktop app exists to
+remove. Electron bundles its own Chromium, at a cost of ~150–200 MB against
+Tauri's ~10 MB. For an internal tool that is not a real trade.
+
+---
+
 ## Headline Feature: Portals (Preview & Batch Operation)
 
 Two standalone pages ship alongside the editor, both opened from the **File** menu, both running entirely client-side. They exist so people who don't design ads never have to learn the editor. Both link the app's own `styles.css` and load the same version-pinned engine files as `index.html`, so neither can drift from what the editor renders.
 
 ### Preview Portal — `preview.html`
 
-**File → Preview Portal…** opens the review page standalone with nothing loaded. From the empty prompt: **Open Adflow Project…** (`.flow`) or **Open HTML5 Ad (.zip)…**, or drop either kind anywhere on the page. Cloud projects are deliberately not offered — this is a local-file tool. Share links open the same page pointed at a cloud snapshot (see `share-preview.js`), with **Update Preview** to re-fetch; an expired link reports itself and still lets you open a file rather than dead-ending.
+**File → Preview Portal…** opens the review page standalone with nothing loaded. From the empty prompt: **Open Adflow Project…** (`.flow`) or **Open HTML5 Ad (.zip)…**, or drop either kind anywhere on the page. This is a local-file tool: there is nothing to sign into and no link to fetch. (Share links and the cloud snapshot viewer were removed in v0.60.0 with the rest of the backend.)
 
-With an Adflow project open: playback (**Animated** / **Static only** / **Restart Timeline** / **Loop timeline** as a preview-only override), a **Frame Select** that jumps to and plays any single frame across all sizes, a **Data Version** stepper, a size checklist with per-banner KB estimates, per-card **Restart** and **Download HTML5**, **Download All (.zip)**, and backdrop swatches that are real Adflow themes plus a separate checkered toggle that layers over any of them.
+With an Adflow project open: playback (**Animated** / **Static only** / **Restart Timeline** / **Loop timeline** as a preview-only override), a **Frame Select** that jumps to and plays any single frame across all sizes, a **Data Version** stepper, a size checklist with per-banner KB estimates, per-card **Restart** and **Download HTML5**, **Download All (.zip)**, and backdrop swatches — the two real Adflow themes, plus a separate checkered toggle that layers over either.
 
 **Reviewing non-Adflow HTML5 ads.** The portal also plays standalone HTML5 ads built outside Adflow — **up to 10 at once, laid out side by side** exactly like banner sizes. Each zip is flattened into one self-contained document: the shallowest `index.html` becomes the entry, stylesheets and scripts are inlined, and every other reference is rewritten to a data URL — including ones the ad's own JavaScript loads by name — so it plays with no server and nothing uploaded. Size comes from the standard `ad.size` meta tag, falling back to a `300x250`-style hint in the filename, else 300×250 flagged for correction; the label states which source was used and per-ad width/height inputs override it. Controls are limited to what applies to someone else's ad: **Restart All**, a **Loop** that reloads on an interval you set (Adflow can't read a third-party timeline), and per-ad **Restart** / **Remove**. Adflow's timeline, frame and version controls are hidden in this mode; the two modes never mix.
 
@@ -158,7 +208,7 @@ Because saving a template deliberately strips the asset library, the portals reg
 - **Seamless Auto-Save** — every change is continuously persisted to the browser (IndexedDB) and restored on reload, including zoom and scroll position. Live "All changes saved / Saving… / Unsaved" indicator in the top bar.
 - **Portable `.flow` Projects** — self-contained ZIPs holding project + embedded assets, with an Open Recent list for one-click restore.
 - **New Project Wizard** — pick canvas sizes, name, ClickTag, default background colour, and a configurable maximum ad weight (KB).
-- **Theming System** — **13 named themes**: Adflow (default), Obsidian, Nordic, Amber, Amethyst, RMIT Navy, Ocean and Navy, plus the light set — Light, RMIT, Nordic Light, Amber Light and Sage Light. Light themes swap to a dedicated light-variant Adflow wordmark automatically.
+- **Theming System** — **two themes**: **Adflow** (the default dark palette) and **Light**. Light swaps the Adflow wordmark to its light-background variant automatically. The theme changes Adflow's own interface, never your ad. Eleven further palettes were removed in v0.61.0; a project saved with one of them opens on the default.
 - **History Management** — full Undo/Redo stack supporting complex nested operations, including a whole auto-resize as one step. Depth configurable 5–100, default 50.
 
 ### Element & Asset Management
@@ -252,7 +302,7 @@ RMIT-Adflow/
 ├── preview.html               # Preview Portal — review page
 │                              #   + third-party HTML5 ad player (up to 10 side by side)
 ├── batch.html                 # Batch Operation Portal — template → data sheet → export ZIP
-├── styles.css                 # UI styles, 13 named themes, responsive rules (shared by all three pages)
+├── styles.css                 # UI styles, 2 named themes, responsive rules (shared by all three pages)
 │
 ├── scripts/                   # 25 browser modules, loaded in index.html order
 │   │                          #   (classic <script> tags sharing one global scope)
@@ -326,8 +376,13 @@ RMIT-Adflow/
 ├── vercel.json                # Static deploy config for a separate Vercel project
 ├── electron/                  # Desktop shell: window, internal static server, preload
 ├── package.json               # Electron tooling only — the web app still has no deps
+├── build/icon.png             # App icon for the packaged desktop build
+├── run-electron.bat/.command  # Double-click: run the desktop app from source
+├── build-app.bat / .command   # Double-click: package the desktop app into dist/
 ├── DEPLOYMENT.md              # Operator guide: Docker, Vercel, other hosts, troubleshooting
 ├── ELECTRON.md                # Desktop build: design notes, packaging, signing
+├── SECURITY.md                # What an IT security review will ask about, answered
+├── DEPENDENCIES.md            # Every vendored binary, its licence and provenance
 └── knowledge_base.md          # Architecture reference for engineers and coding agents
 ```
 
@@ -343,7 +398,7 @@ See `knowledge_base.md` §2 for the full file-routing table — which feature li
 
 No build tools, `npm install`, or server configuration required.
 
-### Docker (recommended for teams)
+### Hosted — Docker
 
 Install Docker Desktop, then double-click `run-docker.bat` (Windows) or `run-docker.command` (macOS, Linux) — it starts Docker if needed, builds, runs and opens the browser. `stop-docker.*` stops it. Equivalent by hand:
 
@@ -355,15 +410,15 @@ Open <http://localhost:8080/>. The image runs unprivileged nginx on port 8080 wi
 
 **Only the machine that hosts it needs Docker.** Everyone else — Windows or Mac — just opens the URL in Chrome or Edge, with nothing installed. Rollout guidance, licensing notes, port changes, reverse-proxy and hardening options are in [DEPLOYMENT.md](DEPLOYMENT.md).
 
-### Desktop app (prototype)
+### Desktop app
 
-An Electron shell wraps the same code as a native Windows and macOS app, so there is no browser tab, no port to remember, and Mac users stop losing video export and the native save dialog to Safari. Double-click `run-electron.bat` or `run-electron.command`, or:
+An Electron shell wraps the same code as a native Windows and macOS app, so there is no browser tab, no URL to hand out, and Mac users stop losing video export and the native save dialog to Safari. Nothing below `electron/` is changed to make this work, so the desktop and hosted builds cannot drift. Double-click `run-electron.bat` or `run-electron.command`, or:
 
 ```bash
 npm install && npm start
 ```
 
-It is distributed as a **portable folder**, not an installer. Double-click `build-app.bat` (or run `npm run release:win`) to produce `dist/win-unpacked/`; double-clicking `RMIT Adflow.exe` inside it runs the app from anywhere, with nothing installed. Design notes, the Electron-versus-Tauri reasoning, and what still needs doing before it can be handed to staff are in [ELECTRON.md](ELECTRON.md).
+It is distributed as a **portable folder**, not an installer. Double-click `build-app.bat` (or run `npm run release:win`) to produce `dist/win-unpacked/`; double-clicking `RMIT Adflow.exe` inside it runs the app from anywhere, with nothing installed. Design notes, the Electron-versus-Tauri reasoning, and the open items before it goes to staff — code signing and macOS notarisation chief among them — are in [ELECTRON.md](ELECTRON.md).
 
 ### Local Environment
 
@@ -509,7 +564,6 @@ node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js
 ### 3. How does autosave work and how do I prevent losing my progress?
 - **IndexedDB autosave** — every modification (dragging, resizing, typing, recolouring) triggers a debounced save to your browser's IndexedDB.
 - **Auto-restoration** — reloading the tab restores canvases, scroll position, zoom level and the undo stack.
-- **Cloud saves** — signed in, `Ctrl + S` pushes the project package to Supabase.
 - **Force browser save** — `Ctrl + Shift + S` saves silently to IndexedDB.
 - **Local file backups** — **File → Save → Save to File (.flow)** before clearing browser data or switching machines.
 
@@ -608,10 +662,9 @@ The active state is a single mutable global object, `state`, declared in [core-s
 
 ```typescript
 interface State {
-  projectId?: string;             // UUID; promoted from a short uid on first cloud push
+  projectId?: string;             // UUID assigned on create / first save
   projectName: string;
   adSizeLimit: number;            // Validation weight cap in KB (default 150)
-  spaceId?: string | null;        // Active Supabase team space (null = Personal)
   currentVersion?: string;        // Bound row key from the data merge, if any
   canvases: Canvas[];
   activeCanvasId: string;
@@ -622,8 +675,7 @@ interface State {
   linkGroups: Record<string, LinkGroup>;
   assets: Record<string, string>; // assetId → base64 data URL
   dataMerge?: DataMergeConfig;
-  theme?: 'default' | 'obsidian' | 'nordic' | 'amber' | 'amethyst' | 'rmit-navy'
-        | 'ocean' | 'navy' | 'light' | 'rmit' | 'nordic-light' | 'amber-light' | 'sage-light';
+  theme?: 'default' | 'light';    // v0.61.0: two themes; unknown ids fold to 'default'
   showRulers?: boolean;
   showSafezones?: boolean;
   snapEnabled?: boolean;

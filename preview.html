@@ -7,16 +7,16 @@
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
   <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
-  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.60.1" />
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.61.0" />
   
   <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
-  <script src="lib/jszip.min.js?v=0.60.1"></script>
+  <script src="lib/jszip.min.js?v=0.61.0"></script>
 
   <!-- The app's real stylesheet, so this portal shares the editor's palette,
        themes, buttons and dialogs instead of maintaining a parallel look.
        Loaded BEFORE the page-specific block below so the portal's own layout
        rules can still override where they must. -->
-  <link rel="stylesheet" href="styles.css?v=0.60.1" />
+  <link rel="stylesheet" href="styles.css?v=0.61.0" />
 
   <style>
     /* This page's layout was written against its own palette names. Rather than
@@ -217,8 +217,6 @@
        (the old bespoke "slate" palette had no app equivalent, so it became
        Nordic), keeping this page inside the editor's design system. */
     .swatch-adflow   { background: #0b0c0f; }
-    .swatch-obsidian { background: #14161c; }
-    .swatch-nordic   { background: #2e3440; }
     .swatch-light    { background: #f1f5f9; }
 
     .swatch-chess {
@@ -425,7 +423,7 @@
     
     /* Checkered banner backdrop, now driven off one body class so cards rebuilt
        by renderCanvases inherit it instead of silently losing the per-card
-       class. Dark by default; the app's light themes get the light checker. */
+       class. Dark by default; the app's Light theme gets the light checker. */
     body.preview-checkered .card-body {
       background-color: #161b22;
       background-image: linear-gradient(45deg, #21262d 25%, transparent 25%),
@@ -435,11 +433,7 @@
       background-size: 16px 16px;
       background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
     }
-    body.preview-checkered.theme-light .card-body,
-    body.preview-checkered.theme-rmit .card-body,
-    body.preview-checkered.theme-nordic-light .card-body,
-    body.preview-checkered.theme-amber-light .card-body,
-    body.preview-checkered.theme-sage-light .card-body {
+    body.preview-checkered.theme-light .card-body {
       background-color: #f1f1f1;
       background-image: linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
                         linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
@@ -699,8 +693,6 @@
         <div class="control-label">Presentation Grid / BG</div>
         <div class="swatches">
           <div class="swatch swatch-adflow active" data-theme="default" title="Adflow (default)"></div>
-          <div class="swatch swatch-obsidian" data-theme="obsidian" title="Obsidian"></div>
-          <div class="swatch swatch-nordic" data-theme="nordic" title="Nordic"></div>
           <div class="swatch swatch-light" data-theme="light" title="Light"></div>
           <div class="swatch swatch-chess" data-theme="chess" title="Checkered banner backdrop"></div>
         </div>
@@ -885,13 +877,13 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/numeric-wheel.js?v=0.60.1"></script>
-  <script src="scripts/render-runtime.js?v=0.60.1"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.60.1"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.60.1"></script>
-  <script src="scripts/data-merge.js?v=0.60.1"></script>
-  <script src="scripts/font-subset.js?v=0.60.1"></script>
-  <script src="scripts/export-pipeline.js?v=0.60.1"></script>
+  <script src="scripts/numeric-wheel.js?v=0.61.0"></script>
+  <script src="scripts/render-runtime.js?v=0.61.0"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.61.0"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.61.0"></script>
+  <script src="scripts/data-merge.js?v=0.61.0"></script>
+  <script src="scripts/font-subset.js?v=0.61.0"></script>
+  <script src="scripts/export-pipeline.js?v=0.61.0"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>
@@ -972,7 +964,7 @@
     }
     
     // Theme Management
-    // Presentation swatches. The first four are real app themes applied exactly
+    // Presentation swatches. The first two are real app themes applied exactly
     // the way the editor applies them (canvas-render.js sets body.className to
     // the single theme class), so this page can't drift from the editor's look.
     // "Chess" is not a theme — it's a checkered banner backdrop layered over

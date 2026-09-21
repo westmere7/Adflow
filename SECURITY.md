@@ -1,6 +1,6 @@
 # Adflow — security summary
 
-For RMIT ITS. Covers the **local edition** and its portable desktop app, v0.60.1.
+For RMIT ITS. Covers the **local edition** and its portable desktop app, v0.61.0.
 Supporting detail: [DEPENDENCIES.md](DEPENDENCIES.md) and
 [lib/THIRD-PARTY-NOTICES.txt](lib/THIRD-PARTY-NOTICES.txt).
 
